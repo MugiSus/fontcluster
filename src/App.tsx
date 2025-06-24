@@ -12,7 +12,7 @@ function App() {
   }
 
   return (
-    <main class="flex flex-col gap-4 justify-center text-center font-sans text-base leading-6 font-normal text-neutral-900 dark:text-neutral-100 dark:bg-neutral-800">
+    <main class="flex flex-col gap-4 justify-center text-center bg-neutral-100 dark:bg-neutral-800 min-h-screen p-4 text-neutral-900 dark:text-neutral-100">
       <h1 class="text-center font-bold text-2xl">Welcome to Tauri + Solid</h1>
 
       <div class="flex justify-center">
@@ -26,6 +26,7 @@ function App() {
           <img src={logo} class="h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#2f5d90]" alt="Solid logo" />
         </a>
       </div>
+
       <p>Click on the Tauri, Vite, and Solid logos to learn more.</p>
 
       <form
