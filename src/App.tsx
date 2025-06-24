@@ -1,13 +1,13 @@
-import { createSignal } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import { createSignal } from "solid-js";
 
 function App() {
-  const [greetMsg, setGreetMsg] = createSignal("");
+  const [greetMessage, setGreetMessage] = createSignal("");
   const [name, setName] = createSignal("");
 
   async function greet() {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name: name() }));
+    setGreetMessage(await invoke("greet", { name: name() }));
   }
 
   return (
@@ -30,20 +30,20 @@ function App() {
 
       <form
         class="flex justify-center gap-1"
-        onSubmit={(e) => {
-          e.preventDefault();
+        onSubmit={(event) => {
+          event.preventDefault();
           greet();
         }}
       >
         <input
           id="greet-input"
           class="mr-1 rounded-lg border border-transparent px-5 py-2.5 text-base font-medium font-sans text-neutral-900 bg-white transition-colors duration-200 outline-none dark:text-white dark:bg-neutral-900/60"
-          onChange={(e) => setName(e.currentTarget.value)}
+          onChange={(event) => setName(event.currentTarget.value)}
           placeholder="Enter a name..."
         />
         <button type="submit" class="cursor-pointer rounded-lg border border-transparent px-5 py-2.5 text-base font-medium font-sans text-neutral-900 bg-white transition-colors duration-200 shadow-[0_2px_2px_rgba(0,0,0,0.2)] outline-none hover:border-blue-600 active:border-blue-600 active:bg-neutral-200 dark:text-white dark:bg-neutral-900/60 dark:active:bg-neutral-900/40">Greet</button>
       </form>
-      <p>{greetMsg()}</p>
+      <p>{greetMessage()}</p>
     </main>
   );
 }
