@@ -1,6 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-vite-blue: #747bff;
+  --color-solid-blue: #2f5d90;
+  --color-tauri-cyan: #24c8db;
+  --color-link-blue: #646cff;
+  --color-link-hover: #535bf2;
+  --color-button-hover: #396cd8;
+  --color-button-active-light: #e8e8e8;
+  --color-button-active-dark: #0f0f0f69;
+  --color-button-bg-dark: #0f0f0f98;
+  
+  --drop-shadow-vite: 0 0 2em #747bff;
+  --drop-shadow-solid: 0 0 2em #2f5d90;
+  --drop-shadow-tauri: 0 0 2em #24c8db;
+  
+  --transition-duration-750: 0.75s;
+}
 
 /* Custom styles for optimal rendering */
 @layer base {
