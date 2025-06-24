@@ -17,13 +17,13 @@ function App() {
 
       <div class="flex justify-center">
         <a href="https://vitejs.dev" target="_blank" class="font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400">
-          <img src="/vite.svg" class="h-24 p-6 will-change-[filter] transition-[filter] duration-700 hover:drop-shadow-[0_0_2em_#747bff]" alt="Vite logo" />
+          <img src="/vite.svg" class="h-24 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2em_#747bff]" alt="Vite logo" />
         </a>
         <a href="https://tauri.app" target="_blank" class="font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400">
-          <img src="/tauri.svg" class="h-24 p-6 will-change-[filter] transition-[filter] duration-700 hover:drop-shadow-[0_0_2em_#24c8db]" alt="Tauri logo" />
+          <img src="/tauri.svg" class="h-24 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2em_#24c8db]" alt="Tauri logo" />
         </a>
         <a href="https://solidjs.com" target="_blank" class="font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400">
-          <img src={logo} class="h-24 p-6 will-change-[filter] transition-[filter] duration-700 hover:drop-shadow-[0_0_2em_#2f5d90]" alt="Solid logo" />
+          <img src={logo} class="h-24 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2em_#2f5d90]" alt="Solid logo" />
         </a>
       </div>
       <p>Click on the Tauri, Vite, and Solid logos to learn more.</p>
