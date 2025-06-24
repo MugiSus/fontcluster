@@ -12,7 +12,7 @@ function App() {
   }
 
   return (
-    <main class="m-0 pt-[10vh] flex flex-col justify-center text-center font-sans text-base leading-6 font-normal text-neutral-900 bg-neutral-100 dark:text-neutral-100 dark:bg-neutral-800">
+    <main class="m-0 flex flex-col justify-center text-center font-sans text-base leading-6 font-normal text-neutral-900 dark:text-neutral-100 dark:bg-neutral-800">
       <h1 class="text-center">Welcome to Tauri + Solid</h1>
 
       <div class="flex justify-center">
