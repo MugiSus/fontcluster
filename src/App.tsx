@@ -1,5 +1,4 @@
 import { createSignal } from "solid-js";
-import logo from "./assets/logo.svg";
 import { invoke } from "@tauri-apps/api/core";
 
 function App() {
@@ -23,7 +22,7 @@ function App() {
           <img src="/tauri.svg" class="h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#24c8db]" alt="Tauri logo" />
         </a>
         <a href="https://solidjs.com" target="_blank" class="font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400">
-          <img src={logo} class="h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#2f5d90]" alt="Solid logo" />
+          <img src="/solidjs.svg" class="h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#2f5d90]" alt="Solid logo" />
         </a>
       </div>
 
