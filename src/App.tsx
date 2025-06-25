@@ -5,10 +5,10 @@ function App() {
   const [greetMessage, setGreetMessage] = createSignal('');
   const [name, setName] = createSignal('');
 
-  async function greet() {
+  const greet = async () => {
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMessage(await invoke('greet', { name: name() }));
-  }
+  };
 
   return (
     <main class='flex min-h-screen flex-col justify-center gap-4 bg-neutral-100 p-4 text-center text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100'>
