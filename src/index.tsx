@@ -1,7 +1,7 @@
 /* @refresh reload */
-import { render } from "solid-js/web";
+import { render } from 'solid-js/web';
 
-import "./index.css";
-import App from "./App.tsx";
+import './index.css';
+import App from './App.tsx';
 
-render(() => <App />, document.querySelector("#root") as HTMLElement);
+render(() => <App />, document.querySelector('#root') as HTMLElement);
