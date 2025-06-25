@@ -1,2 +1,9 @@
-YOU MUST: Read CLAUDE.md file before starting the task.
-YOU MUST: Execute `terminal-notifier -title "Cloud Code" -subtitle "DiQt Web" -message "Hi👋" -sound Pop` command only once at the end when completing a task or returning a message to the user.
+# Claude Code Instructions
+
+## Required Actions
+1. **Read CLAUDE.md** - Always read this file before starting any task
+2. **Send Notifications** - Run notification command when you need user attention:
+   ```bash
+   osascript -e 'display notification "Hi👋" with title "Cloud Code" subtitle "fontcluster" sound name "Pop"'
+   ```
+3. **Commit Changes** - Create a git commit every time you complete a task
