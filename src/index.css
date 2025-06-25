@@ -3,6 +3,7 @@
 /* Custom styles for optimal rendering */
 @layer base {
   :root {
+    overscroll-behavior: none;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
