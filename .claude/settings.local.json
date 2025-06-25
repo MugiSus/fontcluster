@@ -3,7 +3,9 @@
     "allow": [
       "Bash(ls:*)",
       "Bash(pnpm create:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(osascript:*)"
     ],
     "deny": []
   }
