@@ -15,7 +15,7 @@
         "title": "fontcluster",
         "width": 1280,
         "height": 720,
-        "titleBarStyle": "Transparent"
+        "decorations": false
       }
     ],
     "security": {
