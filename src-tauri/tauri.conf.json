@@ -20,8 +20,7 @@
     ],
     "security": {
       "csp": null
-    },
-    "devtools": true
+    }
   },
   "bundle": {
     "active": true,
