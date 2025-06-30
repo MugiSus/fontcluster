@@ -1,7 +1,7 @@
+import path from "path";
 import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 
-// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
@@ -28,5 +28,19 @@ export default defineConfig(async () => ({
       // 3. tell vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+  },
+  resolve: {
+    alias: [
+      {
+        find: "@kobalte/core",
+        replacement: path.resolve(
+          __dirname,
+          "node_modules/@kobalte/core/dist/source"
+        ),
+      },
+    ],
+  },
+  optimizeDeps: {
+    include: ["@kobalte/core"], // 事前に ESM をスキャンさせる
   },
 }));

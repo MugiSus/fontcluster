@@ -1,4 +1,4 @@
-import { Button } from '@kobalte/core/button';
+import { Button } from '@kobalte/core';
 import { invoke } from '@tauri-apps/api/core';
 import { createSignal } from 'solid-js';
 
