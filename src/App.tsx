@@ -1,3 +1,4 @@
+import { Button } from '@kobalte/core/button';
 import { invoke } from '@tauri-apps/api/core';
 import { createSignal } from 'solid-js';
 
@@ -66,12 +67,12 @@ function App() {
           onChange={(event) => setName(event.currentTarget.value)}
           placeholder='Enter a name...'
         />
-        <button
+        <Button
           type='submit'
           class='cursor-pointer rounded-lg border border-transparent bg-white px-5 py-2.5 font-sans text-base font-medium text-neutral-900 shadow-[0_2px_2px_rgba(0,0,0,0.2)] transition-colors duration-200 outline-none hover:border-blue-600 active:border-blue-600 active:bg-neutral-200 dark:bg-neutral-900/60 dark:text-white dark:active:bg-neutral-900/40'
         >
           Greet
-        </button>
+        </Button>
       </form>
       <p>{greetMessage()}</p>
     </main>
