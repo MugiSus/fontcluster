@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { createSignal } from 'solid-js';
 import { Button } from './components/ui/button';
 import { TextField, TextFieldInput } from './components/ui/text-field';
+import { ModeToggle } from './components/mode-toggle';
 
 function App() {
   const [greetMessage, setGreetMessage] = createSignal('');
@@ -13,8 +14,9 @@ function App() {
   };
 
   return (
-    <main class='flex min-h-screen flex-col justify-center gap-4 bg-background bg-neutral-100 p-4 text-center'>
-      <div data-tauri-drag-region class='fixed left-0 right-0 top-0 z-50 h-4' />
+    <main class='flex min-h-screen flex-col justify-center gap-4 bg-background p-4 text-center'>
+      <ModeToggle />
+
       <h1 class='text-center text-2xl font-bold'>Welcome to Tauri + Solid</h1>
 
       <div class='flex justify-center'>
