@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { createSignal } from 'solid-js';
+import { Button } from './components/button';
+import { TextField, TextFieldInput } from './components/text-field';
 
 function App() {
   const [greetMessage, setGreetMessage] = createSignal('');
@@ -11,7 +13,7 @@ function App() {
   };
 
   return (
-    <main class='flex min-h-screen flex-col justify-center gap-4 bg-neutral-100 p-4 text-center text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100'>
+    <main class='flex min-h-screen flex-col justify-center gap-4 bg-neutral-100 p-4 text-center text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100'>
       <div data-tauri-drag-region class='fixed left-0 right-0 top-0 z-50 h-4' />
       <h1 class='text-center text-2xl font-bold'>Welcome to Tauri + Solid</h1>
 
@@ -60,18 +62,17 @@ function App() {
           greet();
         }}
       >
-        <input
-          id='greet-input'
-          class='mr-1 rounded-lg border border-transparent bg-white px-5 py-2.5 font-sans text-base font-medium text-neutral-900 outline-none transition-colors duration-200 dark:bg-neutral-900/60 dark:text-white'
-          onChange={(event) => setName(event.currentTarget.value)}
-          placeholder='Enter a name...'
-        />
-        <button
-          type='submit'
-          class='cursor-pointer rounded-lg border border-transparent bg-white px-5 py-2.5 font-sans text-base font-medium text-neutral-900 shadow-[0_2px_2px_rgba(0,0,0,0.2)] outline-none transition-colors duration-200 hover:border-blue-600 active:border-blue-600 active:bg-neutral-200 dark:bg-neutral-900/60 dark:text-white dark:active:bg-neutral-900/40'
-        >
+        <TextField class='grid w-full max-w-sm items-center gap-1.5'>
+          <TextFieldInput
+            type='text'
+            id='name'
+            placeholder='Enter your name...'
+            onChange={(event) => setName(event.currentTarget.value)}
+          />
+        </TextField>
+        <Button type='submit' variant='secondary'>
           Greet
-        </button>
+        </Button>
       </form>
       <p>{greetMessage()}</p>
     </main>
