@@ -14,8 +14,11 @@ function App() {
   };
 
   return (
-    <main class='flex min-h-screen flex-col justify-center gap-4 bg-background p-4 text-center'>
-      <ModeToggle />
+    <main class='flex min-h-screen flex-col justify-center gap-4 bg-background text-center'>
+      <div class='fixed inset-x-0 top-0 flex w-auto items-center justify-between p-3'>
+        <h1 class='pl-3 text-sm font-light tracking-widest'>FontCluster</h1>
+        <ModeToggle />
+      </div>
 
       <h1 class='text-center text-2xl font-bold'>Welcome to Tauri + Solid</h1>
 
