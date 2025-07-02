@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { createSignal } from 'solid-js';
-import { Button } from './components/button';
-import { TextField, TextFieldInput } from './components/text-field';
+import { Button } from './components/ui/button';
+import { TextField, TextFieldInput } from './components/ui/text-field';
 
 function App() {
   const [greetMessage, setGreetMessage] = createSignal('');
