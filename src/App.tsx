@@ -16,7 +16,9 @@ function App() {
   return (
     <main class='flex min-h-screen flex-col justify-center gap-4 bg-background text-center'>
       <div class='fixed inset-x-0 top-0 flex w-auto items-center justify-between p-3'>
-        <h1 class='pl-3 text-sm font-light tracking-widest'>FontCluster</h1>
+        <h1 class='font-regular ml-3 px-2 py-1 text-sm tracking-widest'>
+          FontCluster
+        </h1>
         <ModeToggle />
       </div>
 
@@ -75,9 +77,7 @@ function App() {
             onChange={(event) => setName(event.currentTarget.value)}
           />
         </TextField>
-        <Button type='submit' variant='secondary'>
-          Greet
-        </Button>
+        <Button type='submit'>Greet</Button>
       </form>
       <p>{greetMessage()}</p>
     </main>
