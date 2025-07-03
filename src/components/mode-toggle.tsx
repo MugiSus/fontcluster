@@ -19,7 +19,7 @@ export function ModeToggle(props: { class?: string }) {
         as={Button<'button'>}
         variant='ghost'
         size='sm'
-        class={cn('size-6 rounded-full px-0', props.class)}
+        class={cn('w-9 px-0', props.class)}
       >
         <Sun class='size-6 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0' />
         <Moon class='absolute size-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100' />
