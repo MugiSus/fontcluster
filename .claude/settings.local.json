@@ -7,7 +7,8 @@
       "Bash(git commit:*)",
       "Bash(afplay:*)",
       "Edit(./CLAUDELOGS/*.md)",
-      "Write(./CLAUDELOGS/*.md)"
+      "Write(./CLAUDELOGS/*.md)",
+      "Bash(date:*)"
     ],
     "deny": []
   }
