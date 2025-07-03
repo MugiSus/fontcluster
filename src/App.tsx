@@ -14,7 +14,7 @@ function App() {
   };
 
   return (
-    <main class='flex grow flex-col items-stretch justify-center gap-4'>
+    <main class='flex flex-1 flex-col items-stretch justify-center gap-4'>
       <form
         class='flex justify-center gap-2'
         onSubmit={(event) => {

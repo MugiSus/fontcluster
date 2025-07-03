@@ -17,11 +17,9 @@ function Root() {
     <>
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
-        <div class='flex min-h-screen flex-col justify-center bg-background text-center'>
+        <div class='flex min-h-screen flex-col bg-background text-center'>
           <Titlebar />
-          <div class='flex grow flex-col items-stretch justify-center'>
-            <App />
-          </div>
+          <App />
         </div>
       </ColorModeProvider>
     </>
