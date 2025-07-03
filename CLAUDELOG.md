@@ -25,4 +25,15 @@
 - `Edit` - CLAUDE.mdに会話ログ記録の指示を追加
 - `Edit` - claudeLog.mdに新しい会話を記録
 
+### ファイル名変更リクエスト
+**ユーザー:** 名前をCLAUDELOG.mdに変更したい。
+
+**Claude:** claudeLog.mdをCLAUDELOG.mdに変更しました。
+
+### 実行ログ
+- `TodoWrite` - ファイル名変更タスクを作成
+- `Bash` - git mvコマンドでファイル名を変更
+- `Edit` - CLAUDE.mdの参照を新しいファイル名に更新
+- `Edit` - CLAUDELOG.mdに新しい会話を記録
+
 ---
