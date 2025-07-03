@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        'chivo': ['Chivo', 'sans-serif'],
-        'sans': ['Chivo', 'sans-serif'],
+        'chivo': ['Chivo Variable', 'sans-serif'],
+        'sans': ['Chivo Variable', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

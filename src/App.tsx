@@ -4,11 +4,11 @@ function App() {
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
-        <For each={Array.from({ length: 40 })}>
+        <For each={Array.from({ length: 80 })}>
           {() => (
             <li class='flex flex-col items-start gap-0'>
-              <h2 class='text-2xl font-light'>Chivo</h2>
-              <div class='break-all text-sm text-muted-foreground'>
+              <h2 class='text-2xl font-thin'>Chivo</h2>
+              <div class='break-all text-sm font-light text-muted-foreground'>
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit.
               </div>
             </li>
