@@ -8,6 +8,7 @@ import {
 
 import App from './App';
 import './index.css';
+import { Titlebar } from './components/titlebar';
 
 function Root() {
   const storageManager = createLocalStorageManager('vite-ui-theme');
@@ -16,7 +17,12 @@ function Root() {
     <>
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
-        <App />
+        <div class='flex min-h-screen flex-col justify-center bg-background text-center'>
+          <Titlebar />
+          <div class='flex grow flex-col items-center justify-center'>
+            <App />
+          </div>
+        </div>
       </ColorModeProvider>
     </>
   );

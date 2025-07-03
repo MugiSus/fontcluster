@@ -8,8 +8,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
-export function ModeToggle() {
+export function ModeToggle(props: { class?: string }) {
   const { setColorMode } = useColorMode();
 
   return (
@@ -18,7 +19,7 @@ export function ModeToggle() {
         as={Button<'button'>}
         variant='ghost'
         size='sm'
-        class='w-9 px-0'
+        class={cn('size-6 rounded-full px-0', props.class)}
       >
         <Sun class='size-6 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0' />
         <Moon class='absolute size-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100' />

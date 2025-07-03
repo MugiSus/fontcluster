@@ -2,7 +2,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { createSignal } from 'solid-js';
 import { Button } from './components/ui/button';
 import { TextField, TextFieldInput } from './components/ui/text-field';
-import { ModeToggle } from './components/mode-toggle';
 import { ArrowRight } from 'lucide-solid';
 
 function App() {
@@ -15,17 +14,7 @@ function App() {
   };
 
   return (
-    <main class='flex min-h-screen flex-col justify-center gap-4 bg-background text-center'>
-      <h1
-        data-tauri-drag-region
-        class='fixed top-0 flex w-full select-none items-center justify-center p-2 text-xs tracking-widest'
-      >
-        FontCluster
-      </h1>
-      <div class='fixed right-2 top-2'>
-        <ModeToggle />
-      </div>
-
+    <main class='flex w-full grow flex-col items-center justify-center gap-4'>
       <form
         class='flex justify-center gap-2'
         onSubmit={(event) => {
