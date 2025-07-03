@@ -5,7 +5,9 @@
       "Bash(pnpm create:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(afplay:*)"
+      "Bash(afplay:*)",
+      "Edit(*/CLAUDELOG.md)",
+      "Write(*/CLAUDELOG.md)"
     ],
     "deny": []
   }

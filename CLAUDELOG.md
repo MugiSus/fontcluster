@@ -57,4 +57,9 @@
 - `Edit` - CLAUDE.mdから手動パーミッション記載を削除
 - `Edit` - CLAUDELOG.mdに新しい会話を記録
 
+### 設定ファイル場所確認
+**ユーザー:** どこのsettings.local.jsonにwriteしたの今？
+
+**Claude:** `/Users/mugisus/Documents/GitHub/fontcluster/settings.local.json`に作成しました（プロジェクトルート）。
+
 ---
