@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  overscroll-behavior: none;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -124,7 +128,7 @@
     @apply px-4;
   }
 }
-
+/* 
 ::-webkit-scrollbar {
   width: 16px;
 }
@@ -138,4 +142,4 @@
 
 ::-webkit-scrollbar-corner {
   display: none;
-}
+} */

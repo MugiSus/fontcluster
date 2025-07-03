@@ -14,7 +14,7 @@ function App() {
   };
 
   return (
-    <main class='flex flex-1 flex-col items-stretch justify-center gap-4'>
+    <main class='flex flex-1 flex-col items-stretch justify-center gap-4 p-8'>
       <form
         class='flex justify-center gap-2'
         onSubmit={(event) => {
@@ -35,7 +35,8 @@ function App() {
           <ArrowRight class='ml-2 size-4' />
         </Button>
       </form>
-      <p>{greetMessage()}</p>
+
+      {greetMessage() && <p>{greetMessage()}</p>}
     </main>
   );
 }
