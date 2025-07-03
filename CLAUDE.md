@@ -5,7 +5,7 @@
 1. **Read CLAUDE.md** - Always read this file before starting any task
 2. **Send Notifications** - Run notification command before prompting user and after completing tasks:
    ```bash
-   afplay /System/Library/Sounds/Glass.aiff &
+   afplay /System/Library/Sounds/Glass.aiff
    ```
 3. **Commit Changes** - Create a git commit every time you complete a task
 4. **Log Conversations** - Always update daily log file in CLAUDELOGS folder with all conversations and execution logs
