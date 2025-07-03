@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "fontcluster",
+  "productName": "FontCluster",
   "version": "0.1.0",
   "identifier": "com.fontcluster.app",
   "build": {
@@ -12,12 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "fontcluster",
+        "title": "",
         "width": 1280,
         "height": 720,
         "minWidth": 1280,
         "minHeight": 720,
-        "titleBarStyle": "Transparent"
+        "titleBarStyle": "Overlay"
       }
     ],
     "security": {

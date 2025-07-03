@@ -3,6 +3,7 @@ import { createSignal } from 'solid-js';
 import { Button } from './components/ui/button';
 import { TextField, TextFieldInput } from './components/ui/text-field';
 import { ModeToggle } from './components/mode-toggle';
+import { ArrowRight } from 'lucide-solid';
 
 function App() {
   const [greetMessage, setGreetMessage] = createSignal('');
@@ -15,55 +16,18 @@ function App() {
 
   return (
     <main class='flex min-h-screen flex-col justify-center gap-4 bg-background text-center'>
-      <div class='fixed inset-x-0 top-0 flex w-auto items-center justify-between p-3'>
-        <h1 class='font-regular ml-3 px-2 py-1 text-sm tracking-widest'>
-          FontCluster
-        </h1>
+      <h1
+        data-tauri-drag-region
+        class='fixed top-0 flex w-full select-none items-center justify-center p-2 text-xs tracking-widest'
+      >
+        FontCluster
+      </h1>
+      <div class='fixed right-2 top-2'>
         <ModeToggle />
       </div>
 
-      <h1 class='text-center text-2xl font-bold'>Welcome to Tauri + Solid</h1>
-
-      <div class='flex justify-center'>
-        <a
-          href='https://vitejs.dev'
-          target='_blank'
-          class='font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400'
-        >
-          <img
-            src='/vite.svg'
-            class='h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#747bff]'
-            alt='Vite logo'
-          />
-        </a>
-        <a
-          href='https://tauri.app'
-          target='_blank'
-          class='font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400'
-        >
-          <img
-            src='/tauri.svg'
-            class='h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#24c8db]'
-            alt='Tauri logo'
-          />
-        </a>
-        <a
-          href='https://solidjs.com'
-          target='_blank'
-          class='font-medium text-blue-500 no-underline hover:text-blue-600 dark:hover:text-cyan-400'
-        >
-          <img
-            src='/solidjs.svg'
-            class='h-32 p-6 transition-[filter] duration-700 hover:drop-shadow-[0_0_2rem_#2f5d90]'
-            alt='Solid logo'
-          />
-        </a>
-      </div>
-
-      <p>Click on the Tauri, Vite, and Solid logos to learn more.</p>
-
       <form
-        class='flex justify-center gap-1'
+        class='flex justify-center gap-2'
         onSubmit={(event) => {
           event.preventDefault();
           greet();
@@ -77,7 +41,10 @@ function App() {
             onChange={(event) => setName(event.currentTarget.value)}
           />
         </TextField>
-        <Button type='submit'>Greet</Button>
+        <Button type='submit' class='flex gap-0 pr-3'>
+          Greet
+          <ArrowRight class='ml-2 size-4' />
+        </Button>
       </form>
       <p>{greetMessage()}</p>
     </main>
