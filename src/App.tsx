@@ -6,7 +6,7 @@ function App() {
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
         <For each={Array.from({ length: 40 })}>
           {() => (
-            <li class='flex flex-col items-start gap-0.5'>
+            <li class='flex flex-col items-start gap-0'>
               <h2 class='text-2xl font-light'>Chivo</h2>
               <div class='break-all text-sm text-muted-foreground'>
                 Lorem ipsum dolor sit amet, consectetur adipiscing elit.

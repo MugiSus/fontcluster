@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@fontsource/chivo':
+      '@fontsource-variable/chivo':
         specifier: ^5.2.6
         version: 5.2.6
       '@kobalte/core':
@@ -393,8 +393,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@fontsource/chivo@5.2.6':
-    resolution: {integrity: sha512-lH6WjzUXzfOY30lkElJoiOf2suw8GL6Qvr1mj3fX8/rVBoSgXEUOUIBSkCcMXn1uwt7MvgPkpFWtW6chHzm4eQ==}
+  '@fontsource-variable/chivo@5.2.6':
+    resolution: {integrity: sha512-5T6/Zx3EtzrMTqO8pUlficJFyFuVxu/ssVEtrbF6WmDJGmdBZsHazR9sGiG3Z5+QHHuowHIDJHBshmqrCGA52g==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -2129,7 +2129,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@fontsource/chivo@5.2.6': {}
+  '@fontsource-variable/chivo@5.2.6': {}
 
   '@humanfs/core@0.19.1': {}
 
