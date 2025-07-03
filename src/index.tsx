@@ -6,6 +6,8 @@ import {
   createLocalStorageManager,
 } from '@kobalte/core';
 
+import '@fontsource/chivo/variable.css';
+
 import App from './App';
 import './index.css';
 import { Titlebar } from './components/titlebar';

@@ -5,7 +5,7 @@
       "Bash(pnpm create:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(osascript:*)"
+      "Bash(afplay:*)"
     ],
     "deny": []
   }
