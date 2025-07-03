@@ -8,3 +8,4 @@
    afplay /System/Library/Sounds/Glass.aiff
    ```
 3. **Commit Changes** - Create a git commit every time you complete a task
+4. **Log Conversations** - Always update claudeLog.md with all conversations and execution logs
