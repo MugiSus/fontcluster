@@ -6,10 +6,34 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(afplay:*)",
-      "Edit(./CLAUDELOGS/*.md)",
-      "Write(./CLAUDELOGS/*.md)",
+      "Edit(CLAUDELOGS/*.md)",
+      "Write(CLAUDELOGS/*.md)",
       "Bash(date:*)"
     ],
     "deny": []
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Remember: Read CLAUDE.md, commit changes, log conversations'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Did you: commit changes, log conversations?'"
+          }
+        ]
+      }
+    ]
   }
 }
