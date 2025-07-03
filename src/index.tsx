@@ -6,7 +6,7 @@ import {
   createLocalStorageManager,
 } from '@kobalte/core';
 
-import '@fontsource/chivo/variable.css';
+import '@fontsource/chivo';
 
 import App from './App';
 import './index.css';
@@ -19,7 +19,7 @@ function Root() {
     <>
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
-        <div class='flex h-screen flex-col overflow-auto overscroll-none bg-background text-center'>
+        <div class='flex h-screen flex-col overflow-auto overscroll-none bg-background tracking-wider'>
           <Titlebar />
           <App />
         </div>
