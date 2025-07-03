@@ -6,8 +6,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(afplay:*)",
-      "Edit(*/CLAUDELOG.md)",
-      "Write(*/CLAUDELOG.md)"
+      "Edit(./CLAUDELOG.md)",
+      "Write(./CLAUDELOG.md)"
     ],
     "deny": []
   }
