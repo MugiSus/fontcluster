@@ -10,3 +10,4 @@
    - Always get current time with `date` command before logging
    - Structure as ## `<timestamp> - <username>` with conversation under it
    - Record timestamp when user sends prompt, not when executing
+   - **Create new hourly log file if it doesn't exist** - Always create the appropriate hourly file based on current time
