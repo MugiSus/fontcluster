@@ -9,13 +9,13 @@ import tailwindcss from 'eslint-plugin-tailwindcss'
 export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  ...tailwindcss.configs['flat/recommended'],
   {
     files: ['**/*.{ts,tsx}'],
     ...solid,
     plugins: {
       ...solid.plugins,
       prettier: prettierPlugin,
-      tailwindcss,
     },
     languageOptions: {
       parserOptions: {
@@ -25,8 +25,6 @@ export default tseslint.config(
     rules: {
       ...solid.rules,
       'prettier/prettier': 'error',
-      'tailwindcss/no-custom-classname': 'error',
-      'tailwindcss/classnames-order': 'error',
     },
   },
   prettierConfig,
