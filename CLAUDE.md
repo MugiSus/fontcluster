@@ -11,3 +11,5 @@
    - Structure as ## `<timestamp> - <username>` with conversation under it
    - Record timestamp when user sends prompt, not when executing
    - **Create new hourly log file if it doesn't exist** - Always create the appropriate hourly file based on current time
+   - **Task Tracking** - Include "## Current Taskss" section between H1 and first H2 with checkbox list of tasks
+   - **Task Inheritance** - When creating new hourly log files, inherit incomplete tasks from previous file
