@@ -4,19 +4,61 @@ function App() {
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
-        <For each={Array.from({ length: 80 })}>
-          {() => (
+        <For
+          each={[
+            'Roboto',
+            'Open Sans',
+            'Lato',
+            'Montserrat',
+            'Oswald',
+            'Raleway',
+            'Poppins',
+            'Ubuntu',
+            'Source Sans Pro',
+            'Noto Sans',
+            'Merriweather',
+            'PT Sans',
+            'Playfair Display',
+            'Arimo',
+            'Fira Sans',
+            'Nunito',
+            'Work Sans',
+            'Inter',
+            'Cabin',
+            'Exo 2',
+            'Oxygen',
+            'Droid Sans',
+            'Lora',
+            'Vollkorn',
+            'Libre Baskerville',
+            'PT Serif',
+            'Crimson Text',
+            'Muli',
+            'Quicksand',
+            'Rubik',
+            'Karla',
+            'Archivo',
+            'Barlow',
+            'DM Sans',
+          ]}
+        >
+          {(item) => (
             <li class='flex flex-col items-start gap-0'>
-              <h2 class='text-2xl font-thin'>Chivo</h2>
+              <h2 class='text-2xl font-thin'>{item}</h2>
               <div class='break-all text-sm font-light text-muted-foreground'>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                {item} is a awesome font that is widely used in web design and
+                development. {item} offers a ...
               </div>
             </li>
           )}
         </For>
       </ul>
       <div class='col-span-9 rounded-md border bg-muted/10'>
-        <svg class='size-full' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'>
+        <svg
+          class='size-full'
+          viewBox='0 0 800 600'
+          xmlns='http://www.w3.org/2000/svg'
+        >
           <circle cx='120' cy='80' r='1' fill='white' />
           <circle cx='350' cy='150' r='1' fill='white' />
           <circle cx='600' cy='200' r='1' fill='white' />
