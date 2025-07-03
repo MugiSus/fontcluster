@@ -8,7 +8,8 @@
    afplay /System/Library/Sounds/Glass.aiff &
    ```
 3. **Commit Changes** - Create a git commit every time you complete a task
-4. **Log Conversations** - Always update CLAUDELOG.md with all conversations and execution logs
+4. **Log Conversations** - Always update daily log file in CLAUDELOGS folder with all conversations and execution logs
+   - Use filename format: `CLAUDELOGS/CLAUDELOGYYMMDD.md`
    - Use timestamp format: `YYYY/MM/DD HH:MM:SS (UTC+[TIMEZONE])` in inline code
    - Always get current time with `date` command before logging
    - Structure as ## `<timestamp> - <username>` with conversation under it
