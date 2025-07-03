@@ -15,7 +15,30 @@ function App() {
           )}
         </For>
       </ul>
-      <div class='col-span-9 rounded-md border bg-muted/10' />
+      <div class='col-span-9 rounded-md border bg-muted/10'>
+        <svg class='size-full' viewBox='0 0 800 600' xmlns='http://www.w3.org/2000/svg'>
+          <circle cx='120' cy='80' r='1' fill='white' />
+          <circle cx='350' cy='150' r='1' fill='white' />
+          <circle cx='600' cy='200' r='1' fill='white' />
+          <circle cx='200' cy='300' r='1' fill='white' />
+          <circle cx='750' cy='120' r='1' fill='white' />
+          <circle cx='450' cy='400' r='1' fill='white' />
+          <circle cx='100' cy='500' r='1' fill='white' />
+          <circle cx='680' cy='350' r='1' fill='white' />
+          <circle cx='300' cy='450' r='1' fill='white' />
+          <circle cx='550' cy='80' r='1' fill='white' />
+          <circle cx='80' cy='250' r='1' fill='white' />
+          <circle cx='400' cy='550' r='1' fill='white' />
+          <circle cx='720' cy='480' r='1' fill='white' />
+          <circle cx='180' cy='180' r='1' fill='white' />
+          <circle cx='500' cy='300' r='1' fill='white' />
+          <circle cx='650' cy='450' r='1' fill='white' />
+          <circle cx='250' cy='100' r='1' fill='white' />
+          <circle cx='480' cy='250' r='1' fill='white' />
+          <circle cx='150' cy='400' r='1' fill='white' />
+          <circle cx='600' cy='520' r='1' fill='white' />
+        </svg>
+      </div>
     </main>
   );
 }
