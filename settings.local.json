@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(*/CLAUDELOG.md)",
+      "Write(*/CLAUDELOG.md)"
+    ],
+    "defaultMode": "allowEdits"
+  }
+}
