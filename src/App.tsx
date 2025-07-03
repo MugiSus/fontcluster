@@ -2,7 +2,7 @@ import { For } from 'solid-js';
 
 function App() {
   return (
-    <main class='grid h-[688px] flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
+    <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
         <For each={Array.from({ length: 40 })}>
           {() => (
