@@ -15,5 +15,4 @@
      - H1 title only (no Current Tasks section)
      - Each conversation entry with timestamp H2
      - **mugisus:** and **Claude:** format for dialogue
-     - ### Execution Log section with tool usage list
-     - Do NOT include actions mandated by CLAUDE.md in Execution Log as they are self-evident (date, Read CLAUDE.md, logging conversations)
+     - No Execution Log section needed - conversation record is sufficient
