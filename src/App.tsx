@@ -1,53 +1,33 @@
-import { For } from 'solid-js';
+import { For, createResource } from 'solid-js';
+import { invoke } from '@tauri-apps/api/core';
 
 function App() {
+  const [fonts] = createResource(async () => {
+    try {
+      return await invoke<string[]>('get_system_fonts');
+    } catch (error) {
+      console.error('Failed to get system fonts:', error);
+      return [];
+    }
+  });
+
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
-        <For
-          each={[
-            'Roboto',
-            'Open Sans',
-            'Lato',
-            'Montserrat',
-            'Oswald',
-            'Raleway',
-            'Poppins',
-            'Ubuntu',
-            'Source Sans Pro',
-            'Noto Sans',
-            'Merriweather',
-            'PT Sans',
-            'Playfair Display',
-            'Arimo',
-            'Fira Sans',
-            'Nunito',
-            'Work Sans',
-            'Inter',
-            'Cabin',
-            'Exo 2',
-            'Oxygen',
-            'Droid Sans',
-            'Lora',
-            'Vollkorn',
-            'Libre Baskerville',
-            'PT Serif',
-            'Crimson Text',
-            'Muli',
-            'Quicksand',
-            'Rubik',
-            'Karla',
-            'Archivo',
-            'Barlow',
-            'DM Sans',
-          ]}
-        >
+        <For each={fonts() || []}>
           {(item) => (
             <li class='flex flex-col items-start gap-0'>
-              <h2 class='text-2xl font-thin'>{item}</h2>
+              <h2
+                class='break-all text-2xl font-thin'
+                style={{
+                  'font-family': `"${item}", sans-serif`,
+                }}
+              >
+                {item}
+              </h2>
               <div class='break-all text-sm font-light text-muted-foreground'>
-                {item} is a awesome font that is widely used in web design and
-                development. {item} offers a ...
+                {item} is a system font available on this Mac. Click to preview
+                different styles and weights.
               </div>
             </li>
           )}
