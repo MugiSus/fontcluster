@@ -19,39 +19,25 @@ fn get_system_fonts() -> Vec<String> {
     ];
     
     for dir in font_dirs {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if let Some(extension) = path.extension() {
-                        if let Some(ext_str) = extension.to_str() {
-                            if matches!(ext_str.to_lowercase().as_str(), "ttf" | "otf" | "ttc" | "dfont") {
-                                if let Some(file_name) = path.file_stem() {
-                                    if let Some(name) = file_name.to_str() {
-                                        // Remove common suffixes like -Bold, -Italic, etc.
-                                        let clean_name = name
-                                            .replace("-Bold", "")
-                                            .replace("-Italic", "")
-                                            .replace("-Regular", "")
-                                            .replace("-Light", "")
-                                            .replace("-Medium", "")
-                                            .replace("-Heavy", "")
-                                            .replace("-Black", "")
-                                            .replace("-Thin", "")
-                                            .replace("Bold", "")
-                                            .replace("Italic", "")
-                                            .replace("Regular", "");
-                                        
-                                        let font_name = clean_name.trim_end_matches('-').to_string();
-                                        if !fonts.contains(&font_name) && !font_name.is_empty() {
-                                            fonts.push(font_name);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        let Ok(entries) = fs::read_dir(dir) else { continue };
+        
+        for entry in entries {
+            let Ok(entry) = entry else { continue };
+            let path = entry.path();
+            
+            let Some(extension) = path.extension() else { continue };
+            let Some(ext_str) = extension.to_str() else { continue };
+            
+            if !matches!(ext_str.to_lowercase().as_str(), "ttf" | "otf" | "ttc" | "dfont") {
+                continue;
+            }
+            
+            let Some(file_name) = path.file_stem() else { continue };
+            let Some(name) = file_name.to_str() else { continue };
+            
+            let font_name = name.to_string();
+            if !fonts.contains(&font_name) && !font_name.is_empty() {
+                fonts.push(font_name);
             }
         }
     }
