@@ -16,18 +16,15 @@ function App() {
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
         <For each={fonts() || []}>
           {(item) => (
-            <li class='flex flex-col items-start gap-0'>
-              <h2
-                class='break-all text-2xl font-thin'
-                style={{
-                  'font-family': `"${item}", sans-serif`,
-                }}
-              >
-                {item}
-              </h2>
+            <li
+              class='flex flex-col items-start gap-0'
+              style={{
+                'font-family': `"${item}", sans-serif`,
+              }}
+            >
+              <h2 class='break-all text-2xl font-thin'>{item}</h2>
               <div class='break-all text-sm font-light text-muted-foreground'>
-                {item} is a system font available on this Mac. Click to preview
-                different styles and weights.
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
               </div>
             </li>
           )}
@@ -43,7 +40,7 @@ function App() {
             {() => {
               const x = Math.random() * 800;
               const y = Math.random() * 600;
-              return <circle cx={x} cy={y} r='1' fill='white' />;
+              return <circle cx={x} cy={y} r='1' class='fill-foreground' />;
             }}
           </For>
         </svg>

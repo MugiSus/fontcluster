@@ -273,3 +273,9 @@ error[E0716]: temporary value dropped while borrowed
 **mugisus:** 確認したフォントの個数、点を置くようにしてほしい
 
 **Claude:** SVGエリアでフォント数に応じた点を配置するように修正しました。各フォントに対してランダムな位置に白い点（半径2px）を表示します。
+
+## `2025/07/04 15:40:06 (UTC+9)` - mugisus
+
+**mugisus:** fill='white'とするのではなく、fill-foregroundとするべきだ。
+
+**Claude:** 承知しました。`fill='white'`を`class='fill-foreground'`に変更し、TailwindCSSのテーマカラーを使用するようにしました。
