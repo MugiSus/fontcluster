@@ -177,3 +177,109 @@ Your current implementation works but has limitations:
 - Misses fonts installed in other locations
 
 **Best upgrade path**: Integrate `font-kit` Rust crate for proper cross-platform font enumeration with accurate font family names. This will provide a much better user experience and work across all platforms Tauri supports.
+
+## `2025/07/05 21:04:29 (UTC+9)` - mugisus
+
+**mugisus:** コミットして
+
+**Claude:** font-kitライブラリを使用したフォント検出機能の改善をコミットしました。
+
+## `2025/07/05 22:55:48 (UTC+9)` - mugisus
+
+**mugisus:** font-kitで取得したfamilyのプロパティを教えて
+
+**Claude:** font-kitの`family`は`FamilyName`型で、以下のプロパティとメソッドがあります：
+
+**主要メソッド:**
+- `to_string()` - ファミリー名を文字列として取得
+- `as_str()` - ファミリー名を&strとして取得
+
+**SystemSource.all_families()の戻り値:**
+- `Result<Vec<FamilyName>, SelectionError>`
+- 成功時は全システムフォントファミリーのベクター
+
+**FamilyNameの特徴:**
+- フォントファミリーの論理名（例: "Arial", "Helvetica", "SF Pro"）
+- 重複は自動で除去される
+- プラットフォーム固有の名前解決を処理
+
+**追加で取得可能な情報:**
+```rust
+// フォントファイル情報が必要な場合
+source.select_family_by_name(&family_name) // -> Result<FontFamily, SelectionError>
+```
+
+現在のコードでは`family.to_string()`でファミリー名のみを取得していますが、より詳細な情報が必要でしたら教えてください。
+
+## `2025/07/05 22:57:38 (UTC+9)` - mugisus
+
+**mugisus:** styleでのフォントファミリーの指定で時々フォントが読み込めていないものがある。原因としてなにが考えられるか？
+
+**Claude:** styleでのフォントファミリー指定でフォントが読み込めない原因：
+
+**1. フォント名の問題**
+- スペースを含む名前の引用符不足: `"SF Pro Display"` vs `SF Pro Display`
+- 特殊文字やUnicode文字を含むフォント名
+- font-kitが返す名前とCSS名の不一致
+
+**2. フォントの可用性**
+- システムフォントだが特定のアプリケーションでのみ利用可能
+- ユーザーフォントの権限制限
+- フォントファイルの破損
+
+**3. ブラウザエンジンの制限**
+- Tauriのwebview（WebKit/Chromium）でのフォント制限
+- macOSの場合、一部システムフォントがwebviewで利用不可
+- サンドボックス制限
+
+**4. CSS構文エラー**
+- 不正なfont-family値: `font-family: "${item}"`で`${item}`に問題のある文字
+- CSSエスケープが必要な文字（`@`, `.`, `#`など）
+
+**解決策:**
+```typescript
+// より安全な指定
+style={{
+  'font-family': `"${item.replace(/"/g, '\\"')}", "Arial", sans-serif`
+}}
+```
+
+**デバッグ方法:**
+開発者ツールでComputedスタイルを確認し、実際に適用されているfont-familyを確認する。
+
+## `2025/07/05 23:35:43 (UTC+9)` - mugisus
+
+**mugisus:** 時々フォントが適用されていないh2がありますが、原因として思い浮かぶものはないですか。
+
+**Claude:** フォントが適用されていないh2の原因として考えられるもの：
+
+**1. SolidJSの再レンダリング問題**
+- `Math.random()`による座標生成で、フォントリストが更新される度にDOMが再作成される
+- リアクティブな状態変更で一部要素が正しく更新されない
+
+**2. フォント読み込みタイミング**
+- システムフォントの遅延読み込み
+- 一部フォントがwebviewで利用可能になるまで時間がかかる
+- フォールバックフォントが適用される前の瞬間的な表示
+
+**3. CSSの競合**
+- TailwindCSSの`font-thin`や`font-normal`がinlineスタイルより優先される場合
+- CSS特異性の問題
+
+**4. フォント名の特殊ケース**
+- 特定のフォント名にCSS予約語や特殊文字が含まれる
+- Unicodeやエモジを含むフォント名
+
+**解決策:**
+```typescript
+// より確実な適用
+style={{
+  'font-family': `"${item}", system-ui, sans-serif !important`
+}}
+
+// またはkey属性で強制再レンダリング
+<h2 key={item} ...>
+```
+
+**デバッグ推奨:**
+開発者ツールで該当h2のComputedスタイルとApplied rulesを確認して、どのCSSルールが適用されているか特定する。

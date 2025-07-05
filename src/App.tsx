@@ -21,7 +21,7 @@ function App() {
                 {item}
               </div>
               <h2
-                class='break-all text-2xl font-thin leading-tight'
+                class='break-all text-2xl font-normal leading-tight'
                 style={{
                   'font-family': `"${item}", sans-serif`,
                 }}
@@ -38,13 +38,13 @@ function App() {
           viewBox='0 0 800 600'
           xmlns='http://www.w3.org/2000/svg'
         >
-          <For each={fonts() || []}>
+          {/* <For each={fonts() || []}>
             {() => {
               const x = Math.random() * 800;
               const y = Math.random() * 600;
               return <circle cx={x} cy={y} r='1' class='fill-foreground' />;
             }}
-          </For>
+          </For> */}
         </svg>
       </div>
     </main>

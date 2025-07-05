@@ -26,7 +26,9 @@ fn get_system_fonts() -> Vec<String> {
     
     let mut fonts: Vec<String> = font_families.into_iter().collect();
     fonts.sort();
-    fonts
+    fonts.dedup();
+    
+    return fonts;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
