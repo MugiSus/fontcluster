@@ -4,6 +4,8 @@ use font_kit::properties::Properties;
 use font_kit::hinting::HintingOptions;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use std::collections::HashSet;
+use std::path::Path;
+use std::fs;
 use image::{ImageBuffer, Luma};
 use pathfinder_geometry::vector::Vector2F;
 use pathfinder_geometry::vector::Vector2I;
@@ -41,15 +43,19 @@ fn get_system_fonts() -> Vec<String> {
 
 #[tauri::command]
 fn generate_font_preview(font_family: &str) -> Result<String, String> {
+    println!("Starting font preview generation for: {}", font_family);
+    
     let source = SystemSource::new();
     
     // Get the font family
     let family_name = FamilyName::Title(font_family.to_string());
+    println!("Searching for font family: {}", font_family);
     let font_handle = source
         .select_best_match(&[family_name], &Properties::new())
         .map_err(|e| format!("Failed to find font: {}", e))?;
     
     // Load the font
+    println!("Loading font: {}", font_family);
     let font = font_handle
         .load()
         .map_err(|e| format!("Failed to load font: {}", e))?;
@@ -121,6 +127,22 @@ fn generate_font_preview(font_family: &str) -> Result<String, String> {
             image_buffer.put_pixel(x, y, Luma([gray_value]));
         }
     }
+    
+    // Create generated directory if it doesn't exist
+    let generated_dir = Path::new("generated");
+    if !generated_dir.exists() {
+        fs::create_dir_all(generated_dir)
+            .map_err(|e| format!("Failed to create generated directory: {}", e))?;
+    }
+    
+    // Save image to file
+    let safe_filename = font_family.replace("/", "_").replace("\\", "_").replace(":", "_");
+    let file_path = generated_dir.join(format!("{}.png", safe_filename));
+    
+    image_buffer.save(&file_path)
+        .map_err(|e| format!("Failed to save image: {}", e))?;
+    
+    println!("Saved font preview to: {:?}", file_path);
     
     // Convert to PNG and base64
     let mut buffer = Vec::new();

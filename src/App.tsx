@@ -11,7 +11,9 @@ function App() {
     }
   });
 
-  const [previewCache, setPreviewCache] = createSignal<Record<string, string>>({});
+  const [previewCache, setPreviewCache] = createSignal<Record<string, string>>(
+    {},
+  );
 
   const getPreviewImage = (fontFamily: string) => {
     const cache = previewCache();
