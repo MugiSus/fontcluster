@@ -1,4 +1,4 @@
-import { For, createResource } from 'solid-js';
+import { For, createResource, createSignal } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 
 function App() {
@@ -11,23 +11,41 @@ function App() {
     }
   });
 
+  const [previewCache, setPreviewCache] = createSignal<Record<string, string>>({});
+
+  const getPreviewImage = (fontFamily: string) => {
+    const cache = previewCache();
+    if (cache[fontFamily]) {
+      return cache[fontFamily];
+    }
+
+    // Generate preview asynchronously
+    invoke<string>('generate_font_preview', { fontFamily })
+      .then((preview) => {
+        setPreviewCache((prev) => ({ ...prev, [fontFamily]: preview }));
+      })
+      .catch((error) => {
+        console.error('Failed to generate preview for', fontFamily, error);
+      });
+
+    return '';
+  };
+
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
         <For each={fonts() || []}>
           {(item) => (
-            <li class='flex flex-col items-start gap-0'>
+            <li class='flex flex-col items-start gap-2'>
               <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                 {item}
               </div>
-              <h2
-                class='break-all text-2xl font-normal leading-tight'
-                style={{
-                  'font-family': `"${item}", sans-serif`,
-                }}
-              >
-                {item}
-              </h2>
+              <img
+                src={getPreviewImage(item)}
+                alt={`Preview of ${item} font`}
+                class='h-auto max-w-full rounded border bg-white'
+                loading='lazy'
+              />
             </li>
           )}
         </For>
