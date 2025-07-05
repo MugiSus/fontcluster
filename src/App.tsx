@@ -16,16 +16,18 @@ function App() {
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
         <For each={fonts() || []}>
           {(item) => (
-            <li
-              class='flex flex-col items-start gap-0'
-              style={{
-                'font-family': `"${item}", sans-serif`,
-              }}
-            >
-              <h2 class='break-all text-2xl font-thin'>{item}</h2>
+            <li class='flex flex-col items-start gap-0'>
               <div class='break-all text-sm font-light text-muted-foreground'>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                {item}
               </div>
+              <h2
+                class='break-all text-2xl font-thin leading-tight'
+                style={{
+                  'font-family': `"${item}", sans-serif`,
+                }}
+              >
+                {item}
+              </h2>
             </li>
           )}
         </For>
