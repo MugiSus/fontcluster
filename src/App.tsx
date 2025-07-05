@@ -17,7 +17,7 @@ function App() {
         <For each={fonts() || []}>
           {(item) => (
             <li class='flex flex-col items-start gap-0'>
-              <div class='break-all text-sm font-light text-muted-foreground'>
+              <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                 {item}
               </div>
               <h2

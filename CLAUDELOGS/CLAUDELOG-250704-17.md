@@ -283,3 +283,162 @@ style={{
 
 **デバッグ推奨:**
 開発者ツールで該当h2のComputedスタイルとApplied rulesを確認して、どのCSSルールが適用されているか特定する。
+
+## `2025/07/06 01:17:56 (UTC+9)` - mugisus
+
+**mugisus:** Adobe FontsはMacのどこに保存されているんですか？Adobe Fontsを逆にfont-kitはどうやって読み込んでいるんですか。
+
+**Claude:** Adobe Fontsの保存場所とfont-kitの読み込み方法：
+
+**Adobe Fontsの保存場所（Mac）:**
+```
+/System/Library/AssetsV2/com_apple_MobileAsset_Font6/
+~/Library/Application Support/Adobe/CoreSync/plugins/livetype/.r/
+~/Library/Fonts/（一部のAdobe Fonts）
+/Library/Fonts/（システム共有のAdobe Fonts）
+```
+
+**Adobe Creative Cloudでアクティベートされたフォント:**
+```
+~/Library/Application Support/Adobe/CoreSync/plugins/livetype/r/
+~/Library/Application Support/Adobe/FontLists/
+```
+
+**font-kitの読み込み方法:**
+
+1. **システムフォントAPI使用**
+   - macOS: Core Text APIの`CTFontManagerCopyAvailableFontFamilyNames()`
+   - これによりAdobe Fontsも含むすべての利用可能フォントを取得
+
+2. **フォントカタログ参照**
+   - システムが管理するフォントカタログから読み込み
+   - Adobe Creative Cloudがアクティベートしたフォントも含まれる
+
+3. **内部実装**
+```rust
+// font-kitの内部では以下のようなAPIを使用
+#[cfg(target_os = "macos")]
+use core_text::font_manager;
+let families = font_manager::copy_available_font_family_names();
+```
+
+**なぜAdobe Fontsが表示されるか:**
+- Adobe Creative Cloudがフォントをシステムレベルでアクティベート
+- macOSのフォントマネージャーに登録される
+- font-kitは直接ファイルをスキャンせず、システムAPIを使用するため
+
+これにより、Adobe Fontsの実際のファイル場所を知らなくてもシステム経由で利用可能になります。
+
+## `2025/07/06 01:30:00 (UTC+9)` - mugisus
+
+**mugisus:** CSSにストレートフォワードにフォント名を投入するだけでは描画できないフォントを描画する方法を教えて。AdobeフォントやFontworksのフォントなどがそのように見える。
+
+**Claude:** CSSで特別なフォントを描画する方法：
+
+**1. PostScript名を使用**
+```css
+/* ファミリー名では効かない場合 */
+font-family: "Noto Sans Japanese";
+
+/* PostScript名で試す */
+font-family: "NotoSansCJKjp-Regular";
+```
+
+**2. @font-faceで明示的に宣言**
+```css
+@font-face {
+  font-family: "Custom Noto Sans";
+  src: local("Noto Sans CJK JP"), 
+       local("NotoSansCJKjp-Regular"),
+       local("Noto Sans Japanese");
+}
+
+/* 使用時 */
+font-family: "Custom Noto Sans", sans-serif;
+```
+
+**3. CSS Font Loading APIを使用**
+```javascript
+// フォントの可用性を確認してから適用
+async function checkAndLoadFont(fontName) {
+  try {
+    await document.fonts.load(`16px "${fontName}"`);
+    if (document.fonts.check(`16px "${fontName}"`)) {
+      return fontName;
+    }
+  } catch (e) {
+    console.warn(`Font ${fontName} not available`);
+  }
+  return 'sans-serif';
+}
+```
+
+**4. 複数の名前候補を試す**
+```typescript
+// SolidJSでの実装例
+const getFontFamily = (item: string) => {
+  const candidates = [
+    `"${item}"`,
+    `"${item.replace(/\s+/g, '')}"`, // スペース除去
+    `"${item}-Regular"`,              // -Regular追加
+    `"${item.replace(/\s+/g, '-')}"`, // スペースをハイフンに
+  ];
+  return candidates.join(', ') + ', sans-serif';
+};
+```
+
+**5. フォント検証機能の追加**
+```rust
+// Rust側でPostScript名も取得
+use font_kit::font::Font;
+use font_kit::source::SystemSource;
+
+#[tauri::command]
+fn get_detailed_fonts() -> Vec<FontInfo> {
+  // フォントファミリー名とPostScript名の両方を返す
+}
+```
+
+**主な原因:**
+- Adobe Fonts: PostScript名とファミリー名が異なる
+- CJKフォント: 複数の名前形式を持つ
+- Webview制限: 一部のフォント名が認識されない
+
+## `2025/07/06 01:31:23 (UTC+9)` - mugisus
+
+**mugisus:** PostScript名とはなんですか？
+
+**Claude:** PostScript名について：
+
+**PostScript名とは:**
+フォントファイル内部で定義される**技術的な識別名**で、Adobe PostScriptプリンター向けに作られた命名規則です。
+
+**特徴:**
+- **スペースなし**: 必ずスペースを含まない（ハイフンやキャメルケース使用）
+- **ASCII文字のみ**: 特殊文字や日本語文字は使用不可
+- **一意性**: 同じPostScript名を持つフォントは存在しない
+- **プログラマフレンドリー**: システムやプログラムが識別しやすい
+
+**例:**
+```
+ファミリー名（表示名）: "Helvetica Neue Light"
+PostScript名: "HelveticaNeue-Light"
+
+ファミリー名: "Noto Sans CJK JP"
+PostScript名: "NotoSansCJKjp-Regular"
+
+ファミリー名: "Adobe Garamond Pro"
+PostScript名: "AdobeGaramondPro-Regular"
+```
+
+**なぜ重要か:**
+1. **CSS識別**: ブラウザエンジンがPostScript名で内部管理
+2. **Adobe製品**: IllustratorやPhotoshopはPostScript名を優先使用
+3. **Webview制限**: TauriのWebviewでファミリー名が効かない場合の代替手段
+
+**確認方法:**
+- **Mac**: Font Book.app → フォント情報 → PostScript名
+- **Windows**: フォントファイルのプロパティ
+- **プログラム**: font-kitの`Font::postscript_name()`メソッド
+
+PostScript名を使うことで、表示名では認識されないフォントもCSSで確実に指定できます。
