@@ -144,6 +144,8 @@ fn generate_font_image(
     let output_path = output_dir.join(format!("{}.png", safe_name));
     img_buffer.save(&output_path).map_err(|e| format!("Failed to save image: {}", e))?;
     
+    println!("Saved font image: {} -> {}", family_name, output_path.display());
+    
     Ok(())
 }
 

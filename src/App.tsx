@@ -1,4 +1,4 @@
-import { For, createResource } from 'solid-js';
+import { For, createResource, createSignal } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 
 function App() {
@@ -11,8 +11,39 @@ function App() {
     }
   });
 
+  const [isGenerating, setIsGenerating] = createSignal(false);
+  const [generationResult, setGenerationResult] = createSignal<string>('');
+
+  const generateFontImages = async () => {
+    setIsGenerating(true);
+    setGenerationResult('');
+    try {
+      const result = await invoke<string>('generate_font_images');
+      setGenerationResult(result);
+    } catch (error) {
+      console.error('Failed to generate font images:', error);
+      setGenerationResult(`Error: ${error}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
+      <div class='col-span-12 mb-4'>
+        <button
+          onClick={generateFontImages}
+          disabled={isGenerating()}
+          class='rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50'
+        >
+          {isGenerating() ? 'Generating...' : 'Generate Font Images'}
+        </button>
+        {generationResult() && (
+          <div class='mt-2 rounded bg-gray-100 p-2 text-sm'>
+            {generationResult()}
+          </div>
+        )}
+      </div>
       <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
         <For each={fonts() || []}>
           {(item) => (
