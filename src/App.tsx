@@ -23,7 +23,7 @@ function App() {
               <h2
                 class='break-all text-2xl font-normal leading-tight'
                 style={{
-                  'font-family': `"${item}", sans-serif`,
+                  'font-family': `"${item}", chivo, sans-serif`,
                 }}
               >
                 {item}
