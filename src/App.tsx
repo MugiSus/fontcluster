@@ -1,5 +1,6 @@
 import { For, createResource, createSignal } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
+import { Button } from './components/ui/button';
 
 function App() {
   const [fonts] = createResource(async () => {
@@ -30,52 +31,48 @@ function App() {
 
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
-      <div class='col-span-12 mb-4'>
-        <button
+      <div class='col-span-3 flex flex-col gap-2'>
+        <Button
           onClick={generateFontImages}
           disabled={isGenerating()}
-          class='rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50'
+          class=''
+          variant='secondary'
         >
           {isGenerating() ? 'Generating...' : 'Generate Font Images'}
-        </button>
-        {generationResult() && (
-          <div class='mt-2 rounded bg-gray-100 p-2 text-sm'>
-            {generationResult()}
-          </div>
-        )}
+        </Button>
+        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
+          <For each={fonts() || []}>
+            {(item) => (
+              <li class='flex flex-col items-start gap-0'>
+                <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
+                  {item}
+                </div>
+                <h2
+                  class='break-all text-2xl font-normal leading-tight'
+                  style={{
+                    'font-family': `"${item}", chivo, sans-serif`,
+                  }}
+                >
+                  {item}
+                </h2>
+              </li>
+            )}
+          </For>
+        </ul>
       </div>
-      <ul class='col-span-3 flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
-        <For each={fonts() || []}>
-          {(item) => (
-            <li class='flex flex-col items-start gap-0'>
-              <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
-                {item}
-              </div>
-              <h2
-                class='break-all text-2xl font-normal leading-tight'
-                style={{
-                  'font-family': `"${item}", chivo, sans-serif`,
-                }}
-              >
-                {item}
-              </h2>
-            </li>
-          )}
-        </For>
-      </ul>
       <div class='col-span-9 rounded-md border bg-muted/10'>
         <svg
           class='size-full'
           viewBox='0 0 800 600'
           xmlns='http://www.w3.org/2000/svg'
         >
-          {/* <For each={fonts() || []}>
+          <For each={fonts() || []}>
             {() => {
               const x = Math.random() * 800;
               const y = Math.random() * 600;
               return <circle cx={x} cy={y} r='1' class='fill-foreground' />;
             }}
-          </For> */}
+          </For>
         </svg>
       </div>
     </main>

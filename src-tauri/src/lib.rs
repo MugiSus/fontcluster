@@ -42,8 +42,8 @@ fn get_system_fonts() -> Vec<String> {
 
 #[tauri::command]
 fn generate_font_images() -> Result<String, String> {
-    const PREVIEW_TEXT: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    const FONT_SIZE: f32 = 32.0;
+    const PREVIEW_TEXT: &str = "A quick brown fox jumps over the lazy dog";
+    const FONT_SIZE: f32 = 64.0;
     
     // Create output directory
     let app_data_dir = dirs::data_dir()
@@ -93,7 +93,7 @@ fn generate_font_image(
     for ch in text.chars() {
         if let Some(glyph_id) = font.glyph_for_char(ch) {
             let metrics = font.metrics();
-            let glyph_width = (font_size * 0.6) as i32; // Approximate width
+            let glyph_width = (font_size * 1.0) as i32; // Approximate width
             let glyph_height = (metrics.ascent - metrics.descent) as i32;
             
             glyph_data.push((glyph_id, glyph_width, glyph_height));
