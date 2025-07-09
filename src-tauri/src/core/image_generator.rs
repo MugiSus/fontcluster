@@ -43,7 +43,7 @@ impl FontImageGenerator {
                 task::spawn_blocking(move || {
                     let renderer = FontRenderer::new(&config_clone);
                     if let Err(e) = renderer.generate_font_image(&family_name) {
-                        eprintln!("Failed to generate image for {}: {}", family_name, e);
+                        println!("Skipping font '{}' due to rendering error: {}", family_name, e);
                     }
                 })
             })

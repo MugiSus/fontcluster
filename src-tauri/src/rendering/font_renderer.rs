@@ -116,6 +116,7 @@ impl<'a> FontRenderer<'a> {
                 Vector2F::new(x_offset as f32, baseline_y)
             );
             
+            // Fail fast if any glyph cannot be rasterized
             if let Err(e) = font.rasterize_glyph(
                 &mut canvas,
                 glyph.glyph_id,
@@ -124,7 +125,7 @@ impl<'a> FontRenderer<'a> {
                 HintingOptions::None,
                 RasterizationOptions::GrayscaleAa,
             ) {
-                eprintln!("Failed to rasterize glyph: {}", e);
+                return Err(FontError::GlyphProcessing(format!("Failed to rasterize glyph {}: {}", glyph.glyph_id, e)));
             }
             
             x_offset += glyph.width;
