@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use tokio::task;
+use futures::future::join_all;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -24,12 +25,9 @@ fn get_system_fonts() -> Vec<String> {
     
     match source.all_families() {
         Ok(families) => {
-            for family in families {
-                font_families.insert(family.to_string());
-            }
+            font_families.extend(families.iter().map(|f| f.to_string()));
         }
         Err(_) => {
-            // Fallback: return empty vector if font-kit fails
             return Vec::new();
         }
     }
@@ -37,72 +35,135 @@ fn get_system_fonts() -> Vec<String> {
     let mut fonts: Vec<String> = font_families.into_iter().collect();
     fonts.sort();
     fonts.dedup();
-    
-    return fonts;
+    fonts
+}
+
+const PREVIEW_TEXT: &str = "A quick brown fox jumps over the lazy dog";
+const FONT_SIZE: f32 = 64.0;
+
+struct FontImageConfig {
+    text: String,
+    font_size: f32,
+    output_dir: PathBuf,
+}
+
+struct FontProcessingResult {
+    family_name: String,
+    result: Result<(), String>,
 }
 
 #[tauri::command]
 async fn generate_font_images() -> Result<String, String> {
-    const PREVIEW_TEXT: &str = "A quick brown fox jumps over the lazy dog";
-    const FONT_SIZE: f32 = 64.0;
-    
-    // Create output directory
-    let app_data_dir = dirs::data_dir()
-        .ok_or("Failed to get app data directory")?
-        .join("FontCluster");
-    
-    fs::create_dir_all(&app_data_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
+    let config = FontImageConfig {
+        text: PREVIEW_TEXT.to_string(),
+        font_size: FONT_SIZE,
+        output_dir: create_output_directory()?,
+    };
     
     let font_families = get_system_fonts();
     let total_fonts = font_families.len();
     
-    // Create futures for all font processing tasks
-    let mut tasks = Vec::new();
+    let tasks = spawn_font_processing_tasks(font_families, &config);
+    let results = join_all(tasks).await;
     
-    for family_name in font_families {
-        let family_name_clone = family_name.clone();
-        let app_data_dir_clone = app_data_dir.clone();
-        
-        let task = task::spawn_blocking(move || {
-            let source = SystemSource::new();
-            let result = generate_font_image(&source, &family_name_clone, PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone);
-            (family_name_clone, result)
-        });
-        
-        tasks.push(task);
-    }
+    process_font_results(results, total_fonts, &config).await;
     
-    // Wait for all tasks to complete
-    let mut processed = 0;
-    for task in tasks {
-        match task.await {
-            Ok((family_name, Ok(_))) => {
-                processed += 1;
-                println!("Progress: {}/{} fonts processed", processed, total_fonts);
-            },
-            Ok((family_name, Err(e))) => {
-                eprintln!("Failed to generate image for {}: {}", family_name, e);
-                // Try fallback to sans-serif
-                let app_data_dir_clone = app_data_dir.clone();
-                let fallback_result = task::spawn_blocking(move || {
-                    let source = SystemSource::new();
-                    generate_font_image(&source, "sans-serif", PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone)
-                }).await;
-                
-                if let Ok(Err(fallback_err)) = fallback_result {
-                    eprintln!("Fallback failed for {}: {}", family_name, fallback_err);
+    Ok(format!("Font images generated in: {}", config.output_dir.display()))
+}
+
+fn create_output_directory() -> Result<PathBuf, String> {
+    let app_data_dir = dirs::data_dir()
+        .ok_or("Failed to get app data directory")?
+        .join("FontCluster");
+    
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("Failed to create directory: {}", e))?;
+    
+    Ok(app_data_dir)
+}
+
+fn spawn_font_processing_tasks(
+    font_families: Vec<String>,
+    config: &FontImageConfig,
+) -> Vec<task::JoinHandle<FontProcessingResult>> {
+    font_families
+        .into_iter()
+        .map(|family_name| {
+            let family_name_clone = family_name.clone();
+            let config_clone = FontImageConfig {
+                text: config.text.clone(),
+                font_size: config.font_size,
+                output_dir: config.output_dir.clone(),
+            };
+            
+            task::spawn_blocking(move || {
+                let source = SystemSource::new();
+                let result = generate_font_image(
+                    &source,
+                    &family_name_clone,
+                    &config_clone.text,
+                    config_clone.font_size,
+                    &config_clone.output_dir,
+                );
+                FontProcessingResult {
+                    family_name: family_name_clone,
+                    result,
                 }
+            })
+        })
+        .collect()
+}
+
+async fn process_font_results(
+    results: Vec<Result<FontProcessingResult, task::JoinError>>,
+    total_fonts: usize,
+    config: &FontImageConfig,
+) {
+    let mut processed = 0;
+    
+    for result in results {
+        match result {
+            Ok(FontProcessingResult { family_name, result: Ok(_) }) => {
                 processed += 1;
-            },
+                println!("Generated font image for {}: {}/{}", family_name, processed, total_fonts);
+            }
+            Ok(FontProcessingResult { family_name, result: Err(e) }) => {
+                eprintln!("Failed to generate image for {}: {}", family_name, e);
+                handle_font_fallback(&family_name, config).await;
+                processed += 1;
+            }
             Err(e) => {
                 eprintln!("Task failed: {}", e);
                 processed += 1;
             }
         }
     }
-    
-    Ok(format!("Font images generated in: {}", app_data_dir.display()))
 }
+
+async fn handle_font_fallback(family_name: &str, config: &FontImageConfig) {
+    let config_clone = FontImageConfig {
+        text: config.text.clone(),
+        font_size: config.font_size,
+        output_dir: config.output_dir.clone(),
+    };
+    
+    let fallback_result = task::spawn_blocking(move || {
+        let source = SystemSource::new();
+        generate_font_image(
+            &source,
+            "sans-serif",
+            &config_clone.text,
+            config_clone.font_size,
+            &config_clone.output_dir,
+        )
+    }).await;
+    
+    if let Ok(Err(fallback_err)) = fallback_result {
+        eprintln!("Fallback failed for {}: {}", family_name, fallback_err);
+    }
+}
+
+type GlyphData = (font_kit::loaders::default::Font, Vec<(u32, i32, i32)>, Vector2I);
 
 fn generate_font_image(
     source: &SystemSource,
@@ -111,14 +172,28 @@ fn generate_font_image(
     font_size: f32,
     output_dir: &PathBuf,
 ) -> Result<(), String> {
-    // Load font
-    let font = source
+    let font = load_font(source, family_name)?;
+    let (font, glyph_data, canvas_size) = prepare_glyph_data(font, text, font_size)?;
+    let canvas = render_glyphs_to_canvas(font, glyph_data, canvas_size, font_size)?;
+    let img_buffer = convert_canvas_to_image(canvas, canvas_size);
+    save_image(img_buffer, family_name, output_dir)?;
+    
+    Ok(())
+}
+
+fn load_font(source: &SystemSource, family_name: &str) -> Result<font_kit::loaders::default::Font, String> {
+    source
         .select_best_match(&[FamilyName::Title(family_name.to_string())], &Properties::new())
         .map_err(|e| format!("Failed to select font: {}", e))?
         .load()
-        .map_err(|e| format!("Failed to load font: {}", e))?;
-    
-    // Calculate canvas size
+        .map_err(|e| format!("Failed to load font: {}", e))
+}
+
+fn prepare_glyph_data(
+    font: font_kit::loaders::default::Font,
+    text: &str,
+    font_size: f32,
+) -> Result<GlyphData, String> {
     let mut total_width = 0;
     let mut max_height = 0;
     let mut glyph_data = Vec::new();
@@ -126,7 +201,7 @@ fn generate_font_image(
     for ch in text.chars() {
         if let Some(glyph_id) = font.glyph_for_char(ch) {
             let metrics = font.metrics();
-            let glyph_width = (font_size * 1.0) as i32; // Approximate width
+            let glyph_width = (font_size * 1.0) as i32;
             let glyph_height = (metrics.ascent - metrics.descent) as i32;
             
             glyph_data.push((glyph_id, glyph_width, glyph_height));
@@ -139,14 +214,23 @@ fn generate_font_image(
         return Err("No glyphs found for text".to_string());
     }
     
-    // Create canvas
     let canvas_size = Vector2I::new(total_width, max_height);
+    Ok((font, glyph_data, canvas_size))
+}
+
+fn render_glyphs_to_canvas(
+    font: font_kit::loaders::default::Font,
+    glyph_data: Vec<(u32, i32, i32)>,
+    canvas_size: Vector2I,
+    font_size: f32,
+) -> Result<Canvas, String> {
     let mut canvas = Canvas::new(canvas_size, Format::A8);
-    
-    // Render glyphs
     let mut x_offset = 0;
+    
     for (glyph_id, glyph_width, _) in glyph_data {
-        let transform = Transform2F::from_translation(Vector2F::new(x_offset as f32, max_height as f32 * 0.8));
+        let transform = Transform2F::from_translation(
+            Vector2F::new(x_offset as f32, canvas_size.y() as f32 * 0.8)
+        );
         
         if let Err(e) = font.rasterize_glyph(
             &mut canvas,
@@ -162,7 +246,10 @@ fn generate_font_image(
         x_offset += glyph_width;
     }
     
-    // Convert canvas to PNG
+    Ok(canvas)
+}
+
+fn convert_canvas_to_image(canvas: Canvas, canvas_size: Vector2I) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
     let canvas_data = canvas.pixels;
     let mut img_buffer = ImageBuffer::new(canvas_size.x() as u32, canvas_size.y() as u32);
     
@@ -172,13 +259,22 @@ fn generate_font_image(
         img_buffer.put_pixel(x, y, Rgba([pixel, pixel, pixel, 255]));
     }
     
-    // Save image
+    img_buffer
+}
+
+fn save_image(
+    img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    family_name: &str,
+    output_dir: &PathBuf,
+) -> Result<(), String> {
     let safe_name = family_name.replace(" ", "_").replace("/", "_");
     let output_path = output_dir.join(format!("{}.png", safe_name));
-    img_buffer.save(&output_path).map_err(|e| format!("Failed to save image: {}", e))?;
+    
+    img_buffer
+        .save(&output_path)
+        .map_err(|e| format!("Failed to save image: {}", e))?;
     
     println!("Saved font image: {} -> {}", family_name, output_path.display());
-    
     Ok(())
 }
 

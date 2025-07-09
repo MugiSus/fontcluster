@@ -29,3 +29,31 @@
 - 全タスクの完了を待つ仕組みに変更
 
 これで処理速度が大幅に向上します。
+
+**mugisus:** このコードをリファクタしてください。
+
+**Claude:** コードをリファクタリングしました。以下の改善を行いました：
+
+**構造的な改善:**
+- 設定情報を `FontImageConfig` 構造体に整理
+- 処理結果を `FontProcessingResult` 構造体で管理
+- 定数を関数外に定義
+
+**機能の分離:**
+- `create_output_directory()` - ディレクトリ作成
+- `spawn_font_processing_tasks()` - タスク生成
+- `process_font_results()` - 結果処理
+- `handle_font_fallback()` - フォールバック処理
+
+**フォント画像生成の細分化:**
+- `load_font()` - フォント読み込み
+- `prepare_glyph_data()` - グリフデータ準備
+- `render_glyphs_to_canvas()` - キャンバスへの描画
+- `convert_canvas_to_image()` - 画像変換
+- `save_image()` - 画像保存
+
+**改善点:**
+- 各関数が単一の責任を持つ
+- エラーハンドリングの改善
+- `futures::future::join_all` 使用でより効率的な並列処理
+- 可読性とメンテナンス性の向上
