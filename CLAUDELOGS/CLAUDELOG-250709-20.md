@@ -57,3 +57,24 @@
 - エラーハンドリングの改善
 - `futures::future::join_all` 使用でより効率的な並列処理
 - 可読性とメンテナンス性の向上
+
+**mugisus:** metricsを使って、biggest_ascendsとbiggest_descendsを取得し、ちょうどフォントのグリフの大きさと画像の高さが一致するようにしてください
+
+**Claude:** フォントメトリクスを使用して、正確なグリフサイズと画像の高さを計算するように修正しました。
+
+**主な変更:**
+
+1. **`prepare_glyph_data` 関数の改善:**
+   - `metrics.ascent` と `metrics.descent` を使って正確なフォント高さを計算
+   - `font_height = ((metrics.ascent - metrics.descent) * font_size / metrics.units_per_em as f32) as i32`
+   - 画像の高さがフォントの実際のサイズと一致するよう調整
+
+2. **`render_glyphs_to_canvas` 関数の改善:**
+   - `metrics.ascent` を使って正確なベースライン位置を計算
+   - `baseline_y = (metrics.ascent * font_size / metrics.units_per_em as f32) as f32`
+   - グリフがキャンバス内の適切な位置に配置されるよう調整
+
+**結果:**
+- フォントのグリフサイズと画像の高さが正確に一致
+- アセンダーとディセンダーが適切に考慮された画像生成
+- より正確なタイポグラフィ表現

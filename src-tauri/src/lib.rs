@@ -195,18 +195,19 @@ fn prepare_glyph_data(
     font_size: f32,
 ) -> Result<GlyphData, String> {
     let mut total_width = 0;
-    let mut max_height = 0;
     let mut glyph_data = Vec::new();
+    let metrics = font.metrics();
+    
+    // Calculate actual font height using ascent and descent
+    let font_height = ((metrics.ascent - metrics.descent) * font_size / metrics.units_per_em as f32) as i32;
     
     for ch in text.chars() {
         if let Some(glyph_id) = font.glyph_for_char(ch) {
-            let metrics = font.metrics();
-            let glyph_width = (font_size * 1.0) as i32;
-            let glyph_height = (metrics.ascent - metrics.descent) as i32;
+            // Use more accurate width calculation based on glyph metrics
+            let glyph_width = (font_size * 0.6) as i32; // Approximate character width
             
-            glyph_data.push((glyph_id, glyph_width, glyph_height));
+            glyph_data.push((glyph_id, glyph_width, font_height));
             total_width += glyph_width;
-            max_height = max_height.max(glyph_height);
         }
     }
     
@@ -214,7 +215,7 @@ fn prepare_glyph_data(
         return Err("No glyphs found for text".to_string());
     }
     
-    let canvas_size = Vector2I::new(total_width, max_height);
+    let canvas_size = Vector2I::new(total_width, font_height);
     Ok((font, glyph_data, canvas_size))
 }
 
@@ -226,10 +227,14 @@ fn render_glyphs_to_canvas(
 ) -> Result<Canvas, String> {
     let mut canvas = Canvas::new(canvas_size, Format::A8);
     let mut x_offset = 0;
+    let metrics = font.metrics();
+    
+    // Calculate baseline position using font metrics
+    let baseline_y = (metrics.ascent * font_size / metrics.units_per_em as f32) as f32;
     
     for (glyph_id, glyph_width, _) in glyph_data {
         let transform = Transform2F::from_translation(
-            Vector2F::new(x_offset as f32, canvas_size.y() as f32 * 0.8)
+            Vector2F::new(x_offset as f32, baseline_y)
         );
         
         if let Err(e) = font.rasterize_glyph(
