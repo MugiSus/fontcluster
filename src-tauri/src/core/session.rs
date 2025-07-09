@@ -1,24 +1,41 @@
 use crate::error::{FontResult, FontError};
 use std::path::PathBuf;
 use std::fs;
-use std::sync::OnceLock;
+use std::sync::RwLock;
 use uuid::Uuid;
 
 /// Session management for font processing
 /// 
 /// Each session gets a unique UUIDv7 identifier and creates its own directory structure
 /// under Generated/<session_id>/ with subdirectories for Images, Vectors, and CompressedVectors.
+/// On application start, uses 'default' as fallback until a new session is created.
 pub struct SessionManager {
-    session_id: Uuid,
+    session_id: String,
     base_dir: PathBuf,
 }
 
-static SESSION_MANAGER: OnceLock<SessionManager> = OnceLock::new();
+static SESSION_MANAGER: RwLock<Option<SessionManager>> = RwLock::new(None);
 
 impl SessionManager {
     /// Create a new session with a UUIDv7 identifier
     pub fn new() -> FontResult<Self> {
-        let session_id = Uuid::now_v7();
+        let session_id = Uuid::now_v7().to_string();
+        let base_dir = Self::get_base_data_dir()?;
+        
+        let session_manager = Self {
+            session_id,
+            base_dir,
+        };
+        
+        // Create the session directory structure
+        session_manager.create_session_directories()?;
+        
+        Ok(session_manager)
+    }
+    
+    /// Create a default session (fallback)
+    pub fn default() -> FontResult<Self> {
+        let session_id = "default".to_string();
         let base_dir = Self::get_base_data_dir()?;
         
         let session_manager = Self {
@@ -33,14 +50,31 @@ impl SessionManager {
     }
     
     /// Get the global session manager instance
-    pub fn global() -> &'static SessionManager {
-        SESSION_MANAGER.get_or_init(|| {
-            Self::new().expect("Failed to initialize session manager")
-        })
+    pub fn global() -> SessionManager {
+        let session_guard = SESSION_MANAGER.read().unwrap();
+        if let Some(session) = session_guard.as_ref() {
+            // Return a copy of the current session
+            SessionManager {
+                session_id: session.session_id.clone(),
+                base_dir: session.base_dir.clone(),
+            }
+        } else {
+            // Return default session if no session is active
+            drop(session_guard);
+            Self::default().expect("Failed to create default session")
+        }
+    }
+    
+    /// Create a new session and set it as the global session
+    pub fn create_new_session() -> FontResult<()> {
+        let new_session = Self::new()?;
+        let mut session_guard = SESSION_MANAGER.write().unwrap();
+        *session_guard = Some(new_session);
+        Ok(())
     }
     
     /// Get the session ID
-    pub fn session_id(&self) -> &Uuid {
+    pub fn session_id(&self) -> &str {
         &self.session_id
     }
     
@@ -56,7 +90,7 @@ impl SessionManager {
     
     /// Get the session-specific directory
     pub fn get_session_dir(&self) -> PathBuf {
-        self.base_dir.join("Generated").join(self.session_id.to_string())
+        self.base_dir.join("Generated").join(&self.session_id)
     }
     
     /// Create all necessary directories for this session
@@ -114,6 +148,11 @@ impl SessionManager {
             
             if path.is_dir() {
                 if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Skip default directory from cleanup
+                    if dir_name == "default" {
+                        continue;
+                    }
+                    
                     if let Ok(uuid) = Uuid::parse_str(dir_name) {
                         // Extract timestamp from UUIDv7
                         let timestamp = uuid.get_timestamp().unwrap().to_unix();

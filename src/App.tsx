@@ -75,6 +75,10 @@ function App() {
   const generateFontImages = async (text: string) => {
     setIsGenerating(true);
     try {
+      // Step 0: Create new session for this clustering operation
+      const sessionResult = await invoke<string>('create_new_session');
+      console.log('Session creation result:', sessionResult);
+
       // Step 1: Generate font images
       const imageResult = await invoke<string>('generate_font_images', {
         text,
@@ -104,10 +108,12 @@ function App() {
   onMount(() => {
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
+      setImageVersion(Date.now());
     });
 
     listen('vectorization_complete', () => {
       console.log('Vectorization completed');
+      setImageVersion(Date.now());
     });
 
     listen('compression_complete', () => {

@@ -23,6 +23,20 @@ pub fn get_session_directory() -> String {
     SessionManager::global().get_session_dir().to_string_lossy().to_string()
 }
 
+/// Create a new session for processing
+/// 
+/// Creates a new UUIDv7 session and sets it as the active session.
+/// This should be called when starting a new clustering operation.
+#[tauri::command]
+pub fn create_new_session() -> Result<String, String> {
+    SessionManager::create_new_session()
+        .map(|_| {
+            let session = SessionManager::global();
+            format!("New session created: {}", session.session_id())
+        })
+        .map_err(|e| format!("Failed to create new session: {}", e))
+}
+
 /// Clean up old sessions
 /// 
 /// Removes session directories older than the specified number of days.

@@ -22,6 +22,7 @@ pub fn run() {
             get_compressed_vectors,
             get_session_id,
             get_session_directory,
+            create_new_session,
             cleanup_old_sessions
         ])
         .run(tauri::generate_context!())
