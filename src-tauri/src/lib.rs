@@ -9,6 +9,7 @@ use image::{ImageBuffer, Rgba};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
+use tokio::task;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -41,7 +42,7 @@ fn get_system_fonts() -> Vec<String> {
 }
 
 #[tauri::command]
-fn generate_font_images() -> Result<String, String> {
+async fn generate_font_images() -> Result<String, String> {
     const PREVIEW_TEXT: &str = "A quick brown fox jumps over the lazy dog";
     const FONT_SIZE: f32 = 64.0;
     
@@ -52,20 +53,47 @@ fn generate_font_images() -> Result<String, String> {
     
     fs::create_dir_all(&app_data_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
     
-    let source = SystemSource::new();
     let font_families = get_system_fonts();
     
+    let total_fonts = font_families.len();
+    let mut processed = 0;
+    
     for family_name in font_families {
-        match generate_font_image(&source, &family_name, PREVIEW_TEXT, FONT_SIZE, &app_data_dir) {
-            Ok(_) => continue,
-            Err(e) => {
+        let family_name_clone = family_name.clone();
+        let app_data_dir_clone = app_data_dir.clone();
+        
+        let result = task::spawn_blocking(move || {
+            let source = SystemSource::new();
+            generate_font_image(&source, &family_name_clone, PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone)
+        }).await;
+        
+        match result {
+            Ok(Ok(_)) => {
+                processed += 1;
+                println!("Progress: {}/{} fonts processed", processed, total_fonts);
+            },
+            Ok(Err(e)) => {
                 eprintln!("Failed to generate image for {}: {}", family_name, e);
                 // Try fallback to sans-serif
-                if let Err(fallback_err) = generate_font_image(&source, "sans-serif", PREVIEW_TEXT, FONT_SIZE, &app_data_dir) {
+                let app_data_dir_clone2 = app_data_dir.clone();
+                let fallback_result = task::spawn_blocking(move || {
+                    let source = SystemSource::new();
+                    generate_font_image(&source, "sans-serif", PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone2)
+                }).await;
+                
+                if let Ok(Err(fallback_err)) = fallback_result {
                     eprintln!("Fallback failed for {}: {}", family_name, fallback_err);
                 }
+                processed += 1;
+            },
+            Err(e) => {
+                eprintln!("Task failed for {}: {}", family_name, e);
+                processed += 1;
             }
         }
+        
+        // Yield control to prevent blocking
+        tokio::task::yield_now().await;
     }
     
     Ok(format!("Font images generated in: {}", app_data_dir.display()))
