@@ -4,7 +4,11 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './components/ui/button';
 import { homeDir } from '@tauri-apps/api/path';
-import { TextField, TextFieldInput } from './components/ui/text-field';
+import {
+  TextField,
+  TextFieldInput,
+  TextFieldLabel,
+} from './components/ui/text-field';
 import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
 
 function App() {
@@ -29,7 +33,7 @@ function App() {
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
-    const text = formData.get('sample-text') as string;
+    const text = formData.get('preview-text') as string;
     generateFontImages(text || 'A quick brown fox jumps over the lazy dog');
   };
 
@@ -54,12 +58,16 @@ function App() {
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
       <div class='col-span-3 flex flex-col gap-3'>
-        <form onSubmit={handleSubmit} class='flex w-full items-center gap-3'>
-          <TextField class='flex-1'>
+        <form
+          onSubmit={handleSubmit}
+          class='flex w-full flex-col items-stretch gap-3'
+        >
+          <TextField class='grid w-full max-w-sm items-center gap-2'>
+            <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
             <TextFieldInput
               type='text'
-              name='sample-text'
-              id='sample-text'
+              name='preview-text'
+              id='preview-text'
               value={sampleText()}
               onInput={(e) => setSampleText(e.currentTarget.value)}
               placeholder='A quick brown fox jumps over the lazy dog'
@@ -68,13 +76,19 @@ function App() {
           <Button
             type='submit'
             disabled={isGenerating()}
-            class='size-10'
-            variant='outline'
+            variant='default'
+            class='flex items-center gap-2'
           >
             {isGenerating() ? (
-              <LoaderIcon class='animate-spin' />
+              <>
+                Generating Images...
+                <LoaderIcon class='animate-spin' />
+              </>
             ) : (
-              <ArrowRightIcon />
+              <>
+                Clusterize with this preview text
+                <ArrowRightIcon />
+              </>
             )}
           </Button>
         </form>
