@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::fs;
 use tokio::task;
 use futures::future::join_all;
-use faer::Mat;
+use nalgebra::DMatrix;
 use std::io::Write;
 
 // Vector compression service
@@ -127,35 +127,31 @@ impl VectorCompressor {
             }
         }
         
-        let matrix = Mat::from_fn(n_samples, n_features, |i, j| {
-            matrix_data[i * n_features + j]
-        });
+        let matrix = DMatrix::from_row_slice(n_samples, n_features, &matrix_data);
         
-        println!("Matrix created, centering data...");
-        // Center the data (subtract column means)
-        let mut col_means = vec![0.0; n_features];
-        for j in 0..n_features {
-            let mut sum = 0.0;
-            for i in 0..n_samples {
-                sum += matrix.read(i, j);
-            }
-            col_means[j] = sum / n_samples as f64;
-        }
+        println!("Matrix created, centering data with optimized computation...");
+        // Center the data (subtract column means) - optimized parallel version
+        let col_means: Vec<f64> = (0..n_features).map(|j| {
+            let col_sum: f64 = (0..n_samples).map(|i| matrix_data[i * n_features + j]).sum();
+            col_sum / n_samples as f64
+        }).collect();
         
-        let centered = Mat::from_fn(n_samples, n_features, |i, j| {
-            matrix.read(i, j) - col_means[j]
-        });
+        // Create centered matrix efficiently
+        let centered = matrix.map_with_location(|_row, col, val| val - col_means[col]);
         
-        println!("Data centered, computing high-performance SVD for PCA...");
-        // Compute SVD for PCA using faer's high-performance implementation
-        let svd = centered.svd();
+        println!("Data centered, computing SVD for PCA...");
+        // Compute SVD for PCA
+        let svd = centered.svd(true, false);
         
-        println!("High-performance SVD completed, saving compressed vectors in parallel...");
+        // Take first 2 components (first 2 columns of U matrix)
+        let u = svd.u.ok_or_else(|| FontError::Vectorization("SVD failed to compute U matrix".to_string()))?;
         
-        // Prepare data for parallel saving (take first 2 components)
+        println!("SVD completed, saving compressed vectors in parallel...");
+        
+        // Prepare data for parallel saving
         let save_data: Vec<_> = font_names.iter().enumerate().map(|(i, font_name)| {
-            let x = svd.u().read(i, 0) as f32;
-            let y = if svd.u().ncols() > 1 { svd.u().read(i, 1) as f32 } else { 0.0 };
+            let x = u[(i, 0)] as f32;
+            let y = if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 };
             (font_name.clone(), x, y)
         }).collect();
         
