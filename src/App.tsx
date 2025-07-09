@@ -1,4 +1,4 @@
-import { For, createResource, createSignal, onMount } from 'solid-js';
+import { For, createResource, createSignal, onMount, Show } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -28,9 +28,21 @@ function App() {
 
   const [isGenerating, setIsGenerating] = createSignal(false);
   const [isVectorizing, setIsVectorizing] = createSignal(false);
+  const [isCompressing, setIsCompressing] = createSignal(false);
 
   const [sampleText, setSampleText] = createSignal('');
   const [imageVersion, setImageVersion] = createSignal(Date.now());
+
+  const [compressedVectors] = createResource(
+    () => isCompressing() === false && imageVersion(),
+    () =>
+      invoke<[string, number, number][]>('get_compressed_vectors').catch(
+        (error) => {
+          console.error('Failed to get compressed vectors:', error);
+          return [];
+        },
+      ),
+  );
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
@@ -42,22 +54,29 @@ function App() {
   const generateFontImages = async (text: string) => {
     setIsGenerating(true);
     try {
-      // First, generate font images
+      // Step 1: Generate font images
       const imageResult = await invoke<string>('generate_font_images', {
         text,
       });
       console.log('Image generation result:', imageResult);
 
-      // After images are generated, start vectorization
+      // Step 2: Vectorize images
       setIsGenerating(false);
       setIsVectorizing(true);
       const vectorResult = await invoke<string>('vectorize_font_images');
       console.log('Vectorization result:', vectorResult);
+
+      // Step 3: Compress vectors to 2D
+      setIsVectorizing(false);
+      setIsCompressing(true);
+      const compressionResult = await invoke<string>('compress_vectors_to_2d');
+      console.log('Compression result:', compressionResult);
     } catch (error) {
-      console.error('Failed to generate or vectorize:', error);
+      console.error('Failed to process fonts:', error);
     } finally {
       setIsGenerating(false);
       setIsVectorizing(false);
+      setIsCompressing(false);
     }
   };
 
@@ -69,7 +88,11 @@ function App() {
 
     listen('vectorization_complete', () => {
       console.log('Vectorization completed');
-      setIsVectorizing(false);
+    });
+
+    listen('compression_complete', () => {
+      console.log('Compression completed');
+      setImageVersion(Date.now()); // Trigger reload of compressed vectors
     });
   });
 
@@ -93,7 +116,7 @@ function App() {
           </TextField>
           <Button
             type='submit'
-            disabled={isGenerating() || isVectorizing()}
+            disabled={isGenerating() || isVectorizing() || isCompressing()}
             variant='default'
             class='flex items-center gap-2'
           >
@@ -105,6 +128,11 @@ function App() {
             ) : isVectorizing() ? (
               <>
                 Vectorizing Images...
+                <LoaderIcon class='animate-spin' />
+              </>
+            ) : isCompressing() ? (
+              <>
+                Compressing Vectors...
                 <LoaderIcon class='animate-spin' />
               </>
             ) : (
@@ -124,7 +152,7 @@ function App() {
                 </div>
                 <img
                   src={`${convertFileSrc(
-                    `${homeDirPath() || ''}/Library/Application Support/FontCluster/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
+                    `${homeDirPath() || ''}/Library/Application Support/FontCluster/Generated/Images/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
                   )}?v=${imageVersion()}`}
                   alt={`Font preview for ${item}`}
                   class='block size-auto h-10 max-h-none max-w-none invert dark:invert-0'
@@ -140,13 +168,54 @@ function App() {
           viewBox='0 0 800 600'
           xmlns='http://www.w3.org/2000/svg'
         >
-          <For each={fonts() || []}>
-            {() => {
-              const x = Math.random() * 800;
-              const y = Math.random() * 600;
-              return <circle cx={x} cy={y} r='1' class='fill-foreground' />;
-            }}
-          </For>
+          {(() => {
+            const vectors = compressedVectors() || [];
+
+            // Calculate bounds once
+            const allX = vectors.map(([, x]) => x);
+            const allY = vectors.map(([, , y]) => y);
+            const minX = Math.min(...allX);
+            const maxX = Math.max(...allX);
+            const minY = Math.min(...allY);
+            const maxY = Math.max(...allY);
+            const padding = 50;
+
+            return (
+              <Show when={vectors.length > 0}>
+                <For each={vectors}>
+                  {([fontName, x, y]) => {
+                    const scaledX =
+                      padding +
+                      ((x - minX) / (maxX - minX)) * (800 - 2 * padding);
+                    const scaledY =
+                      padding +
+                      ((y - minY) / (maxY - minY)) * (600 - 2 * padding);
+
+                    return (
+                      <g>
+                        <circle
+                          cx={scaledX}
+                          cy={scaledY}
+                          r='3'
+                          class='fill-blue-500 stroke-blue-700 stroke-1'
+                        />
+                        <text
+                          x={scaledX}
+                          y={scaledY - 8}
+                          class='fill-foreground font-mono text-xs'
+                          text-anchor='middle'
+                        >
+                          {fontName.length > 12
+                            ? fontName.substring(0, 12) + '…'
+                            : fontName}
+                        </text>
+                      </g>
+                    );
+                  }}
+                </For>
+              </Show>
+            );
+          })()}
         </svg>
       </div>
     </main>

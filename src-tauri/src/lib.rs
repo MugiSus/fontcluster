@@ -14,6 +14,7 @@ use futures::future::join_all;
 use tauri::Emitter;
 use std::io::Write;
 use imageproc::hog::*;
+use nalgebra::DMatrix;
 
 // Error handling
 type FontResult<T> = Result<T, FontError>;
@@ -101,6 +102,53 @@ async fn vectorize_font_images(app_handle: tauri::AppHandle) -> Result<String, S
     }
 }
 
+#[tauri::command]
+async fn compress_vectors_to_2d(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let compressor = VectorCompressor::new()
+        .map_err(|e| format!("Failed to initialize compressor: {}", e))?;
+    
+    match compressor.compress_all().await {
+        Ok(output_dir) => {
+            if let Err(e) = app_handle.emit("compression_complete", ()) {
+                eprintln!("Failed to emit compression completion event: {}", e);
+            }
+            Ok(format!("Vectors compressed to 2D in: {}", output_dir.display()))
+        }
+        Err(e) => Err(format!("Vector compression failed: {}", e))
+    }
+}
+
+#[tauri::command]
+fn get_compressed_vectors() -> Result<Vec<(String, f64, f64)>, String> {
+    let comp_vector_dir = FontService::get_comp_vector_directory()
+        .map_err(|e| format!("Failed to get compressed vector directory: {}", e))?;
+    
+    let mut coordinates = Vec::new();
+    
+    for entry in fs::read_dir(&comp_vector_dir).map_err(|e| format!("Failed to read directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
+        let path = entry.path();
+        
+        if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
+            if let Some(font_name) = path.file_stem().and_then(|s| s.to_str()) {
+                match fs::read_to_string(&path) {
+                    Ok(content) => {
+                        let values: Vec<&str> = content.trim().split(',').collect();
+                        if values.len() >= 2 {
+                            if let (Ok(x), Ok(y)) = (values[0].parse::<f64>(), values[1].parse::<f64>()) {
+                                coordinates.push((font_name.to_string(), x, y));
+                            }
+                        }
+                    }
+                    Err(e) => eprintln!("Failed to read file {}: {}", path.display(), e),
+                }
+            }
+        }
+    }
+    
+    Ok(coordinates)
+}
+
 // Service layer for font operations
 struct FontService;
 
@@ -130,10 +178,31 @@ impl FontService {
                 std::io::ErrorKind::NotFound,
                 "Failed to get app data directory"
             )))?
-            .join("FontCluster");
+            .join("FontCluster")
+            .join("Generated");
         
-        fs::create_dir_all(&app_data_dir)?;
+        // Create subdirectories
+        let images_dir = app_data_dir.join("Images");
+        let vector_dir = app_data_dir.join("Vector");
+        let comp_vector_dir = app_data_dir.join("CompVector");
+        
+        fs::create_dir_all(&images_dir)?;
+        fs::create_dir_all(&vector_dir)?;
+        fs::create_dir_all(&comp_vector_dir)?;
+        
         Ok(app_data_dir)
+    }
+    
+    fn get_images_directory() -> FontResult<PathBuf> {
+        Ok(Self::create_output_directory()?.join("Images"))
+    }
+    
+    fn get_vector_directory() -> FontResult<PathBuf> {
+        Ok(Self::create_output_directory()?.join("Vector"))
+    }
+    
+    fn get_comp_vector_directory() -> FontResult<PathBuf> {
+        Ok(Self::create_output_directory()?.join("CompVector"))
     }
 }
 
@@ -327,7 +396,8 @@ impl<'a> FontRenderer<'a> {
         family_name: &str,
     ) -> FontResult<()> {
         let safe_name = family_name.replace(" ", "_").replace("/", "_");
-        let output_path = self.config.output_dir.join(format!("{}.png", safe_name));
+        let images_dir = FontService::get_images_directory()?;
+        let output_path = images_dir.join(format!("{}.png", safe_name));
         
         img_buffer
             .save(&output_path)
@@ -345,7 +415,7 @@ struct FontImageVectorizer {
 
 impl FontImageVectorizer {
     fn new() -> FontResult<Self> {
-        let output_dir = FontService::create_output_directory()?;
+        let output_dir = FontService::get_images_directory()?;
         Ok(Self { output_dir })
     }
     
@@ -357,7 +427,10 @@ impl FontImageVectorizer {
         let results = join_all(tasks).await;
         
         // Count successful vectorizations
-        let success_count = results.into_iter().filter(|r| r.is_ok()).count();
+        let success_count = results.into_iter()
+            .filter(|r| matches!(r, Ok(Ok(_))))
+            .count();
+        
         println!("Successfully vectorized {} images", success_count);
         
         Ok(self.output_dir.clone())
@@ -378,7 +451,7 @@ impl FontImageVectorizer {
         Ok(png_files)
     }
     
-    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>) -> Vec<task::JoinHandle<FontResult<()>>> {
+    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {
         png_files
             .into_iter()
             .map(|png_path| {
@@ -391,6 +464,144 @@ impl FontImageVectorizer {
     }
 }
 
+// Vector compression service
+struct VectorCompressor {
+    vector_dir: PathBuf,
+    comp_vector_dir: PathBuf,
+}
+
+impl VectorCompressor {
+    fn new() -> FontResult<Self> {
+        let vector_dir = FontService::get_vector_directory()?;
+        let comp_vector_dir = FontService::get_comp_vector_directory()?;
+        Ok(Self { vector_dir, comp_vector_dir })
+    }
+    
+    async fn compress_all(&self) -> FontResult<PathBuf> {
+        let vector_files = self.get_vector_files()?;
+        println!("Found {} vector files to compress", vector_files.len());
+        
+        if vector_files.is_empty() {
+            return Err(FontError::Vectorization("No vector files found".to_string()));
+        }
+        
+        // Read all vectors
+        let mut vectors = Vec::new();
+        let mut font_names = Vec::new();
+        
+        for vector_path in vector_files {
+            if let Some(stem) = vector_path.file_stem().and_then(|s| s.to_str()) {
+                match self.read_vector_file(&vector_path) {
+                    Ok(vector) => {
+                        font_names.push(stem.to_string());
+                        vectors.push(vector);
+                    }
+                    Err(e) => eprintln!("Failed to read vector file {}: {}", vector_path.display(), e),
+                }
+            }
+        }
+        
+        if vectors.is_empty() {
+            return Err(FontError::Vectorization("No valid vectors found".to_string()));
+        }
+        
+        // Perform PCA compression in a blocking task
+        let comp_vector_dir = self.comp_vector_dir.clone();
+        let compression_task = task::spawn_blocking(move || {
+            Self::compress_vectors_to_2d(&vectors, &font_names, &comp_vector_dir)
+        });
+        
+        compression_task.await
+            .map_err(|e| FontError::Vectorization(format!("Compression task failed: {}", e)))??;
+        
+        Ok(self.comp_vector_dir.clone())
+    }
+    
+    fn get_vector_files(&self) -> FontResult<Vec<PathBuf>> {
+        let mut vector_files = Vec::new();
+        
+        for entry in fs::read_dir(&self.vector_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
+                vector_files.push(path);
+            }
+        }
+        
+        Ok(vector_files)
+    }
+    
+    fn read_vector_file(&self, path: &PathBuf) -> FontResult<Vec<f32>> {
+        let content = fs::read_to_string(path)
+            .map_err(|e| FontError::Vectorization(format!("Failed to read vector file: {}", e)))?;
+        
+        let values: Result<Vec<f32>, _> = content.trim().split(',')
+            .map(|s| s.parse::<f32>())
+            .collect();
+        
+        values.map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
+    }
+
+    fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], comp_vector_dir: &PathBuf) -> FontResult<()> {
+        if vectors.is_empty() || vectors[0].is_empty() {
+            return Err(FontError::Vectorization("No valid vectors to compress".to_string()));
+        }
+        
+        let n_samples = vectors.len();
+        let n_features = vectors[0].len();
+        
+        // Create matrix from vectors (rows are samples, columns are features)
+        let mut matrix_data = Vec::with_capacity(n_samples * n_features);
+        for vector in vectors {
+            for &value in vector {
+                matrix_data.push(value as f64);
+            }
+        }
+        
+        let matrix = DMatrix::from_row_slice(n_samples, n_features, &matrix_data);
+        
+        // Center the data (subtract column means)
+        let mut col_means = Vec::with_capacity(n_features);
+        for col in 0..n_features {
+            let col_sum: f64 = (0..n_samples).map(|row| matrix[(row, col)]).sum();
+            col_means.push(col_sum / n_samples as f64);
+        }
+        
+        let centered = matrix.map_with_location(|_row, col, val| val - col_means[col]);
+        
+        // Compute SVD for PCA
+        let svd = centered.svd(true, false);
+        
+        // Take first 2 components (first 2 columns of U matrix)
+        let u = svd.u.ok_or_else(|| FontError::Vectorization("SVD failed to compute U matrix".to_string()))?;
+        
+        // Save compressed vectors
+        for (i, font_name) in font_names.iter().enumerate() {
+            let comp_vector = vec![
+                u[(i, 0)] as f32,
+                if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 }
+            ];
+            
+            let file_path = comp_vector_dir.join(format!("{}.csv", font_name));
+            
+            let mut file = fs::File::create(&file_path)
+                .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
+            
+            let csv_line = comp_vector.iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<String>>()
+                .join(",");
+            
+            writeln!(file, "{}", csv_line)
+                .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
+        }
+        
+        println!("Compressed {} vectors to 2D and saved to CompVector directory", font_names.len());
+        Ok(())
+    }
+}
+
 // Individual image vectorization processor
 struct ImageVectorizer;
 
@@ -399,7 +610,7 @@ impl ImageVectorizer {
         Self
     }
     
-    fn vectorize_image(&self, png_path: &PathBuf) -> FontResult<()> {
+    fn vectorize_image(&self, png_path: &PathBuf) -> FontResult<Vec<f32>> {
         // Load image using standard image crate
         let img = image::open(png_path)
             .map_err(|e| FontError::Vectorization(format!("Failed to open image {}: {}", png_path.display(), e)))?;
@@ -410,14 +621,15 @@ impl ImageVectorizer {
         // Extract HOG features using imageproc
         let feature_vector = self.extract_hog_features(&gray_img)?;
         
-        // Save vector to text file
+        // Save vector to Vector directory
         self.save_vector_to_file(&feature_vector, png_path)?;
         
         println!("Vectorized: {} -> {} (HOG features: {})", 
                 png_path.display(), 
                 self.get_vector_file_path(png_path).display(),
                 feature_vector.len());
-        Ok(())
+        
+        Ok(feature_vector)
     }
     
     fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
@@ -473,9 +685,11 @@ impl ImageVectorizer {
     }
     
     fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
-        let mut vector_path = png_path.clone();
-        vector_path.set_extension("csv");
-        vector_path
+        let vector_dir = FontService::get_vector_directory().unwrap_or_else(|_| PathBuf::from("."));
+        let file_name = png_path.file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        vector_dir.join(format!("{}.csv", file_name))
     }
 }
 
@@ -483,7 +697,7 @@ impl ImageVectorizer {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, get_system_fonts, generate_font_images, vectorize_font_images])
+        .invoke_handler(tauri::generate_handler![greet, get_system_fonts, generate_font_images, vectorize_font_images, compress_vectors_to_2d, get_compressed_vectors])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
