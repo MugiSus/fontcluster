@@ -54,31 +54,39 @@ async fn generate_font_images() -> Result<String, String> {
     fs::create_dir_all(&app_data_dir).map_err(|e| format!("Failed to create directory: {}", e))?;
     
     let font_families = get_system_fonts();
-    
     let total_fonts = font_families.len();
-    let mut processed = 0;
+    
+    // Create futures for all font processing tasks
+    let mut tasks = Vec::new();
     
     for family_name in font_families {
         let family_name_clone = family_name.clone();
         let app_data_dir_clone = app_data_dir.clone();
         
-        let result = task::spawn_blocking(move || {
+        let task = task::spawn_blocking(move || {
             let source = SystemSource::new();
-            generate_font_image(&source, &family_name_clone, PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone)
-        }).await;
+            let result = generate_font_image(&source, &family_name_clone, PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone);
+            (family_name_clone, result)
+        });
         
-        match result {
-            Ok(Ok(_)) => {
+        tasks.push(task);
+    }
+    
+    // Wait for all tasks to complete
+    let mut processed = 0;
+    for task in tasks {
+        match task.await {
+            Ok((family_name, Ok(_))) => {
                 processed += 1;
                 println!("Progress: {}/{} fonts processed", processed, total_fonts);
             },
-            Ok(Err(e)) => {
+            Ok((family_name, Err(e))) => {
                 eprintln!("Failed to generate image for {}: {}", family_name, e);
                 // Try fallback to sans-serif
-                let app_data_dir_clone2 = app_data_dir.clone();
+                let app_data_dir_clone = app_data_dir.clone();
                 let fallback_result = task::spawn_blocking(move || {
                     let source = SystemSource::new();
-                    generate_font_image(&source, "sans-serif", PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone2)
+                    generate_font_image(&source, "sans-serif", PREVIEW_TEXT, FONT_SIZE, &app_data_dir_clone)
                 }).await;
                 
                 if let Ok(Err(fallback_err)) = fallback_result {
@@ -87,13 +95,10 @@ async fn generate_font_images() -> Result<String, String> {
                 processed += 1;
             },
             Err(e) => {
-                eprintln!("Task failed for {}: {}", family_name, e);
+                eprintln!("Task failed: {}", e);
                 processed += 1;
             }
         }
-        
-        // Yield control to prevent blocking
-        tokio::task::yield_now().await;
     }
     
     Ok(format!("Font images generated in: {}", app_data_dir.display()))
