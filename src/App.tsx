@@ -1,6 +1,7 @@
-import { For, createResource, createSignal } from 'solid-js';
+import { For, createResource, createSignal, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { Button } from './components/ui/button';
 import { homeDir } from '@tauri-apps/api/path';
 import { TextField, TextFieldInput } from './components/ui/text-field';
@@ -23,12 +24,12 @@ function App() {
 
   const [isGenerating, setIsGenerating] = createSignal(false);
   const [sampleText, setSampleText] = createSignal('');
+  const [imageVersion, setImageVersion] = createSignal(Date.now());
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const text = formData.get('sample-text') as string;
-    setSampleText(text || 'A quick brown fox jumps over the lazy dog');
     generateFontImages(text || 'A quick brown fox jumps over the lazy dog');
   };
 
@@ -42,6 +43,13 @@ function App() {
         setIsGenerating(false);
       });
   };
+
+  onMount(() => {
+    listen('font_generation_complete', () => {
+      console.log('Font generation completed, refreshing images');
+      setImageVersion(Date.now());
+    });
+  });
 
   return (
     <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
@@ -70,22 +78,19 @@ function App() {
             )}
           </Button>
         </form>
-        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-6 py-4'>
+        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-4 py-3'>
           <For each={fonts() || []}>
             {(item) => (
-              <li class='flex flex-col items-start gap-0'>
+              <li class='flex flex-col items-start gap-1'>
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {item}
                 </div>
                 <img
-                  src={convertFileSrc(
+                  src={`${convertFileSrc(
                     `${homeDirPath() || ''}/Library/Application Support/FontCluster/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
-                  )}
+                  )}?v=${imageVersion()}`}
                   alt={`Font preview for ${item}`}
                   class='block size-auto h-10 max-h-none max-w-none'
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
                 />
               </li>
             )}

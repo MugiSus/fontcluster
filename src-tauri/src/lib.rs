@@ -11,6 +11,7 @@ use std::fs;
 use std::path::PathBuf;
 use tokio::task;
 use futures::future::join_all;
+use tauri::Emitter;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -53,7 +54,7 @@ struct FontProcessingResult {
 }
 
 #[tauri::command]
-async fn generate_font_images(text: Option<String>) -> Result<String, String> {
+async fn generate_font_images(text: Option<String>, app_handle: tauri::AppHandle) -> Result<String, String> {
     let config = FontImageConfig {
         text: text.unwrap_or_else(|| PREVIEW_TEXT.to_string()),
         font_size: FONT_SIZE,
@@ -67,6 +68,11 @@ async fn generate_font_images(text: Option<String>) -> Result<String, String> {
     let results = join_all(tasks).await;
     
     process_font_results(results, total_fonts, &config).await;
+    
+    // Emit completion event
+    if let Err(e) = app_handle.emit("font_generation_complete", ()) {
+        eprintln!("Failed to emit completion event: {}", e);
+    }
     
     Ok(format!("Font images generated in: {}", config.output_dir.display()))
 }
