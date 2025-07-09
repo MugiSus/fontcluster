@@ -460,22 +460,21 @@ impl ImageVectorizer {
         let mut file = fs::File::create(&vector_path)
             .map_err(|e| FontError::Vectorization(format!("Failed to create vector file {}: {}", vector_path.display(), e)))?;
         
-        // Write vector dimensions as header
-        writeln!(file, "# Vector dimensions: {}", vector.len())
-            .map_err(|e| FontError::Vectorization(format!("Failed to write header: {}", e)))?;
+        // Write vector data as CSV format (comma-separated values in one line)
+        let csv_line = vector.iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
         
-        // Write vector data (one value per line for readability)
-        for value in vector {
-            writeln!(file, "{}", value)
-                .map_err(|e| FontError::Vectorization(format!("Failed to write vector data: {}", e)))?;
-        }
+        writeln!(file, "{}", csv_line)
+            .map_err(|e| FontError::Vectorization(format!("Failed to write vector data: {}", e)))?;
         
         Ok(())
     }
     
     fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
         let mut vector_path = png_path.clone();
-        vector_path.set_extension("txt");
+        vector_path.set_extension("csv");
         vector_path
     }
 }

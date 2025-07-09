@@ -41,14 +41,17 @@ function App() {
 
   const generateFontImages = async (text: string) => {
     setIsGenerating(true);
-    setIsVectorizing(true);
     try {
-      // Run both processes in parallel
-      const [imageResult, vectorResult] = await Promise.all([
-        invoke<string>('generate_font_images', { text }),
-        invoke<string>('vectorize_font_images'),
-      ]);
+      // First, generate font images
+      const imageResult = await invoke<string>('generate_font_images', {
+        text,
+      });
       console.log('Image generation result:', imageResult);
+
+      // After images are generated, start vectorization
+      setIsGenerating(false);
+      setIsVectorizing(true);
+      const vectorResult = await invoke<string>('vectorize_font_images');
       console.log('Vectorization result:', vectorResult);
     } catch (error) {
       console.error('Failed to generate or vectorize:', error);
