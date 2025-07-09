@@ -301,7 +301,9 @@ fn convert_canvas_to_image(canvas: Canvas, canvas_size: Vector2I) -> ImageBuffer
     for (i, &pixel) in canvas_data.iter().enumerate() {
         let x = i as u32 % canvas_size.x() as u32;
         let y = i as u32 / canvas_size.x() as u32;
-        img_buffer.put_pixel(x, y, Rgba([pixel, pixel, pixel, 255]));
+        // Use transparent background - alpha channel is 0 for background, 255 for text
+        let alpha = if pixel > 0 { 255 } else { 0 };
+        img_buffer.put_pixel(x, y, Rgba([pixel, pixel, pixel, alpha]));
     }
     
     img_buffer
