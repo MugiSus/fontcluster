@@ -1,32 +1,35 @@
 import { For, createResource, createSignal } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { Button } from './components/ui/button';
+import { homeDir } from '@tauri-apps/api/path';
 
 function App() {
-  const [fonts] = createResource(async () => {
-    try {
-      return await invoke<string[]>('get_system_fonts');
-    } catch (error) {
+  const [fonts] = createResource(() =>
+    invoke<string[]>('get_system_fonts').catch((error) => {
       console.error('Failed to get system fonts:', error);
       return [];
-    }
-  });
+    }),
+  );
+
+  const [homeDirPath] = createResource(() =>
+    homeDir().catch((error) => {
+      console.error('Failed to get home directory:', error);
+      return '';
+    }),
+  );
 
   const [isGenerating, setIsGenerating] = createSignal(false);
-  const [generationResult, setGenerationResult] = createSignal<string>('');
 
-  const generateFontImages = async () => {
+  const generateFontImages = () => {
     setIsGenerating(true);
-    setGenerationResult('');
-    try {
-      const result = await invoke<string>('generate_font_images');
-      setGenerationResult(result);
-    } catch (error) {
-      console.error('Failed to generate font images:', error);
-      setGenerationResult(`Error: ${error}`);
-    } finally {
-      setIsGenerating(false);
-    }
+    invoke<string>('generate_font_images')
+      .catch((error) => {
+        console.error('Failed to generate font images:', error);
+      })
+      .finally(() => {
+        setIsGenerating(false);
+      });
   };
 
   return (
@@ -47,14 +50,16 @@ function App() {
                 <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {item}
                 </div>
-                <h2
-                  class='break-all text-2xl font-normal leading-tight'
-                  style={{
-                    'font-family': `"${item}", chivo, sans-serif`,
+                <img
+                  src={convertFileSrc(
+                    `${homeDirPath() || ''}/Library/Application Support/FontCluster/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
+                  )}
+                  alt={`Font preview for ${item}`}
+                  class='mt-2'
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
                   }}
-                >
-                  {item}
-                </h2>
+                />
               </li>
             )}
           </For>

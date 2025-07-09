@@ -94,7 +94,147 @@ img_buffer.put_pixel(x, y, Rgba([pixel, pixel, pixel, alpha]));
 **Claude:** 承知しました。以下の順序で作業を進めます：
 
 1. **透明背景への変更** - 完了
-2. **変更をコミット** - 次に実行
-3. **App.tsxで画像表示** - 最後に実装
+2. **変更をコミット** - 完了
+3. **App.tsxで画像表示** - 完了
 
-透明背景の実装が完了しました。`convert_canvas_to_image()`関数で背景を透明に変更し、文字部分のみにアルファ値255を設定しています。
+## 実装した内容
+
+### 1. 透明背景への変更
+`convert_canvas_to_image()`関数で背景を透明に変更：
+```rust
+let alpha = if pixel > 0 { 255 } else { 0 };
+img_buffer.put_pixel(x, y, Rgba([pixel, pixel, pixel, alpha]));
+```
+
+### 2. App.tsxでの画像表示
+- `convertFileSrc`をインポート
+- `<h2>`要素の直後に画像を表示
+- 画像パス: `~/Library/Application Support/FontCluster/{フォント名}.png`
+- エラー時は画像を非表示にする処理を追加
+- 最大高さ80px、ピクセル描画でシャープな表示
+
+### 3. 完了したファイル
+- **src-tauri/src/lib.rs**: 透明背景とグリフオーバーフロー修正
+- **src/App.tsx**: 画像表示機能追加
+
+すべての作業が完了しました。フォント画像生成後、UIでフォント名の下に透明背景の画像が表示されます。
+
+**mugisus:** homedirを使ってホームディレクトリを取得してください(/Users/mugisusなどと書かなくても良いように)
+
+**Claude:** 完了しました！
+
+## 変更内容
+
+1. **`homeDirPath` リソースを追加**
+   ```typescript
+   const [homeDirPath] = createResource(async () => {
+     try {
+       return await homeDir();
+     } catch (error) {
+       console.error('Failed to get home directory:', error);
+       return '';
+     }
+   });
+   ```
+
+2. **画像パスを動的に構築**
+   ```typescript
+   src={convertFileSrc(
+     `${homeDirPath() || ''}/Library/Application Support/FontCluster/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
+   )}
+   ```
+
+これで、ハードコードされた `/Users/mugisus` の代わりに、`homeDir()` API を使用してホームディレクトリを動的に取得するようになりました。どのユーザーの環境でも正しく動作します。
+
+**mugisus:** try catchを使わずにPromise.catch()を使いたいが使うことのデメリットはないか
+
+**Claude:** **Promise.catch()を使うデメリットは基本的にありません。** むしろ関数型プログラミングスタイルでは推奨される場合が多いです。
+
+## 比較
+
+### 現在のtry-catch版
+```typescript
+const [fonts] = createResource(async () => {
+  try {
+    return await invoke<string[]>('get_system_fonts');
+  } catch (error) {
+    console.error('Failed to get system fonts:', error);
+    return [];
+  }
+});
+```
+
+### Promise.catch()版
+```typescript
+const [fonts] = createResource(() => 
+  invoke<string[]>('get_system_fonts').catch(error => {
+    console.error('Failed to get system fonts:', error);
+    return [];
+  })
+);
+```
+
+## Promise.catch()のメリット
+
+1. **より関数型的** - 副作用が明確
+2. **コードが簡潔** - ネストが浅い
+3. **チェーン可能** - `.then().catch().finally()` など
+4. **async/awaitが不要** - Promise直接操作
+
+## 唯一の考慮点
+
+1. **複数のawaitがある場合** - try-catchの方が読みやすい場合がある
+2. **デバッグ時** - スタックトレースがわずかに異なる可能性
+
+あなたの用途では**Promise.catch()の方が適している**と思います。SolidJSの`createResource`では関数型アプローチが一般的です。
+
+**mugisus:** お願いします
+
+**Claude:** 完了しました！
+
+## 変更内容
+
+すべてのtry-catchをPromise.catch()に変更しました：
+
+### 1. フォント取得
+```typescript
+const [fonts] = createResource(() =>
+  invoke<string[]>('get_system_fonts').catch((error) => {
+    console.error('Failed to get system fonts:', error);
+    return [];
+  }),
+);
+```
+
+### 2. ホームディレクトリ取得
+```typescript
+const [homeDirPath] = createResource(() =>
+  homeDir().catch((error) => {
+    console.error('Failed to get home directory:', error);
+    return '';
+  }),
+);
+```
+
+### 3. フォント画像生成
+```typescript
+const generateFontImages = () => {
+  setIsGenerating(true);
+  invoke<string>('generate_font_images')
+    .catch((error) => {
+      console.error('Failed to generate font images:', error);
+    })
+    .finally(() => {
+      setIsGenerating(false);
+    });
+};
+```
+
+## メリット
+
+- **より関数型的**: 副作用が明確
+- **コードが簡潔**: ネストが浅い
+- **async/await不要**: Promise直接操作
+- **ESLintルール準拠**: パラメータが適切に括弧で囲まれている
+
+コードがよりクリーンで読みやすくなりました！
