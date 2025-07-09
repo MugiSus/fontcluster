@@ -47,7 +47,7 @@ function App() {
           <For each={fonts() || []}>
             {(item) => (
               <li class='flex flex-col items-start gap-0'>
-                <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
+                <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {item}
                 </div>
                 <img
@@ -55,7 +55,7 @@ function App() {
                     `${homeDirPath() || ''}/Library/Application Support/FontCluster/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
                   )}
                   alt={`Font preview for ${item}`}
-                  class='mt-2'
+                  class='block size-auto h-10 max-h-none max-w-none'
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
