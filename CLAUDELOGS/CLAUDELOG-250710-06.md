@@ -77,3 +77,34 @@ I provided a step-by-step approach:
 7. Add Utility Functions (extract common file operations)
 
 The proposed architecture follows Rust best practices and provides a clean, maintainable structure that can grow with the application's needs while keeping related functionality grouped together.
+
+## `2025/07/10 06:57:43 (UTC+9)` - mugisus
+
+**mugisus:** Find the vector compression code in the Rust codebase that handles 2D compression (PCA). Look for the compress_vectors_to_2d function or similar compression logic. I need to locate where the parallel processing happens during vector compression so I can add logging for each successful compression.
+
+**Claude:** I found the vector compression code! The main PCA compression logic is located in `/Users/mugisus/Documents/GitHub/fontcluster/src-tauri/src/core/compressor.rs`. Here's the key information:
+
+## Main Vector Compression Function
+
+The `compress_vectors_to_2d` function is located at **lines 114-169** in `/Users/mugisus/Documents/GitHub/fontcluster/src-tauri/src/core/compressor.rs`. This function:
+
+1. Creates a matrix from the input vectors
+2. Centers the data by subtracting column means
+3. Performs SVD for PCA computation
+4. Takes the first 2 components for 2D compression
+5. Saves each compressed vector as a separate CSV file
+
+## Parallel Processing Location
+
+The parallel processing happens in the `compress_all` function at **lines 31-67** in the same file. Here's the parallel processing flow:
+
+1. **Parallel Vector Reading** (lines 33-51): Uses `task::spawn_blocking` with `join_all` to read all vector files in parallel
+2. **PCA Compression** (lines 75-82): The actual PCA compression runs in a single `task::spawn_blocking` call, but the individual vector file writes happen sequentially in the loop at lines 153-165
+
+## Where to Add Logging
+
+For logging each successful compression, you would want to add logging in the `compress_vectors_to_2d` function at **line 153-165** where it iterates through each font and saves the compressed vectors. This is where each individual vector compression is completed and written to disk.
+
+The current structure saves each compressed vector as a separate CSV file with the format `FontName,X,Y`, and this is where you could add a log statement for each successful compression.
+
+The parallel processing for reading vectors is already well-logged with print statements, but the individual compression saves (lines 153-165) would be the ideal place to add per-vector compression logging.

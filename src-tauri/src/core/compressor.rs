@@ -29,7 +29,7 @@ impl VectorCompressor {
         }
         
         // Read all vectors in parallel
-        println!("Starting parallel vector file reading...");
+        println!("Starting parallel vector file reading for {} files...", vector_files.len());
         let vector_tasks: Vec<_> = vector_files.into_iter()
             .filter_map(|vector_path| {
                 vector_path.file_stem()
@@ -39,7 +39,10 @@ impl VectorCompressor {
                         let path = vector_path.clone();
                         task::spawn_blocking(move || {
                             match VectorCompressor::read_vector_file_static(&path) {
-                                Ok(vector) => Some((stem, vector)),
+                                Ok(vector) => {
+                                    println!("✓ Vector file '{}' loaded successfully ({} dimensions)", stem, vector.len());
+                                    Some((stem, vector))
+                                },
                                 Err(e) => {
                                     eprintln!("Failed to read vector file {}: {}", path.display(), e);
                                     None
@@ -72,14 +75,9 @@ impl VectorCompressor {
         
         println!("Successfully loaded {} vectors, starting PCA compression...", vectors.len());
         
-        // Perform PCA compression in a blocking task
+        // Perform PCA compression (now includes parallel file saving)
         let comp_vector_dir = self.comp_vector_dir.clone();
-        let compression_task = task::spawn_blocking(move || {
-            Self::compress_vectors_to_2d(&vectors, &font_names, &comp_vector_dir)
-        });
-        
-        compression_task.await
-            .map_err(|e| FontError::Vectorization(format!("Compression task failed: {}", e)))??;
+        Self::compress_vectors_to_2d(&vectors, &font_names, &comp_vector_dir).await?;
         
         println!("PCA compression completed successfully!");
         Ok(self.comp_vector_dir.clone())
@@ -111,7 +109,7 @@ impl VectorCompressor {
         values.map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
     }
 
-    fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], comp_vector_dir: &PathBuf) -> FontResult<()> {
+    async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], comp_vector_dir: &PathBuf) -> FontResult<()> {
         if vectors.is_empty() || vectors[0].is_empty() {
             return Err(FontError::Vectorization("No valid vectors to compress".to_string()));
         }
@@ -148,20 +146,45 @@ impl VectorCompressor {
         // Take first 2 components (first 2 columns of U matrix)
         let u = svd.u.ok_or_else(|| FontError::Vectorization("SVD failed to compute U matrix".to_string()))?;
         
-        println!("SVD completed, saving compressed vectors...");
-        // Save compressed vectors (format: FontName,X,Y)
-        for (i, font_name) in font_names.iter().enumerate() {
+        println!("SVD completed, saving compressed vectors in parallel...");
+        
+        // Prepare data for parallel saving
+        let save_data: Vec<_> = font_names.iter().enumerate().map(|(i, font_name)| {
             let x = u[(i, 0)] as f32;
             let y = if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 };
-            
-            let file_path = comp_vector_dir.join(format!("{}.csv", font_name));
-            
-            let mut file = fs::File::create(&file_path)
-                .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
-            
-            // Write in format: FontName,X,Y
-            writeln!(file, "{},{},{}", font_name, x, y)
-                .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
+            (font_name.clone(), x, y)
+        }).collect();
+        
+        // Save compressed vectors in parallel (format: FontName,X,Y)
+        println!("Creating {} parallel save tasks...", save_data.len());
+        let save_tasks: Vec<_> = save_data.into_iter().map(|(font_name, x, y)| {
+            let comp_vector_dir = comp_vector_dir.clone();
+            task::spawn_blocking(move || {
+                let file_path = comp_vector_dir.join(format!("{}.csv", font_name));
+                
+                let mut file = fs::File::create(&file_path)
+                    .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
+                
+                // Write in format: FontName,X,Y
+                writeln!(file, "{},{},{}", font_name, x, y)
+                    .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
+                
+                println!("✓ Compressed vector for '{}' saved successfully: ({:.3}, {:.3})", font_name, x, y);
+                Ok(())
+            })
+        }).collect();
+        
+        // Wait for all save tasks to complete
+        let save_results = join_all(save_tasks).await;
+        println!("Parallel save tasks completed, checking results...");
+        
+        // Check for any errors in saving
+        for (i, result) in save_results.into_iter().enumerate() {
+            match result {
+                Ok(Ok(())) => {}, // Success
+                Ok(Err(e)) => return Err(e), // File operation error
+                Err(e) => return Err(FontError::Vectorization(format!("Save task {} failed: {}", i, e))),
+            }
         }
         
         println!("Compressed {} vectors to 2D and saved to CompressedVectors directory", font_names.len());
