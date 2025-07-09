@@ -484,19 +484,39 @@ impl VectorCompressor {
             return Err(FontError::Vectorization("No vector files found".to_string()));
         }
         
-        // Read all vectors
+        // Read all vectors in parallel
+        let vector_tasks: Vec<_> = vector_files.into_iter()
+            .filter_map(|vector_path| {
+                vector_path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .map(|stem| {
+                        let stem = stem.to_string();
+                        let path = vector_path.clone();
+                        task::spawn_blocking(move || {
+                            match VectorCompressor::read_vector_file_static(&path) {
+                                Ok(vector) => Some((stem, vector)),
+                                Err(e) => {
+                                    eprintln!("Failed to read vector file {}: {}", path.display(), e);
+                                    None
+                                }
+                            }
+                        })
+                    })
+            })
+            .collect();
+
+        let results = join_all(vector_tasks).await;
         let mut vectors = Vec::new();
         let mut font_names = Vec::new();
         
-        for vector_path in vector_files {
-            if let Some(stem) = vector_path.file_stem().and_then(|s| s.to_str()) {
-                match self.read_vector_file(&vector_path) {
-                    Ok(vector) => {
-                        font_names.push(stem.to_string());
-                        vectors.push(vector);
-                    }
-                    Err(e) => eprintln!("Failed to read vector file {}: {}", vector_path.display(), e),
+        for task_result in results {
+            match task_result {
+                Ok(Some((name, vector))) => {
+                    font_names.push(name);
+                    vectors.push(vector);
                 }
+                Ok(None) => {} // File read failed, already logged
+                Err(e) => eprintln!("Task execution failed: {}", e),
             }
         }
         
@@ -532,6 +552,10 @@ impl VectorCompressor {
     }
     
     fn read_vector_file(&self, path: &PathBuf) -> FontResult<Vec<f32>> {
+        Self::read_vector_file_static(path)
+    }
+
+    fn read_vector_file_static(path: &PathBuf) -> FontResult<Vec<f32>> {
         let content = fs::read_to_string(path)
             .map_err(|e| FontError::Vectorization(format!("Failed to read vector file: {}", e)))?;
         
