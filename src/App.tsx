@@ -36,7 +36,7 @@ function App() {
           onClick={generateFontImages}
           disabled={isGenerating()}
           class=''
-          variant='secondary'
+          variant='outline'
         >
           {isGenerating() ? 'Generating...' : 'Generate Font Images'}
         </Button>

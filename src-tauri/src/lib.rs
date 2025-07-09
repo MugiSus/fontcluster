@@ -198,8 +198,9 @@ fn prepare_glyph_data(
     let mut glyph_data = Vec::new();
     let metrics = font.metrics();
     
-    // Calculate actual font height using ascent and descent
-    let font_height = ((metrics.ascent - metrics.descent) * font_size / metrics.units_per_em as f32) as i32;
+    // Track the actual bounds of all glyphs
+    let mut min_y = f32::MAX;
+    let mut max_y = f32::MIN;
     
     for ch in text.chars() {
         if let Some(glyph_id) = font.glyph_for_char(ch) {
@@ -207,10 +208,21 @@ fn prepare_glyph_data(
             let advance = font.advance(glyph_id)
                 .map_err(|e| format!("Failed to get glyph advance: {}", e))?;
             
+            // Get actual glyph bounds using typographic_bounds
+            let bounds = font.typographic_bounds(glyph_id)
+                .map_err(|e| format!("Failed to get glyph bounds: {}", e))?;
+            
             // Convert from font units to pixel units
             let glyph_width = (advance.x() * font_size / metrics.units_per_em as f32) as i32;
             
-            glyph_data.push((glyph_id, glyph_width, font_height));
+            // Track min and max Y bounds across all glyphs
+            let scaled_min_y = bounds.min_y() * font_size / metrics.units_per_em as f32;
+            let scaled_max_y = bounds.max_y() * font_size / metrics.units_per_em as f32;
+            
+            min_y = min_y.min(scaled_min_y);
+            max_y = max_y.max(scaled_max_y);
+            
+            glyph_data.push((glyph_id, glyph_width, 0)); // Height will be calculated later
             total_width += glyph_width;
         }
     }
@@ -219,7 +231,16 @@ fn prepare_glyph_data(
         return Err("No glyphs found for text".to_string());
     }
     
-    let canvas_size = Vector2I::new(total_width, font_height);
+    // Calculate actual height from glyph bounds with padding
+    const PADDING: f32 = 4.0; // Add padding to prevent overflow
+    let actual_height = (max_y - min_y + 2.0 * PADDING) as i32;
+    
+    // Update glyph data with actual height
+    for (_, _, height) in &mut glyph_data {
+        *height = actual_height;
+    }
+    
+    let canvas_size = Vector2I::new(total_width, actual_height);
     Ok((font, glyph_data, canvas_size))
 }
 
@@ -233,8 +254,23 @@ fn render_glyphs_to_canvas(
     let mut x_offset = 0;
     let metrics = font.metrics();
     
-    // Calculate baseline position using font metrics
-    let baseline_y = (metrics.ascent * font_size / metrics.units_per_em as f32) as f32;
+    // Calculate actual bounds to determine proper baseline
+    let mut min_y = f32::MAX;
+    let mut max_y = f32::MIN;
+    
+    for &(glyph_id, _, _) in &glyph_data {
+        if let Ok(bounds) = font.typographic_bounds(glyph_id) {
+            let scaled_min_y = bounds.min_y() * font_size / metrics.units_per_em as f32;
+            let scaled_max_y = bounds.max_y() * font_size / metrics.units_per_em as f32;
+            
+            min_y = min_y.min(scaled_min_y);
+            max_y = max_y.max(scaled_max_y);
+        }
+    }
+    
+    // Calculate baseline position with padding
+    const PADDING: f32 = 4.0;
+    let baseline_y = max_y + PADDING;
     
     for (glyph_id, glyph_width, _) in glyph_data {
         let transform = Transform2F::from_translation(
