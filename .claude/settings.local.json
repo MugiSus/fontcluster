@@ -8,7 +8,8 @@
       "Bash(afplay:*)",
       "Edit(CLAUDELOGS/*.md)",
       "Write(CLAUDELOGS/*.md)",
-      "Bash(date:*)"
+      "Bash(date:*)",
+      "Bash(cargo check:*)"
     ],
     "deny": []
   },

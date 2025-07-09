@@ -26,7 +26,7 @@ function App() {
   );
 
   // Get session ID for debugging/logging purposes
-  const [sessionId] = createResource(() =>
+  const [sessionId, { refetch: refetchSessionId }] = createResource(() =>
     invoke<string>('get_session_id').catch((error) => {
       console.error('Failed to get session ID:', error);
       return '';
@@ -40,22 +40,23 @@ function App() {
     }
   });
 
-  const [sessionDirectory] = createResource(() =>
-    invoke<string>('get_session_directory').catch((error) => {
-      console.error('Failed to get session directory:', error);
-      return '';
-    }),
-  );
-
   const [isGenerating, setIsGenerating] = createSignal(false);
   const [isVectorizing, setIsVectorizing] = createSignal(false);
   const [isCompressing, setIsCompressing] = createSignal(false);
 
   const [sampleText, setSampleText] = createSignal('');
-  const [imageVersion, setImageVersion] = createSignal(Date.now());
+
+  const [sessionDirectory] = createResource(
+    () => isCompressing() === false && sessionId(),
+    () =>
+      invoke<string>('get_session_directory').catch((error) => {
+        console.error('Failed to get session directory:', error);
+        return '';
+      }),
+  );
 
   const [compressedVectors] = createResource(
-    () => isCompressing() === false && imageVersion(),
+    () => isCompressing() === false && sessionId(),
     () =>
       invoke<[string, number, number][]>('get_compressed_vectors').catch(
         (error) => {
@@ -108,17 +109,15 @@ function App() {
   onMount(() => {
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
-      setImageVersion(Date.now());
     });
 
     listen('vectorization_complete', () => {
       console.log('Vectorization completed');
-      setImageVersion(Date.now());
     });
 
     listen('compression_complete', () => {
       console.log('Compression completed');
-      setImageVersion(Date.now()); // Trigger reload of compressed vectors
+      refetchSessionId(); // Trigger reload of compressed vectors
     });
   });
 
