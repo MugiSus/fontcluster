@@ -19,7 +19,10 @@ pub fn run() {
             generate_font_images, 
             vectorize_font_images, 
             compress_vectors_to_2d, 
-            get_compressed_vectors
+            get_compressed_vectors,
+            get_session_id,
+            get_session_directory,
+            cleanup_old_sessions
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

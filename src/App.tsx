@@ -1,9 +1,15 @@
-import { For, createResource, createSignal, onMount, Show } from 'solid-js';
+import {
+  For,
+  createResource,
+  createSignal,
+  onMount,
+  Show,
+  createEffect,
+} from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './components/ui/button';
-import { homeDir } from '@tauri-apps/api/path';
 import {
   TextField,
   TextFieldInput,
@@ -19,9 +25,24 @@ function App() {
     }),
   );
 
-  const [homeDirPath] = createResource(() =>
-    homeDir().catch((error) => {
-      console.error('Failed to get home directory:', error);
+  // Get session ID for debugging/logging purposes
+  const [sessionId] = createResource(() =>
+    invoke<string>('get_session_id').catch((error) => {
+      console.error('Failed to get session ID:', error);
+      return '';
+    }),
+  );
+
+  // Log session ID when it changes
+  createEffect(() => {
+    if (sessionId()) {
+      console.log('Current session ID:', sessionId());
+    }
+  });
+
+  const [sessionDirectory] = createResource(() =>
+    invoke<string>('get_session_directory').catch((error) => {
+      console.error('Failed to get session directory:', error);
       return '';
     }),
   );
@@ -151,9 +172,9 @@ function App() {
                   {item}
                 </div>
                 <img
-                  src={`${convertFileSrc(
-                    `${homeDirPath() || ''}/Library/Application Support/FontCluster/Generated/Images/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
-                  )}?v=${imageVersion()}`}
+                  src={convertFileSrc(
+                    `${sessionDirectory() || ''}/Images/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
+                  )}
                   alt={`Font preview for ${item}`}
                   class='block size-auto h-10 max-h-none max-w-none invert dark:invert-0'
                 />

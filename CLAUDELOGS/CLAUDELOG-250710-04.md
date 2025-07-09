@@ -235,3 +235,31 @@ src/
 - font_commands.rsが42行→23行に削減
 - 責務分離により保守性向上
 - コンパイル成功・機能維持
+
+## `2025/07/10 06:24:47 (UTC+9)` - mugisus
+
+**mugisus:** UUIDv7を生成し、これ以降はGenerated/<uuidv7>/以下にImages, Vectors, CompressedVectorsを置くようにしてください
+
+**Claude:** UUIDv7ベースのセッション管理システムを実装しました！
+
+**実装内容:**
+1. **UUIDv7依存関係追加** - Cargo.tomlに`uuid = { version = "1.0", features = ["v7", "serde"] }`を追加
+2. **SessionManagerモジュール作成** - `core/session.rs`で各セッションにユニークなUUIDv7を生成
+3. **新しいディレクトリ構造**:
+   ```
+   FontCluster/Generated/<uuidv7>/
+   ├── Images/
+   ├── Vectors/
+   └── CompressedVectors/
+   ```
+4. **FontService更新** - セッションベースのパス使用に変更
+5. **新しいTauriコマンド** - `get_session_id`, `get_session_directory`, `cleanup_old_sessions`を追加
+6. **フロントエンド更新** - セッションディレクトリベースの画像パス使用
+
+**メリット:**
+- セッション毎に独立したデータ保存
+- 古いセッションデータの自動クリーンアップ機能
+- 並行実行時の競合回避
+- デバッグ時の明確な識別
+
+これで各実行セッションが完全に分離され、データの整合性が保たれます。

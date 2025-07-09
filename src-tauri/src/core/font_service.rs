@@ -1,4 +1,5 @@
-use crate::error::{FontResult, FontError};
+use crate::error::FontResult;
+use crate::core::SessionManager;
 use font_kit::source::SystemSource;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -28,40 +29,29 @@ impl FontService {
     }
     
     pub fn create_output_directory() -> FontResult<PathBuf> {
-        let app_data_dir = dirs::data_dir()
-            .ok_or_else(|| FontError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Failed to get app data directory"
-            )))?
-            .join("FontCluster")
-            .join("Generated");
-        
-        // Create subdirectories
-        let images_dir = app_data_dir.join("Images");
-        let vectors_dir = app_data_dir.join("Vectors");
-        let compressed_vectors_dir = app_data_dir.join("CompressedVectors");
-        
-        fs::create_dir_all(&images_dir)?;
-        fs::create_dir_all(&vectors_dir)?;
-        fs::create_dir_all(&compressed_vectors_dir)?;
-
-        Ok(app_data_dir)
+        // Use session-based directory structure
+        let session_manager = SessionManager::global();
+        Ok(session_manager.get_session_dir())
     }
     
     pub fn get_images_directory() -> FontResult<PathBuf> {
-        Ok(Self::create_output_directory()?.join("Images"))
+        let session_manager = SessionManager::global();
+        Ok(session_manager.get_images_directory())
     }
     
     pub fn get_vectors_directory() -> FontResult<PathBuf> {
-        Ok(Self::create_output_directory()?.join("Vectors"))
+        let session_manager = SessionManager::global();
+        Ok(session_manager.get_vectors_directory())
     }
     
     pub fn get_compressed_vectors_directory() -> FontResult<PathBuf> {
-        Ok(Self::create_output_directory()?.join("CompressedVectors"))
+        let session_manager = SessionManager::global();
+        Ok(session_manager.get_compressed_vectors_directory())
     }
     
     pub fn read_compressed_vectors() -> FontResult<Vec<(String, f64, f64)>> {
-        let comp_vector_dir = Self::get_compressed_vectors_directory()?;
+        let session_manager = SessionManager::global();
+        let comp_vector_dir = session_manager.get_compressed_vectors_directory();
         let mut coordinates = Vec::new();
         
         for entry in fs::read_dir(&comp_vector_dir)? {
