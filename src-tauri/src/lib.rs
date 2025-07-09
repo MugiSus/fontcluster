@@ -130,18 +130,17 @@ fn get_compressed_vectors() -> Result<Vec<(String, f64, f64)>, String> {
         let path = entry.path();
         
         if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
-            if let Some(font_name) = path.file_stem().and_then(|s| s.to_str()) {
-                match fs::read_to_string(&path) {
-                    Ok(content) => {
-                        let values: Vec<&str> = content.trim().split(',').collect();
-                        if values.len() >= 2 {
-                            if let (Ok(x), Ok(y)) = (values[0].parse::<f64>(), values[1].parse::<f64>()) {
-                                coordinates.push((font_name.to_string(), x, y));
-                            }
+            match fs::read_to_string(&path) {
+                Ok(content) => {
+                    let values: Vec<&str> = content.trim().split(',').collect();
+                    if values.len() >= 3 {
+                        let font_name = values[0];
+                        if let (Ok(x), Ok(y)) = (values[1].parse::<f64>(), values[2].parse::<f64>()) {
+                            coordinates.push((font_name.to_string(), x, y));
                         }
                     }
-                    Err(e) => eprintln!("Failed to read file {}: {}", path.display(), e),
                 }
+                Err(e) => eprintln!("Failed to read file {}: {}", path.display(), e),
             }
         }
     }
@@ -576,24 +575,18 @@ impl VectorCompressor {
         // Take first 2 components (first 2 columns of U matrix)
         let u = svd.u.ok_or_else(|| FontError::Vectorization("SVD failed to compute U matrix".to_string()))?;
         
-        // Save compressed vectors
+        // Save compressed vectors (format: FontName,X,Y)
         for (i, font_name) in font_names.iter().enumerate() {
-            let comp_vector = vec![
-                u[(i, 0)] as f32,
-                if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 }
-            ];
+            let x = u[(i, 0)] as f32;
+            let y = if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 };
             
             let file_path = comp_vector_dir.join(format!("{}.csv", font_name));
             
             let mut file = fs::File::create(&file_path)
                 .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
             
-            let csv_line = comp_vector.iter()
-                .map(|v| v.to_string())
-                .collect::<Vec<String>>()
-                .join(",");
-            
-            writeln!(file, "{}", csv_line)
+            // Write in format: FontName,X,Y
+            writeln!(file, "{},{},{}", font_name, x, y)
                 .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
         }
         
