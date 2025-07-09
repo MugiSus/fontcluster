@@ -104,7 +104,6 @@ function App() {
   onMount(() => {
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
-      setImageVersion(Date.now());
     });
 
     listen('vectorization_complete', () => {
@@ -143,17 +142,17 @@ function App() {
           >
             {isGenerating() ? (
               <>
-                Generating Images...
+                Generating Images... (1/3)
                 <LoaderIcon class='animate-spin' />
               </>
             ) : isVectorizing() ? (
               <>
-                Vectorizing Images...
+                Vectorizing Images... (2/3)
                 <LoaderIcon class='animate-spin' />
               </>
             ) : isCompressing() ? (
               <>
-                Compressing Vectors...
+                Compressing Vectors... (3/3)
                 <LoaderIcon class='animate-spin' />
               </>
             ) : (
