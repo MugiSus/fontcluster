@@ -154,6 +154,12 @@ impl<'a> FontRenderer<'a> {
         img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
         family_name: &str,
     ) -> FontResult<()> {
+        // Check if image is empty or fully transparent
+        if self.is_image_empty(&img_buffer) {
+            println!("Skipping font '{}' - image is empty or fully transparent", family_name);
+            return Ok(());
+        }
+        
         let safe_name = family_name.replace(" ", "_").replace("/", "_");
         let images_dir = FontService::get_images_directory()?;
         let output_path = images_dir.join(format!("{}.png", safe_name));
@@ -164,5 +170,15 @@ impl<'a> FontRenderer<'a> {
         
         println!("Saved font image: {} -> {}", family_name, output_path.display());
         Ok(())
+    }
+    
+    fn is_image_empty(&self, img_buffer: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> bool {
+        // Check if any pixel has non-zero alpha (not transparent)
+        for pixel in img_buffer.pixels() {
+            if pixel[3] > 0 {  // Alpha channel > 0 means not transparent
+                return false;
+            }
+        }
+        true  // All pixels are transparent
     }
 }
