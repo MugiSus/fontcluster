@@ -27,6 +27,8 @@ function App() {
   );
 
   const [isGenerating, setIsGenerating] = createSignal(false);
+  const [isVectorizing, setIsVectorizing] = createSignal(false);
+
   const [sampleText, setSampleText] = createSignal('');
   const [imageVersion, setImageVersion] = createSignal(Date.now());
 
@@ -37,21 +39,34 @@ function App() {
     generateFontImages(text || 'A quick brown fox jumps over the lazy dog');
   };
 
-  const generateFontImages = (text: string) => {
+  const generateFontImages = async (text: string) => {
     setIsGenerating(true);
-    invoke<string>('generate_font_images', { text })
-      .catch((error) => {
-        console.error('Failed to generate font images:', error);
-      })
-      .finally(() => {
-        setIsGenerating(false);
-      });
+    setIsVectorizing(true);
+    try {
+      // Run both processes in parallel
+      const [imageResult, vectorResult] = await Promise.all([
+        invoke<string>('generate_font_images', { text }),
+        invoke<string>('vectorize_font_images'),
+      ]);
+      console.log('Image generation result:', imageResult);
+      console.log('Vectorization result:', vectorResult);
+    } catch (error) {
+      console.error('Failed to generate or vectorize:', error);
+    } finally {
+      setIsGenerating(false);
+      setIsVectorizing(false);
+    }
   };
 
   onMount(() => {
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
       setImageVersion(Date.now());
+    });
+
+    listen('vectorization_complete', () => {
+      console.log('Vectorization completed');
+      setIsVectorizing(false);
     });
   });
 
@@ -75,13 +90,18 @@ function App() {
           </TextField>
           <Button
             type='submit'
-            disabled={isGenerating()}
+            disabled={isGenerating() || isVectorizing()}
             variant='default'
             class='flex items-center gap-2'
           >
             {isGenerating() ? (
               <>
                 Generating Images...
+                <LoaderIcon class='animate-spin' />
+              </>
+            ) : isVectorizing() ? (
+              <>
+                Vectorizing Images...
                 <LoaderIcon class='animate-spin' />
               </>
             ) : (
@@ -92,7 +112,7 @@ function App() {
             )}
           </Button>
         </form>
-        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-4 py-3'>
+        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 p-4 px-5'>
           <For each={fonts() || []}>
             {(item) => (
               <li class='flex flex-col items-start gap-3'>

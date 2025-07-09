@@ -5,13 +5,15 @@ use font_kit::hinting::HintingOptions;
 use font_kit::properties::Properties;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
-use image::{ImageBuffer, Rgba};
+use image::{ImageBuffer, Rgba, GrayImage};
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use tokio::task;
 use futures::future::join_all;
 use tauri::Emitter;
+use std::io::Write;
+use imageproc::hog::*;
 
 // Error handling
 type FontResult<T> = Result<T, FontError>;
@@ -28,6 +30,8 @@ enum FontError {
     FontSelection(String),
     #[error("Glyph processing failed: {0}")]
     GlyphProcessing(String),
+    #[error("Vectorization failed: {0}")]
+    Vectorization(String),
 }
 
 // Tauri command handlers
@@ -78,6 +82,22 @@ async fn generate_font_images(text: Option<String>, app_handle: tauri::AppHandle
             Ok(format!("Font images generated in: {}", output_dir.display()))
         }
         Err(e) => Err(format!("Font generation failed: {}", e))
+    }
+}
+
+#[tauri::command]
+async fn vectorize_font_images(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let vectorizer = FontImageVectorizer::new()
+        .map_err(|e| format!("Failed to initialize vectorizer: {}", e))?;
+    
+    match vectorizer.vectorize_all().await {
+        Ok(output_dir) => {
+            if let Err(e) = app_handle.emit("vectorization_complete", ()) {
+                eprintln!("Failed to emit vectorization completion event: {}", e);
+            }
+            Ok(format!("Font images vectorized in: {}", output_dir.display()))
+        }
+        Err(e) => Err(format!("Vectorization failed: {}", e))
     }
 }
 
@@ -318,11 +338,153 @@ impl<'a> FontRenderer<'a> {
     }
 }
 
+// Image vectorization service
+struct FontImageVectorizer {
+    output_dir: PathBuf,
+}
+
+impl FontImageVectorizer {
+    fn new() -> FontResult<Self> {
+        let output_dir = FontService::create_output_directory()?;
+        Ok(Self { output_dir })
+    }
+    
+    async fn vectorize_all(&self) -> FontResult<PathBuf> {
+        let png_files = self.get_png_files()?;
+        println!("Found {} PNG files to vectorize", png_files.len());
+        
+        let tasks = self.spawn_vectorization_tasks(png_files);
+        let results = join_all(tasks).await;
+        
+        // Count successful vectorizations
+        let success_count = results.into_iter().filter(|r| r.is_ok()).count();
+        println!("Successfully vectorized {} images", success_count);
+        
+        Ok(self.output_dir.clone())
+    }
+    
+    fn get_png_files(&self) -> FontResult<Vec<PathBuf>> {
+        let mut png_files = Vec::new();
+        
+        for entry in fs::read_dir(&self.output_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|ext| ext.to_str()) == Some("png") {
+                png_files.push(path);
+            }
+        }
+        
+        Ok(png_files)
+    }
+    
+    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>) -> Vec<task::JoinHandle<FontResult<()>>> {
+        png_files
+            .into_iter()
+            .map(|png_path| {
+                task::spawn_blocking(move || {
+                    let vectorizer = ImageVectorizer::new();
+                    vectorizer.vectorize_image(&png_path)
+                })
+            })
+            .collect()
+    }
+}
+
+// Individual image vectorization processor
+struct ImageVectorizer;
+
+impl ImageVectorizer {
+    fn new() -> Self {
+        Self
+    }
+    
+    fn vectorize_image(&self, png_path: &PathBuf) -> FontResult<()> {
+        // Load image using standard image crate
+        let img = image::open(png_path)
+            .map_err(|e| FontError::Vectorization(format!("Failed to open image {}: {}", png_path.display(), e)))?;
+        
+        // Convert to grayscale
+        let gray_img = img.to_luma8();
+        
+        // Extract HOG features using imageproc
+        let feature_vector = self.extract_hog_features(&gray_img)?;
+        
+        // Save vector to text file
+        self.save_vector_to_file(&feature_vector, png_path)?;
+        
+        println!("Vectorized: {} -> {} (HOG features: {})", 
+                png_path.display(), 
+                self.get_vector_file_path(png_path).display(),
+                feature_vector.len());
+        Ok(())
+    }
+    
+    fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
+        // Resize image to standard size for consistent feature dimensions
+        let resized_img = image::imageops::resize(
+            img,
+            128,  // width
+            64,   // height
+            image::imageops::FilterType::Lanczos3
+        );
+        
+        // Configure HOG parameters
+        let hog_options = HogOptions {
+            orientations: 9,
+            cell_side: 8,
+            block_side: 2,
+            block_stride: 1,
+            signed: false,
+        };
+        
+        // Extract HOG features
+        let hog_result = hog(&resized_img, hog_options);
+        
+        let features = match hog_result {
+            Ok(features) => features,
+            Err(e) => return Err(FontError::Vectorization(format!("HOG extraction failed: {}", e))),
+        };
+        
+        if features.is_empty() {
+            return Err(FontError::Vectorization("HOG feature extraction failed: no features generated".to_string()));
+        }
+        
+        Ok(features)
+    }
+    
+    
+    fn save_vector_to_file(&self, vector: &Vec<f32>, png_path: &PathBuf) -> FontResult<()> {
+        let vector_path = self.get_vector_file_path(png_path);
+        
+        let mut file = fs::File::create(&vector_path)
+            .map_err(|e| FontError::Vectorization(format!("Failed to create vector file {}: {}", vector_path.display(), e)))?;
+        
+        // Write vector dimensions as header
+        writeln!(file, "# Vector dimensions: {}", vector.len())
+            .map_err(|e| FontError::Vectorization(format!("Failed to write header: {}", e)))?;
+        
+        // Write vector data (one value per line for readability)
+        for value in vector {
+            writeln!(file, "{}", value)
+                .map_err(|e| FontError::Vectorization(format!("Failed to write vector data: {}", e)))?;
+        }
+        
+        Ok(())
+    }
+    
+    fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
+        let mut vector_path = png_path.clone();
+        vector_path.set_extension("txt");
+        vector_path
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, get_system_fonts, generate_font_images])
+        .invoke_handler(tauri::generate_handler![greet, get_system_fonts, generate_font_images, vectorize_font_images])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
