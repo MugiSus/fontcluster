@@ -203,8 +203,12 @@ fn prepare_glyph_data(
     
     for ch in text.chars() {
         if let Some(glyph_id) = font.glyph_for_char(ch) {
-            // Use more accurate width calculation based on glyph metrics
-            let glyph_width = (font_size * 0.6) as i32; // Approximate character width
+            // Use accurate glyph width from advance metrics
+            let advance = font.advance(glyph_id)
+                .map_err(|e| format!("Failed to get glyph advance: {}", e))?;
+            
+            // Convert from font units to pixel units
+            let glyph_width = (advance.x() * font_size / metrics.units_per_em as f32) as i32;
             
             glyph_data.push((glyph_id, glyph_width, font_height));
             total_width += glyph_width;

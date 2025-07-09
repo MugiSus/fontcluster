@@ -78,3 +78,33 @@
 - フォントのグリフサイズと画像の高さが正確に一致
 - アセンダーとディセンダーが適切に考慮された画像生成
 - より正確なタイポグラフィ表現
+
+**mugisus:** glyph_widthを正確に取得できそうなmetricsのプロパティがないか調査
+
+**Claude:** font-kitのAPIを調査し、正確なglyph_widthを取得する方法を見つけました。
+
+**発見したメソッド:**
+
+1. **`font.advance(glyph_id)` - 最も重要**
+   - グリフのアドバンス幅（次のグリフまでの距離）を返す
+   - `Vector2F`を返し、`x`コンポーネントが幅を表す
+
+2. **`font.typographic_bounds(glyph_id)`**
+   - グリフの正確な境界ボックスを返す
+   - `RectF`を返し、`width()`で正確な幅を取得可能
+
+**実装した改善:**
+```rust
+// 正確なグリフ幅を取得
+let advance = font.advance(glyph_id)
+    .map_err(|e| format!("Failed to get glyph advance: {}", e))?;
+
+// フォント単位からピクセル単位に変換
+let glyph_width = (advance.x() * font_size / metrics.units_per_em as f32) as i32;
+```
+
+**結果:**
+- 以前の近似値 `(font_size * 1.0) as i32` から正確な計算に変更
+- 各グリフの実際のアドバンス幅を使用
+- フォント単位からピクセル単位への正確な変換
+- より正確な文字間隔とレイアウト
