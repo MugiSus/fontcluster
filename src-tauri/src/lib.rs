@@ -39,7 +39,7 @@ fn get_system_fonts() -> Vec<String> {
 }
 
 const PREVIEW_TEXT: &str = "A quick brown fox jumps over the lazy dog";
-const FONT_SIZE: f32 = 64.0;
+const FONT_SIZE: f32 = 96.0;
 
 struct FontImageConfig {
     text: String,
@@ -53,9 +53,9 @@ struct FontProcessingResult {
 }
 
 #[tauri::command]
-async fn generate_font_images() -> Result<String, String> {
+async fn generate_font_images(text: Option<String>) -> Result<String, String> {
     let config = FontImageConfig {
-        text: PREVIEW_TEXT.to_string(),
+        text: text.unwrap_or_else(|| PREVIEW_TEXT.to_string()),
         font_size: FONT_SIZE,
         output_dir: create_output_directory()?,
     };
