@@ -59,4 +59,38 @@ impl FontService {
     pub fn get_compressed_vectors_directory() -> FontResult<PathBuf> {
         Ok(Self::create_output_directory()?.join("CompressedVectors"))
     }
+    
+    pub fn read_compressed_vectors() -> FontResult<Vec<(String, f64, f64)>> {
+        let comp_vector_dir = Self::get_compressed_vectors_directory()?;
+        let mut coordinates = Vec::new();
+        
+        for entry in fs::read_dir(&comp_vector_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
+                match fs::read_to_string(&path) {
+                    Ok(content) => {
+                        if let Some(coordinate) = Self::parse_compressed_vector_line(&content) {
+                            coordinates.push(coordinate);
+                        }
+                    }
+                    Err(e) => eprintln!("Failed to read file {}: {}", path.display(), e),
+                }
+            }
+        }
+        
+        Ok(coordinates)
+    }
+    
+    fn parse_compressed_vector_line(content: &str) -> Option<(String, f64, f64)> {
+        let values: Vec<&str> = content.trim().split(',').collect();
+        if values.len() >= 3 {
+            let font_name = values[0];
+            if let (Ok(x), Ok(y)) = (values[1].parse::<f64>(), values[2].parse::<f64>()) {
+                return Some((font_name.to_string(), x, y));
+            }
+        }
+        None
+    }
 }

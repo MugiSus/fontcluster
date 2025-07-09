@@ -1,42 +1,34 @@
 use crate::core::FontService;
 
-// Tauri command handlers
+/// Tauri command handlers for font-related operations
+/// 
+/// This module provides the interface between the frontend and the core font services.
+/// All commands here are thin wrappers around the core business logic.
+
+/// Simple greeting command for testing Tauri communication
 #[tauri::command]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Retrieves the list of available system fonts
+/// 
+/// Returns a sorted, deduplicated list of font family names available on the system.
 #[tauri::command]
 pub fn get_system_fonts() -> Vec<String> {
     FontService::get_system_fonts()
 }
 
+/// Retrieves compressed 2D vectors for font visualization
+/// 
+/// Returns a vector of tuples containing (font_name, x_coordinate, y_coordinate)
+/// for plotting fonts in a 2D space after PCA compression.
+/// 
+/// # Returns
+/// - `Ok(Vec<(String, f64, f64)>)` - List of font coordinates
+/// - `Err(String)` - Error message if reading fails
 #[tauri::command]
 pub fn get_compressed_vectors() -> Result<Vec<(String, f64, f64)>, String> {
-    let comp_vector_dir = FontService::get_compressed_vectors_directory()
-        .map_err(|e| format!("Failed to get compressed vector directory: {}", e))?;
-    
-    let mut coordinates = Vec::new();
-    
-    for entry in std::fs::read_dir(&comp_vector_dir).map_err(|e| format!("Failed to read directory: {}", e))? {
-        let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
-        let path = entry.path();
-        
-        if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
-            match std::fs::read_to_string(&path) {
-                Ok(content) => {
-                    let values: Vec<&str> = content.trim().split(',').collect();
-                    if values.len() >= 3 {
-                        let font_name = values[0];
-                        if let (Ok(x), Ok(y)) = (values[1].parse::<f64>(), values[2].parse::<f64>()) {
-                            coordinates.push((font_name.to_string(), x, y));
-                        }
-                    }
-                }
-                Err(e) => eprintln!("Failed to read file {}: {}", path.display(), e),
-            }
-        }
-    }
-    
-    Ok(coordinates)
+    FontService::read_compressed_vectors()
+        .map_err(|e| format!("Failed to read compressed vectors: {}", e))
 }
