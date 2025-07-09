@@ -95,7 +95,7 @@ function App() {
         <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 px-4 py-3'>
           <For each={fonts() || []}>
             {(item) => (
-              <li class='flex flex-col items-start gap-1'>
+              <li class='flex flex-col items-start gap-3'>
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {item}
                 </div>
@@ -104,7 +104,7 @@ function App() {
                     `${homeDirPath() || ''}/Library/Application Support/FontCluster/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
                   )}?v=${imageVersion()}`}
                   alt={`Font preview for ${item}`}
-                  class='block size-auto h-10 max-h-none max-w-none'
+                  class='block size-auto h-10 max-h-none max-w-none invert dark:invert-0'
                 />
               </li>
             )}
