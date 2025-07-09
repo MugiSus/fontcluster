@@ -43,7 +43,9 @@ impl FontImageGenerator {
                 task::spawn_blocking(move || {
                     let renderer = FontRenderer::new(&config_clone);
                     if let Err(e) = renderer.generate_font_image(&family_name) {
-                        println!("Skipping font '{}' due to rendering error: {}", family_name, e);
+                        eprintln!("Skipping font '{}' - unable to render all glyphs: {}", family_name, e);
+                    } else {
+                        println!("Successfully generated image for font: {}", family_name);
                     }
                 })
             })

@@ -79,6 +79,9 @@ impl<'a> FontRenderer<'a> {
                 });
                 
                 total_width += glyph_width;
+            } else {
+                // Skip this font if any glyph cannot be rendered
+                return Err(FontError::GlyphProcessing(format!("Glyph for character '{}' not found in font", ch)));
             }
         }
         
