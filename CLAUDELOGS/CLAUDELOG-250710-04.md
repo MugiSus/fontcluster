@@ -23,7 +23,7 @@
    FontCluster/Generated/
    ├── Images/     # PNG画像
    ├── Vector/     # HOGベクトル
-   └── CompVector/ # 2D圧縮ベクトル
+   └── CompressedVectors/ # 2D圧縮ベクトル
    ```
 
 4. **システム依存性の解決**
@@ -123,3 +123,21 @@ The PCA compression is performed as a single mathematical operation on all vecto
 3. **タスク結果の適切な処理** - エラーハンドリングとログ出力
 
 これで画像生成・ベクトル化・圧縮の全段階で並列処理が利用され、パフォーマンスが向上します。
+
+## `2025/07/10 06:01:07 (UTC+9)` - mugisus
+
+**mugisus:** 圧縮処理中にログを見れるようにして
+
+**Claude:** 圧縮処理中の詳細なログを追加しました：
+
+**追加したログ:**
+1. **並列ベクトル読み込み開始**: "Starting parallel vector file reading..."
+2. **読み込み完了**: "Completed parallel vector file reading, processing results..."
+3. **PCA開始**: "Successfully loaded X vectors, starting PCA compression..."
+4. **行列準備**: "Preparing matrix data: X samples x Y features"
+5. **データ中央化**: "Matrix created, centering data..."
+6. **SVD計算**: "Data centered, computing SVD for PCA..."
+7. **ベクトル保存**: "SVD completed, saving compressed vectors..."
+8. **完了**: "PCA compression completed successfully!"
+
+これで処理の進行状況が詳細に分かるようになりました。

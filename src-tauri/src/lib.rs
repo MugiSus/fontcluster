@@ -120,7 +120,7 @@ async fn compress_vectors_to_2d(app_handle: tauri::AppHandle) -> Result<String, 
 
 #[tauri::command]
 fn get_compressed_vectors() -> Result<Vec<(String, f64, f64)>, String> {
-    let comp_vector_dir = FontService::get_comp_vector_directory()
+    let comp_vector_dir = FontService::get_compressed_vectors_directory()
         .map_err(|e| format!("Failed to get compressed vector directory: {}", e))?;
     
     let mut coordinates = Vec::new();
@@ -182,13 +182,13 @@ impl FontService {
         
         // Create subdirectories
         let images_dir = app_data_dir.join("Images");
-        let vector_dir = app_data_dir.join("Vector");
-        let comp_vector_dir = app_data_dir.join("CompVector");
+        let vectors_dir = app_data_dir.join("Vectors");
+        let compressed_vectors_dir = app_data_dir.join("CompressedVectors");
         
         fs::create_dir_all(&images_dir)?;
-        fs::create_dir_all(&vector_dir)?;
-        fs::create_dir_all(&comp_vector_dir)?;
-        
+        fs::create_dir_all(&vectors_dir)?;
+        fs::create_dir_all(&compressed_vectors_dir)?;
+
         Ok(app_data_dir)
     }
     
@@ -196,12 +196,12 @@ impl FontService {
         Ok(Self::create_output_directory()?.join("Images"))
     }
     
-    fn get_vector_directory() -> FontResult<PathBuf> {
-        Ok(Self::create_output_directory()?.join("Vector"))
+    fn get_vectors_directory() -> FontResult<PathBuf> {
+        Ok(Self::create_output_directory()?.join("Vectors"))
     }
     
-    fn get_comp_vector_directory() -> FontResult<PathBuf> {
-        Ok(Self::create_output_directory()?.join("CompVector"))
+    fn get_compressed_vectors_directory() -> FontResult<PathBuf> {
+        Ok(Self::create_output_directory()?.join("CompressedVectors"))
     }
 }
 
@@ -471,8 +471,8 @@ struct VectorCompressor {
 
 impl VectorCompressor {
     fn new() -> FontResult<Self> {
-        let vector_dir = FontService::get_vector_directory()?;
-        let comp_vector_dir = FontService::get_comp_vector_directory()?;
+        let vector_dir = FontService::get_vectors_directory()?;
+        let comp_vector_dir = FontService::get_compressed_vectors_directory()?;
         Ok(Self { vector_dir, comp_vector_dir })
     }
     
@@ -485,6 +485,7 @@ impl VectorCompressor {
         }
         
         // Read all vectors in parallel
+        println!("Starting parallel vector file reading...");
         let vector_tasks: Vec<_> = vector_files.into_iter()
             .filter_map(|vector_path| {
                 vector_path.file_stem()
@@ -506,6 +507,7 @@ impl VectorCompressor {
             .collect();
 
         let results = join_all(vector_tasks).await;
+        println!("Completed parallel vector file reading, processing results...");
         let mut vectors = Vec::new();
         let mut font_names = Vec::new();
         
@@ -524,6 +526,8 @@ impl VectorCompressor {
             return Err(FontError::Vectorization("No valid vectors found".to_string()));
         }
         
+        println!("Successfully loaded {} vectors, starting PCA compression...", vectors.len());
+        
         // Perform PCA compression in a blocking task
         let comp_vector_dir = self.comp_vector_dir.clone();
         let compression_task = task::spawn_blocking(move || {
@@ -533,6 +537,7 @@ impl VectorCompressor {
         compression_task.await
             .map_err(|e| FontError::Vectorization(format!("Compression task failed: {}", e)))??;
         
+        println!("PCA compression completed successfully!");
         Ok(self.comp_vector_dir.clone())
     }
     
@@ -574,6 +579,8 @@ impl VectorCompressor {
         let n_samples = vectors.len();
         let n_features = vectors[0].len();
         
+        println!("Preparing matrix data: {} samples x {} features", n_samples, n_features);
+        
         // Create matrix from vectors (rows are samples, columns are features)
         let mut matrix_data = Vec::with_capacity(n_samples * n_features);
         for vector in vectors {
@@ -584,6 +591,7 @@ impl VectorCompressor {
         
         let matrix = DMatrix::from_row_slice(n_samples, n_features, &matrix_data);
         
+        println!("Matrix created, centering data...");
         // Center the data (subtract column means)
         let mut col_means = Vec::with_capacity(n_features);
         for col in 0..n_features {
@@ -593,12 +601,14 @@ impl VectorCompressor {
         
         let centered = matrix.map_with_location(|_row, col, val| val - col_means[col]);
         
+        println!("Data centered, computing SVD for PCA...");
         // Compute SVD for PCA
         let svd = centered.svd(true, false);
         
         // Take first 2 components (first 2 columns of U matrix)
         let u = svd.u.ok_or_else(|| FontError::Vectorization("SVD failed to compute U matrix".to_string()))?;
         
+        println!("SVD completed, saving compressed vectors...");
         // Save compressed vectors (format: FontName,X,Y)
         for (i, font_name) in font_names.iter().enumerate() {
             let x = u[(i, 0)] as f32;
@@ -614,7 +624,7 @@ impl VectorCompressor {
                 .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
         }
         
-        println!("Compressed {} vectors to 2D and saved to CompVector directory", font_names.len());
+        println!("Compressed {} vectors to 2D and saved to CompressedVectors directory", font_names.len());
         Ok(())
     }
 }
@@ -702,7 +712,7 @@ impl ImageVectorizer {
     }
     
     fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
-        let vector_dir = FontService::get_vector_directory().unwrap_or_else(|_| PathBuf::from("."));
+        let vector_dir = FontService::get_vectors_directory().unwrap_or_else(|_| PathBuf::from("."));
         let file_name = png_path.file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown");
