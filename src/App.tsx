@@ -1,11 +1,4 @@
-import {
-  For,
-  createResource,
-  createSignal,
-  onMount,
-  Show,
-  createEffect,
-} from 'solid-js';
+import { For, createResource, createSignal, onMount, Show } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -33,16 +26,11 @@ function App() {
     }),
   );
 
-  // Log session ID when it changes
-  createEffect(() => {
-    if (sessionId()) {
-      console.log('Current session ID:', sessionId());
-    }
-  });
-
   const [isGenerating, setIsGenerating] = createSignal(false);
   const [isVectorizing, setIsVectorizing] = createSignal(false);
   const [isCompressing, setIsCompressing] = createSignal(false);
+
+  const [nearestFont, setNearestFont] = createSignal<string>('');
 
   const [sampleText, setSampleText] = createSignal('');
 
@@ -71,6 +59,41 @@ function App() {
     const formData = new FormData(e.target as HTMLFormElement);
     const text = formData.get('preview-text') as string;
     generateFontImages(text || 'A quick brown fox jumps over the lazy dog');
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const elements = document.elementsFromPoint(e.clientX, e.clientY);
+
+    const fontElements = elements.filter((el) =>
+      el.hasAttribute('data-font-select-area'),
+    );
+
+    if (fontElements.length === 0) {
+      setNearestFont('');
+      return;
+    }
+
+    // 最も近いフォントを計算
+    let nearestFont = '';
+    let nearestDistance = Infinity;
+
+    fontElements.forEach((el) => {
+      const circle = el as SVGCircleElement;
+      const cx = parseFloat(circle.getAttribute('cx') || '0');
+      const cy = parseFloat(circle.getAttribute('cy') || '0');
+      const distance = Math.sqrt((mouseX - cx) ** 2 + (mouseY - cy) ** 2);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestFont = circle.getAttribute('data-font-name') || '';
+      }
+    });
+
+    setNearestFont(nearestFont);
   };
 
   const generateFontImages = async (text: string) => {
@@ -130,6 +153,7 @@ function App() {
         >
           <TextField class='grid w-full max-w-sm items-center gap-2'>
             <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
+            <TextFieldLabel for='preview-text'>{nearestFont()}</TextFieldLabel>
             <TextFieldInput
               type='text'
               name='preview-text'
@@ -192,6 +216,7 @@ function App() {
           class='size-full select-none'
           viewBox='0 0 800 600'
           xmlns='http://www.w3.org/2000/svg'
+          onMouseMove={handleMouseMove}
         >
           {(() => {
             const vectors = compressedVectors() || [];
@@ -223,6 +248,14 @@ function App() {
                           cy={scaledY}
                           r='3'
                           class='fill-blue-500 stroke-blue-700 stroke-1'
+                        />
+                        <circle
+                          cx={scaledX}
+                          cy={scaledY}
+                          r='32'
+                          fill='transparent'
+                          data-font-name={fontName}
+                          data-font-select-area
                         />
                         <text
                           x={scaledX}
