@@ -13,10 +13,12 @@ import { getSafeFontName } from './lib/utils';
 
 function App() {
   const [fonts, { refetch: refetchFonts }] = createResource(() =>
-    invoke<string[]>('get_session_fonts').catch((error) => {
-      console.error('Failed to get session fonts:', error);
-      return [];
-    }),
+    invoke<string>('get_session_fonts')
+      .then((jsonStr) => JSON.parse(jsonStr))
+      .catch((error) => {
+        console.error('Failed to get session fonts:', error);
+        return [];
+      }),
   );
 
   // Get session ID for debugging/logging purposes
@@ -54,20 +56,9 @@ function App() {
       ),
   );
 
-  const [fontsConfig] = createResource(
-    () => isCompressing() === false && sessionId(),
-    () =>
-      invoke<string>('get_fonts_config')
-        .then((jsonStr) => JSON.parse(jsonStr))
-        .catch((error) => {
-          console.error('Failed to get fonts config:', error);
-          return [];
-        }),
-  );
-
   // Helper function to get font display name from safe name
   const getFontDisplayName = (safeName: string) => {
-    const configs = fontsConfig();
+    const configs = fonts();
     if (!configs) return safeName;
     const config = configs.find((c: any) => c.safe_name === safeName);
     return config?.font_name || safeName;
@@ -221,22 +212,22 @@ function App() {
         </form>
         <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20 py-2'>
           <For each={fonts() || []}>
-            {(safeFontName) => (
+            {(fontConfig: any) => (
               <li
                 class={`flex w-full flex-col items-start gap-2 pb-4 pt-3 ${
-                  nearestFont() === safeFontName && 'bg-muted'
+                  nearestFont() === fontConfig.safe_name && 'bg-muted'
                 }`}
-                data-font-name={safeFontName}
+                data-font-name={fontConfig.safe_name}
               >
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
-                  {getFontDisplayName(safeFontName)}
+                  {fontConfig.font_name}
                 </div>
                 <img
                   class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
                   src={convertFileSrc(
-                    `${sessionDirectory() || ''}/${safeFontName}/sample.png`,
+                    `${sessionDirectory() || ''}/${fontConfig.safe_name}/sample.png`,
                   )}
-                  alt={`Font preview for ${getFontDisplayName(safeFontName)}`}
+                  alt={`Font preview for ${fontConfig.font_name}`}
                 />
               </li>
             )}
@@ -340,11 +331,14 @@ function App() {
                           }`}
                           text-anchor='middle'
                         >
-                          {nearestFont() === fontName
-                            ? getFontDisplayName(fontName)
-                            : getFontDisplayName(fontName).length > 12
-                              ? getFontDisplayName(fontName).substring(0, 12) + '…'
-                              : getFontDisplayName(fontName)}
+                          {(() => {
+                            const displayName = getFontDisplayName(fontName);
+                            return nearestFont() === fontName
+                              ? displayName
+                              : displayName.length > 12
+                                ? displayName.substring(0, 12) + '…'
+                                : displayName;
+                          })()}
                         </text>
                       </g>
                     );

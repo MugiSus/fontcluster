@@ -49,26 +49,20 @@ pub fn cleanup_old_sessions(max_age_days: u64) -> Result<String, String> {
         .map_err(|e| format!("Failed to clean up old sessions: {}", e))
 }
 
-/// Get all font directories in the current session
+/// Get all font configurations in the current session
 /// 
-/// Returns a list of safe font names (directory names) that exist in the current session.
-/// These correspond to fonts that have been processed and have their own directories.
+/// Returns a list of FontConfig objects that exist in the current session.
+/// This avoids multiple find operations by returning all configs directly.
 #[tauri::command]
-pub fn get_session_fonts() -> Result<Vec<String>, String> {
-    let session_manager = SessionManager::global();
-    let session_dir = session_manager.get_session_dir();
-    
-    if !session_dir.exists() {
-        return Ok(Vec::new());
-    }
-    
-    let mut fonts: Vec<String> = std::fs::read_dir(&session_dir)
-        .map_err(|e| format!("Failed to read session directory: {}", e))?
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_dir())
-        .filter_map(|entry| entry.file_name().to_str().map(|s| s.to_string()))
-        .collect();
-    
-    fonts.sort();
-    Ok(fonts)
+pub fn get_session_fonts() -> Result<String, String> {
+    SessionManager::global()
+        .load_all_font_configs()
+        .and_then(|configs| {
+            serde_json::to_string(&configs)
+                .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("Failed to serialize font configs: {}", e)
+                )))
+        })
+        .map_err(|e| format!("Failed to get session fonts: {}", e))
 }
