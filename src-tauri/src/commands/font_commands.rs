@@ -21,14 +21,14 @@ pub fn get_system_fonts() -> Vec<String> {
 
 /// Retrieves compressed 2D vectors for font visualization
 /// 
-/// Returns a vector of tuples containing (font_name, x_coordinate, y_coordinate)
-/// for plotting fonts in a 2D space after PCA compression.
+/// Returns a JSON string containing an array of objects with config and vector data.
+/// Each object has: { config: FontConfig, vector: [x, y] }
 /// 
 /// # Returns
-/// - `Ok(Vec<(String, f64, f64)>)` - List of font coordinates
+/// - `Ok(String)` - JSON string containing font configs and coordinates
 /// - `Err(String)` - Error message if reading fails
 #[tauri::command]
-pub fn get_compressed_vectors() -> Result<Vec<(String, f64, f64)>, String> {
+pub fn get_compressed_vectors() -> Result<String, String> {
     FontService::read_compressed_vectors()
         .map_err(|e| format!("Failed to read compressed vectors: {}", e))
 }

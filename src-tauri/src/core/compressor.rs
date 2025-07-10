@@ -159,8 +159,8 @@ impl VectorCompressor {
                 let mut file = fs::File::create(&file_path)
                     .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
                 
-                // Write in format: FontName,X,Y
-                writeln!(file, "{},{},{}", font_name, x, y)
+                // Write in format: X,Y
+                writeln!(file, "{},{}", x, y)
                     .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
                 
                 println!("✓ Compressed vector for '{}' saved successfully: ({:.3}, {:.3})", font_name, x, y);

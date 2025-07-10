@@ -44,3 +44,22 @@ session.rsから使用されなくなったレガシーディレクトリメソ�
 - フォント生成完了後にフォントリストを再取得
 
 これで左のフォントリストは現在のセッションにあるフォントのみが表示され、font_nameが適切に表示されます。起動時のデフォルトセッション'default'にも対応しています。
+
+## `2025/07/11 07:01:48 (UTC+9)` - mugisus
+
+**mugisus:** get_session_fontsをsafe_font_nameの配列ではなくconfig.jsonの配列にしてください。そうすることで大量のfindを動かす必要がなくなると思う。
+
+**Claude:** 完全におっしゃる通りです！大量のfindを実行するのは非効率的でした。修正しました：
+
+**Tauri側の変更：**
+- `get_session_fonts`を`load_all_font_configs()`を直接使ってFontConfig配列を返すように変更
+- JSONシリアライゼーションで直接設定配列を返却
+
+**フロントエンド側の変更：**
+- 重複していた`get_fonts_config`を削除
+- `fonts`リソースでFontConfig配列を直接受け取り
+- フォントリストでconfig.safe_nameとconfig.font_nameを直接使用
+- `getFontDisplayName`関数を簡素化
+- find操作を完全に排除
+
+これでパフォーマンスが大幅に改善され、不要な検索処理がなくなりました。申し訳ありませんでした！

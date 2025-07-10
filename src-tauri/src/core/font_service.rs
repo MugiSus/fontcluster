@@ -29,36 +29,63 @@ impl FontService {
     }
     
     
-    pub fn read_compressed_vectors() -> FontResult<Vec<(String, f64, f64)>> {
+    pub fn read_compressed_vectors() -> FontResult<String> {
         let session_manager = SessionManager::global();
         let session_dir = session_manager.get_session_dir();
         
-        Ok(fs::read_dir(&session_dir)?
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.path().is_dir())
-            .filter_map(|entry| {
-                let font_dir = entry.path();
-                let compressed_vector_path = font_dir.join("compressed-vector.csv");
-                if compressed_vector_path.exists() {
-                    fs::read_to_string(&compressed_vector_path)
-                        .map_err(|e| {
-                            eprintln!("Failed to read file {}: {}", compressed_vector_path.display(), e);
-                            e
-                        })
-                        .ok()
-                        .and_then(|content| Self::parse_compressed_vector_line(&content))
-                } else {
-                    None
+        let mut result = Vec::new();
+        
+        for entry in fs::read_dir(&session_dir)? {
+            let entry = entry?;
+            if !entry.path().is_dir() {
+                continue;
+            }
+            
+            let font_dir = entry.path();
+            let safe_font_name = match font_dir.file_name().and_then(|n| n.to_str()) {
+                Some(name) => name,
+                None => continue,
+            };
+            
+            // Load font config
+            let config = match session_manager.load_font_config(safe_font_name)? {
+                Some(config) => config,
+                None => continue,
+            };
+            
+            // Load compressed vector
+            let compressed_vector_path = font_dir.join("compressed-vector.csv");
+            if !compressed_vector_path.exists() {
+                continue;
+            }
+            
+            let content = match fs::read_to_string(&compressed_vector_path) {
+                Ok(content) => content,
+                Err(e) => {
+                    eprintln!("Failed to read file {}: {}", compressed_vector_path.display(), e);
+                    continue;
                 }
-            })
-            .collect())
+            };
+            
+            if let Some((x, y)) = Self::parse_compressed_vector_line(&content) {
+                result.push(serde_json::json!({
+                    "config": config,
+                    "vector": [x, y]
+                }));
+            }
+        }
+        
+        serde_json::to_string(&result)
+            .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Failed to serialize compressed vectors: {}", e)
+            )))
     }
     
-    fn parse_compressed_vector_line(content: &str) -> Option<(String, f64, f64)> {
+    fn parse_compressed_vector_line(content: &str) -> Option<(f64, f64)> {
         let mut values = content.trim().split(',');
-        let font_name = values.next()?.to_string();
         let x = values.next()?.parse().ok()?;
         let y = values.next()?.parse().ok()?;
-        Some((font_name, x, y))
+        Some((x, y))
     }
 }

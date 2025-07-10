@@ -10,14 +10,15 @@ import {
 } from './components/ui/text-field';
 import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
 import { getSafeFontName } from './lib/utils';
+import { FontConfig, CompressedFontVector } from './types/font';
 
 function App() {
   const [fonts, { refetch: refetchFonts }] = createResource(() =>
     invoke<string>('get_session_fonts')
-      .then((jsonStr) => JSON.parse(jsonStr))
+      .then((jsonStr) => JSON.parse(jsonStr) as FontConfig[])
       .catch((error) => {
         console.error('Failed to get session fonts:', error);
-        return [];
+        return [] as FontConfig[];
       }),
   );
 
@@ -48,21 +49,14 @@ function App() {
   const [compressedVectors] = createResource(
     () => isCompressing() === false && sessionId(),
     () =>
-      invoke<[string, number, number][]>('get_compressed_vectors').catch(
-        (error) => {
+      invoke<string>('get_compressed_vectors')
+        .then((jsonStr) => JSON.parse(jsonStr) as CompressedFontVector[])
+        .catch((error) => {
           console.error('Failed to get compressed vectors:', error);
-          return [];
-        },
-      ),
+          return [] as CompressedFontVector[];
+        }),
   );
 
-  // Helper function to get font display name from safe name
-  const getFontDisplayName = (safeName: string) => {
-    const configs = fonts();
-    if (!configs) return safeName;
-    const config = configs.find((c: any) => c.safe_name === safeName);
-    return config?.font_name || safeName;
-  };
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
@@ -212,7 +206,7 @@ function App() {
         </form>
         <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20 py-2'>
           <For each={fonts() || []}>
-            {(fontConfig: any) => (
+            {(fontConfig: FontConfig) => (
               <li
                 class={`flex w-full flex-col items-start gap-2 pb-4 pt-3 ${
                   nearestFont() === fontConfig.safe_name && 'bg-muted'
@@ -282,8 +276,8 @@ function App() {
             console.log('Compressed vectors:', vectors, sessionId());
 
             // Calculate bounds once
-            const allX = vectors.map(([, x]) => x);
-            const allY = vectors.map(([, , y]) => y);
+            const allX = vectors.map((v) => v.vector[0]);
+            const allY = vectors.map((v) => v.vector[1]);
             const minX = Math.min(...allX);
             const maxX = Math.max(...allX);
             const minY = Math.min(...allY);
@@ -293,7 +287,9 @@ function App() {
             return (
               <Show when={vectors.length > 0}>
                 <For each={vectors}>
-                  {([fontName, x, y]) => {
+                  {(vectorData: CompressedFontVector) => {
+                    const { config, vector } = vectorData;
+                    const [x, y] = vector;
                     const scaledX =
                       padding +
                       ((x - minX) / (maxX - minX)) * (600 - 2 * padding);
@@ -308,7 +304,7 @@ function App() {
                           cy={scaledY}
                           r='3'
                           class={`stroke-1 ${
-                            nearestFont() === fontName
+                            nearestFont() === config.safe_name
                               ? 'fill-yellow-300 stroke-yellow-500'
                               : 'fill-blue-500 stroke-blue-700'
                           }`}
@@ -318,27 +314,24 @@ function App() {
                           cy={scaledY}
                           r='48'
                           fill='transparent'
-                          data-font-name={fontName}
+                          data-font-name={config.safe_name}
                           data-font-select-area
                         />
                         <text
                           x={scaledX}
                           y={scaledY - 8}
                           class={`pointer-events-none select-none fill-foreground text-xs ${
-                            nearestFont() === fontName
+                            nearestFont() === config.safe_name
                               ? 'font-bold'
                               : ''
                           }`}
                           text-anchor='middle'
                         >
-                          {(() => {
-                            const displayName = getFontDisplayName(fontName);
-                            return nearestFont() === fontName
-                              ? displayName
-                              : displayName.length > 12
-                                ? displayName.substring(0, 12) + '…'
-                                : displayName;
-                          })()}
+                          {nearestFont() === config.safe_name
+                            ? config.font_name
+                            : config.font_name.length > 12
+                              ? config.font_name.substring(0, 12) + '…'
+                              : config.font_name}
                         </text>
                       </g>
                     );
