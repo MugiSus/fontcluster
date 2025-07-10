@@ -214,7 +214,7 @@ function App() {
                 <img
                   class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
                   src={convertFileSrc(
-                    `${sessionDirectory() || ''}/Images/${getSafeFontName(item)}.png`,
+                    `${sessionDirectory() || ''}/${getSafeFontName(item)}/image.png`,
                   )}
                   alt={`Font preview for ${item}`}
                 />
@@ -268,6 +268,7 @@ function App() {
           </g>
           {(() => {
             const vectors = compressedVectors() || [];
+            console.log('Compressed vectors:', vectors, sessionId());
 
             // Calculate bounds once
             const allX = vectors.map(([, x]) => x);

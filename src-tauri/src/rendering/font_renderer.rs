@@ -1,4 +1,4 @@
-use crate::core::FontService;
+use crate::core::SessionManager;
 use crate::config::{FontImageConfig, GlyphMetrics, GlyphData, GLYPH_PADDING};
 use crate::error::{FontResult, FontError};
 use font_kit::source::SystemSource;
@@ -155,8 +155,9 @@ impl<'a> FontRenderer<'a> {
         }
         
         let safe_name = family_name.replace(" ", "_").replace("/", "_");
-        let images_dir = FontService::get_images_directory()?;
-        let output_path = images_dir.join(format!("{}.png", safe_name));
+        let session_manager = SessionManager::global();
+        let font_dir = session_manager.create_font_directory(&safe_name)?;
+        let output_path = font_dir.join("image.png");
         
         img_buffer
             .save(&output_path)

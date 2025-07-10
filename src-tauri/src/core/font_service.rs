@@ -41,20 +41,26 @@ impl FontService {
     }
     
     pub fn read_compressed_vectors() -> FontResult<Vec<(String, f64, f64)>> {
-        let comp_vector_dir = SessionManager::global().get_compressed_vectors_directory();
+        let session_manager = SessionManager::global();
+        let session_dir = session_manager.get_session_dir();
         
-        Ok(fs::read_dir(&comp_vector_dir)?
+        Ok(fs::read_dir(&session_dir)?
             .filter_map(|entry| entry.ok())
-            .map(|entry| entry.path())
-            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("csv"))
-            .filter_map(|path| {
-                fs::read_to_string(&path)
-                    .map_err(|e| {
-                        eprintln!("Failed to read file {}: {}", path.display(), e);
-                        e
-                    })
-                    .ok()
-                    .and_then(|content| Self::parse_compressed_vector_line(&content))
+            .filter(|entry| entry.path().is_dir())
+            .filter_map(|entry| {
+                let font_dir = entry.path();
+                let compressed_vector_path = font_dir.join("compressed-vector.csv");
+                if compressed_vector_path.exists() {
+                    fs::read_to_string(&compressed_vector_path)
+                        .map_err(|e| {
+                            eprintln!("Failed to read file {}: {}", compressed_vector_path.display(), e);
+                            e
+                        })
+                        .ok()
+                        .and_then(|content| Self::parse_compressed_vector_line(&content))
+                } else {
+                    None
+                }
             })
             .collect())
     }

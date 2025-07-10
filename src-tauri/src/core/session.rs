@@ -129,6 +129,18 @@ impl SessionManager {
         self.get_session_dir().join("CompressedVectors")
     }
     
+    /// Get the directory for a specific font
+    pub fn get_font_directory(&self, safe_font_name: &str) -> PathBuf {
+        self.get_session_dir().join(safe_font_name)
+    }
+    
+    /// Create directory structure for a specific font
+    pub fn create_font_directory(&self, safe_font_name: &str) -> FontResult<PathBuf> {
+        let font_dir = self.get_font_directory(safe_font_name);
+        fs::create_dir_all(&font_dir)?;
+        Ok(font_dir)
+    }
+    
     /// Clean up old sessions (optional utility method)
     pub fn cleanup_old_sessions(&self, max_age_days: u64) -> FontResult<()> {
         let generated_dir = self.base_dir.join("Generated");

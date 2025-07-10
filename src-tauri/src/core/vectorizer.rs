@@ -1,4 +1,4 @@
-use crate::core::FontService;
+use crate::core::{FontService, SessionManager};
 use crate::error::FontResult;
 use std::path::PathBuf;
 use std::fs;
@@ -37,10 +37,21 @@ impl FontImageVectorizer {
     }
     
     fn get_png_files(&self) -> FontResult<Vec<PathBuf>> {
-        Ok(fs::read_dir(&self.output_dir)?
+        let session_manager = SessionManager::global();
+        let session_dir = session_manager.get_session_dir();
+        
+        Ok(fs::read_dir(&session_dir)?
             .filter_map(|entry| entry.ok())
-            .map(|entry| entry.path())
-            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("png"))
+            .filter(|entry| entry.path().is_dir())
+            .filter_map(|entry| {
+                let font_dir = entry.path();
+                let png_path = font_dir.join("image.png");
+                if png_path.exists() {
+                    Some(png_path)
+                } else {
+                    None
+                }
+            })
             .collect())
     }
     
@@ -139,10 +150,12 @@ impl ImageVectorizer {
     }
     
     fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
-        let vector_dir = FontService::get_vectors_directory().unwrap_or_else(|_| PathBuf::from("."));
-        let file_name = png_path.file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown");
-        vector_dir.join(format!("{}.csv", file_name))
+        // png_path is like: Generated/session_id/font_name/image.png
+        // We want: Generated/session_id/font_name/vector.csv
+        if let Some(parent) = png_path.parent() {
+            parent.join("vector.csv")
+        } else {
+            PathBuf::from("vector.csv")
+        }
     }
 }

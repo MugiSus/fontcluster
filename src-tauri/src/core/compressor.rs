@@ -1,4 +1,4 @@
-use crate::core::FontService;
+use crate::core::{FontService, SessionManager};
 use crate::error::{FontResult, FontError};
 use std::path::PathBuf;
 use std::fs;
@@ -32,16 +32,18 @@ impl VectorCompressor {
         println!("Starting parallel vector file reading for {} files...", vector_files.len());
         let vector_tasks: Vec<_> = vector_files.into_iter()
             .filter_map(|vector_path| {
-                vector_path.file_stem()
-                    .and_then(|s| s.to_str())
-                    .map(|stem| {
-                        let stem = stem.to_string();
+                // Extract font name from path: Generated/session_id/font_name/vector.csv
+                vector_path.parent()
+                    .and_then(|parent| parent.file_name())
+                    .and_then(|name| name.to_str())
+                    .map(|font_name| {
+                        let font_name = font_name.to_string();
                         let path = vector_path.clone();
                         task::spawn_blocking(move || {
                             match VectorCompressor::read_vector_file_static(&path) {
                                 Ok(vector) => {
-                                    println!("✓ Vector file '{}' loaded successfully ({} dimensions)", stem, vector.len());
-                                    Some((stem, vector))
+                                    println!("✓ Vector file '{}' loaded successfully ({} dimensions)", font_name, vector.len());
+                                    Some((font_name, vector))
                                 },
                                 Err(e) => {
                                     eprintln!("Failed to read vector file {}: {}", path.display(), e);
@@ -83,10 +85,21 @@ impl VectorCompressor {
     }
     
     fn get_vector_files(&self) -> FontResult<Vec<PathBuf>> {
-        Ok(fs::read_dir(&self.vector_dir)?
+        let session_manager = SessionManager::global();
+        let session_dir = session_manager.get_session_dir();
+        
+        Ok(fs::read_dir(&session_dir)?
             .filter_map(|entry| entry.ok())
-            .map(|entry| entry.path())
-            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("csv"))
+            .filter(|entry| entry.path().is_dir())
+            .filter_map(|entry| {
+                let font_dir = entry.path();
+                let vector_path = font_dir.join("vector.csv");
+                if vector_path.exists() {
+                    Some(vector_path)
+                } else {
+                    None
+                }
+            })
             .collect())
     }
     
@@ -101,7 +114,7 @@ impl VectorCompressor {
             .map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
     }
 
-    async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], comp_vector_dir: &PathBuf) -> FontResult<()> {
+    async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], _comp_vector_dir: &PathBuf) -> FontResult<()> {
         if vectors.is_empty() || vectors[0].is_empty() {
             return Err(FontError::Vectorization("No valid vectors to compress".to_string()));
         }
@@ -144,9 +157,10 @@ impl VectorCompressor {
             let x = u[(i, 0)] as f32;
             let y = if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 };
             let font_name = font_name.clone();
-            let comp_vector_dir = comp_vector_dir.clone();
             task::spawn_blocking(move || {
-                let file_path = comp_vector_dir.join(format!("{}.csv", font_name));
+                let session_manager = SessionManager::global();
+                let font_dir = session_manager.get_font_directory(&font_name);
+                let file_path = font_dir.join("compressed-vector.csv");
                 
                 let mut file = fs::File::create(&file_path)
                     .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
