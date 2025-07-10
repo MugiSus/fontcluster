@@ -180,7 +180,7 @@ function App() {
                     `${sessionDirectory() || ''}/Images/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
                   )}
                   alt={`Font preview for ${item}`}
-                  class='block size-auto h-10 max-h-none max-w-none invert dark:invert-0'
+                  class='block size-auto h-10 max-h-none max-w-none grayscale invert dark:invert-0'
                 />
               </li>
             )}
@@ -189,7 +189,7 @@ function App() {
       </div>
       <div class='col-span-9 rounded-md border bg-muted/10'>
         <svg
-          class='size-full'
+          class='size-full select-none'
           viewBox='0 0 800 600'
           xmlns='http://www.w3.org/2000/svg'
         >
@@ -227,7 +227,7 @@ function App() {
                         <text
                           x={scaledX}
                           y={scaledY - 8}
-                          class='fill-foreground font-mono text-xs'
+                          class='pointer-events-none select-none fill-foreground font-mono text-xs'
                           text-anchor='middle'
                         >
                           {fontName.length > 12
