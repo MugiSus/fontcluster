@@ -37,18 +37,11 @@ impl FontImageVectorizer {
     }
     
     fn get_png_files(&self) -> FontResult<Vec<PathBuf>> {
-        let mut png_files = Vec::new();
-        
-        for entry in fs::read_dir(&self.output_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.extension().and_then(|ext| ext.to_str()) == Some("png") {
-                png_files.push(path);
-            }
-        }
-        
-        Ok(png_files)
+        Ok(fs::read_dir(&self.output_dir)?
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("png"))
+            .collect())
     }
     
     fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {

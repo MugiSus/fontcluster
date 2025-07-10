@@ -55,19 +55,18 @@ impl VectorCompressor {
 
         let results = join_all(vector_tasks).await;
         println!("Completed parallel vector file reading, processing results...");
-        let mut vectors = Vec::new();
-        let mut font_names = Vec::new();
         
-        for task_result in results {
-            match task_result {
-                Ok(Some((name, vector))) => {
-                    font_names.push(name);
-                    vectors.push(vector);
+        let (font_names, vectors): (Vec<_>, Vec<_>) = results
+            .into_iter()
+            .filter_map(|task_result| match task_result {
+                Ok(Some((name, vector))) => Some((name, vector)),
+                Ok(None) => None, // File read failed, already logged
+                Err(e) => {
+                    eprintln!("Task execution failed: {}", e);
+                    None
                 }
-                Ok(None) => {} // File read failed, already logged
-                Err(e) => eprintln!("Task execution failed: {}", e),
-            }
-        }
+            })
+            .unzip();
         
         if vectors.is_empty() {
             return Err(FontError::Vectorization("No valid vectors found".to_string()));
@@ -84,29 +83,22 @@ impl VectorCompressor {
     }
     
     fn get_vector_files(&self) -> FontResult<Vec<PathBuf>> {
-        let mut vector_files = Vec::new();
-        
-        for entry in fs::read_dir(&self.vector_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
-                vector_files.push(path);
-            }
-        }
-        
-        Ok(vector_files)
+        Ok(fs::read_dir(&self.vector_dir)?
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("csv"))
+            .collect())
     }
     
     fn read_vector_file_static(path: &PathBuf) -> FontResult<Vec<f32>> {
         let content = fs::read_to_string(path)
             .map_err(|e| FontError::Vectorization(format!("Failed to read vector file: {}", e)))?;
         
-        let values: Result<Vec<f32>, _> = content.trim().split(',')
+        content.trim()
+            .split(',')
             .map(|s| s.parse::<f32>())
-            .collect();
-        
-        values.map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
+            .collect::<Result<Vec<f32>, _>>()
+            .map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
     }
 
     async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], comp_vector_dir: &PathBuf) -> FontResult<()> {
@@ -120,22 +112,20 @@ impl VectorCompressor {
         println!("Preparing matrix data: {} samples x {} features", n_samples, n_features);
         
         // Create matrix from vectors (rows are samples, columns are features)
-        let mut matrix_data = Vec::with_capacity(n_samples * n_features);
-        for vector in vectors {
-            for &value in vector {
-                matrix_data.push(value as f64);
-            }
-        }
+        let matrix_data: Vec<f64> = vectors
+            .iter()
+            .flat_map(|vector| vector.iter().map(|&v| v as f64))
+            .collect();
         
         let matrix = DMatrix::from_row_slice(n_samples, n_features, &matrix_data);
         
         println!("Matrix created, centering data...");
         // Center the data (subtract column means)
-        let mut col_means = Vec::with_capacity(n_features);
-        for col in 0..n_features {
-            let col_sum: f64 = (0..n_samples).map(|row| matrix[(row, col)]).sum();
-            col_means.push(col_sum / n_samples as f64);
-        }
+        let col_means: Vec<f64> = (0..n_features)
+            .map(|col| {
+                (0..n_samples).map(|row| matrix[(row, col)]).sum::<f64>() / n_samples as f64
+            })
+            .collect();
         
         let centered = matrix.map_with_location(|_row, col, val| val - col_means[col]);
         
@@ -148,16 +138,12 @@ impl VectorCompressor {
         
         println!("SVD completed, saving compressed vectors in parallel...");
         
-        // Prepare data for parallel saving
-        let save_data: Vec<_> = font_names.iter().enumerate().map(|(i, font_name)| {
+        // Save compressed vectors in parallel (format: FontName,X,Y)
+        println!("Creating {} parallel save tasks...", font_names.len());
+        let save_tasks: Vec<_> = font_names.iter().enumerate().map(|(i, font_name)| {
             let x = u[(i, 0)] as f32;
             let y = if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 };
-            (font_name.clone(), x, y)
-        }).collect();
-        
-        // Save compressed vectors in parallel (format: FontName,X,Y)
-        println!("Creating {} parallel save tasks...", save_data.len());
-        let save_tasks: Vec<_> = save_data.into_iter().map(|(font_name, x, y)| {
+            let font_name = font_name.clone();
             let comp_vector_dir = comp_vector_dir.clone();
             task::spawn_blocking(move || {
                 let file_path = comp_vector_dir.join(format!("{}.csv", font_name));
@@ -179,13 +165,14 @@ impl VectorCompressor {
         println!("Parallel save tasks completed, checking results...");
         
         // Check for any errors in saving
-        for (i, result) in save_results.into_iter().enumerate() {
-            match result {
-                Ok(Ok(())) => {}, // Success
-                Ok(Err(e)) => return Err(e), // File operation error
-                Err(e) => return Err(FontError::Vectorization(format!("Save task {} failed: {}", i, e))),
-            }
-        }
+        save_results
+            .into_iter()
+            .enumerate()
+            .try_for_each(|(i, result)| match result {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(e)) => Err(e),
+                Err(e) => Err(FontError::Vectorization(format!("Save task {} failed: {}", i, e))),
+            })?;
         
         println!("Compressed {} vectors to 2D and saved to CompressedVectors directory", font_names.len());
         Ok(())

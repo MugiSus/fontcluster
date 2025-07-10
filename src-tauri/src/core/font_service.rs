@@ -10,77 +10,60 @@ pub struct FontService;
 
 impl FontService {
     pub fn get_system_fonts() -> Vec<String> {
-        let source = SystemSource::new();
-        let mut font_families = HashSet::new();
-        
-        match source.all_families() {
-            Ok(families) => {
-                font_families.extend(families.iter().map(|f| f.to_string()));
-            }
-            Err(_) => {
-                return Vec::new();
-            }
-        }
-        
-        let mut fonts: Vec<String> = font_families.into_iter().collect();
-        fonts.sort();
-        fonts.dedup();
-        fonts
+        SystemSource::new()
+            .all_families()
+            .map(|families| {
+                let mut fonts: Vec<String> = families.into_iter()
+                    .map(|f| f.to_string())
+                    .collect::<HashSet<_>>()
+                    .into_iter()
+                    .collect();
+                fonts.sort();
+                fonts
+            })
+            .unwrap_or_default()
     }
     
     pub fn create_output_directory() -> FontResult<PathBuf> {
-        // Use session-based directory structure
-        let session_manager = SessionManager::global();
-        Ok(session_manager.get_session_dir())
+        Ok(SessionManager::global().get_session_dir())
     }
     
     pub fn get_images_directory() -> FontResult<PathBuf> {
-        let session_manager = SessionManager::global();
-        Ok(session_manager.get_images_directory())
+        Ok(SessionManager::global().get_images_directory())
     }
     
     pub fn get_vectors_directory() -> FontResult<PathBuf> {
-        let session_manager = SessionManager::global();
-        Ok(session_manager.get_vectors_directory())
+        Ok(SessionManager::global().get_vectors_directory())
     }
     
     pub fn get_compressed_vectors_directory() -> FontResult<PathBuf> {
-        let session_manager = SessionManager::global();
-        Ok(session_manager.get_compressed_vectors_directory())
+        Ok(SessionManager::global().get_compressed_vectors_directory())
     }
     
     pub fn read_compressed_vectors() -> FontResult<Vec<(String, f64, f64)>> {
-        let session_manager = SessionManager::global();
-        let comp_vector_dir = session_manager.get_compressed_vectors_directory();
-        let mut coordinates = Vec::new();
+        let comp_vector_dir = SessionManager::global().get_compressed_vectors_directory();
         
-        for entry in fs::read_dir(&comp_vector_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.extension().and_then(|ext| ext.to_str()) == Some("csv") {
-                match fs::read_to_string(&path) {
-                    Ok(content) => {
-                        if let Some(coordinate) = Self::parse_compressed_vector_line(&content) {
-                            coordinates.push(coordinate);
-                        }
-                    }
-                    Err(e) => eprintln!("Failed to read file {}: {}", path.display(), e),
-                }
-            }
-        }
-        
-        Ok(coordinates)
+        Ok(fs::read_dir(&comp_vector_dir)?
+            .filter_map(|entry| entry.ok())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().and_then(|ext| ext.to_str()) == Some("csv"))
+            .filter_map(|path| {
+                fs::read_to_string(&path)
+                    .map_err(|e| {
+                        eprintln!("Failed to read file {}: {}", path.display(), e);
+                        e
+                    })
+                    .ok()
+                    .and_then(|content| Self::parse_compressed_vector_line(&content))
+            })
+            .collect())
     }
     
     fn parse_compressed_vector_line(content: &str) -> Option<(String, f64, f64)> {
-        let values: Vec<&str> = content.trim().split(',').collect();
-        if values.len() >= 3 {
-            let font_name = values[0];
-            if let (Ok(x), Ok(y)) = (values[1].parse::<f64>(), values[2].parse::<f64>()) {
-                return Some((font_name.to_string(), x, y));
-            }
-        }
-        None
+        let mut values = content.trim().split(',');
+        let font_name = values.next()?.to_string();
+        let x = values.next()?.parse().ok()?;
+        let y = values.next()?.parse().ok()?;
+        Some((font_name, x, y))
     }
 }

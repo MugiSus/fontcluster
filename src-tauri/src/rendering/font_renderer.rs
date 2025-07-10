@@ -43,59 +43,53 @@ impl<'a> FontRenderer<'a> {
     }
 
     fn prepare_glyph_data(&self, font: font_kit::loaders::default::Font) -> FontResult<GlyphData> {
-        let mut total_width = 0;
-        let mut glyph_metrics = Vec::new();
         let metrics = font.metrics();
+        let scale = self.config.font_size / metrics.units_per_em as f32;
         
-        // Track the actual bounds of all glyphs
-        let mut min_y = f32::MAX;
-        let mut max_y = f32::MIN;
-        
-        for ch in self.config.text.chars() {
-            if let Some(glyph_id) = font.glyph_for_char(ch) {
-                // Use accurate glyph width from advance metrics
+        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = self.config.text.chars()
+            .map(|ch| {
+                let glyph_id = font.glyph_for_char(ch)
+                    .ok_or_else(|| FontError::GlyphProcessing(format!("Glyph for character '{}' not found in font", ch)))?;
+                
                 let advance = font.advance(glyph_id)
                     .map_err(|e| FontError::GlyphProcessing(format!("Failed to get glyph advance: {}", e)))?;
                 
-                // Get actual glyph bounds using typographic_bounds
                 let bounds = font.typographic_bounds(glyph_id)
                     .map_err(|e| FontError::GlyphProcessing(format!("Failed to get glyph bounds: {}", e)))?;
                 
-                // Convert from font units to pixel units
-                let glyph_width = (advance.x() * self.config.font_size / metrics.units_per_em as f32) as i32;
+                let glyph_width = (advance.x() * scale) as i32;
+                let scaled_min_y = bounds.min_y() * scale;
+                let scaled_max_y = bounds.max_y() * scale;
                 
-                // Track min and max Y bounds across all glyphs
-                let scaled_min_y = bounds.min_y() * self.config.font_size / metrics.units_per_em as f32;
-                let scaled_max_y = bounds.max_y() * self.config.font_size / metrics.units_per_em as f32;
-                
-                min_y = min_y.min(scaled_min_y);
-                max_y = max_y.max(scaled_max_y);
-                
-                glyph_metrics.push(GlyphMetrics {
+                Ok((GlyphMetrics {
                     glyph_id,
                     width: glyph_width,
                     height: 0, // Will be calculated later
                     max_y: scaled_max_y,
-                });
-                
-                total_width += glyph_width;
-            } else {
-                // Skip this font if any glyph cannot be rendered
-                return Err(FontError::GlyphProcessing(format!("Glyph for character '{}' not found in font", ch)));
-            }
-        }
+                }, scaled_min_y, scaled_max_y))
+            })
+            .collect();
         
-        if glyph_metrics.is_empty() {
+        let glyph_data = glyph_results?;
+        
+        if glyph_data.is_empty() {
             return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
         }
         
-        // Calculate actual height from glyph bounds with padding
-        let actual_height = (max_y - min_y + 2.0 * GLYPH_PADDING) as i32;
+        let (min_y, max_y) = glyph_data.iter()
+            .fold((f32::MAX, f32::MIN), |(min, max), (_, min_y, max_y)| {
+                (min.min(*min_y), max.max(*max_y))
+            });
         
-        // Update glyph data with actual height
-        for glyph in &mut glyph_metrics {
-            glyph.height = actual_height;
-        }
+        let actual_height = (max_y - min_y + 2.0 * GLYPH_PADDING) as i32;
+        let total_width: i32 = glyph_data.iter().map(|(glyph, _, _)| glyph.width).sum();
+        
+        let glyph_metrics: Vec<GlyphMetrics> = glyph_data.into_iter()
+            .map(|(mut glyph, _, _)| {
+                glyph.height = actual_height;
+                glyph
+            })
+            .collect();
         
         let canvas_size = Vector2I::new(total_width, actual_height);
         Ok((font, glyph_metrics, canvas_size))
@@ -138,18 +132,15 @@ impl<'a> FontRenderer<'a> {
     }
 
     fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
-        let canvas_data = canvas.pixels;
-        let mut img_buffer = ImageBuffer::new(canvas_size.x() as u32, canvas_size.y() as u32);
+        let width = canvas_size.x() as u32;
+        let height = canvas_size.y() as u32;
         
-        for (i, &pixel) in canvas_data.iter().enumerate() {
-            let x = i as u32 % canvas_size.x() as u32;
-            let y = i as u32 / canvas_size.x() as u32;
-            // Use transparent background - alpha channel is 0 for background, 255 for text
+        ImageBuffer::from_fn(width, height, |x, y| {
+            let i = (y * width + x) as usize;
+            let pixel = canvas.pixels.get(i).copied().unwrap_or(0);
             let alpha = if pixel > 0 { 255 } else { 0 };
-            img_buffer.put_pixel(x, y, Rgba([pixel, pixel, pixel, alpha]));
-        }
-        
-        img_buffer
+            Rgba([pixel, pixel, pixel, alpha])
+        })
     }
 
     fn save_image(
@@ -176,12 +167,6 @@ impl<'a> FontRenderer<'a> {
     }
     
     fn is_image_empty(&self, img_buffer: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> bool {
-        // Check if any pixel has non-zero alpha (not transparent)
-        for pixel in img_buffer.pixels() {
-            if pixel[3] > 0 {  // Alpha channel > 0 means not transparent
-                return false;
-            }
-        }
-        true  // All pixels are transparent
+        img_buffer.pixels().all(|pixel| pixel[3] == 0)
     }
 }
