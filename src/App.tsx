@@ -204,7 +204,12 @@ function App() {
           </Button>
         </form>
         <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20'>
-          <For each={fonts() || []}>
+          <For
+            each={
+              fonts()?.sort((a, b) => a.font_name.localeCompare(b.font_name)) ||
+              []
+            }
+          >
             {(fontConfig: FontConfig) => (
               <li
                 class={`flex w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
@@ -239,42 +244,40 @@ function App() {
             <circle
               cx='300'
               cy='300'
-              r='75'
-              fill='none'
-              class='pointer-events-none stroke-muted stroke-1'
+              r='2'
+              class='pointer-events-none fill-border'
             />
             <circle
               cx='300'
               cy='300'
-              r='250'
+              r='75'
               fill='none'
-              class='pointer-events-none stroke-muted stroke-1'
+              class='pointer-events-none stroke-border stroke-1'
             />
             <circle
               cx='300'
               cy='300'
               r='150'
               fill='none'
-              class='pointer-events-none stroke-muted stroke-1'
+              class='pointer-events-none stroke-border stroke-1'
+            />
+            <circle
+              cx='300'
+              cy='300'
+              r='250'
+              fill='none'
+              class='pointer-events-none stroke-border stroke-1'
             />
             <circle
               cx='300'
               cy='300'
               r='450'
               fill='none'
-              class='pointer-events-none stroke-muted stroke-1'
-            />
-            <circle
-              cx='300'
-              cy='300'
-              r='2'
-              class='pointer-events-none fill-muted-foreground'
+              class='pointer-events-none stroke-border stroke-1'
             />
           </g>
           {(() => {
-            const vectors = (compressedVectors() || []).sort((a, b) => 
-              a.config.safe_name.localeCompare(b.config.safe_name)
-            );
+            const vectors = compressedVectors() || [];
             console.log('Compressed vectors:', vectors, sessionId());
 
             // Calculate bounds once
@@ -287,59 +290,55 @@ function App() {
             const padding = 50;
 
             return (
-              <Show when={vectors.length > 0}>
-                <For each={vectors}>
-                  {(vectorData: CompressedFontVector) => {
-                    const { config, vector } = vectorData;
-                    const [x, y] = vector;
-                    const scaledX =
-                      padding +
-                      ((x - minX) / (maxX - minX)) * (600 - 2 * padding);
-                    const scaledY =
-                      padding +
-                      ((y - minY) / (maxY - minY)) * (600 - 2 * padding);
+              <For each={vectors}>
+                {(vectorData: CompressedFontVector) => {
+                  const { config, vector } = vectorData;
+                  const [x, y] = vector;
+                  const scaledX =
+                    padding +
+                    ((x - minX) / (maxX - minX)) * (600 - 2 * padding);
+                  const scaledY =
+                    padding +
+                    ((y - minY) / (maxY - minY)) * (600 - 2 * padding);
 
-                    return (
-                      <g>
-                        <circle
-                          cx={scaledX}
-                          cy={scaledY}
-                          r='3'
-                          class={`stroke-1 ${
-                            nearestFont() === config.safe_name
-                              ? 'fill-yellow-300 stroke-yellow-500'
-                              : 'fill-blue-500 stroke-blue-700'
-                          }`}
-                        />
-                        <circle
-                          cx={scaledX}
-                          cy={scaledY}
-                          r='48'
-                          fill='transparent'
-                          data-font-name={config.safe_name}
-                          data-font-select-area
-                        />
-                        <text
-                          x={scaledX}
-                          y={scaledY - 8}
-                          class={`pointer-events-none select-none fill-foreground text-xs ${
-                            nearestFont() === config.safe_name
-                              ? 'font-bold'
-                              : ''
-                          }`}
-                          text-anchor='middle'
-                        >
-                          {nearestFont() === config.safe_name
-                            ? config.font_name
-                            : config.font_name.length > 12
-                              ? config.font_name.substring(0, 12) + '…'
-                              : config.font_name}
-                        </text>
-                      </g>
-                    );
-                  }}
-                </For>
-              </Show>
+                  return (
+                    <g>
+                      <circle
+                        cx={scaledX}
+                        cy={scaledY}
+                        r='3'
+                        class={`stroke-1 ${
+                          nearestFont() === config.safe_name
+                            ? 'fill-yellow-300 stroke-yellow-500'
+                            : 'fill-blue-500 stroke-blue-700'
+                        }`}
+                      />
+                      <circle
+                        cx={scaledX}
+                        cy={scaledY}
+                        r='48'
+                        fill='transparent'
+                        data-font-name={config.safe_name}
+                        data-font-select-area
+                      />
+                      <text
+                        x={scaledX}
+                        y={scaledY - 8}
+                        class={`pointer-events-none select-none fill-foreground text-xs ${
+                          nearestFont() === config.safe_name ? 'font-bold' : ''
+                        }`}
+                        text-anchor='middle'
+                      >
+                        {nearestFont() === config.safe_name
+                          ? config.font_name
+                          : config.font_name.length > 12
+                            ? config.font_name.substring(0, 12) + '…'
+                            : config.font_name}
+                      </text>
+                    </g>
+                  );
+                }}
+              </For>
             );
           })()}
         </svg>
