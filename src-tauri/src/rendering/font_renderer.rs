@@ -157,7 +157,7 @@ impl<'a> FontRenderer<'a> {
         let safe_name = family_name.replace(" ", "_").replace("/", "_");
         let session_manager = SessionManager::global();
         let font_dir = session_manager.create_font_directory(&safe_name)?;
-        let output_path = font_dir.join("image.png");
+        let output_path = font_dir.join("sample.png");
         
         img_buffer
             .save(&output_path)

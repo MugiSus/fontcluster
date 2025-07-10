@@ -45,7 +45,7 @@ impl FontImageVectorizer {
             .filter(|entry| entry.path().is_dir())
             .filter_map(|entry| {
                 let font_dir = entry.path();
-                let png_path = font_dir.join("image.png");
+                let png_path = font_dir.join("sample.png");
                 if png_path.exists() {
                     Some(png_path)
                 } else {
@@ -150,7 +150,7 @@ impl ImageVectorizer {
     }
     
     fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
-        // png_path is like: Generated/session_id/font_name/image.png
+        // png_path is like: Generated/session_id/font_name/sample.png
         // We want: Generated/session_id/font_name/vector.csv
         if let Some(parent) = png_path.parent() {
             parent.join("vector.csv")

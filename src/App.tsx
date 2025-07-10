@@ -214,7 +214,7 @@ function App() {
                 <img
                   class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
                   src={convertFileSrc(
-                    `${sessionDirectory() || ''}/${getSafeFontName(item)}/image.png`,
+                    `${sessionDirectory() || ''}/${getSafeFontName(item)}/sample.png`,
                   )}
                   alt={`Font preview for ${item}`}
                 />
