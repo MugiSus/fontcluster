@@ -21,33 +21,22 @@ static SESSION_MANAGER: RwLock<Option<SessionManager>> = RwLock::new(None);
 impl SessionManager {
     /// Create a new session with a UUIDv7 identifier
     pub fn new() -> FontResult<Self> {
-        let session_id = Uuid::now_v7().to_string();
-        let base_dir = Self::get_base_data_dir()?;
-        
-        let session_manager = Self {
-            session_id,
-            base_dir,
-        };
-        
-        // Create the session directory structure
-        session_manager.create_session_directories()?;
-        
-        Ok(session_manager)
+        Self::with_id(Uuid::now_v7().to_string())
     }
     
     /// Create a default session (fallback)
     pub fn default() -> FontResult<Self> {
-        let session_id = "default".to_string();
-        let base_dir = Self::get_base_data_dir()?;
-        
+        Self::with_id("default".to_string())
+    }
+    
+    /// Create session with specific ID
+    fn with_id(session_id: String) -> FontResult<Self> {
         let session_manager = Self {
             session_id,
-            base_dir,
+            base_dir: Self::get_base_data_dir()?,
         };
         
-        // Create the session directory structure
-        session_manager.create_session_directories()?;
-        
+        fs::create_dir_all(session_manager.get_session_dir())?;
         Ok(session_manager)
     }
     
@@ -95,41 +84,6 @@ impl SessionManager {
         self.base_dir.join("Generated").join(&self.session_id)
     }
     
-    /// Create all necessary directories for this session
-    fn create_session_directories(&self) -> FontResult<()> {
-        let session_dir = self.get_session_dir();
-        
-        // Create subdirectories
-        let images_dir = session_dir.join("Images");
-        let vectors_dir = session_dir.join("Vectors");
-        let compressed_vectors_dir = session_dir.join("CompressedVectors");
-        
-        fs::create_dir_all(&images_dir)?;
-        fs::create_dir_all(&vectors_dir)?;
-        fs::create_dir_all(&compressed_vectors_dir)?;
-        
-        println!("Created session directories for session: {}", self.session_id);
-        println!("  Images: {}", images_dir.display());
-        println!("  Vectors: {}", vectors_dir.display());
-        println!("  CompressedVectors: {}", compressed_vectors_dir.display());
-        
-        Ok(())
-    }
-    
-    /// Get the Images directory for this session
-    pub fn get_images_directory(&self) -> PathBuf {
-        self.get_session_dir().join("Images")
-    }
-    
-    /// Get the Vectors directory for this session
-    pub fn get_vectors_directory(&self) -> PathBuf {
-        self.get_session_dir().join("Vectors")
-    }
-    
-    /// Get the CompressedVectors directory for this session
-    pub fn get_compressed_vectors_directory(&self) -> PathBuf {
-        self.get_session_dir().join("CompressedVectors")
-    }
     
     /// Get the directory for a specific font
     pub fn get_font_directory(&self, safe_font_name: &str) -> PathBuf {
@@ -141,8 +95,12 @@ impl SessionManager {
         let font_dir = self.get_font_directory(safe_font_name);
         fs::create_dir_all(&font_dir)?;
         
-        // Create individual config.json for this font
-        self.create_font_config(safe_font_name, display_name, family_name)?;
+        let config = FontConfig::new(
+            safe_font_name.to_string(),
+            display_name.to_string(), 
+            family_name.to_string()
+        );
+        self.save_font_config(safe_font_name, &config)?;
         
         Ok(font_dir)
     }
@@ -152,17 +110,6 @@ impl SessionManager {
         self.get_font_directory(safe_font_name).join("config.json")
     }
     
-    /// Create configuration file for a specific font
-    pub fn create_font_config(&self, safe_font_name: &str, display_name: &str, family_name: &str) -> FontResult<()> {
-        let config = FontConfig::new(
-            safe_font_name.to_string(),
-            display_name.to_string(), 
-            family_name.to_string()
-        );
-        
-        self.save_font_config(safe_font_name, &config)?;
-        Ok(())
-    }
     
     /// Save font configuration to individual JSON file
     pub fn save_font_config(&self, safe_font_name: &str, config: &FontConfig) -> FontResult<()> {
@@ -201,26 +148,20 @@ impl SessionManager {
     /// Get all font configurations by scanning font directories
     pub fn load_all_font_configs(&self) -> FontResult<Vec<FontConfig>> {
         let session_dir = self.get_session_dir();
-        let mut configs = Vec::new();
         
         if !session_dir.exists() {
-            return Ok(configs);
+            return Ok(Vec::new());
         }
         
-        for entry in fs::read_dir(&session_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.is_dir() {
-                if let Some(safe_font_name) = path.file_name().and_then(|n| n.to_str()) {
-                    if let Ok(Some(config)) = self.load_font_config(safe_font_name) {
-                        configs.push(config);
-                    }
-                }
-            }
-        }
-        
-        Ok(configs)
+        Ok(fs::read_dir(&session_dir)?
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.path().is_dir())
+            .filter_map(|entry| {
+                entry.file_name().to_str()
+                    .and_then(|name| self.load_font_config(name).ok())
+                    .flatten()
+            })
+            .collect())
     }
     
     /// Clean up old sessions (optional utility method)

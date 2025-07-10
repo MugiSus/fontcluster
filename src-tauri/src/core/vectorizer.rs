@@ -9,14 +9,11 @@ use imageproc::hog::*;
 use std::io::Write;
 
 // Image vectorization service
-pub struct FontImageVectorizer {
-    output_dir: PathBuf,
-}
+pub struct FontImageVectorizer;
 
 impl FontImageVectorizer {
     pub fn new() -> FontResult<Self> {
-        let output_dir = FontService::get_images_directory()?;
-        Ok(Self { output_dir })
+        Ok(Self)
     }
     
     pub async fn vectorize_all(&self) -> FontResult<PathBuf> {
@@ -33,7 +30,7 @@ impl FontImageVectorizer {
         
         println!("Successfully vectorized {} images", success_count);
         
-        Ok(self.output_dir.clone())
+        Ok(SessionManager::global().get_session_dir())
     }
     
     fn get_png_files(&self) -> FontResult<Vec<PathBuf>> {

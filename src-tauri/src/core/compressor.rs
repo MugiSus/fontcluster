@@ -8,16 +8,11 @@ use nalgebra::DMatrix;
 use std::io::Write;
 
 // Vector compression service
-pub struct VectorCompressor {
-    vector_dir: PathBuf,
-    comp_vector_dir: PathBuf,
-}
+pub struct VectorCompressor;
 
 impl VectorCompressor {
     pub fn new() -> FontResult<Self> {
-        let vector_dir = FontService::get_vectors_directory()?;
-        let comp_vector_dir = FontService::get_compressed_vectors_directory()?;
-        Ok(Self { vector_dir, comp_vector_dir })
+        Ok(Self)
     }
     
     pub async fn compress_all(&self) -> FontResult<PathBuf> {
@@ -77,11 +72,10 @@ impl VectorCompressor {
         println!("Successfully loaded {} vectors, starting PCA compression...", vectors.len());
         
         // Perform PCA compression (now includes parallel file saving)
-        let comp_vector_dir = self.comp_vector_dir.clone();
-        Self::compress_vectors_to_2d(&vectors, &font_names, &comp_vector_dir).await?;
+        Self::compress_vectors_to_2d(&vectors, &font_names).await?;
         
         println!("PCA compression completed successfully!");
-        Ok(self.comp_vector_dir.clone())
+        Ok(SessionManager::global().get_session_dir())
     }
     
     fn get_vector_files(&self) -> FontResult<Vec<PathBuf>> {
@@ -114,7 +108,7 @@ impl VectorCompressor {
             .map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
     }
 
-    async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String], _comp_vector_dir: &PathBuf) -> FontResult<()> {
+    async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String]) -> FontResult<()> {
         if vectors.is_empty() || vectors[0].is_empty() {
             return Err(FontError::Vectorization("No valid vectors to compress".to_string()));
         }
