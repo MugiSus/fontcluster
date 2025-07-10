@@ -1,4 +1,4 @@
-use crate::core::{FontService, SessionManager};
+use crate::core::FontService;
 use crate::rendering::FontRenderer;
 use crate::config::{FontImageConfig, PREVIEW_TEXT};
 use crate::error::FontResult;
@@ -25,10 +25,7 @@ impl FontImageGenerator {
     pub async fn generate_all(&self) -> FontResult<PathBuf> {
         let font_families = FontService::get_system_fonts();
         
-        // Create fonts configuration file first
-        let session_manager = SessionManager::global();
-        session_manager.create_fonts_config(&font_families)?;
-        
+        // Individual font configs will be created during font processing
         let tasks = self.spawn_font_processing_tasks(font_families);
         join_all(tasks).await;
         

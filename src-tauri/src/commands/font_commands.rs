@@ -33,23 +33,45 @@ pub fn get_compressed_vectors() -> Result<Vec<(String, f64, f64)>, String> {
         .map_err(|e| format!("Failed to read compressed vectors: {}", e))
 }
 
-/// Get fonts configuration with safe names, display names, and weights
+/// Get all fonts configurations from individual config.json files
 /// 
-/// Returns the fonts configuration loaded from the current session's JSON file.
+/// Returns all font configurations found in the current session directory.
 /// 
 /// # Returns
-/// - `Ok(String)` - JSON string containing fonts configuration
+/// - `Ok(String)` - JSON string containing array of font configurations
 /// - `Err(String)` - Error message if reading fails
 #[tauri::command]
 pub fn get_fonts_config() -> Result<String, String> {
     let session_manager = SessionManager::global();
-    session_manager.load_fonts_config()
-        .and_then(|config| {
-            serde_json::to_string(&config)
+    session_manager.load_all_font_configs()
+        .and_then(|configs| {
+            serde_json::to_string(&configs)
                 .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
-                    format!("Failed to serialize config: {}", e)
+                    format!("Failed to serialize configs: {}", e)
                 )))
         })
         .map_err(|e| format!("Failed to get fonts config: {}", e))
+}
+
+/// Get configuration for a specific font by safe name
+/// 
+/// # Returns
+/// - `Ok(Some(String))` - JSON string containing font configuration
+/// - `Ok(None)` - Font configuration not found
+/// - `Err(String)` - Error message if reading fails
+#[tauri::command]
+pub fn get_font_config(safe_font_name: String) -> Result<Option<String>, String> {
+    let session_manager = SessionManager::global();
+    session_manager.load_font_config(&safe_font_name)
+        .and_then(|config_opt| {
+            config_opt.map(|config| {
+                serde_json::to_string(&config)
+                    .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("Failed to serialize config: {}", e)
+                    )))
+            }).transpose()
+        })
+        .map_err(|e| format!("Failed to get font config: {}", e))
 }

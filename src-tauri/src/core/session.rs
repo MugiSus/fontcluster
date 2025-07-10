@@ -1,5 +1,5 @@
 use crate::error::{FontResult, FontError};
-use crate::config::{FontsConfig, FontConfig};
+use crate::config::FontConfig;
 use std::path::PathBuf;
 use std::fs;
 use std::sync::RwLock;
@@ -136,80 +136,91 @@ impl SessionManager {
         self.get_session_dir().join(safe_font_name)
     }
     
-    /// Create directory structure for a specific font
-    pub fn create_font_directory(&self, safe_font_name: &str) -> FontResult<PathBuf> {
+    /// Create directory structure for a specific font and its config
+    pub fn create_font_directory(&self, safe_font_name: &str, display_name: &str, family_name: &str) -> FontResult<PathBuf> {
         let font_dir = self.get_font_directory(safe_font_name);
         fs::create_dir_all(&font_dir)?;
+        
+        // Create individual config.json for this font
+        self.create_font_config(safe_font_name, display_name, family_name)?;
+        
         Ok(font_dir)
     }
     
-    /// Get the path to the fonts configuration file
-    pub fn get_fonts_config_path(&self) -> PathBuf {
-        self.get_session_dir().join("fonts-config.json")
+    /// Get the path to a specific font's configuration file
+    pub fn get_font_config_path(&self, safe_font_name: &str) -> PathBuf {
+        self.get_font_directory(safe_font_name).join("config.json")
     }
     
-    /// Create or update fonts configuration file
-    pub fn create_fonts_config(&self, font_families: &[String]) -> FontResult<()> {
-        let mut config = FontsConfig::new();
+    /// Create configuration file for a specific font
+    pub fn create_font_config(&self, safe_font_name: &str, display_name: &str, family_name: &str) -> FontResult<()> {
+        let config = FontConfig::new(
+            safe_font_name.to_string(),
+            display_name.to_string(), 
+            family_name.to_string()
+        );
         
-        for family_name in font_families {
-            let safe_name = family_name.replace(" ", "_").replace("/", "_");
-            
-            // TODO: 実際にはfont-kitを使ってウェイトを検出する
-            // 現在は基本的なウェイトのみを想定
-            let weights = vec![
-                "Regular".to_string(),
-                "Bold".to_string(),
-                "Italic".to_string(),
-                "Bold Italic".to_string(),
-            ];
-            
-            let font_config = FontConfig {
-                safe_name: safe_name.clone(),
-                display_name: family_name.clone(),
-                family_name: family_name.clone(),
-                weights,
-            };
-            
-            config.add_font(font_config);
-        }
-        
-        self.save_fonts_config(&config)?;
+        self.save_font_config(safe_font_name, &config)?;
         Ok(())
     }
     
-    /// Save fonts configuration to JSON file
-    pub fn save_fonts_config(&self, config: &FontsConfig) -> FontResult<()> {
-        let config_path = self.get_fonts_config_path();
+    /// Save font configuration to individual JSON file
+    pub fn save_font_config(&self, safe_font_name: &str, config: &FontConfig) -> FontResult<()> {
+        let config_path = self.get_font_config_path(safe_font_name);
         let json_content = serde_json::to_string_pretty(config)
             .map_err(|e| FontError::Io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to serialize fonts config: {}", e)
+                format!("Failed to serialize font config: {}", e)
             )))?;
         
         let mut file = fs::File::create(&config_path)?;
         file.write_all(json_content.as_bytes())?;
         
-        println!("Saved fonts configuration: {}", config_path.display());
+        println!("Saved font configuration: {}", config_path.display());
         Ok(())
     }
     
-    /// Load fonts configuration from JSON file
-    pub fn load_fonts_config(&self) -> FontResult<FontsConfig> {
-        let config_path = self.get_fonts_config_path();
+    /// Load configuration for a specific font
+    pub fn load_font_config(&self, safe_font_name: &str) -> FontResult<Option<FontConfig>> {
+        let config_path = self.get_font_config_path(safe_font_name);
         
         if !config_path.exists() {
-            return Ok(FontsConfig::new());
+            return Ok(None);
         }
         
         let content = fs::read_to_string(&config_path)?;
-        let config: FontsConfig = serde_json::from_str(&content)
+        let config: FontConfig = serde_json::from_str(&content)
             .map_err(|e| FontError::Io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to parse fonts config: {}", e)
+                format!("Failed to parse font config: {}", e)
             )))?;
         
-        Ok(config)
+        Ok(Some(config))
+    }
+    
+    /// Get all font configurations by scanning font directories
+    pub fn load_all_font_configs(&self) -> FontResult<Vec<FontConfig>> {
+        let session_dir = self.get_session_dir();
+        let mut configs = Vec::new();
+        
+        if !session_dir.exists() {
+            return Ok(configs);
+        }
+        
+        for entry in fs::read_dir(&session_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                if let Some(safe_font_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if let Ok(Some(config)) = self.load_font_config(safe_font_name) {
+                        configs.push(config);
+                    }
+                }
+            }
+        }
+        
+        Ok(configs)
     }
     
     /// Clean up old sessions (optional utility method)

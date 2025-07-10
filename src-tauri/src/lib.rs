@@ -21,6 +21,7 @@ pub fn run() {
             compress_vectors_to_2d, 
             get_compressed_vectors,
             get_fonts_config,
+            get_font_config,
             get_session_id,
             get_session_directory,
             create_new_session,
