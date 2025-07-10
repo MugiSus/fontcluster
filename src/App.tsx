@@ -9,6 +9,7 @@ import {
   TextFieldLabel,
 } from './components/ui/text-field';
 import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
+import { getSafeFontName } from './lib/utils';
 
 function App() {
   const [fonts] = createResource(() =>
@@ -96,7 +97,7 @@ function App() {
     if (nearestFont) {
       setNearestFont(nearestFont);
       const element = document.querySelector(
-        `[data-font-name="${nearestFont.replace(/\s/g, '_').replace(/\//g, '_')}"] > img`,
+        `[data-font-name="${getSafeFontName(nearestFont)}"] > img`,
       );
       if (element) {
         element.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -204,11 +205,9 @@ function App() {
             {(item) => (
               <li
                 class={`flex flex-col items-start gap-2 pb-4 pt-3 ${
-                  nearestFont() ===
-                    item.replace(/\s/g, '_').replace(/\//g, '_') &&
-                  'bg-muted/50'
+                  nearestFont() === getSafeFontName(item) && 'bg-muted/50'
                 }`}
-                data-font-name={item.replace(/\s/g, '_').replace(/\//g, '_')}
+                data-font-name={getSafeFontName(item)}
               >
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
                   {item}
@@ -216,7 +215,7 @@ function App() {
                 <img
                   class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
                   src={convertFileSrc(
-                    `${sessionDirectory() || ''}/Images/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
+                    `${sessionDirectory() || ''}/Images/${getSafeFontName(item)}.png`,
                   )}
                   alt={`Font preview for ${item}`}
                 />
