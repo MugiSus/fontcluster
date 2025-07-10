@@ -71,7 +71,6 @@ function App() {
     );
 
     if (fontElements.length === 0) {
-      setNearestFont('');
       return;
     }
 
@@ -204,8 +203,8 @@ function App() {
           <For each={fonts() || []}>
             {(item) => (
               <li
-                class={`flex flex-col items-start gap-2 pb-4 pt-3 ${
-                  nearestFont() === getSafeFontName(item) && 'bg-muted/50'
+                class={`flex w-full flex-col items-start gap-2 pb-4 pt-3 ${
+                  nearestFont() === getSafeFontName(item) && 'bg-muted'
                 }`}
                 data-font-name={getSafeFontName(item)}
               >
@@ -227,10 +226,46 @@ function App() {
       <div class='col-span-7 rounded-md border bg-muted/20'>
         <svg
           class='size-full select-none'
-          viewBox='0 0 800 600'
+          viewBox='0 0 600 600'
           xmlns='http://www.w3.org/2000/svg'
           onMouseMove={handleMouseMove}
         >
+          <g>
+            <circle
+              cx='300'
+              cy='300'
+              r='75'
+              fill='none'
+              class='pointer-events-none stroke-muted stroke-1'
+            />
+            <circle
+              cx='300'
+              cy='300'
+              r='250'
+              fill='none'
+              class='pointer-events-none stroke-muted stroke-1'
+            />
+            <circle
+              cx='300'
+              cy='300'
+              r='150'
+              fill='none'
+              class='pointer-events-none stroke-muted stroke-1'
+            />
+            <circle
+              cx='300'
+              cy='300'
+              r='450'
+              fill='none'
+              class='pointer-events-none stroke-muted stroke-1'
+            />
+            <circle
+              cx='300'
+              cy='300'
+              r='2'
+              class='pointer-events-none fill-muted-foreground'
+            />
+          </g>
           {(() => {
             const vectors = compressedVectors() || [];
 
@@ -249,7 +284,7 @@ function App() {
                   {([fontName, x, y]) => {
                     const scaledX =
                       padding +
-                      ((x - minX) / (maxX - minX)) * (800 - 2 * padding);
+                      ((x - minX) / (maxX - minX)) * (600 - 2 * padding);
                     const scaledY =
                       padding +
                       ((y - minY) / (maxY - minY)) * (600 - 2 * padding);
@@ -260,7 +295,11 @@ function App() {
                           cx={scaledX}
                           cy={scaledY}
                           r='3'
-                          class='fill-blue-500 stroke-blue-700 stroke-1'
+                          class={`stroke-1 ${
+                            nearestFont() === getSafeFontName(fontName)
+                              ? 'fill-yellow-300 stroke-yellow-500'
+                              : 'fill-blue-500 stroke-blue-700'
+                          }`}
                         />
                         <circle
                           cx={scaledX}
@@ -273,12 +312,18 @@ function App() {
                         <text
                           x={scaledX}
                           y={scaledY - 8}
-                          class='pointer-events-none select-none fill-foreground font-mono text-xs'
+                          class={`pointer-events-none select-none fill-foreground text-xs ${
+                            nearestFont() === getSafeFontName(fontName)
+                              ? 'font-bold'
+                              : ''
+                          }`}
                           text-anchor='middle'
                         >
-                          {fontName.length > 12
-                            ? fontName.substring(0, 12) + '…'
-                            : fontName}
+                          {nearestFont() === getSafeFontName(fontName)
+                            ? fontName
+                            : fontName.length > 12
+                              ? fontName.substring(0, 12) + '…'
+                              : fontName}
                         </text>
                       </g>
                     );
