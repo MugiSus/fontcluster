@@ -61,12 +61,10 @@ function App() {
     generateFontImages(text || 'A quick brown fox jumps over the lazy dog');
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  const handleMouseMove = (event: MouseEvent) => {
+    if (event.buttons === 0) return;
 
-    const elements = document.elementsFromPoint(e.clientX, e.clientY);
+    const elements = document.elementsFromPoint(event.clientX, event.clientY);
 
     const fontElements = elements.filter((el) =>
       el.hasAttribute('data-font-select-area'),
@@ -77,15 +75,17 @@ function App() {
       return;
     }
 
-    // 最も近いフォントを計算
     let nearestFont = '';
     let nearestDistance = Infinity;
 
     fontElements.forEach((el) => {
       const circle = el as SVGCircleElement;
-      const cx = parseFloat(circle.getAttribute('cx') || '0');
-      const cy = parseFloat(circle.getAttribute('cy') || '0');
-      const distance = Math.sqrt((mouseX - cx) ** 2 + (mouseY - cy) ** 2);
+      const rect = circle.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const distance = Math.sqrt(
+        (event.clientX - centerX) ** 2 + (event.clientY - centerY) ** 2,
+      );
 
       if (distance < nearestDistance) {
         nearestDistance = distance;
@@ -195,7 +195,10 @@ function App() {
         <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 p-4 px-5'>
           <For each={fonts() || []}>
             {(item) => (
-              <li class='flex flex-col items-start gap-3'>
+              <li
+                class='flex flex-col items-start gap-3'
+                data-font-name={item.replace(/\s/g, '_').replace(/\//g, '_')}
+              >
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {item}
                 </div>
@@ -252,7 +255,7 @@ function App() {
                         <circle
                           cx={scaledX}
                           cy={scaledY}
-                          r='32'
+                          r='48'
                           fill='transparent'
                           data-font-name={fontName}
                           data-font-select-area
