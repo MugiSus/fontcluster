@@ -12,9 +12,9 @@ import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
 import { getSafeFontName } from './lib/utils';
 
 function App() {
-  const [fonts] = createResource(() =>
-    invoke<string[]>('get_system_fonts').catch((error) => {
-      console.error('Failed to get system fonts:', error);
+  const [fonts, { refetch: refetchFonts }] = createResource(() =>
+    invoke<string[]>('get_session_fonts').catch((error) => {
+      console.error('Failed to get session fonts:', error);
       return [];
     }),
   );
@@ -53,6 +53,25 @@ function App() {
         },
       ),
   );
+
+  const [fontsConfig] = createResource(
+    () => isCompressing() === false && sessionId(),
+    () =>
+      invoke<string>('get_fonts_config')
+        .then((jsonStr) => JSON.parse(jsonStr))
+        .catch((error) => {
+          console.error('Failed to get fonts config:', error);
+          return [];
+        }),
+  );
+
+  // Helper function to get font display name from safe name
+  const getFontDisplayName = (safeName: string) => {
+    const configs = fontsConfig();
+    if (!configs) return safeName;
+    const config = configs.find((c: any) => c.safe_name === safeName);
+    return config?.font_name || safeName;
+  };
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
@@ -96,7 +115,7 @@ function App() {
     if (nearestFont) {
       setNearestFont(nearestFont);
       const element = document.querySelector(
-        `[data-font-name="${getSafeFontName(nearestFont)}"] > img`,
+        `[data-font-name="${nearestFont}"] > img`,
       );
       if (element) {
         element.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -149,6 +168,7 @@ function App() {
     listen('compression_complete', () => {
       console.log('Compression completed');
       refetchSessionId(); // Trigger reload of compressed vectors
+      refetchFonts(); // Trigger reload of font list
     });
   });
 
@@ -201,22 +221,22 @@ function App() {
         </form>
         <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20 py-2'>
           <For each={fonts() || []}>
-            {(item) => (
+            {(safeFontName) => (
               <li
                 class={`flex w-full flex-col items-start gap-2 pb-4 pt-3 ${
-                  nearestFont() === getSafeFontName(item) && 'bg-muted'
+                  nearestFont() === safeFontName && 'bg-muted'
                 }`}
-                data-font-name={getSafeFontName(item)}
+                data-font-name={safeFontName}
               >
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
-                  {item}
+                  {getFontDisplayName(safeFontName)}
                 </div>
                 <img
                   class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
                   src={convertFileSrc(
-                    `${sessionDirectory() || ''}/${getSafeFontName(item)}/sample.png`,
+                    `${sessionDirectory() || ''}/${safeFontName}/sample.png`,
                   )}
-                  alt={`Font preview for ${item}`}
+                  alt={`Font preview for ${getFontDisplayName(safeFontName)}`}
                 />
               </li>
             )}
@@ -297,7 +317,7 @@ function App() {
                           cy={scaledY}
                           r='3'
                           class={`stroke-1 ${
-                            nearestFont() === getSafeFontName(fontName)
+                            nearestFont() === fontName
                               ? 'fill-yellow-300 stroke-yellow-500'
                               : 'fill-blue-500 stroke-blue-700'
                           }`}
@@ -314,17 +334,17 @@ function App() {
                           x={scaledX}
                           y={scaledY - 8}
                           class={`pointer-events-none select-none fill-foreground text-xs ${
-                            nearestFont() === getSafeFontName(fontName)
+                            nearestFont() === fontName
                               ? 'font-bold'
                               : ''
                           }`}
                           text-anchor='middle'
                         >
-                          {nearestFont() === getSafeFontName(fontName)
-                            ? fontName
-                            : fontName.length > 12
-                              ? fontName.substring(0, 12) + '…'
-                              : fontName}
+                          {nearestFont() === fontName
+                            ? getFontDisplayName(fontName)
+                            : getFontDisplayName(fontName).length > 12
+                              ? getFontDisplayName(fontName).substring(0, 12) + '…'
+                              : getFontDisplayName(fontName)}
                         </text>
                       </g>
                     );

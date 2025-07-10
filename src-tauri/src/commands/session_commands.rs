@@ -48,3 +48,27 @@ pub fn cleanup_old_sessions(max_age_days: u64) -> Result<String, String> {
         .map(|_| format!("Successfully cleaned up sessions older than {} days", max_age_days))
         .map_err(|e| format!("Failed to clean up old sessions: {}", e))
 }
+
+/// Get all font directories in the current session
+/// 
+/// Returns a list of safe font names (directory names) that exist in the current session.
+/// These correspond to fonts that have been processed and have their own directories.
+#[tauri::command]
+pub fn get_session_fonts() -> Result<Vec<String>, String> {
+    let session_manager = SessionManager::global();
+    let session_dir = session_manager.get_session_dir();
+    
+    if !session_dir.exists() {
+        return Ok(Vec::new());
+    }
+    
+    let mut fonts: Vec<String> = std::fs::read_dir(&session_dir)
+        .map_err(|e| format!("Failed to read session directory: {}", e))?
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().is_dir())
+        .filter_map(|entry| entry.file_name().to_str().map(|s| s.to_string()))
+        .collect();
+    
+    fonts.sort();
+    Ok(fonts)
+}
