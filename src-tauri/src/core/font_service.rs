@@ -28,17 +28,6 @@ impl FontService {
         Ok(SessionManager::global().get_session_dir())
     }
     
-    pub fn get_images_directory() -> FontResult<PathBuf> {
-        Ok(SessionManager::global().get_images_directory())
-    }
-    
-    pub fn get_vectors_directory() -> FontResult<PathBuf> {
-        Ok(SessionManager::global().get_vectors_directory())
-    }
-    
-    pub fn get_compressed_vectors_directory() -> FontResult<PathBuf> {
-        Ok(SessionManager::global().get_compressed_vectors_directory())
-    }
     
     pub fn read_compressed_vectors() -> FontResult<Vec<(String, f64, f64)>> {
         let session_manager = SessionManager::global();

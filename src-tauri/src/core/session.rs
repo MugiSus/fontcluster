@@ -91,14 +91,13 @@ impl SessionManager {
     }
     
     /// Create directory structure for a specific font and its config
-    pub fn create_font_directory(&self, safe_font_name: &str, display_name: &str, family_name: &str) -> FontResult<PathBuf> {
+    pub fn create_font_directory(&self, safe_font_name: &str, font_name: &str) -> FontResult<PathBuf> {
         let font_dir = self.get_font_directory(safe_font_name);
         fs::create_dir_all(&font_dir)?;
         
         let config = FontConfig::new(
             safe_font_name.to_string(),
-            display_name.to_string(), 
-            family_name.to_string()
+            font_name.to_string()
         );
         self.save_font_config(safe_font_name, &config)?;
         

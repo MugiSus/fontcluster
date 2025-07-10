@@ -1,4 +1,4 @@
-use crate::core::{FontService, SessionManager};
+use crate::core::SessionManager;
 use crate::error::FontResult;
 use std::path::PathBuf;
 use std::fs;
