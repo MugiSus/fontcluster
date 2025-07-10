@@ -31,6 +31,7 @@ function App() {
   const [isCompressing, setIsCompressing] = createSignal(false);
 
   const [sampleText, setSampleText] = createSignal('');
+  const [nearestFont, setNearestFont] = createSignal('');
 
   const [sessionDirectory] = createResource(
     () => isCompressing() === false && sessionId(),
@@ -69,6 +70,7 @@ function App() {
     );
 
     if (fontElements.length === 0) {
+      setNearestFont('');
       return;
     }
 
@@ -92,11 +94,12 @@ function App() {
 
     // 最も近いフォントのli要素にスクロール
     if (nearestFont) {
+      setNearestFont(nearestFont);
       const element = document.querySelector(
-        `[data-font-name="${nearestFont.replace(/\s/g, '_').replace(/\//g, '_')}"]`,
+        `[data-font-name="${nearestFont.replace(/\s/g, '_').replace(/\//g, '_')}"] > img`,
       );
       if (element) {
-        element.scrollIntoView({ behavior: 'instant', block: 'start' });
+        element.scrollIntoView({ behavior: 'instant', block: 'center' });
       }
     }
   };
@@ -150,13 +153,13 @@ function App() {
   });
 
   return (
-    <main class='grid min-h-0 flex-1 grid-cols-12 grid-rows-1 gap-4 px-4 pb-4'>
+    <main class='grid min-h-0 flex-1 grid-cols-10 grid-rows-1 gap-4 px-4 pb-4'>
       <div class='col-span-3 flex flex-col gap-3'>
         <form
           onSubmit={handleSubmit}
           class='flex w-full flex-col items-stretch gap-3'
         >
-          <TextField class='grid w-full max-w-sm items-center gap-2'>
+          <TextField class='grid w-full items-center gap-2'>
             <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
             <TextFieldInput
               type='text'
@@ -196,29 +199,29 @@ function App() {
             )}
           </Button>
         </form>
-        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/20 p-4 px-5'>
+        <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20 py-2'>
           <For each={fonts() || []}>
             {(item) => (
               <li
-                class='flex flex-col items-start gap-3'
+                class='flex flex-col items-start gap-3 p-2'
                 data-font-name={item.replace(/\s/g, '_').replace(/\//g, '_')}
               >
-                <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
+                <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
                   {item}
                 </div>
                 <img
+                  class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
                   src={convertFileSrc(
                     `${sessionDirectory() || ''}/Images/${item.replace(/\s/g, '_').replace(/\//g, '_')}.png`,
                   )}
                   alt={`Font preview for ${item}`}
-                  class='block size-auto h-10 max-h-none max-w-none grayscale invert dark:invert-0'
                 />
               </li>
             )}
           </For>
         </ul>
       </div>
-      <div class='col-span-9 rounded-md border bg-muted/20'>
+      <div class='col-span-7 rounded-md border bg-muted/20'>
         <svg
           class='size-full select-none'
           viewBox='0 0 800 600'
