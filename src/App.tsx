@@ -30,8 +30,6 @@ function App() {
   const [isVectorizing, setIsVectorizing] = createSignal(false);
   const [isCompressing, setIsCompressing] = createSignal(false);
 
-  const [nearestFont, setNearestFont] = createSignal<string>('');
-
   const [sampleText, setSampleText] = createSignal('');
 
   const [sessionDirectory] = createResource(
@@ -71,7 +69,6 @@ function App() {
     );
 
     if (fontElements.length === 0) {
-      setNearestFont('');
       return;
     }
 
@@ -93,7 +90,15 @@ function App() {
       }
     });
 
-    setNearestFont(nearestFont);
+    // 最も近いフォントのli要素にスクロール
+    if (nearestFont) {
+      const element = document.querySelector(
+        `[data-font-name="${nearestFont.replace(/\s/g, '_').replace(/\//g, '_')}"]`,
+      );
+      if (element) {
+        element.scrollIntoView({ behavior: 'instant', block: 'start' });
+      }
+    }
   };
 
   const generateFontImages = async (text: string) => {
@@ -153,7 +158,6 @@ function App() {
         >
           <TextField class='grid w-full max-w-sm items-center gap-2'>
             <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
-            <TextFieldLabel for='preview-text'>{nearestFont()}</TextFieldLabel>
             <TextFieldInput
               type='text'
               name='preview-text'
@@ -192,7 +196,7 @@ function App() {
             )}
           </Button>
         </form>
-        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/10 p-4 px-5'>
+        <ul class='flex flex-col items-start gap-4 overflow-scroll rounded-md border bg-muted/20 p-4 px-5'>
           <For each={fonts() || []}>
             {(item) => (
               <li
@@ -214,7 +218,7 @@ function App() {
           </For>
         </ul>
       </div>
-      <div class='col-span-9 rounded-md border bg-muted/10'>
+      <div class='col-span-9 rounded-md border bg-muted/20'>
         <svg
           class='size-full select-none'
           viewBox='0 0 800 600'
