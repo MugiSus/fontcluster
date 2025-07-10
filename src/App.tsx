@@ -9,7 +9,6 @@ import {
   TextFieldLabel,
 } from './components/ui/text-field';
 import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
-import { getSafeFontName } from './lib/utils';
 import { FontConfig, CompressedFontVector } from './types/font';
 
 function App() {
@@ -56,7 +55,6 @@ function App() {
           return [] as CompressedFontVector[];
         }),
   );
-
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
@@ -132,6 +130,9 @@ function App() {
       setIsCompressing(true);
       const compressionResult = await invoke<string>('compress_vectors_to_2d');
       console.log('Compression result:', compressionResult);
+
+      refetchSessionId(); // Trigger reload of compressed vectors
+      refetchFonts(); // Trigger reload of font list
     } catch (error) {
       console.error('Failed to process fonts:', error);
     } finally {
@@ -152,8 +153,6 @@ function App() {
 
     listen('compression_complete', () => {
       console.log('Compression completed');
-      refetchSessionId(); // Trigger reload of compressed vectors
-      refetchFonts(); // Trigger reload of font list
     });
   });
 
@@ -204,14 +203,15 @@ function App() {
             )}
           </Button>
         </form>
-        <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20 py-2'>
+        <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20'>
           <For each={fonts() || []}>
             {(fontConfig: FontConfig) => (
               <li
-                class={`flex w-full flex-col items-start gap-2 pb-4 pt-3 ${
+                class={`flex w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
                   nearestFont() === fontConfig.safe_name && 'bg-muted'
                 }`}
                 data-font-name={fontConfig.safe_name}
+                onClick={() => setNearestFont(fontConfig.safe_name)}
               >
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
                   {fontConfig.font_name}
@@ -272,7 +272,9 @@ function App() {
             />
           </g>
           {(() => {
-            const vectors = compressedVectors() || [];
+            const vectors = (compressedVectors() || []).sort((a, b) => 
+              a.config.safe_name.localeCompare(b.config.safe_name)
+            );
             console.log('Compressed vectors:', vectors, sessionId());
 
             // Calculate bounds once

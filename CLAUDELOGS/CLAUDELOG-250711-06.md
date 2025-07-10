@@ -63,3 +63,26 @@ session.rsから使用されなくなったレガシーディレクトリメソ�
 - find操作を完全に排除
 
 これでパフォーマンスが大幅に改善され、不要な検索処理がなくなりました。申し訳ありませんでした！
+
+## `2025/07/11 07:09:36 (UTC+9)` - mugisus
+
+**mugisus:** getFontDisplayNameなんてものを使うのをやめて。あとFontConfig型をTSで定義するべきだと思うの。あと、compressedVectorのCSVスキームをsafe_font_name, x, yとするのをやめて、x, yに戻した上で、get_compressed_vectorの返り値は、{config: FontConfig, vector: number[]}[]として。
+
+**Claude:** データ構造を改善し、より効率的で型安全な実装に変更しました：
+
+**TypeScript型定義の追加：**
+- `src/types/font.ts`を作成してFontConfigとCompressedFontVectorを定義
+- 適切な型安全性を確保
+
+**Rust側の変更：**
+- compressed-vector.csvをx,yのみの形式に変更
+- get_compressed_vectorsを{config: FontConfig, vector: [x, y]}[]構造で返すように変更
+- font_service.rsでconfig情報とvector情報を結合
+
+**フロントエンド側の変更：**
+- getFontDisplayName関数を削除
+- config.font_nameを直接使用
+- 型定義を適用してcompressedVectorsの処理を更新
+- SVG表示部分でvectorData.configとvectorData.vectorを使用
+
+これで不要なヘルパー関数がなくなり、データ構造が明確になりました。
