@@ -203,7 +203,11 @@ function App() {
           <For each={fonts() || []}>
             {(item) => (
               <li
-                class='flex flex-col items-start gap-3 p-2'
+                class={`flex flex-col items-start gap-2 pb-4 pt-3 ${
+                  nearestFont() ===
+                    item.replace(/\s/g, '_').replace(/\//g, '_') &&
+                  'bg-muted/50'
+                }`}
                 data-font-name={item.replace(/\s/g, '_').replace(/\//g, '_')}
               >
                 <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
