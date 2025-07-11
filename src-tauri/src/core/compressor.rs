@@ -130,8 +130,15 @@ impl VectorCompressor {
         
         println!("Matrix created, configuring PaCMAP...");
         
-        // Configure PaCMAP with default settings for 2D embedding
-        let config = Configuration::default();
+        // Configure PaCMAP for balanced, moderately distributed layout
+        let config = Configuration::builder()
+            .embedding_dimensions(2)
+            .seed(42)  // Fixed seed for reproducible results
+            .num_iters((400, 400, 800))  // High iteration count for stable convergence
+            .learning_rate(0.9)  // Moderate learning rate
+            .mid_near_ratio(0.8)  // Strong emphasis on mid-range for even spacing
+            .far_pair_ratio(1.2)  // Reduced global structure to prevent extreme separation
+            .build();
         
         println!("Data prepared, running PaCMAP dimensionality reduction...");
         

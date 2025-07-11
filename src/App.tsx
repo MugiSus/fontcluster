@@ -236,7 +236,7 @@ function App() {
       <div class='col-span-7 rounded-md border bg-muted/20'>
         <svg
           class='size-full select-none'
-          viewBox='0 0 600 600'
+          viewBox='-50 -50 700 700'
           xmlns='http://www.w3.org/2000/svg'
           onMouseMove={handleMouseMove}
         >
@@ -287,19 +287,14 @@ function App() {
             const maxX = Math.max(...allX);
             const minY = Math.min(...allY);
             const maxY = Math.max(...allY);
-            const padding = 50;
 
             return (
               <For each={vectors}>
                 {(vectorData: CompressedFontVector) => {
                   const { config, vector } = vectorData;
                   const [x, y] = vector;
-                  const scaledX =
-                    padding +
-                    ((x - minX) / (maxX - minX)) * (600 - 2 * padding);
-                  const scaledY =
-                    padding +
-                    ((y - minY) / (maxY - minY)) * (600 - 2 * padding);
+                  const scaledX = ((x - minX) / (maxX - minX)) * 600;
+                  const scaledY = ((y - minY) / (maxY - minY)) * 600;
 
                   return (
                     <g>
