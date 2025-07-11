@@ -4,7 +4,8 @@ use std::path::PathBuf;
 use std::fs;
 use tokio::task;
 use futures::future::join_all;
-use nalgebra::DMatrix;
+use ndarray::Array2;
+use pacmap::{Configuration, fit_transform};
 use std::io::Write;
 
 // Vector compression service
@@ -69,12 +70,12 @@ impl VectorCompressor {
             return Err(FontError::Vectorization("No valid vectors found".to_string()));
         }
         
-        println!("Successfully loaded {} vectors, starting PCA compression...", vectors.len());
+        println!("Successfully loaded {} vectors, starting PaCMAP compression...", vectors.len());
         
-        // Perform PCA compression (now includes parallel file saving)
+        // Perform PaCMAP compression (now includes parallel file saving)
         Self::compress_vectors_to_2d(&vectors, &font_names).await?;
         
-        println!("PCA compression completed successfully!");
+        println!("PaCMAP compression completed successfully!");
         Ok(SessionManager::global().get_session_dir())
     }
     
@@ -118,38 +119,38 @@ impl VectorCompressor {
         
         println!("Preparing matrix data: {} samples x {} features", n_samples, n_features);
         
-        // Create matrix from vectors (rows are samples, columns are features)
-        let matrix_data: Vec<f64> = vectors
+        // Create ndarray from vectors for PaCMAP (rows are samples, columns are features)
+        let matrix_data: Vec<f32> = vectors
             .iter()
-            .flat_map(|vector| vector.iter().map(|&v| v as f64))
+            .flat_map(|vector| vector.iter().cloned())
             .collect();
         
-        let matrix = DMatrix::from_row_slice(n_samples, n_features, &matrix_data);
+        let data_matrix = Array2::from_shape_vec((n_samples, n_features), matrix_data)
+            .map_err(|e| FontError::Vectorization(format!("Failed to create data matrix: {}", e)))?;
         
-        println!("Matrix created, centering data...");
-        // Center the data (subtract column means)
-        let col_means: Vec<f64> = (0..n_features)
-            .map(|col| {
-                (0..n_samples).map(|row| matrix[(row, col)]).sum::<f64>() / n_samples as f64
-            })
-            .collect();
+        println!("Matrix created, configuring PaCMAP...");
         
-        let centered = matrix.map_with_location(|_row, col, val| val - col_means[col]);
+        // Configure PaCMAP with default settings for 2D embedding
+        let config = Configuration::default();
         
-        println!("Data centered, computing SVD for PCA...");
-        // Compute SVD for PCA
-        let svd = centered.svd(true, false);
+        println!("Data prepared, running PaCMAP dimensionality reduction...");
         
-        // Take first 2 components (first 2 columns of U matrix)
-        let u = svd.u.ok_or_else(|| FontError::Vectorization("SVD failed to compute U matrix".to_string()))?;
+        // Run PaCMAP compression in a blocking task since it's CPU intensive
+        let embedding_result = task::spawn_blocking(move || {
+            fit_transform(data_matrix.view(), config)
+        }).await
+        .map_err(|e| FontError::Vectorization(format!("PaCMAP task failed: {}", e)))?
+        .map_err(|e| FontError::Vectorization(format!("PaCMAP computation failed: {}", e)))?;
         
-        println!("SVD completed, saving compressed vectors in parallel...");
+        let (embedding, _) = embedding_result;
+        
+        println!("PaCMAP completed, saving compressed vectors in parallel...");
         
         // Save compressed vectors in parallel (format: FontName,X,Y)
         println!("Creating {} parallel save tasks...", font_names.len());
         let save_tasks: Vec<_> = font_names.iter().enumerate().map(|(i, font_name)| {
-            let x = u[(i, 0)] as f32;
-            let y = if u.ncols() > 1 { u[(i, 1)] as f32 } else { 0.0 };
+            let x = embedding[[i, 0]];
+            let y = if embedding.ncols() > 1 { embedding[[i, 1]] } else { 0.0 };
             let font_name = font_name.clone();
             task::spawn_blocking(move || {
                 let session_manager = SessionManager::global();
@@ -182,7 +183,7 @@ impl VectorCompressor {
                 Err(e) => Err(FontError::Vectorization(format!("Save task {} failed: {}", i, e))),
             })?;
         
-        println!("Compressed {} vectors to 2D and saved to CompressedVectors directory", font_names.len());
+        println!("Compressed {} vectors to 2D using PaCMAP and saved compressed vectors", font_names.len());
         Ok(())
     }
 }

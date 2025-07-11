@@ -1,4 +1,4 @@
-import { For, createResource, createSignal, onMount, Show } from 'solid-js';
+import { For, createResource, createSignal, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -212,8 +212,8 @@ function App() {
           >
             {(fontConfig: FontConfig) => (
               <li
-                class={`flex w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-                  nearestFont() === fontConfig.safe_name && 'bg-muted'
+                class={`flex cursor-pointer flex-col items-stretch gap-2 pb-4 pt-3 ${
+                  nearestFont() === fontConfig.safe_name && 'bg-border'
                 }`}
                 data-font-name={fontConfig.safe_name}
                 onClick={() => setNearestFont(fontConfig.safe_name)}

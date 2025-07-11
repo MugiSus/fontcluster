@@ -9,7 +9,8 @@
       "Edit(CLAUDELOGS/*.md)",
       "Write(CLAUDELOGS/*.md)",
       "Bash(date:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "WebFetch(domain:docs.rs)"
     ],
     "deny": []
   },
