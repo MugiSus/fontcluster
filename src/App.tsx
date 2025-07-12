@@ -232,13 +232,13 @@ function App() {
             )}
           </Button>
         </form>
-        <Tabs value='name' class='flex flex-col'>
-          <TabsList class='grid w-full grid-cols-2'>
+        <Tabs value='name' class='flex min-h-0 flex-1 flex-col'>
+          <TabsList class='grid w-full shrink-0 grid-cols-2'>
             <TabsTrigger value='name'>Name</TabsTrigger>
             <TabsTrigger value='similarity'>Similarity</TabsTrigger>
           </TabsList>
 
-          <TabsContent value='name'>
+          <TabsContent value='name' class='min-h-0 flex-1 overflow-hidden'>
             <FontCompressedVectorList
               compressedVectors={Object.values(compressedVectors() || {}).sort(
                 (a, b) => a.config.font_name.localeCompare(b.config.font_name),
@@ -249,7 +249,10 @@ function App() {
             />
           </TabsContent>
 
-          <TabsContent value='similarity'>
+          <TabsContent
+            value='similarity'
+            class='min-h-0 flex-1 overflow-hidden'
+          >
             <FontCompressedVectorList
               compressedVectors={Object.values(compressedVectors() || {}).sort(
                 (a, b) =>
