@@ -132,7 +132,9 @@ export function SessionSelector(props: SessionSelectorProps) {
                             </time>
                             <div class='flex gap-1.5'>
                               <For
-                                each={new Array(session.clusters_amount)
+                                each={new Array(
+                                  Math.min(session.clusters_amount, 10),
+                                )
                                   .fill(0)
                                   .map((_, i) => i)}
                               >

@@ -19,15 +19,16 @@ impl VectorClusterer {
         Ok(Self)
     }
     
-    pub async fn cluster_compressed_vectors(&self) -> FontResult<PathBuf> {
+    pub async fn cluster_compressed_vectors(&self) -> FontResult<(PathBuf, usize, usize)> {
         let vector_data = self.load_compressed_vectors().await?;
+        let sample_amount = vector_data.len();
         
-        let cluster_labels = Self::cluster_vectors(&vector_data)?;
+        let (cluster_labels, cluster_size) = Self::cluster_vectors(&vector_data)?;
         
         Self::save_clustered_vectors(&vector_data, &cluster_labels).await?;
         
         println!("Clustering completed successfully!");
-        Ok(SessionManager::global().get_session_dir())
+        Ok((SessionManager::global().get_session_dir(), cluster_size, sample_amount))
     }
     
     // Pure function: file discovery
@@ -122,7 +123,7 @@ impl VectorClusterer {
     
     
     // Pure function: perform clustering
-    fn cluster_vectors(vector_data: &[VectorData]) -> FontResult<ClusterLabels> {
+    fn cluster_vectors(vector_data: &[VectorData]) -> FontResult<(ClusterLabels, usize)> {
         // Convert data to the format expected by HDBSCAN
         let data_points: Vec<Vec<f32>> = vector_data
             .iter()
@@ -155,7 +156,7 @@ impl VectorClusterer {
         
         println!("HDBSCAN found {} clusters", num_clusters);
         
-        Ok(cluster_labels)
+        Ok((cluster_labels, num_clusters))
     }
     
     // Pure function: count cluster distribution

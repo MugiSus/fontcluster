@@ -99,14 +99,18 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
                     "clustering_complete",
                     || clusterer.cluster_compressed_vectors()
                 ).await
-                .and_then(|path| {
+                .and_then(|(path, cluster_size, sample_amount)| {
                     println!("✅ Compressed vectors clustered in: {}", path.display());
                     
-                    // Update session config to mark clustering as completed
+                    // Update session config to mark clustering as completed and record metrics
                     let session_manager = SessionManager::global();
                     let session_dir = session_manager.get_session_dir();
                     let mut config = SessionConfig::load_from_dir(&session_dir)?;
                     config.mark_clusters_completed(&session_dir)?;
+                    config.update_clusters_amount(&session_dir, cluster_size)?;
+                    config.update_samples_amount(&session_dir, sample_amount)?;
+                    
+                    println!("📊 Recorded metrics: {} clusters, {} samples", cluster_size, sample_amount);
                     
                     Ok(text)
                 })
