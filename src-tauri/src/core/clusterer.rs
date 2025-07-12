@@ -131,10 +131,10 @@ impl VectorClusterer {
         
         println!("Performing HDBSCAN clustering on {} points...", data_points.len());
         
-        // Configure HDBSCAN parameters for fewer, larger clusters
+        // Configure HDBSCAN parameters to reduce noise points
         let hyper_params = HdbscanHyperParams::builder()
-            .min_cluster_size(15)  // Significantly increased minimum points to form larger clusters
-            .min_samples(10)        // Increased neighborhood requirement for denser clusters
+            .min_cluster_size(3)  // Reduced to allow smaller clusters (less noise)
+            .min_samples(2)       // Reduced neighborhood requirement (easier clustering)
             .build();
         
         // Create HDBSCAN clusterer and perform clustering
