@@ -9,12 +9,14 @@ use std::fs;
 pub struct FontService;
 
 impl FontService {
+    /// Returns a list of system fonts, excluding symbol fonts and noise fonts
     pub fn get_system_fonts() -> Vec<String> {
         SystemSource::new()
             .all_families()
             .map(|families| {
                 let mut fonts: Vec<String> = families.into_iter()
                     .map(|f| f.to_string())
+                    .filter(|font_name| Self::is_regular_font(font_name))
                     .collect::<HashSet<_>>()
                     .into_iter()
                     .collect();
@@ -22,6 +24,28 @@ impl FontService {
                 fonts
             })
             .unwrap_or_default()
+    }
+    
+    /// Filters out symbol fonts, dingbats, and other noise fonts
+    fn is_regular_font(font_name: &str) -> bool {
+        let font_lower = font_name.to_lowercase();
+        
+        // List of font patterns to exclude (minimal list to avoid excluding useful fonts)
+        let excluded_patterns = [
+            "wingdings",
+            "dingbats", 
+            "emoji",
+            "font awesome"
+        ];
+        
+        // Check if font name contains any excluded patterns
+        for pattern in &excluded_patterns {
+            if font_lower.contains(pattern) {
+                return false;
+            }
+        }
+        
+        true
     }
     
     pub fn create_output_directory() -> FontResult<PathBuf> {
