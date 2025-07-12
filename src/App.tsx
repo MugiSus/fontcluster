@@ -32,6 +32,7 @@ function App() {
   const [isGenerating, setIsGenerating] = createSignal(false);
   const [isVectorizing, setIsVectorizing] = createSignal(false);
   const [isCompressing, setIsCompressing] = createSignal(false);
+  const [isClustering, setIsClustering] = createSignal(false);
 
   const [sampleText, setSampleText] = createSignal('');
   const [nearestFont, setNearestFont] = createSignal('');
@@ -46,7 +47,7 @@ function App() {
   );
 
   const [compressedVectors] = createResource(
-    () => isCompressing() === false && sessionId(),
+    () => isClustering() === false && sessionId(),
     () =>
       invoke<string>('get_compressed_vectors')
         .then((jsonStr) => JSON.parse(jsonStr) as CompressedFontVector[])
@@ -131,6 +132,14 @@ function App() {
       const compressionResult = await invoke<string>('compress_vectors_to_2d');
       console.log('Compression result:', compressionResult);
 
+      // Step 4: Cluster compressed vectors
+      setIsCompressing(false);
+      setIsClustering(true);
+      const clusteringResult = await invoke<string>(
+        'cluster_compressed_vectors',
+      );
+      console.log('Clustering result:', clusteringResult);
+
       refetchSessionId(); // Trigger reload of compressed vectors
       refetchFonts(); // Trigger reload of font list
     } catch (error) {
@@ -139,6 +148,7 @@ function App() {
       setIsGenerating(false);
       setIsVectorizing(false);
       setIsCompressing(false);
+      setIsClustering(false);
     }
   };
 
@@ -153,6 +163,10 @@ function App() {
 
     listen('compression_complete', () => {
       console.log('Compression completed');
+    });
+
+    listen('clustering_complete', () => {
+      console.log('Clustering completed');
     });
   });
 
@@ -176,23 +190,33 @@ function App() {
           </TextField>
           <Button
             type='submit'
-            disabled={isGenerating() || isVectorizing() || isCompressing()}
+            disabled={
+              isGenerating() ||
+              isVectorizing() ||
+              isCompressing() ||
+              isClustering()
+            }
             variant='default'
             class='flex items-center gap-2'
           >
             {isGenerating() ? (
               <>
-                Generating Images... (1/3)
+                Generating Images... (1/4)
                 <LoaderIcon class='animate-spin' />
               </>
             ) : isVectorizing() ? (
               <>
-                Vectorizing Images... (2/3)
+                Vectorizing Images... (2/4)
                 <LoaderIcon class='animate-spin' />
               </>
             ) : isCompressing() ? (
               <>
-                Compressing Vectors... (3/3)
+                Compressing Vectors... (3/4)
+                <LoaderIcon class='animate-spin' />
+              </>
+            ) : isClustering() ? (
+              <>
+                Clusterizing... (4/4)
                 <LoaderIcon class='animate-spin' />
               </>
             ) : (

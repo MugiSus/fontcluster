@@ -1,4 +1,4 @@
-use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor};
+use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer};
 use crate::config::FONT_SIZE;
 use tauri::Emitter;
 
@@ -42,4 +42,18 @@ pub async fn compress_vectors_to_2d(app_handle: tauri::AppHandle) -> Result<Stri
             format!("Vectors compressed to 2D in: {}", output_dir.display())
         })
         .map_err(|e| format!("Vector compression failed: {}", e))
+}
+
+#[tauri::command]
+pub async fn cluster_compressed_vectors(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let clusterer = VectorClusterer::new()
+        .map_err(|e| format!("Failed to initialize clusterer: {}", e))?;
+    
+    clusterer.cluster_compressed_vectors().await
+        .map(|output_dir| {
+            app_handle.emit("clustering_complete", ())
+                .unwrap_or_else(|e| eprintln!("Failed to emit clustering completion event: {}", e));
+            format!("Compressed vectors clustered in: {}", output_dir.display())
+        })
+        .map_err(|e| format!("Vector clustering failed: {}", e))
 }
