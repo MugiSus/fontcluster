@@ -47,7 +47,7 @@ pub struct FontClassifier {
 }
 
 #[derive(Debug, Clone)]
-struct TrainingSample {
+pub struct TrainingSample {
     font_name: String,
     features: Vec<f32>,
     category: FontCategory,
@@ -265,5 +265,36 @@ impl FontClassifier {
         
         println!("Full training process completed!");
         Ok(classifier)
+    }
+    
+    // デモ用の訓練データ生成
+    pub fn generate_demo_training_data() -> Vec<TrainingSample> {
+        vec![
+            TrainingSample {
+                font_name: "Arial".to_string(),
+                features: vec![-0.5, 0.2],
+                category: FontCategory::SansSerif,
+            },
+            TrainingSample {
+                font_name: "Times New Roman".to_string(),
+                features: vec![0.3, -0.4],
+                category: FontCategory::Serif,
+            },
+            TrainingSample {
+                font_name: "Comic Sans MS".to_string(),
+                features: vec![0.8, 0.6],
+                category: FontCategory::Handwriting,
+            },
+            TrainingSample {
+                font_name: "Courier New".to_string(),
+                features: vec![-0.2, -0.8],
+                category: FontCategory::Monospace,
+            },
+            TrainingSample {
+                font_name: "Impact".to_string(),
+                features: vec![1.0, 0.1],
+                category: FontCategory::Display,
+            },
+        ]
     }
 }
