@@ -286,7 +286,7 @@ function App() {
                   compressedVectors() || {},
                 ).sort(
                   (a, b) =>
-                    a.k - b.k ||
+                    (a.k < 0 ? Infinity : a.k) - (b.k < 0 ? Infinity : b.k) ||
                     a.config.font_name.localeCompare(b.config.font_name),
                 )}
                 sessionDirectory={sessionDirectory() || ''}

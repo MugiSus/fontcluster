@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { ArchiveRestoreIcon, RefreshCwIcon } from 'lucide-solid';
 
 interface SessionInfo {
   session_id: string;
@@ -82,7 +83,7 @@ export function SessionSelector(props: SessionSelectorProps) {
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent class='max-h-[80vh] max-w-2xl'>
+      <DialogContent class='h-[75vh] max-w-2xl'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
@@ -178,6 +179,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                               disabled={isRestoring()}
                             >
                               Restore
+                              <ArchiveRestoreIcon class='size-4' />
                             </Button>
                           }
                         >
@@ -204,6 +206,7 @@ export function SessionSelector(props: SessionSelectorProps) {
             disabled={availableSessions.loading}
           >
             Refresh
+            <RefreshCwIcon class='size-4' />
           </Button>
         </div>
       </DialogContent>
