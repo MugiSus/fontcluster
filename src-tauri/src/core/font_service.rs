@@ -114,7 +114,7 @@ impl FontService {
             )))
     }
     
-    fn parse_compressed_vector_line(content: &str) -> Option<(f64, f64, u32)> {
+    fn parse_compressed_vector_line(content: &str) -> Option<(f64, f64, i32)> {
         let mut values = content.trim().split(',');
         let x = values.next()?.parse().ok()?;
         let y = values.next()?.parse().ok()?;
