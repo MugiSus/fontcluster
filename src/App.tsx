@@ -13,7 +13,7 @@ import {
   CompressedFontVectorMap,
   FontVectorData,
 } from './types/font';
-import { FontCompressedVectorList } from './components/FontCompressedVectorList';
+import { FontCompressedVectorList } from './components/font-compressed-vector-list';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 
 function App() {
