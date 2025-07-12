@@ -72,11 +72,11 @@ export function SessionSelector(props: SessionSelectorProps) {
     if (session.has_clusters)
       return { text: 'Complete', variant: 'default' as const };
     if (session.has_compressed)
-      return { text: 'Compressed', variant: 'secondary' as const };
+      return { text: 'Compressed', variant: 'outline' as const };
     if (session.has_vectors)
-      return { text: 'Vectorized', variant: 'secondary' as const };
+      return { text: 'Vectorized', variant: 'outline' as const };
     if (session.has_images)
-      return { text: 'Rasterized', variant: 'secondary' as const };
+      return { text: 'Rasterized', variant: 'outline' as const };
     return { text: 'Empty', variant: 'error' as const };
   };
 
