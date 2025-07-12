@@ -28,11 +28,11 @@ interface SessionSelectorProps {
 export function SessionSelector(props: SessionSelectorProps) {
   const [isRestoring, setIsRestoring] = createSignal(false);
 
-  const [availableSessions, { refetch }] = createResource<SessionInfo[]>(
+  const [availableSessions, { refetch }] = createResource(
     () => props.open,
-    async () => {
-      if (!props.open) return [];
-      
+    async (open: boolean) => {
+      if (!open) return [];
+
       try {
         const result = await invoke<string>('get_available_sessions');
         return JSON.parse(result) as SessionInfo[];
@@ -40,7 +40,7 @@ export function SessionSelector(props: SessionSelectorProps) {
         console.error('Failed to get available sessions:', error);
         return [];
       }
-    }
+    },
   );
 
   const restoreSession = async (sessionId: string) => {
@@ -61,37 +61,46 @@ export function SessionSelector(props: SessionSelectorProps) {
   };
 
   const getCompletionBadge = (session: SessionInfo) => {
-    if (session.has_clusters) return { text: 'Complete', class: 'bg-green-100 text-green-800' };
-    if (session.has_compressed) return { text: 'Compressed', class: 'bg-yellow-100 text-yellow-800' };
-    if (session.has_vectors) return { text: 'Vectorized', class: 'bg-blue-100 text-blue-800' };
-    if (session.has_images) return { text: 'Images Only', class: 'bg-gray-100 text-gray-800' };
+    if (session.has_clusters)
+      return { text: 'Complete', class: 'bg-green-100 text-green-800' };
+    if (session.has_compressed)
+      return { text: 'Compressed', class: 'bg-yellow-100 text-yellow-800' };
+    if (session.has_vectors)
+      return { text: 'Vectorized', class: 'bg-blue-100 text-blue-800' };
+    if (session.has_images)
+      return { text: 'Images Only', class: 'bg-gray-100 text-gray-800' };
     return { text: 'Empty', class: 'bg-red-100 text-red-800' };
   };
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent class="max-w-2xl max-h-[80vh]">
+      <DialogContent class='max-h-[80vh] max-w-2xl'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
-            Select a previous session to restore. You can continue processing from where you left off.
+            Select a previous session to restore. You can continue processing
+            from where you left off.
           </DialogDescription>
         </DialogHeader>
-        
-        <div class="flex flex-col gap-4 max-h-[50vh] overflow-y-auto">
+
+        <div class='flex max-h-[50vh] flex-col gap-4 overflow-y-auto'>
           <Show
             when={!availableSessions.loading && availableSessions()}
             fallback={
-              <div class="flex justify-center py-8">
-                <div class="text-sm text-muted-foreground">Loading sessions...</div>
+              <div class='flex justify-center py-8'>
+                <div class='text-sm text-muted-foreground'>
+                  Loading sessions...
+                </div>
               </div>
             }
           >
             <Show
-              when={availableSessions()?.length > 0}
+              when={availableSessions()}
               fallback={
-                <div class="text-center py-8">
-                  <div class="text-sm text-muted-foreground">No previous sessions found</div>
+                <div class='py-8 text-center'>
+                  <div class='text-sm text-muted-foreground'>
+                    No previous sessions found
+                  </div>
                 </div>
               }
             >
@@ -99,40 +108,50 @@ export function SessionSelector(props: SessionSelectorProps) {
                 {(session) => {
                   const badge = getCompletionBadge(session);
                   return (
-                    <div class="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                      <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 mb-2">
-                            <span class={`px-2 py-1 rounded-full text-xs font-medium ${badge.class}`}>
+                    <div class='rounded-lg border p-4 transition-colors hover:bg-muted/50'>
+                      <div class='flex items-start justify-between gap-4'>
+                        <div class='min-w-0 flex-1'>
+                          <div class='mb-2 flex items-center gap-2'>
+                            <span
+                              class={`rounded-full px-2 py-1 text-xs font-medium ${badge.class}`}
+                            >
                               {badge.text}
                             </span>
-                            <span class="text-xs text-muted-foreground">
+                            <span class='text-xs text-muted-foreground'>
                               {formatDate(session.date)}
                             </span>
                           </div>
-                          <div class="text-sm font-medium mb-1 truncate">
+                          <div class='mb-1 truncate text-sm font-medium'>
                             "{session.preview_text}"
                           </div>
-                          <div class="text-xs text-muted-foreground font-mono">
+                          <div class='font-mono text-xs text-muted-foreground'>
                             {session.session_id}
                           </div>
-                          <div class="flex gap-2 mt-2">
+                          <div class='mt-2 flex gap-2'>
                             <Show when={session.has_images}>
-                              <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Images</span>
+                              <span class='rounded bg-blue-50 px-2 py-1 text-xs text-blue-700'>
+                                Images
+                              </span>
                             </Show>
                             <Show when={session.has_vectors}>
-                              <span class="text-xs bg-green-50 text-green-700 px-2 py-1 rounded">Vectors</span>
+                              <span class='rounded bg-green-50 px-2 py-1 text-xs text-green-700'>
+                                Vectors
+                              </span>
                             </Show>
                             <Show when={session.has_compressed}>
-                              <span class="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded">Compressed</span>
+                              <span class='rounded bg-yellow-50 px-2 py-1 text-xs text-yellow-700'>
+                                Compressed
+                              </span>
                             </Show>
                             <Show when={session.has_clusters}>
-                              <span class="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded">Clustered</span>
+                              <span class='rounded bg-purple-50 px-2 py-1 text-xs text-purple-700'>
+                                Clustered
+                              </span>
                             </Show>
                           </div>
                         </div>
                         <Button
-                          size="sm"
+                          size='sm'
                           onClick={() => restoreSession(session.session_id)}
                           disabled={isRestoring()}
                         >
@@ -146,16 +165,13 @@ export function SessionSelector(props: SessionSelectorProps) {
             </Show>
           </Show>
         </div>
-        
-        <div class="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => props.onOpenChange(false)}
-          >
+
+        <div class='flex justify-end gap-2'>
+          <Button variant='outline' onClick={() => props.onOpenChange(false)}>
             Cancel
           </Button>
           <Button
-            variant="outline"
+            variant='outline'
             onClick={() => refetch()}
             disabled={availableSessions.loading}
           >
