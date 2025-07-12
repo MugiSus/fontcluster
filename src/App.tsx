@@ -339,9 +339,9 @@ function App() {
                         const categoryColors = [
                           'fill-blue-500', // 0: sans-serif
                           'fill-red-500', // 1: serif
-                          'fill-green-500', // 2: handwriting
+                          'fill-yellow-500', // 2: handwriting
                           'fill-purple-500', // 3: monospace
-                          'fill-orange-500', // 4: display
+                          'fill-green-500', // 4: display
                         ];
 
                         // Get category color (no noise handling needed for supervised learning)

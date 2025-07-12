@@ -16,11 +16,11 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
         {(vectorData: FontVectorData) => {
           // Define category colors for supervised learning
           const categoryColors = [
-            'bg-blue-500', // 0: sans-serif
-            'bg-red-500', // 1: serif
-            'bg-green-500', // 2: handwriting
-            'bg-purple-500', // 3: monospace
-            'bg-orange-500', // 4: display
+            'text-blue-500 bg-blue-500', // 0: sans-serif
+            'text-red-500 bg-red-500', // 1: serif
+            'text-yellow-500 bg-yellow-500', // 2: handwriting
+            'text-purple-500 bg-purple-500', // 3: monospace
+            'text-green-500 bg-green-500', // 4: display
           ];
 
           // Get category color (no noise handling needed for supervised learning)
@@ -37,6 +37,7 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             >
               <div class='flex items-center gap-2 px-4'>
                 <div class={`mb-0.5 h-3 w-1 rounded-full ${categoryColor}`} />
+                <div />
                 <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {vectorData.config.font_name}
                 </div>
