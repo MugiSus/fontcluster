@@ -14,9 +14,8 @@ pub enum FontCategory {
     SansSerif = 0,
     Serif = 1,
     Handwriting = 2,
-    MonoSpace = 3,
-    Display = 4,      // cursive-script相当
-    SlabSerif = 5,
+    Monospace = 3,
+    Display = 4,
 }
 
 impl FontCategory {
@@ -25,9 +24,8 @@ impl FontCategory {
             FontCategory::SansSerif => "sans-serif",
             FontCategory::Serif => "serif", 
             FontCategory::Handwriting => "handwriting",
-            FontCategory::MonoSpace => "mono-space",
-            FontCategory::Display => "cursive-script",
-            FontCategory::SlabSerif => "slab-serif",
+            FontCategory::Monospace => "monospace",
+            FontCategory::Display => "display",
         }
     }
     
@@ -36,7 +34,7 @@ impl FontCategory {
             "sans-serif" => FontCategory::SansSerif,
             "serif" => FontCategory::Serif,
             "handwriting" => FontCategory::Handwriting,
-            "monospace" => FontCategory::MonoSpace,
+            "monospace" => FontCategory::Monospace,
             "display" => FontCategory::Display,
             _ => FontCategory::SansSerif, // デフォルト
         }
@@ -130,9 +128,8 @@ impl FontClassifier {
             0 => Ok(FontCategory::SansSerif),
             1 => Ok(FontCategory::Serif),
             2 => Ok(FontCategory::Handwriting),
-            3 => Ok(FontCategory::MonoSpace),
+            3 => Ok(FontCategory::Monospace),
             4 => Ok(FontCategory::Display),
-            5 => Ok(FontCategory::SlabSerif),
             _ => Err(FontError::Classification("Unknown category".to_string())),
         }
     }
