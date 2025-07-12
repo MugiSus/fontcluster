@@ -1,6 +1,5 @@
-import { For, createResource, createSignal, onMount } from 'solid-js';
+import { For, Show, createResource, createSignal, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './components/ui/button';
 import {
@@ -9,17 +8,23 @@ import {
   TextFieldLabel,
 } from './components/ui/text-field';
 import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
-import { FontConfig, CompressedFontVector } from './types/font';
+import {
+  // FontConfig,
+  CompressedFontVectorMap,
+  FontVectorData,
+} from './types/font';
+import { FontCompressedVectorList } from './components/FontCompressedVectorList';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 
 function App() {
-  const [fonts, { refetch: refetchFonts }] = createResource(() =>
-    invoke<string>('get_session_fonts')
-      .then((jsonStr) => JSON.parse(jsonStr) as FontConfig[])
-      .catch((error) => {
-        console.error('Failed to get session fonts:', error);
-        return [] as FontConfig[];
-      }),
-  );
+  // const [fonts, { refetch: refetchFonts }] = createResource(() =>
+  //   invoke<string>('get_session_fonts')
+  //     .then((jsonStr) => JSON.parse(jsonStr) as FontConfig[])
+  //     .catch((error) => {
+  //       console.error('Failed to get session fonts:', error);
+  //       return [] as FontConfig[];
+  //     }),
+  // );
 
   // Get session ID for debugging/logging purposes
   const [sessionId, { refetch: refetchSessionId }] = createResource(() =>
@@ -50,10 +55,10 @@ function App() {
     () => isClustering() === false && sessionId(),
     () =>
       invoke<string>('get_compressed_vectors')
-        .then((jsonStr) => JSON.parse(jsonStr) as CompressedFontVector[])
+        .then((jsonStr) => JSON.parse(jsonStr) as CompressedFontVectorMap)
         .catch((error) => {
           console.error('Failed to get compressed vectors:', error);
-          return [] as CompressedFontVector[];
+          return {} as CompressedFontVectorMap;
         }),
   );
 
@@ -141,7 +146,7 @@ function App() {
       console.log('Clustering result:', clusteringResult);
 
       refetchSessionId(); // Trigger reload of compressed vectors
-      refetchFonts(); // Trigger reload of font list
+      // refetchFonts(); // Trigger reload of font list
     } catch (error) {
       console.error('Failed to process fonts:', error);
     } finally {
@@ -175,7 +180,7 @@ function App() {
       <div class='col-span-3 flex flex-col gap-3'>
         <form
           onSubmit={handleSubmit}
-          class='flex w-full flex-col items-stretch gap-3'
+          class='flex w-full flex-col items-stretch gap-2'
         >
           <TextField class='grid w-full items-center gap-2'>
             <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
@@ -196,7 +201,7 @@ function App() {
               isCompressing() ||
               isClustering()
             }
-            variant='default'
+            variant='outline'
             class='flex items-center gap-2'
           >
             {isGenerating() ? (
@@ -227,35 +232,36 @@ function App() {
             )}
           </Button>
         </form>
-        <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20'>
-          <For
-            each={
-              fonts()?.sort((a, b) => a.font_name.localeCompare(b.font_name)) ||
-              []
-            }
-          >
-            {(fontConfig: FontConfig) => (
-              <li
-                class={`flex cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-                  nearestFont() === fontConfig.safe_name && 'bg-border'
-                }`}
-                data-font-name={fontConfig.safe_name}
-                onClick={() => setNearestFont(fontConfig.safe_name)}
-              >
-                <div class='sticky left-0 overflow-hidden text-ellipsis text-nowrap break-all px-4 text-sm font-light text-muted-foreground'>
-                  {fontConfig.font_name}
-                </div>
-                <img
-                  class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
-                  src={convertFileSrc(
-                    `${sessionDirectory() || ''}/${fontConfig.safe_name}/sample.png`,
-                  )}
-                  alt={`Font preview for ${fontConfig.font_name}`}
-                />
-              </li>
-            )}
-          </For>
-        </ul>
+        <Tabs value='name' class='flex flex-col'>
+          <TabsList class='grid w-full grid-cols-2'>
+            <TabsTrigger value='name'>Name</TabsTrigger>
+            <TabsTrigger value='similarity'>Similarity</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value='name'>
+            <FontCompressedVectorList
+              compressedVectors={Object.values(compressedVectors() || {}).sort(
+                (a, b) => a.config.font_name.localeCompare(b.config.font_name),
+              )}
+              sessionDirectory={sessionDirectory() || ''}
+              nearestFont={nearestFont()}
+              onFontClick={setNearestFont}
+            />
+          </TabsContent>
+
+          <TabsContent value='similarity'>
+            <FontCompressedVectorList
+              compressedVectors={Object.values(compressedVectors() || {}).sort(
+                (a, b) =>
+                  a.k - b.k ||
+                  a.config.font_name.localeCompare(b.config.font_name),
+              )}
+              sessionDirectory={sessionDirectory() || ''}
+              nearestFont={nearestFont()}
+              onFontClick={setNearestFont}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
       <div class='col-span-7 rounded-md border bg-muted/20'>
         <svg
@@ -301,77 +307,87 @@ function App() {
             />
           </g>
           {(() => {
-            const vectors = compressedVectors() || [];
-            console.log('Compressed vectors:', vectors, sessionId());
+            const vectorsMap = compressedVectors() || {};
+            console.log('Compressed vectors:', vectorsMap, sessionId());
 
-            // Calculate bounds once
-            const allX = vectors.map((v) => v.vector[0]);
-            const allY = vectors.map((v) => v.vector[1]);
-            const minX = Math.min(...allX);
-            const maxX = Math.max(...allX);
-            const minY = Math.min(...allY);
-            const maxY = Math.max(...allY);
+            // Convert map to array for processing
+            const vectors = Object.values(vectorsMap);
 
             return (
-              <For each={vectors}>
-                {(vectorData: CompressedFontVector) => {
-                  const { config, vector } = vectorData;
-                  const [x, y, k] = vector;
-                  const scaledX = ((x - minX) / (maxX - minX)) * 600;
-                  const scaledY = ((y - minY) / (maxY - minY)) * 600;
-
-                  // Define cluster colors
-                  const clusterColors = [
-                    'stroke-red-500',
-                    'stroke-blue-500',
-                    'stroke-green-500',
-                    'stroke-purple-500',
-                    'stroke-orange-500',
-                    'stroke-pink-500',
-                    'stroke-teal-500',
-                    'stroke-indigo-500',
-                  ];
-
-                  const clusterColor =
-                    clusterColors[(k - 1) % clusterColors.length];
+              <Show when={vectors.length > 0}>
+                {(() => {
+                  // Calculate bounds once
+                  const allX = vectors.map((v) => v.x);
+                  const allY = vectors.map((v) => v.y);
+                  const minX = Math.min(...allX);
+                  const maxX = Math.max(...allX);
+                  const minY = Math.min(...allY);
+                  const maxY = Math.max(...allY);
 
                   return (
-                    <g>
-                      <circle
-                        cx={scaledX}
-                        cy={scaledY}
-                        r={nearestFont() === config.safe_name ? 4 : 1}
-                        stroke-width={
-                          nearestFont() === config.safe_name ? 3 : 2
-                        }
-                        class={`${clusterColor} fill-background`}
-                      />
-                      <circle
-                        cx={scaledX}
-                        cy={scaledY}
-                        r='48'
-                        fill='transparent'
-                        data-font-name={config.safe_name}
-                        data-font-select-area
-                      />
-                      {/* <text
-                        x={scaledX}
-                        y={scaledY - 8}
-                        class={`pointer-events-none select-none fill-foreground text-xs ${
-                          nearestFont() === config.safe_name ? 'font-bold' : ''
-                        }`}
-                        text-anchor='middle'
-                      >
-                        {nearestFont() === config.safe_name
-                          ? config.font_name
-                          : config.font_name.length > 12
-                            ? config.font_name.substring(0, 12) + '…'
-                            : config.font_name}
-                      </text> */}
-                    </g>
+                    <For each={vectors}>
+                      {(vectorData: FontVectorData) => {
+                        const { x, y, k, config } = vectorData;
+                        const scaledX = ((x - minX) / (maxX - minX)) * 600;
+                        const scaledY = ((y - minY) / (maxY - minY)) * 600;
+
+                        // Define cluster colors
+                        const clusterColors = [
+                          'stroke-red-500',
+                          'stroke-blue-500',
+                          'stroke-green-500',
+                          'stroke-purple-500',
+                          'stroke-orange-500',
+                          'stroke-pink-500',
+                          'stroke-teal-500',
+                          'stroke-indigo-500',
+                        ];
+
+                        const clusterColor =
+                          clusterColors[(k - 1) % clusterColors.length];
+
+                        return (
+                          <g>
+                            <circle
+                              cx={scaledX}
+                              cy={scaledY}
+                              r={nearestFont() === config.safe_name ? 4 : 1}
+                              stroke-width={
+                                nearestFont() === config.safe_name ? 3 : 2
+                              }
+                              class={`${clusterColor} fill-background`}
+                            />
+                            <circle
+                              cx={scaledX}
+                              cy={scaledY}
+                              r='48'
+                              fill='transparent'
+                              data-font-name={config.safe_name}
+                              data-font-select-area
+                            />
+                            {/* <text
+                              x={scaledX}
+                              y={scaledY - 8}
+                              class={`pointer-events-none select-none fill-foreground text-xs ${
+                                nearestFont() === config.safe_name
+                                  ? 'font-bold'
+                                  : ''
+                              }`}
+                              text-anchor='middle'
+                            >
+                              {nearestFont() === config.safe_name
+                                ? config.font_name
+                                : config.font_name.length > 12
+                                  ? config.font_name.substring(0, 12) + '…'
+                                  : config.font_name}
+                            </text> */}
+                          </g>
+                        );
+                      }}
+                    </For>
                   );
-                }}
-              </For>
+                })()}
+              </Show>
             );
           })()}
         </svg>

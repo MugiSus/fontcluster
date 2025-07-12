@@ -33,7 +33,7 @@ impl FontService {
         let session_manager = SessionManager::global();
         let session_dir = session_manager.get_session_dir();
         
-        let mut result = Vec::new();
+        let mut result = serde_json::Map::new();
         
         for entry in fs::read_dir(&session_dir)? {
             let entry = entry?;
@@ -68,10 +68,16 @@ impl FontService {
             };
             
             if let Some((x, y, k)) = Self::parse_compressed_vector_line(&content) {
-                result.push(serde_json::json!({
-                    "config": config,
-                    "vector": [x, y, k]
-                }));
+                // Use font_name as key, store vector coordinates and config
+                result.insert(
+                    config.font_name.clone(),
+                    serde_json::json!({
+                        "x": x,
+                        "y": y,
+                        "k": k,
+                        "config": config
+                    })
+                );
             }
         }
         

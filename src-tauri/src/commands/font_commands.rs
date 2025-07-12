@@ -21,11 +21,11 @@ pub fn get_system_fonts() -> Vec<String> {
 
 /// Retrieves compressed 2D vectors for font visualization
 /// 
-/// Returns a JSON string containing an array of objects with config and vector data.
-/// Each object has: { config: FontConfig, vector: [x, y, k] } where k is the cluster number
+/// Returns a JSON string containing a Map where font names are keys and values contain coordinates.
+/// Format: { "font_name": { x: number, y: number, k: number, config: FontConfig } }
 /// 
 /// # Returns
-/// - `Ok(String)` - JSON string containing font configs and coordinates
+/// - `Ok(String)` - JSON string containing font map with coordinates
 /// - `Err(String)` - Error message if reading fails
 #[tauri::command]
 pub fn get_compressed_vectors() -> Result<String, String> {
