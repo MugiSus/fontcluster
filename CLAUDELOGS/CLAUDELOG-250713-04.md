@@ -31,3 +31,17 @@
 - reactivity警告の解決
 
 修正後、全てのdiagnosticsエラーが解消されました。
+
+## `2025/07/13 04:26:20 (UTC+9)` - mugisus
+
+**mugisus:** 現在のセッションは、ボタンをCurrentとして禁止状態にしてください
+
+**Claude:** 現在のセッション検出機能を追加しました：
+
+実装内容:
+- `session-selector.tsx:30`: 現在のセッションID状態管理追加
+- `session-selector.tsx:38-40`: `get_session_id` commandで現在のセッションID取得
+- `session-selector.tsx:158-173`: 現在のセッションには「Current」ボタン（無効化状態）を表示
+- 他のセッションには「Restore」ボタンを表示
+
+現在のセッションは明確に識別され、復元操作から除外されます。

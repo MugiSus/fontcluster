@@ -27,6 +27,7 @@ interface SessionSelectorProps {
 
 export function SessionSelector(props: SessionSelectorProps) {
   const [isRestoring, setIsRestoring] = createSignal(false);
+  const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
   const [availableSessions, { refetch }] = createResource(
     () => props.open,
@@ -34,6 +35,10 @@ export function SessionSelector(props: SessionSelectorProps) {
       if (!open) return [];
 
       try {
+        // Get current session ID
+        const sessionId = await invoke<string>('get_session_id');
+        setCurrentSessionId(sessionId);
+
         const result = await invoke<string>('get_available_sessions');
         return JSON.parse(result) as SessionInfo[];
       } catch (error) {
@@ -108,7 +113,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                 {(session) => {
                   const badge = getCompletionBadge(session);
                   return (
-                    <div class='rounded-lg border p-4 transition-colors hover:bg-muted/50'>
+                    <div class='rounded-lg border p-4 pb-2 transition-colors hover:bg-muted/50'>
                       <div class='flex items-start justify-between gap-4'>
                         <div class='min-w-0 flex-1'>
                           <div class='mb-2 flex items-center gap-2'>
@@ -150,13 +155,22 @@ export function SessionSelector(props: SessionSelectorProps) {
                             </Show>
                           </div>
                         </div>
-                        <Button
-                          size='sm'
-                          onClick={() => restoreSession(session.session_id)}
-                          disabled={isRestoring()}
+                        <Show
+                          when={session.session_id === currentSessionId()}
+                          fallback={
+                            <Button
+                              size='sm'
+                              onClick={() => restoreSession(session.session_id)}
+                              disabled={isRestoring()}
+                            >
+                              {isRestoring() ? 'Restoring...' : 'Restore'}
+                            </Button>
+                          }
                         >
-                          {isRestoring() ? 'Restoring...' : 'Restore'}
-                        </Button>
+                          <Button size='sm' disabled variant='outline'>
+                            Current
+                          </Button>
+                        </Show>
                       </div>
                     </div>
                   );
