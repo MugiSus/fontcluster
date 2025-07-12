@@ -45,3 +45,17 @@
 - 他のセッションには「Restore」ボタンを表示
 
 現在のセッションは明確に識別され、復元操作から除外されます。
+
+## `2025/07/13 04:45:23 (UTC+9)` - mugisus
+
+**mugisus:** 何を言っているのか、imagesディレクトリやvectorsディレクトリなどそんなものはもう作っていません。だったら、<sessionID>/config.jsonに'has_images'などのプロパティを追加すればいいと思います。
+
+**Claude:** SessionConfig構造をconfig.jsonベースの進捗管理に変更しました：
+
+実装内容:
+- `session_config.rs:18-28`: SessionConfigに`has_images`, `has_vectors`, `has_compressed`, `has_clusters`フィールド追加
+- `session_config.rs:33-43`: 新規セッション作成時は全てfalseで初期化
+- `session_config.rs:77-107`: 進捗更新メソッド追加（`mark_*_completed`, `update_progress`）
+- `session_config.rs:124-135`: SessionInfo作成時にconfigから直接has_*を読み取り
+
+各処理完了時に対応するメソッドを呼び出すことで、config.jsonの進捗状態が正確に管理されます。

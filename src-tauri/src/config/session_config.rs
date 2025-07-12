@@ -14,6 +14,18 @@ pub struct SessionConfig {
     pub date: DateTime<Utc>,
     /// Session ID (UUID v7)
     pub session_id: String,
+    /// Whether images have been generated for this session
+    #[serde(default)]
+    pub has_images: bool,
+    /// Whether vectors have been generated for this session
+    #[serde(default)]
+    pub has_vectors: bool,
+    /// Whether vectors have been compressed for this session
+    #[serde(default)]
+    pub has_compressed: bool,
+    /// Whether clustering has been completed for this session
+    #[serde(default)]
+    pub has_clusters: bool,
 }
 
 impl SessionConfig {
@@ -23,6 +35,10 @@ impl SessionConfig {
             preview_text,
             date: Utc::now(),
             session_id,
+            has_images: false,
+            has_vectors: false,
+            has_compressed: false,
+            has_clusters: false,
         }
     }
 
@@ -56,6 +72,39 @@ impl SessionConfig {
 
         Ok(config)
     }
+
+    /// Updates the progress flags and saves the config
+    pub fn update_progress(&mut self, session_dir: &Path, images: Option<bool>, vectors: Option<bool>, compressed: Option<bool>, clusters: Option<bool>) -> FontResult<()> {
+        if let Some(val) = images { self.has_images = val; }
+        if let Some(val) = vectors { self.has_vectors = val; }
+        if let Some(val) = compressed { self.has_compressed = val; }
+        if let Some(val) = clusters { self.has_clusters = val; }
+        self.save_to_dir(session_dir)
+    }
+
+    /// Marks images as completed
+    pub fn mark_images_completed(&mut self, session_dir: &Path) -> FontResult<()> {
+        self.has_images = true;
+        self.save_to_dir(session_dir)
+    }
+
+    /// Marks vectors as completed
+    pub fn mark_vectors_completed(&mut self, session_dir: &Path) -> FontResult<()> {
+        self.has_vectors = true;
+        self.save_to_dir(session_dir)
+    }
+
+    /// Marks compression as completed
+    pub fn mark_compressed_completed(&mut self, session_dir: &Path) -> FontResult<()> {
+        self.has_compressed = true;
+        self.save_to_dir(session_dir)
+    }
+
+    /// Marks clustering as completed
+    pub fn mark_clusters_completed(&mut self, session_dir: &Path) -> FontResult<()> {
+        self.has_clusters = true;
+        self.save_to_dir(session_dir)
+    }
 }
 
 /// Session info for UI display
@@ -75,20 +124,14 @@ impl SessionInfo {
     pub fn from_session_dir(session_dir: &Path) -> FontResult<Self> {
         let config = SessionConfig::load_from_dir(session_dir)?;
 
-        // Check what processing steps have been completed
-        let has_images = session_dir.join("images").exists();
-        let has_vectors = session_dir.join("vectors").exists();
-        let has_compressed = session_dir.join("compressed_vectors.json").exists();
-        let has_clusters = session_dir.join("clustered_compressed_vectors.json").exists();
-
         Ok(SessionInfo {
             session_id: config.session_id,
             preview_text: config.preview_text,
             date: config.date,
-            has_images,
-            has_vectors,
-            has_compressed,
-            has_clusters,
+            has_images: config.has_images,
+            has_vectors: config.has_vectors,
+            has_compressed: config.has_compressed,
+            has_clusters: config.has_clusters,
         })
     }
 
