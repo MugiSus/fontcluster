@@ -1,4 +1,5 @@
 use crate::core::{FontService, SessionManager};
+use crate::error::FontResult;
 
 /// Tauri command handlers for font-related operations
 /// 
@@ -23,10 +24,6 @@ pub fn get_system_fonts() -> Vec<String> {
 /// 
 /// Returns a JSON string containing a Map where font names are keys and values contain coordinates.
 /// Format: { "font_name": { x: number, y: number, k: number, config: FontConfig } }
-/// 
-/// # Returns
-/// - `Ok(String)` - JSON string containing font map with coordinates
-/// - `Err(String)` - Error message if reading fails
 #[tauri::command]
 pub fn get_compressed_vectors() -> Result<String, String> {
     FontService::read_compressed_vectors()
@@ -36,42 +33,38 @@ pub fn get_compressed_vectors() -> Result<String, String> {
 /// Get all fonts configurations from individual config.json files
 /// 
 /// Returns all font configurations found in the current session directory.
-/// 
-/// # Returns
-/// - `Ok(String)` - JSON string containing array of font configurations
-/// - `Err(String)` - Error message if reading fails
 #[tauri::command]
 pub fn get_fonts_config() -> Result<String, String> {
-    let session_manager = SessionManager::global();
-    session_manager.load_all_font_configs()
-        .and_then(|configs| {
-            serde_json::to_string(&configs)
-                .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!("Failed to serialize configs: {}", e)
-                )))
-        })
-        .map_err(|e| format!("Failed to get fonts config: {}", e))
+    || -> FontResult<String> {
+        let session_manager = SessionManager::global();
+        let configs = session_manager.load_all_font_configs()?;
+        serde_json::to_string(&configs)
+            .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Failed to serialize configs: {}", e)
+            )))
+    }()
+    .map_err(|e| format!("Failed to get fonts config: {}", e))
 }
 
 /// Get configuration for a specific font by safe name
-/// 
-/// # Returns
-/// - `Ok(Some(String))` - JSON string containing font configuration
-/// - `Ok(None)` - Font configuration not found
-/// - `Err(String)` - Error message if reading fails
 #[tauri::command]
 pub fn get_font_config(safe_font_name: String) -> Result<Option<String>, String> {
-    let session_manager = SessionManager::global();
-    session_manager.load_font_config(&safe_font_name)
-        .and_then(|config_opt| {
-            config_opt.map(|config| {
-                serde_json::to_string(&config)
+    || -> FontResult<Option<String>> {
+        let session_manager = SessionManager::global();
+        let config_opt = session_manager.load_font_config(&safe_font_name)?;
+        
+        match config_opt {
+            Some(config) => {
+                let json = serde_json::to_string(&config)
                     .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
                         format!("Failed to serialize config: {}", e)
-                    )))
-            }).transpose()
-        })
-        .map_err(|e| format!("Failed to get font config: {}", e))
+                    )))?;
+                Ok(Some(json))
+            }
+            None => Ok(None)
+        }
+    }()
+    .map_err(|e| format!("Failed to get font config: {}", e))
 }
