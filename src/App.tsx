@@ -133,7 +133,7 @@ function App() {
         console.error('Failed to get current session preview text:', error);
       }
     };
-    
+
     loadCurrentSessionText();
 
     listen('font_generation_complete', () => {
