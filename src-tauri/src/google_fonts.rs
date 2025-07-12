@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use reqwest;
 use std::collections::HashMap;
 use crate::error::{FontResult, FontError};

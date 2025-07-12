@@ -72,9 +72,16 @@ pub async fn classify_all_fonts(app_handle: tauri::AppHandle) -> Result<String, 
         
         // Classify the font
         match classifier.classify_font(&font_name).await {
-            Ok(category) => {
-                let category_index = category.clone() as u32;
-                let category_str = category.as_str();
+            Ok(category_id) => {
+                let category_str = match category_id {
+                    0 => "Sans Serif",
+                    1 => "Serif", 
+                    2 => "Handwriting",
+                    3 => "Monospace",
+                    4 => "Display",
+                    -1 => "Unknown",
+                    _ => "Unknown",
+                };
                 
                 // Update compressed-vector.csv with category instead of cluster
                 let content = std::fs::read_to_string(&vector_file)
@@ -82,7 +89,7 @@ pub async fn classify_all_fonts(app_handle: tauri::AppHandle) -> Result<String, 
                 
                 let coords: Vec<&str> = content.trim().split(',').take(2).collect();
                 if coords.len() >= 2 {
-                    let updated_content = format!("{},{},{}", coords[0], coords[1], category_index);
+                    let updated_content = format!("{},{},{}", coords[0], coords[1], category_id);
                     std::fs::write(&vector_file, updated_content)
                         .map_err(|e| format!("Failed to update vector file for {}: {}", font_name, e))?;
                 }

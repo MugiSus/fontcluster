@@ -52,6 +52,7 @@ impl<'a> FontRenderer<'a> {
         let training_config = FontImageConfig {
             font_size: 64.0,
             text: training_text.to_string(),
+            output_dir: std::path::PathBuf::from("/tmp"), // Temporary directory since we're returning bytes
         };
         
         let temp_renderer = FontRenderer {
@@ -65,11 +66,14 @@ impl<'a> FontRenderer<'a> {
         let img_buffer = temp_renderer.convert_canvas_to_image(canvas, canvas_size);
         
         // Convert to bytes for vectorization
-        let mut cursor = Cursor::new(Vec::new());
-        img_buffer.save(&mut cursor, image::ImageFormat::Png)
-            .map_err(|e| FontError::ImageGeneration(format!("Failed to convert image to bytes: {}", e)))?;
+        let mut buffer = Vec::new();
+        {
+            let mut cursor = Cursor::new(&mut buffer);
+            img_buffer.write_to(&mut cursor, image::ImageFormat::Png)
+                .map_err(|e| FontError::ImageGeneration(format!("Failed to convert image to bytes: {}", e)))?;
+        }
         
-        Ok(cursor.into_inner())
+        Ok(buffer)
     }
 
     fn load_font(&self, family_name: &str) -> FontResult<font_kit::loaders::default::Font> {
