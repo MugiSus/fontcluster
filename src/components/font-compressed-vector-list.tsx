@@ -24,6 +24,8 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             'bg-fuchsia-500',
             'bg-teal-500',
             'bg-indigo-500',
+            'bg-yellow-500',
+            'bg-cyan-500',
           ];
 
           // Handle noise cluster (-1) with gray-300

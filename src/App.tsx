@@ -347,6 +347,8 @@ function App() {
                           'fill-fuchsia-500',
                           'fill-teal-500',
                           'fill-indigo-500',
+                          'fill-yellow-500',
+                          'fill-cyan-500',
                         ];
 
                         // Handle noise cluster (-1) with gray-300
