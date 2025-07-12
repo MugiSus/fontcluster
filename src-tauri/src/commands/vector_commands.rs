@@ -65,7 +65,7 @@ pub async fn cluster_compressed_vectors(app_handle: AppHandle) -> Result<String,
             "clustering_complete",
             || clusterer.cluster_compressed_vectors()
         ).await
-        .map(format_completion_message("Compressed vectors clustered"))
+        .map(|(path, _cluster_size, _sample_amount)| format_completion_message("Compressed vectors clustered")(path))
     }
     .await
     .map_err(|e| format!("Vector clustering failed: {}", e))
