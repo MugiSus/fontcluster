@@ -382,7 +382,7 @@ function App() {
                             // Handle noise cluster (-1) with gray-300
                             const clusterColor =
                               k === -1
-                                ? 'stroke-gray-300'
+                                ? 'fill-gray-300'
                                 : clusterColors[k % clusterColors.length];
 
                             return (
