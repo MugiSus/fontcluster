@@ -10,7 +10,7 @@ pub mod utils;
 pub use commands::*;
 
 use tauri::{
-    menu::{Menu, MenuItem, Submenu}, 
+    menu::{Menu, MenuItem}, 
     AppHandle, Emitter
 };
 
@@ -18,13 +18,15 @@ use tauri::{
 fn create_menu(app_handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let restore_sessions = MenuItem::with_id(app_handle, "restore_sessions", "Restore Recent Session...", true, None::<&str>)?;
     
-    let window_menu = Submenu::with_items(app_handle, "Window", true, &[
-        &restore_sessions,
-    ])?;
+    // Start with default menu (includes Edit, View, Window menus with standard shortcuts)
+    let menu = Menu::default(app_handle)?;
     
-    Menu::with_items(app_handle, &[
-        &window_menu,
-    ])
+    // Add our custom menu item to the Window menu
+    if let Some(window_submenu) = menu.get("Window") {
+        window_submenu.as_submenu_unchecked().append(&restore_sessions)?;
+    }
+    
+    Ok(menu)
 }
 
 /// Handles menu events
