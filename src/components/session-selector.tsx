@@ -1,6 +1,7 @@
 import { createSignal, createResource, For, Show } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -67,14 +68,14 @@ export function SessionSelector(props: SessionSelectorProps) {
 
   const getCompletionBadge = (session: SessionInfo) => {
     if (session.has_clusters)
-      return { text: 'Complete', class: 'bg-green-100 text-green-800' };
+      return { text: 'Complete', variant: 'default' as const };
     if (session.has_compressed)
-      return { text: 'Compressed', class: 'bg-yellow-100 text-yellow-800' };
+      return { text: 'Compressed', variant: 'secondary' as const };
     if (session.has_vectors)
-      return { text: 'Vectorized', class: 'bg-blue-100 text-blue-800' };
+      return { text: 'Vectorized', variant: 'secondary' as const };
     if (session.has_images)
-      return { text: 'Images Only', class: 'bg-gray-100 text-gray-800' };
-    return { text: 'Empty', class: 'bg-red-100 text-red-800' };
+      return { text: 'Rasterized', variant: 'secondary' as const };
+    return { text: 'Empty', variant: 'error' as const };
   };
 
   return (
@@ -113,15 +114,13 @@ export function SessionSelector(props: SessionSelectorProps) {
                 {(session) => {
                   const badge = getCompletionBadge(session);
                   return (
-                    <div class='rounded-lg border p-4 pb-2 transition-colors hover:bg-muted/50'>
+                    <div class='rounded-lg border p-4 transition-colors hover:bg-muted/50'>
                       <div class='flex items-start justify-between gap-4'>
                         <div class='min-w-0 flex-1'>
                           <div class='mb-2 flex items-center gap-2'>
-                            <span
-                              class={`rounded-full px-2 py-1 text-xs font-medium ${badge.class}`}
-                            >
+                            <Badge variant={badge.variant} round>
                               {badge.text}
-                            </span>
+                            </Badge>
                             <span class='text-xs text-muted-foreground'>
                               {formatDate(session.date)}
                             </span>
@@ -131,28 +130,6 @@ export function SessionSelector(props: SessionSelectorProps) {
                           </div>
                           <div class='font-mono text-xs text-muted-foreground'>
                             {session.session_id}
-                          </div>
-                          <div class='mt-2 flex gap-2'>
-                            <Show when={session.has_images}>
-                              <span class='rounded bg-blue-50 px-2 py-1 text-xs text-blue-700'>
-                                Images
-                              </span>
-                            </Show>
-                            <Show when={session.has_vectors}>
-                              <span class='rounded bg-green-50 px-2 py-1 text-xs text-green-700'>
-                                Vectors
-                              </span>
-                            </Show>
-                            <Show when={session.has_compressed}>
-                              <span class='rounded bg-yellow-50 px-2 py-1 text-xs text-yellow-700'>
-                                Compressed
-                              </span>
-                            </Show>
-                            <Show when={session.has_clusters}>
-                              <span class='rounded bg-purple-50 px-2 py-1 text-xs text-purple-700'>
-                                Clustered
-                              </span>
-                            </Show>
                           </div>
                         </div>
                         <Show
