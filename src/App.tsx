@@ -212,7 +212,7 @@ function App() {
           >
             {(fontConfig: FontConfig) => (
               <li
-                class={`flex cursor-pointer flex-col items-stretch gap-2 pb-4 pt-3 ${
+                class={`flex cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
                   nearestFont() === fontConfig.safe_name && 'bg-border'
                 }`}
                 data-font-name={fontConfig.safe_name}
@@ -292,9 +292,25 @@ function App() {
               <For each={vectors}>
                 {(vectorData: CompressedFontVector) => {
                   const { config, vector } = vectorData;
-                  const [x, y] = vector;
+                  const [x, y, k] = vector;
                   const scaledX = ((x - minX) / (maxX - minX)) * 600;
                   const scaledY = ((y - minY) / (maxY - minY)) * 600;
+
+                  // Define cluster colors
+                  const clusterColors = [
+                    'fill-red-500 stroke-red-700',
+                    'fill-blue-500 stroke-blue-700',
+                    'fill-green-500 stroke-green-700',
+                    'fill-purple-500 stroke-purple-700',
+                    'fill-orange-500 stroke-orange-700',
+                    'fill-pink-500 stroke-pink-700',
+                    'fill-teal-500 stroke-teal-700',
+                    'fill-indigo-500 stroke-indigo-700',
+                  ];
+
+                  const clusterColor =
+                    clusterColors[(k - 1) % clusterColors.length] ||
+                    'fill-gray-500 stroke-gray-700';
 
                   return (
                     <g>
@@ -305,7 +321,7 @@ function App() {
                         class={`stroke-1 ${
                           nearestFont() === config.safe_name
                             ? 'fill-yellow-300 stroke-yellow-500'
-                            : 'fill-blue-500 stroke-blue-700'
+                            : clusterColor
                         }`}
                       />
                       <circle

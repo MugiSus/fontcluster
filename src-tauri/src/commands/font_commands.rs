@@ -22,7 +22,7 @@ pub fn get_system_fonts() -> Vec<String> {
 /// Retrieves compressed 2D vectors for font visualization
 /// 
 /// Returns a JSON string containing an array of objects with config and vector data.
-/// Each object has: { config: FontConfig, vector: [x, y] }
+/// Each object has: { config: FontConfig, vector: [x, y, k] } where k is the cluster number
 /// 
 /// # Returns
 /// - `Ok(String)` - JSON string containing font configs and coordinates

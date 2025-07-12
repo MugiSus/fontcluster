@@ -35,6 +35,8 @@ ndarray = "0.16"
 nalgebra = "0.33"
 # PaCMAP for dimensionality reduction
 pacmap = "0.2"
+# Random number generation for K-means
+rand = "0.8"
 # UUIDv7 for session management
 uuid = { version = "1.0", features = ["v7", "serde"] }
 

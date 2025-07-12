@@ -67,10 +67,10 @@ impl FontService {
                 }
             };
             
-            if let Some((x, y)) = Self::parse_compressed_vector_line(&content) {
+            if let Some((x, y, k)) = Self::parse_compressed_vector_line(&content) {
                 result.push(serde_json::json!({
                     "config": config,
-                    "vector": [x, y]
+                    "vector": [x, y, k]
                 }));
             }
         }
@@ -82,10 +82,11 @@ impl FontService {
             )))
     }
     
-    fn parse_compressed_vector_line(content: &str) -> Option<(f64, f64)> {
+    fn parse_compressed_vector_line(content: &str) -> Option<(f64, f64, u32)> {
         let mut values = content.trim().split(',');
         let x = values.next()?.parse().ok()?;
         let y = values.next()?.parse().ok()?;
-        Some((x, y))
+        let k = values.next()?.parse().ok()?;
+        Some((x, y, k))
     }
 }

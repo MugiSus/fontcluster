@@ -6,5 +6,5 @@ export interface FontConfig {
 
 export interface CompressedFontVector {
   config: FontConfig;
-  vector: [number, number]; // [x, y]
+  vector: [number, number, number]; // [x, y, k] where k is cluster number
 }
