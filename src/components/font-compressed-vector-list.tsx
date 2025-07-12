@@ -26,8 +26,11 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             'bg-indigo-500',
           ];
 
+          // Handle noise cluster (-1) with gray-300
           const clusterColor =
-            clusterColors[vectorData.k % clusterColors.length];
+            vectorData.k === -1
+              ? 'bg-gray-300'
+              : clusterColors[vectorData.k % clusterColors.length];
 
           return (
             <li

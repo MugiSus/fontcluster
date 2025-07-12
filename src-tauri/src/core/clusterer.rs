@@ -9,7 +9,7 @@ use hdbscan::{Hdbscan, HdbscanHyperParams};
 
 // Type aliases for better readability
 type VectorData = (String, f32, f32);
-type ClusterLabels = Vec<usize>;
+type ClusterLabels = Vec<i32>;
 
 // Vector clustering service
 pub struct VectorClusterer;
@@ -142,17 +142,14 @@ impl VectorClusterer {
         let labels = clusterer.cluster()
             .map_err(|e| FontError::Vectorization(format!("HDBSCAN clustering failed: {:?}", e)))?;
         
-        // Convert to 1-based indexing (HDBSCAN uses -1 for noise, 0+ for clusters)
-        let cluster_labels: ClusterLabels = labels
-            .iter()
-            .map(|&label| if label == -1 { 0 } else { (label + 1) as usize })
-            .collect();
+        // Keep original HDBSCAN labels (-1 for noise, 0+ for clusters)
+        let cluster_labels: ClusterLabels = labels;
         
         // Count unique clusters (excluding noise)
-        let unique_clusters: std::collections::HashSet<_> = cluster_labels.iter().filter(|&&label| label > 0).collect();
+        let unique_clusters: std::collections::HashSet<_> = cluster_labels.iter().filter(|&&label| label >= 0).collect();
         let num_clusters = unique_clusters.len();
         
-        let cluster_counts = Self::count_clusters(&cluster_labels, num_clusters + 1); // +1 to include noise cluster
+        let cluster_counts = Self::count_clusters(&cluster_labels);
         Self::log_cluster_distribution(&cluster_counts);
         
         println!("HDBSCAN found {} clusters", num_clusters);
@@ -161,29 +158,27 @@ impl VectorClusterer {
     }
     
     // Pure function: count cluster distribution
-    fn count_clusters(cluster_labels: &[usize], max_cluster: usize) -> Vec<usize> {
-        let mut counts = vec![0; max_cluster];
+    fn count_clusters(cluster_labels: &[i32]) -> std::collections::HashMap<i32, usize> {
+        let mut counts = std::collections::HashMap::new();
         cluster_labels.iter().for_each(|&label| {
-            if label < max_cluster {
-                counts[label] += 1;
-            }
+            *counts.entry(label).or_insert(0) += 1;
         });
         counts
     }
     
     // Pure function: log cluster distribution
-    fn log_cluster_distribution(cluster_counts: &[usize]) {
+    fn log_cluster_distribution(cluster_counts: &std::collections::HashMap<i32, usize>) {
         println!("Cluster distribution:");
-        cluster_counts
-            .iter()
-            .enumerate()
-            .for_each(|(i, &count)| {
-                if i == 0 {
-                    println!("  Noise: {} fonts", count);
-                } else {
-                    println!("  Cluster {}: {} fonts", i, count);
-                }
-            });
+        let mut sorted_clusters: Vec<_> = cluster_counts.iter().collect();
+        sorted_clusters.sort_by_key(|&(&cluster, _)| cluster);
+        
+        sorted_clusters.iter().for_each(|(&cluster, &count)| {
+            if cluster == -1 {
+                println!("  Noise: {} fonts", count);
+            } else {
+                println!("  Cluster {}: {} fonts", cluster, count);
+            }
+        });
     }
     
     // Higher-order function: create save task
@@ -191,7 +186,7 @@ impl VectorClusterer {
         font_name: String, 
         x: f32, 
         y: f32, 
-        cluster: usize
+        cluster: i32
     ) -> task::JoinHandle<FontResult<()>> {
         task::spawn_blocking(move || {
             let session_manager = SessionManager::global();
@@ -212,7 +207,7 @@ impl VectorClusterer {
     // Async composition: save all clustered vectors
     async fn save_clustered_vectors(
         vector_data: &[VectorData], 
-        cluster_labels: &[usize]
+        cluster_labels: &[i32]
     ) -> FontResult<()> {
         println!("Creating {} parallel save tasks...", vector_data.len());
         
