@@ -309,8 +309,7 @@ function App() {
                   ];
 
                   const clusterColor =
-                    clusterColors[(k - 1) % clusterColors.length] ||
-                    'fill-gray-500 stroke-gray-700';
+                    clusterColors[(k - 1) % clusterColors.length];
 
                   return (
                     <g>
