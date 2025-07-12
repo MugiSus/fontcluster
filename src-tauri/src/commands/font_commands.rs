@@ -79,17 +79,17 @@ pub fn get_font_config(safe_font_name: String) -> Result<Option<String>, String>
 /// Classify a font using supervised learning
 /// 
 /// # Returns
-/// - `Ok(String)` - Font category (sans-serif, serif, etc.)
+/// - `Ok(i32)` - Font category ID (0-4 for categories, -1 for unknown)
 /// - `Err(String)` - Error message if classification fails
 #[tauri::command]
-pub async fn classify_font(font_name: String) -> Result<String, String> {
+pub async fn classify_font(font_name: String) -> Result<i32, String> {
     let classifier = FontClassifier::load_pretrained()
         .map_err(|e| format!("Failed to load classifier: {}", e))?;
     
-    let category = classifier.classify_font(&font_name).await
+    let category_id = classifier.classify_font(&font_name).await
         .map_err(|e| format!("Classification failed: {}", e))?;
     
-    Ok(category.as_str().to_string())
+    Ok(category_id)
 }
 
 /// Train the font classifier with Google Fonts data

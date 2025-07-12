@@ -5,6 +5,7 @@ pub mod commands;
 pub mod core;
 pub mod rendering;
 pub mod utils;
+pub mod google_fonts;
 
 // Re-exports for public API
 pub use commands::*;

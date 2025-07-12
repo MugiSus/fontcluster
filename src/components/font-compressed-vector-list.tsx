@@ -39,13 +39,17 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             'Display',
           ];
 
-          // Get category color (no noise handling needed for supervised learning)
-          const categoryBgColor =
-            categoryBgColors[vectorData.k % categoryBgColors.length];
-          const categoryTextColor =
-            categoryTextColors[vectorData.k % categoryTextColors.length];
-          const categoryName =
-            categoryNames[vectorData.k % categoryNames.length];
+          // Handle unknown classification (-1)
+          const isUnknown = vectorData.k === -1;
+          const categoryBgColor = isUnknown
+            ? 'bg-gray-300'
+            : categoryBgColors[vectorData.k % categoryBgColors.length];
+          const categoryTextColor = isUnknown
+            ? 'text-gray-300'
+            : categoryTextColors[vectorData.k % categoryTextColors.length];
+          const categoryName = isUnknown
+            ? 'Unknown'
+            : categoryNames[vectorData.k % categoryNames.length];
 
           return (
             <li

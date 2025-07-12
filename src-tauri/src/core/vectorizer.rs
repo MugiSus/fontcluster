@@ -94,6 +94,20 @@ impl ImageVectorizer {
         
         Ok(feature_vector)
     }
+
+    pub fn vectorize_image_bytes(&self, image_bytes: &[u8]) -> FontResult<Vec<f32>> {
+        // Load image from bytes
+        let img = image::load_from_memory(image_bytes)
+            .map_err(|e| crate::error::FontError::Vectorization(format!("Failed to load image from bytes: {}", e)))?;
+        
+        // Convert to grayscale
+        let gray_img = img.to_luma8();
+        
+        // Extract HOG features using imageproc
+        let feature_vector = self.extract_hog_features(&gray_img)?;
+        
+        Ok(feature_vector)
+    }
     
     fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
         // Resize image to standard size for consistent feature dimensions

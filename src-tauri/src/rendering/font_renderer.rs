@@ -1,6 +1,7 @@
 use crate::core::SessionManager;
 use crate::config::{FontImageConfig, GlyphMetrics, GlyphData, GLYPH_PADDING};
 use crate::error::{FontResult, FontError};
+use crate::google_fonts::GoogleFontsClient;
 use font_kit::source::SystemSource;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::family_name::FamilyName;
@@ -9,11 +10,13 @@ use font_kit::properties::Properties;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::{ImageBuffer, Rgba};
+use std::io::Cursor;
 
 // Font rendering engine
 pub struct FontRenderer<'a> {
     config: &'a FontImageConfig,
     source: SystemSource,
+    google_fonts_client: Option<GoogleFontsClient>,
 }
 
 impl<'a> FontRenderer<'a> {
@@ -21,6 +24,15 @@ impl<'a> FontRenderer<'a> {
         Self {
             config,
             source: SystemSource::new(),
+            google_fonts_client: None,
+        }
+    }
+
+    pub fn with_google_fonts(config: &'a FontImageConfig, api_key: String) -> Self {
+        Self {
+            config,
+            source: SystemSource::new(),
+            google_fonts_client: Some(GoogleFontsClient::new(api_key)),
         }
     }
     
@@ -34,12 +46,64 @@ impl<'a> FontRenderer<'a> {
         Ok(())
     }
 
+    pub async fn generate_training_image(&self, family_name: &str) -> FontResult<Vec<u8>> {
+        let font = self.load_font_for_training(family_name).await?;
+        let training_text = "A quick brown fox jumps over the lazy dog";
+        let training_config = FontImageConfig {
+            font_size: 64.0,
+            text: training_text.to_string(),
+        };
+        
+        let temp_renderer = FontRenderer {
+            config: &training_config,
+            source: SystemSource::new(),
+            google_fonts_client: self.google_fonts_client.as_ref().cloned(),
+        };
+        
+        let (font, glyph_data, canvas_size) = temp_renderer.prepare_glyph_data(font)?;
+        let canvas = temp_renderer.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
+        let img_buffer = temp_renderer.convert_canvas_to_image(canvas, canvas_size);
+        
+        // Convert to bytes for vectorization
+        let mut cursor = Cursor::new(Vec::new());
+        img_buffer.save(&mut cursor, image::ImageFormat::Png)
+            .map_err(|e| FontError::ImageGeneration(format!("Failed to convert image to bytes: {}", e)))?;
+        
+        Ok(cursor.into_inner())
+    }
+
     fn load_font(&self, family_name: &str) -> FontResult<font_kit::loaders::default::Font> {
         self.source
             .select_best_match(&[FamilyName::Title(family_name.to_string())], &Properties::new())
             .map_err(|e| FontError::FontSelection(format!("Failed to select font {}: {}", family_name, e)))?
             .load()
             .map_err(|e| FontError::FontLoad(format!("Failed to load font {}: {}", family_name, e)))
+    }
+
+    async fn load_font_for_training(&self, family_name: &str) -> FontResult<font_kit::loaders::default::Font> {
+        // First try to load from system fonts
+        if let Ok(font) = self.load_font(family_name) {
+            return Ok(font);
+        }
+
+        // If not found and Google Fonts client is available, try to download
+        if let Some(ref client) = self.google_fonts_client {
+            if let Ok(Some(google_font)) = client.get_font_by_family(family_name).await {
+                // Try to get regular variant first, fallback to first available
+                let font_url = google_font.files.get("regular")
+                    .or_else(|| google_font.files.values().next())
+                    .ok_or_else(|| FontError::FontSelection(format!("No font files available for {}", family_name)))?;
+
+                let font_data = client.download_font(font_url).await?;
+                let font = font_kit::loaders::default::Font::from_bytes(
+                    std::sync::Arc::new(font_data), 0
+                ).map_err(|e| FontError::FontLoad(format!("Failed to load downloaded font {}: {}", family_name, e)))?;
+
+                return Ok(font);
+            }
+        }
+
+        Err(FontError::FontSelection(format!("Font {} not found in system or Google Fonts", family_name)))
     }
 
     fn prepare_glyph_data(&self, font: font_kit::loaders::default::Font) -> FontResult<GlyphData> {

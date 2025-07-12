@@ -109,26 +109,32 @@ impl FontClassifier {
     }
     
     // フォントを分類
-    pub async fn classify_font(&self, font_name: &str) -> FontResult<FontCategory> {
+    pub async fn classify_font(&self, font_name: &str) -> FontResult<i32> {
         let model = self.model.as_ref()
             .ok_or(FontError::Classification("Model not trained".to_string()))?;
             
         // フォントの特徴量を取得（既存の圧縮ベクトルを使用）
-        let features = self.load_font_features(font_name).await?;
+        let features = match self.load_font_features(font_name).await {
+            Ok(f) => f,
+            Err(_) => return Ok(-1), // Unknown if features can't be loaded
+        };
+        
         let x = DenseMatrix::from_2d_vec(&vec![features]);
         
         // 予測実行
-        let prediction = model.predict(&x)
-            .map_err(|e| FontError::Classification(format!("Prediction failed: {}", e)))?;
+        let prediction = match model.predict(&x) {
+            Ok(p) => p,
+            Err(_) => return Ok(-1), // Unknown if prediction fails
+        };
             
         // カテゴリに変換
         match prediction[0] {
-            0 => Ok(FontCategory::SansSerif),
-            1 => Ok(FontCategory::Serif),
-            2 => Ok(FontCategory::Handwriting),
-            3 => Ok(FontCategory::Monospace),
-            4 => Ok(FontCategory::Display),
-            _ => Err(FontError::Classification("Unknown category".to_string())),
+            0 => Ok(0), // SansSerif
+            1 => Ok(1), // Serif
+            2 => Ok(2), // Handwriting
+            3 => Ok(3), // Monospace
+            4 => Ok(4), // Display
+            _ => Ok(-1), // Unknown category
         }
     }
     

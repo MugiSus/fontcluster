@@ -19,4 +19,6 @@ pub enum FontError {
     Vectorization(String),
     #[error("Classification failed: {0}")]
     Classification(String),
+    #[error("Network error: {0}")]
+    NetworkError(String),
 }

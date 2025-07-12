@@ -344,9 +344,11 @@ function App() {
                           'fill-green-500', // 4: display
                         ];
 
-                        // Get category color (no noise handling needed for supervised learning)
+                        // Handle unknown classification (-1)
                         const categoryColor =
-                          categoryColors[k % categoryColors.length];
+                          k === -1
+                            ? 'fill-gray-300'
+                            : categoryColors[k % categoryColors.length];
 
                         return (
                           <g>
