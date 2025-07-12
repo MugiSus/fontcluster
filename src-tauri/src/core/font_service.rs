@@ -35,7 +35,8 @@ impl FontService {
             "wingdings",
             "dingbats", 
             "emoji",
-            "font awesome"
+            "font awesome",
+            "bodoni ornaments"
         ];
         
         // Check if font name contains any excluded patterns
