@@ -5,6 +5,12 @@ use smartcore::ensemble::random_forest_classifier::*;
 use smartcore::linalg::basic::matrix::DenseMatrix;
 use std::fs;
 
+// Random Forest training configuration constants
+const RF_N_TREES: u16 = 100;           // Number of trees in the forest (default: 10)
+const RF_MAX_DEPTH: u16 = 10;          // Maximum depth of trees
+const RF_MIN_SAMPLES_SPLIT: usize = 5;  // Minimum samples required to split a node (default: 2)
+const RF_MIN_SAMPLES_LEAF: usize = 2;   // Minimum samples required at a leaf node (default: 1)
+
 // 事前訓練済みモデルをバイナリに埋め込み
 const PRETRAINED_MODEL: &[u8] = include_bytes!("../../assets/font_classifier.bin");
 
@@ -138,29 +144,28 @@ impl FontClassifier {
         }
     }
     
-    // フォントの特徴量を読み込み（既存システムを活用）
+    // フォントの特徴量を読み込み（HOG特徴量を使用）
     async fn load_font_features(&self, font_name: &str) -> FontResult<Vec<f32>> {
         let session_manager = SessionManager::global();
         let vector_file = session_manager
             .get_font_directory(font_name)
-            .join("compressed-vector.csv");
+            .join("vector.csv");
             
         let content = fs::read_to_string(vector_file)
-            .map_err(|e| FontError::Classification(format!("Failed to read vector file: {}", e)))?;
+            .map_err(|e| FontError::Classification(format!("Failed to read HOG vector file: {}", e)))?;
             
-        let coords: Vec<f32> = content
+        let features: Vec<f32> = content
             .trim()
             .split(',')
-            .take(2)  // x, y座標のみ使用
             .map(str::parse)
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| FontError::Classification(format!("Failed to parse coordinates: {}", e)))?;
+            .map_err(|e| FontError::Classification(format!("Failed to parse HOG features: {}", e)))?;
             
-        if coords.len() < 2 {
-            return Err(FontError::Classification("Insufficient coordinate data".to_string()));
+        if features.is_empty() {
+            return Err(FontError::Classification("Empty feature vector".to_string()));
         }
             
-        Ok(coords)
+        Ok(features)
     }
     
     // Google Fonts APIから訓練データを収集
@@ -279,8 +284,17 @@ impl FontClassifier {
             .map(|sample| sample.category.clone() as u32)
             .collect();
             
-        // Random Forestを訓練
-        let model = RandomForestClassifier::fit(&x, &y, Default::default())
+        // Random Forestを訓練（カスタム設定を使用）
+        let rf_params = RandomForestClassifierParameters::default()
+            .with_n_trees(RF_N_TREES)
+            .with_max_depth(RF_MAX_DEPTH)
+            .with_min_samples_split(RF_MIN_SAMPLES_SPLIT)
+            .with_min_samples_leaf(RF_MIN_SAMPLES_LEAF);
+            
+        println!("Training Random Forest with {} trees, max_depth: {}, min_samples_split: {}, min_samples_leaf: {}", 
+                RF_N_TREES, RF_MAX_DEPTH, RF_MIN_SAMPLES_SPLIT, RF_MIN_SAMPLES_LEAF);
+                
+        let model = RandomForestClassifier::fit(&x, &y, rf_params)
             .map_err(|e| FontError::Classification(format!("Training failed: {}", e)))?;
             
         self.model = Some(model);
