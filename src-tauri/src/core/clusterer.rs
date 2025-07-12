@@ -4,9 +4,8 @@ use std::path::PathBuf;
 use std::fs;
 use tokio::task;
 use futures::future::join_all;
-use ndarray::Array2;
-use rand::Rng;
 use std::io::Write;
+use hdbscan::{Hdbscan, HdbscanHyperParams};
 
 // Type aliases for better readability
 type VectorData = (String, f32, f32);
@@ -23,8 +22,7 @@ impl VectorClusterer {
     pub async fn cluster_compressed_vectors(&self) -> FontResult<PathBuf> {
         let vector_data = self.load_compressed_vectors().await?;
         
-        let k = 8; // Fixed K=8 for consistent clustering
-        let cluster_labels = Self::cluster_vectors(&vector_data, k)?;
+        let cluster_labels = Self::cluster_vectors(&vector_data)?;
         
         Self::save_clustered_vectors(&vector_data, &cluster_labels).await?;
         
@@ -120,42 +118,54 @@ impl VectorClusterer {
         }
     }
     
-    // Pure function: create data matrix
-    fn create_data_matrix(vector_data: &[VectorData]) -> Array2<f32> {
-        let n_samples = vector_data.len();
-        Array2::from_shape_fn((n_samples, 2), |(i, j)| {
-            match j {
-                0 => vector_data[i].1, // x coordinate
-                1 => vector_data[i].2, // y coordinate
-                _ => 0.0,
-            }
-        })
-    }
     
     
     
     // Pure function: perform clustering
-    fn cluster_vectors(vector_data: &[VectorData], k: usize) -> FontResult<ClusterLabels> {
-        let data_matrix = Self::create_data_matrix(vector_data);
-        println!("Performing K-means clustering with K={}...", k);
+    fn cluster_vectors(vector_data: &[VectorData]) -> FontResult<ClusterLabels> {
+        // Convert data to the format expected by HDBSCAN
+        let data_points: Vec<Vec<f32>> = vector_data
+            .iter()
+            .map(|(_, x, y)| vec![*x, *y])
+            .collect();
         
-        let (_centroids, labels) = Self::simple_kmeans(&data_matrix, k, 300)?;
+        println!("Performing HDBSCAN clustering on {} points...", data_points.len());
         
-        // Convert to 1-based indexing and log distribution
-        let cluster_labels: ClusterLabels = labels.iter().map(|&label| label + 1).collect();
+        // Configure HDBSCAN parameters
+        let hyper_params = HdbscanHyperParams::builder()
+            .min_cluster_size(3)  // Minimum points required to form a cluster
+            .min_samples(2)       // Minimum samples in neighborhood
+            .build();
         
-        let cluster_counts = Self::count_clusters(&cluster_labels, k);
+        // Create HDBSCAN clusterer and perform clustering
+        let clusterer = Hdbscan::new(&data_points, hyper_params);
+        let labels = clusterer.cluster()
+            .map_err(|e| FontError::Vectorization(format!("HDBSCAN clustering failed: {:?}", e)))?;
+        
+        // Convert to 1-based indexing (HDBSCAN uses -1 for noise, 0+ for clusters)
+        let cluster_labels: ClusterLabels = labels
+            .iter()
+            .map(|&label| if label == -1 { 0 } else { (label + 1) as usize })
+            .collect();
+        
+        // Count unique clusters (excluding noise)
+        let unique_clusters: std::collections::HashSet<_> = cluster_labels.iter().filter(|&&label| label > 0).collect();
+        let num_clusters = unique_clusters.len();
+        
+        let cluster_counts = Self::count_clusters(&cluster_labels, num_clusters + 1); // +1 to include noise cluster
         Self::log_cluster_distribution(&cluster_counts);
+        
+        println!("HDBSCAN found {} clusters", num_clusters);
         
         Ok(cluster_labels)
     }
     
     // Pure function: count cluster distribution
-    fn count_clusters(cluster_labels: &[usize], k: usize) -> Vec<usize> {
-        let mut counts = vec![0; k];
+    fn count_clusters(cluster_labels: &[usize], max_cluster: usize) -> Vec<usize> {
+        let mut counts = vec![0; max_cluster];
         cluster_labels.iter().for_each(|&label| {
-            if label > 0 && label <= k {
-                counts[label - 1] += 1;
+            if label < max_cluster {
+                counts[label] += 1;
             }
         });
         counts
@@ -167,7 +177,13 @@ impl VectorClusterer {
         cluster_counts
             .iter()
             .enumerate()
-            .for_each(|(i, &count)| println!("  Cluster {}: {} fonts", i + 1, count));
+            .for_each(|(i, &count)| {
+                if i == 0 {
+                    println!("  Noise: {} fonts", count);
+                } else {
+                    println!("  Cluster {}: {} fonts", i, count);
+                }
+            });
     }
     
     // Higher-order function: create save task
@@ -216,145 +232,8 @@ impl VectorClusterer {
                 .map_err(|e| e)?;
         }
         
-        println!("Clustered {} vectors using K-means (K=8) and updated files", vector_data.len());
+        println!("Clustered {} vectors using HDBSCAN and updated files", vector_data.len());
         Ok(())
-    }
-    
-    // Pure function: create single cluster centroid
-    fn create_single_cluster_centroid(data: &Array2<f32>) -> FontResult<Array2<f32>> {
-        let n_samples = data.nrows();
-        let n_features = data.ncols();
-        
-        let centroid_data = (0..n_features)
-            .map(|j| (0..n_samples).map(|i| data[[i, j]]).sum::<f32>() / n_samples as f32)
-            .collect();
-            
-        Array2::from_shape_vec((1, n_features), centroid_data)
-            .map_err(|e| FontError::Vectorization(format!("Failed to create centroid: {}", e)))
-    }
-    
-    // Pure function: initialize first centroid
-    fn initialize_first_centroid(data: &Array2<f32>, rng: &mut impl Rng) -> (Array2<f32>, usize) {
-        let n_samples = data.nrows();
-        let n_features = data.ncols();
-        let first_idx = rng.gen_range(0..n_samples);
-        
-        let mut centroids = Array2::zeros((1, n_features));
-        (0..n_features).for_each(|j| centroids[[0, j]] = data[[first_idx, j]]);
-        
-        (centroids, first_idx)
-    }
-    
-    // Pure function: calculate distances to existing centroids
-    fn calculate_distances_to_centroids(
-        data: &Array2<f32>, 
-        centroids: &Array2<f32>, 
-        num_centroids: usize
-    ) -> Vec<f32> {
-        let n_samples = data.nrows();
-        let n_features = data.ncols();
-        
-        (0..n_samples)
-            .map(|p| {
-                (0..num_centroids)
-                    .map(|c| {
-                        (0..n_features)
-                            .map(|j| (data[[p, j]] - centroids[[c, j]]).powi(2))
-                            .sum::<f32>()
-                    })
-                    .fold(f32::INFINITY, f32::min)
-            })
-            .collect()
-    }
-    
-    // Pure function: select next centroid using weighted probability
-    fn select_next_centroid(distances: &[f32], rng: &mut impl Rng) -> usize {
-        let total_dist: f32 = distances.iter().sum();
-        let threshold = rng.gen::<f32>() * total_dist;
-        
-        distances
-            .iter()
-            .scan(0.0, |cumulative, &dist| {
-                *cumulative += dist;
-                Some(*cumulative)
-            })
-            .position(|cumulative| cumulative >= threshold)
-            .unwrap_or(0)
-    }
-    
-    // K-means implementation with functional approach
-    fn simple_kmeans(data: &Array2<f32>, k: usize, max_iters: usize) -> FontResult<(Array2<f32>, Vec<usize>)> {
-        let n_samples = data.nrows();
-        let n_features = data.ncols();
-        
-        if k == 1 {
-            let centroid = Self::create_single_cluster_centroid(data)?;
-            return Ok((centroid, vec![0; n_samples]));
-        }
-        
-        let mut rng = rand::thread_rng();
-        let mut centroids = Array2::zeros((k, n_features));
-        
-        // Initialize with k-means++
-        let first_idx = rng.gen_range(0..n_samples);
-        (0..n_features).for_each(|j| centroids[[0, j]] = data[[first_idx, j]]);
-        
-        for i in 1..k {
-            let distances = Self::calculate_distances_to_centroids(data, &centroids, i);
-            let chosen_idx = Self::select_next_centroid(&distances, &mut rng);
-            (0..n_features).for_each(|j| centroids[[i, j]] = data[[chosen_idx, j]]);
-        }
-        
-        let mut labels = vec![0; n_samples];
-        
-        // Iterative refinement
-        for _iter in 0..max_iters {
-            let old_labels = labels.clone();
-            
-            // Assign points to nearest centroids
-            labels = (0..n_samples)
-                .map(|i| {
-                    (0..k)
-                        .map(|c| {
-                            (0..n_features)
-                                .map(|j| (data[[i, j]] - centroids[[c, j]]).powi(2))
-                                .sum::<f32>()
-                                .sqrt()
-                        })
-                        .enumerate()
-                        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-                        .map(|(cluster, _)| cluster)
-                        .unwrap_or(0)
-                })
-                .collect();
-            
-            // Update centroids
-            for c in 0..k {
-                let cluster_points: Vec<usize> = labels
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, &label)| label == c)
-                    .map(|(idx, _)| idx)
-                    .collect();
-                
-                if !cluster_points.is_empty() {
-                    (0..n_features).for_each(|j| {
-                        let mean = cluster_points
-                            .iter()
-                            .map(|&idx| data[[idx, j]])
-                            .sum::<f32>() / cluster_points.len() as f32;
-                        centroids[[c, j]] = mean;
-                    });
-                }
-            }
-            
-            // Check convergence
-            if labels == old_labels {
-                break;
-            }
-        }
-        
-        Ok((centroids, labels))
     }
 }
 
