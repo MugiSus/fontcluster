@@ -194,30 +194,68 @@ impl FontClassifier {
         println!("Fetched {} fonts from Google Fonts API", google_fonts.items.len());
         
         let mut training_samples = Vec::new();
+        let mut successful_renders = 0;
+        let mut skipped_fonts = 0;
+        
+        // Create font renderer with Google Fonts support
+        use crate::rendering::font_renderer::FontRenderer;
+        use crate::core::vectorizer::ImageVectorizer;
+        use crate::config::FontImageConfig;
+        
+        let temp_config = FontImageConfig {
+            font_size: 64.0,
+            text: "A quick brown fox jumps over the lazy dog".to_string(),
+            output_dir: std::path::PathBuf::from("/tmp"),
+        };
+        
+        let renderer = FontRenderer::with_google_fonts(&temp_config, api_key);
+        let vectorizer = ImageVectorizer::new();
         
         for font_item in google_fonts.items {
-            // 実際の使用では、フォントファイルをダウンロードして特徴量を抽出する必要がある
-            // ここでは簡略化したダミー特徴量を使用
-            let features = Self::generate_dummy_features(&font_item.family);
-            let category = FontCategory::from_google_category(&font_item.category);
+            let font_family = &font_item.family;
             
-            training_samples.push(TrainingSample {
-                features,
-                category,
-            });
+            // Try to render actual font and extract real features
+            match renderer.generate_training_image(font_family).await {
+                Ok(image_bytes) => {
+                    match vectorizer.vectorize_image_bytes(&image_bytes) {
+                        Ok(features) => {
+                            let category = FontCategory::from_google_category(&font_item.category);
+                            training_samples.push(TrainingSample {
+                                features,
+                                category,
+                            });
+                            successful_renders += 1;
+                            
+                            if successful_renders % 50 == 0 {
+                                println!("✓ Successfully processed {} fonts...", successful_renders);
+                            }
+                        }
+                        Err(e) => {
+                            println!("⚠ Skipping {}: Failed to vectorize image - {}", font_family, e);
+                            skipped_fonts += 1;
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("⚠ Skipping {}: Failed to render font - {}", font_family, e);
+                    skipped_fonts += 1;
+                }
+            }
+        }
+        
+        println!("Training data collection completed:");
+        println!("  ✓ Successfully processed: {} fonts", successful_renders);
+        println!("  ⚠ Skipped: {} fonts", skipped_fonts);
+        println!("  📊 Success rate: {:.1}%", 
+                (successful_renders as f32 / (successful_renders + skipped_fonts) as f32) * 100.0);
+        
+        if training_samples.is_empty() {
+            return Err(FontError::Classification("No valid training samples generated".to_string()));
         }
         
         Ok(training_samples)
     }
     
-    // ダミー特徴量生成（実際の実装では実際のフォント解析が必要）
-    fn generate_dummy_features(font_name: &str) -> Vec<f32> {
-        // フォント名のハッシュベースで一貫した特徴量を生成
-        let hash = font_name.bytes().fold(0u32, |acc, b| acc.wrapping_mul(31).wrapping_add(b as u32));
-        let x = ((hash % 1000) as f32 - 500.0) / 100.0;
-        let y = (((hash / 1000) % 1000) as f32 - 500.0) / 100.0;
-        vec![x, y]
-    }
     
     // モデルを訓練
     pub async fn train_model(&mut self, training_data: Vec<TrainingSample>) -> FontResult<()> {
@@ -284,29 +322,4 @@ impl FontClassifier {
         Ok(classifier)
     }
     
-    // デモ用の訓練データ生成
-    pub fn generate_demo_training_data() -> Vec<TrainingSample> {
-        vec![
-            TrainingSample {
-                features: vec![-0.5, 0.2],
-                category: FontCategory::SansSerif,
-            },
-            TrainingSample {
-                features: vec![0.3, -0.4],
-                category: FontCategory::Serif,
-            },
-            TrainingSample {
-                features: vec![0.8, 0.6],
-                category: FontCategory::Handwriting,
-            },
-            TrainingSample {
-                features: vec![-0.2, -0.8],
-                category: FontCategory::Monospace,
-            },
-            TrainingSample {
-                features: vec![1.0, 0.1],
-                category: FontCategory::Display,
-            },
-        ]
-    }
 }
