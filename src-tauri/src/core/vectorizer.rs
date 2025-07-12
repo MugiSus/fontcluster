@@ -66,6 +66,7 @@ impl FontImageVectorizer {
 }
 
 // Individual image vectorization processor
+#[derive(Clone)]
 pub struct ImageVectorizer;
 
 impl ImageVectorizer {

@@ -4,12 +4,17 @@ use serde::{Serialize, Deserialize};
 use smartcore::ensemble::random_forest_classifier::*;
 use smartcore::linalg::basic::matrix::DenseMatrix;
 use std::fs;
+use futures::stream::{self, StreamExt};
 
 // Random Forest training configuration constants
 const RF_N_TREES: u16 = 100;           // Number of trees in the forest (default: 10)
 const RF_MAX_DEPTH: u16 = 10;          // Maximum depth of trees
 const RF_MIN_SAMPLES_SPLIT: usize = 5;  // Minimum samples required to split a node (default: 2)
 const RF_MIN_SAMPLES_LEAF: usize = 2;   // Minimum samples required at a leaf node (default: 1)
+
+// Parallel processing configuration constants
+const CONCURRENT_FONT_LIMIT: usize = 10; // Maximum concurrent font processing (Google API rate limiting)
+const PROGRESS_REPORT_INTERVAL: usize = 50; // Report progress every N fonts
 
 // 事前訓練済みモデルをバイナリに埋め込み
 const PRETRAINED_MODEL: &[u8] = include_bytes!("../../assets/font_classifier.bin");
@@ -198,10 +203,6 @@ impl FontClassifier {
             
         println!("Fetched {} fonts from Google Fonts API", google_fonts.items.len());
         
-        let mut training_samples = Vec::new();
-        let mut successful_renders = 0;
-        let mut skipped_fonts = 0;
-        
         // Create font renderer with Google Fonts support
         use crate::rendering::font_renderer::FontRenderer;
         use crate::core::vectorizer::ImageVectorizer;
@@ -213,36 +214,67 @@ impl FontClassifier {
             output_dir: std::path::PathBuf::from("/tmp"),
         };
         
-        let renderer = FontRenderer::with_google_fonts(&temp_config, api_key);
+        let renderer = FontRenderer::with_google_fonts(&temp_config, api_key.clone());
         let vectorizer = ImageVectorizer::new();
         
-        for font_item in google_fonts.items {
-            let font_family = &font_item.family;
-            
-            // Try to render actual font and extract real features
-            match renderer.generate_training_image(font_family).await {
-                Ok(image_bytes) => {
-                    match vectorizer.vectorize_image_bytes(&image_bytes) {
-                        Ok(features) => {
-                            let category = FontCategory::from_google_category(&font_item.category);
-                            training_samples.push(TrainingSample {
-                                features,
-                                category,
-                            });
-                            successful_renders += 1;
-                            
-                            if successful_renders % 50 == 0 {
-                                println!("✓ Successfully processed {} fonts...", successful_renders);
+        println!("🚀 Starting parallel font processing with {} concurrent workers...", CONCURRENT_FONT_LIMIT);
+        let total_fonts = google_fonts.items.len();
+        
+        // Parallel processing using futures::stream
+        let results = stream::iter(google_fonts.items)
+            .enumerate()
+            .map(|(index, font_item)| {
+                let renderer = renderer.clone();
+                let vectorizer = vectorizer.clone();
+                let font_family = font_item.family.clone();
+                let category_str = font_item.category.clone();
+                
+                async move {
+                    // Progress reporting
+                    if (index + 1) % PROGRESS_REPORT_INTERVAL == 0 {
+                        println!("📊 Processing font {}/{}: {}", index + 1, total_fonts, font_family);
+                    }
+                    
+                    // Try to render actual font and extract real features
+                    match renderer.generate_training_image(&font_family).await {
+                        Ok(image_bytes) => {
+                            match vectorizer.vectorize_image_bytes(&image_bytes) {
+                                Ok(features) => {
+                                    let category = FontCategory::from_google_category(&category_str);
+                                    Ok(TrainingSample {
+                                        features,
+                                        category,
+                                    })
+                                }
+                                Err(e) => {
+                                    println!("⚠ Skipping {}: Failed to vectorize image - {}", font_family, e);
+                                    Err(e)
+                                }
                             }
                         }
                         Err(e) => {
-                            println!("⚠ Skipping {}: Failed to vectorize image - {}", font_family, e);
-                            skipped_fonts += 1;
+                            println!("⚠ Skipping {}: Failed to render font - {}", font_family, e);
+                            Err(e)
                         }
                     }
                 }
-                Err(e) => {
-                    println!("⚠ Skipping {}: Failed to render font - {}", font_family, e);
+            })
+            .buffer_unordered(CONCURRENT_FONT_LIMIT)
+            .collect::<Vec<_>>()
+            .await;
+        
+        // Process results
+        let mut training_samples = Vec::new();
+        let mut successful_renders = 0;
+        let mut skipped_fonts = 0;
+        
+        for result in results {
+            match result {
+                Ok(sample) => {
+                    training_samples.push(sample);
+                    successful_renders += 1;
+                }
+                Err(_) => {
                     skipped_fonts += 1;
                 }
             }

@@ -13,9 +13,9 @@ use image::{ImageBuffer, Rgba};
 use std::io::Cursor;
 
 // Font rendering engine
+#[derive(Clone)]
 pub struct FontRenderer<'a> {
     config: &'a FontImageConfig,
-    source: SystemSource,
     google_fonts_client: Option<GoogleFontsClient>,
 }
 
@@ -23,7 +23,6 @@ impl<'a> FontRenderer<'a> {
     pub fn new(config: &'a FontImageConfig) -> Self {
         Self {
             config,
-            source: SystemSource::new(),
             google_fonts_client: None,
         }
     }
@@ -31,7 +30,6 @@ impl<'a> FontRenderer<'a> {
     pub fn with_google_fonts(config: &'a FontImageConfig, api_key: String) -> Self {
         Self {
             config,
-            source: SystemSource::new(),
             google_fonts_client: Some(GoogleFontsClient::new(api_key)),
         }
     }
@@ -57,7 +55,6 @@ impl<'a> FontRenderer<'a> {
         
         let temp_renderer = FontRenderer {
             config: &training_config,
-            source: SystemSource::new(),
             google_fonts_client: self.google_fonts_client.as_ref().cloned(),
         };
         
@@ -77,7 +74,8 @@ impl<'a> FontRenderer<'a> {
     }
 
     fn load_font(&self, family_name: &str) -> FontResult<font_kit::loaders::default::Font> {
-        self.source
+        let source = SystemSource::new();
+        source
             .select_best_match(&[FamilyName::Title(family_name.to_string())], &Properties::new())
             .map_err(|e| FontError::FontSelection(format!("Failed to select font {}: {}", family_name, e)))?
             .load()
