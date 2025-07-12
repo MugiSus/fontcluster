@@ -19,7 +19,7 @@ pub fn run() {
             generate_font_images, 
             vectorize_font_images, 
             compress_vectors_to_2d,
-            cluster_compressed_vectors,
+            classify_all_fonts,
             get_compressed_vectors,
             get_fonts_config,
             get_font_config,

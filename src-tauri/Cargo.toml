@@ -41,8 +41,6 @@ nalgebra = "0.33"
 pacmap = "0.2"
 # Random number generation for K-means
 rand = "0.8"
-# HDBSCAN clustering algorithm
-hdbscan = "0.9"
 # SmartCore for supervised font classification
 smartcore = { version = "0.3", features = ["serde"] }
 # Serialization for model persistence (already defined above)

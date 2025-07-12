@@ -1,4 +1,4 @@
-use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer};
+use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, FontClassifier, SessionManager};
 use crate::config::FONT_SIZE;
 use tauri::Emitter;
 
@@ -45,15 +45,59 @@ pub async fn compress_vectors_to_2d(app_handle: tauri::AppHandle) -> Result<Stri
 }
 
 #[tauri::command]
-pub async fn cluster_compressed_vectors(app_handle: tauri::AppHandle) -> Result<String, String> {
-    let clusterer = VectorClusterer::new()
-        .map_err(|e| format!("Failed to initialize clusterer: {}", e))?;
+pub async fn classify_all_fonts(app_handle: tauri::AppHandle) -> Result<String, String> {
+    let classifier = FontClassifier::load_pretrained()
+        .map_err(|e| format!("Failed to load classifier: {}", e))?;
     
-    clusterer.cluster_compressed_vectors().await
-        .map(|output_dir| {
-            app_handle.emit("clustering_complete", ())
-                .unwrap_or_else(|e| eprintln!("Failed to emit clustering completion event: {}", e));
-            format!("Compressed vectors clustered in: {}", output_dir.display())
-        })
-        .map_err(|e| format!("Vector clustering failed: {}", e))
+    let session_manager = SessionManager::global();
+    let session_dir = session_manager.get_session_dir();
+    
+    // Get all font directories
+    let font_dirs: Vec<_> = std::fs::read_dir(&session_dir)
+        .map_err(|e| format!("Failed to read session directory: {}", e))?
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().is_dir())
+        .collect();
+    
+    let mut classified_count = 0;
+    
+    for entry in font_dirs {
+        let font_name = entry.file_name().to_string_lossy().to_string();
+        
+        // Check if compressed vector exists
+        let vector_file = entry.path().join("compressed-vector.csv");
+        if !vector_file.exists() {
+            continue;
+        }
+        
+        // Classify the font
+        match classifier.classify_font(&font_name).await {
+            Ok(category) => {
+                let category_index = category.clone() as u32;
+                let category_str = category.as_str();
+                
+                // Update compressed-vector.csv with category instead of cluster
+                let content = std::fs::read_to_string(&vector_file)
+                    .map_err(|e| format!("Failed to read vector file for {}: {}", font_name, e))?;
+                
+                let coords: Vec<&str> = content.trim().split(',').take(2).collect();
+                if coords.len() >= 2 {
+                    let updated_content = format!("{},{},{}", coords[0], coords[1], category_index);
+                    std::fs::write(&vector_file, updated_content)
+                        .map_err(|e| format!("Failed to update vector file for {}: {}", font_name, e))?;
+                }
+                
+                classified_count += 1;
+                println!("✓ Classified '{}' as {}", font_name, category_str);
+            }
+            Err(e) => {
+                eprintln!("Failed to classify {}: {}", font_name, e);
+            }
+        }
+    }
+    
+    app_handle.emit("classification_complete", ())
+        .unwrap_or_else(|e| eprintln!("Failed to emit classification completion event: {}", e));
+        
+    Ok(format!("Classified {} fonts using supervised learning in: {}", classified_count, session_dir.display()))
 }
