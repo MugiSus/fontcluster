@@ -121,6 +121,21 @@ function App() {
   };
 
   onMount(() => {
+    // Load preview text from current session on startup
+    const loadCurrentSessionText = async () => {
+      try {
+        const sessionInfoStr = await invoke<string>('get_current_session_info');
+        if (sessionInfoStr) {
+          const sessionInfo = JSON.parse(sessionInfoStr);
+          setSampleText(sessionInfo.preview_text);
+        }
+      } catch (error) {
+        console.error('Failed to get current session preview text:', error);
+      }
+    };
+    
+    loadCurrentSessionText();
+
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
       setIsGenerating(false);
@@ -160,11 +175,22 @@ function App() {
     });
   });
 
-  const handleSessionRestore = () => {
+  const handleSessionRestore = async () => {
     // Refresh all data after session restore
     refetchSessionId();
     refetchSessionDirectory();
     refetchCompressedVectors();
+
+    // Load preview text from the restored session
+    try {
+      const sessionInfoStr = await invoke<string>('get_current_session_info');
+      if (sessionInfoStr) {
+        const sessionInfo = JSON.parse(sessionInfoStr);
+        setSampleText(sessionInfo.preview_text);
+      }
+    } catch (error) {
+      console.error('Failed to get session preview text:', error);
+    }
   };
 
   return (

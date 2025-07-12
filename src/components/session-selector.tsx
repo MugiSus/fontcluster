@@ -89,7 +89,7 @@ export function SessionSelector(props: SessionSelectorProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div class='flex max-h-[50vh] flex-col gap-4 overflow-y-auto'>
+        <div class='flex max-h-[50vh] flex-col gap-2 overflow-y-auto'>
           <Show
             when={!availableSessions.loading && availableSessions()}
             fallback={
@@ -115,7 +115,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                   const badge = getCompletionBadge(session);
                   return (
                     <div class='rounded-lg border p-4 transition-colors hover:bg-muted/50'>
-                      <div class='flex items-start justify-between gap-4'>
+                      <div class='flex items-start justify-between gap-2'>
                         <div class='min-w-0 flex-1'>
                           <div class='mb-2 flex items-center gap-2'>
                             <Badge variant={badge.variant} round>
