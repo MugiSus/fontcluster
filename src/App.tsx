@@ -271,7 +271,7 @@ function App() {
             <circle
               cx='300'
               cy='300'
-              r='450'
+              r='400'
               fill='none'
               class='pointer-events-none stroke-border stroke-1'
             />

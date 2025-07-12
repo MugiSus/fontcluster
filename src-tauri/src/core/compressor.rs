@@ -130,14 +130,14 @@ impl VectorCompressor {
         
         println!("Matrix created, configuring PaCMAP...");
         
-        // Configure PaCMAP for balanced, moderately distributed layout
+        // Configure PaCMAP for maximum continuous distribution, avoiding local clustering
         let config = Configuration::builder()
             .embedding_dimensions(2)
             .seed(42)
-            .num_iters((400, 400, 800))
-            .learning_rate(0.9)
-            .mid_near_ratio(0.8)
-            .far_pair_ratio(1.2)
+            .num_iters((100, 100, 250))
+            .learning_rate(1.0)
+            .mid_near_ratio(0.5)
+            .far_pair_ratio(2.0)
             .build();
         
         println!("Data prepared, running PaCMAP dimensionality reduction...");

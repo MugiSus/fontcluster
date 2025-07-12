@@ -10,7 +10,8 @@
       "Write(CLAUDELOGS/*.md)",
       "Bash(date:*)",
       "Bash(cargo check:*)",
-      "WebFetch(domain:docs.rs)"
+      "WebFetch(domain:docs.rs)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   },
