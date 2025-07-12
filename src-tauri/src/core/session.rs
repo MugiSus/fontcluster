@@ -1,5 +1,5 @@
 use crate::error::{FontResult, FontError};
-use crate::config::FontConfig;
+use crate::config::{FontConfig, SessionConfig, SessionInfo};
 use std::path::PathBuf;
 use std::fs;
 use std::sync::RwLock;
@@ -61,6 +61,34 @@ impl SessionManager {
         let new_session = Self::new()?;
         let mut session_guard = SESSION_MANAGER.write().unwrap();
         *session_guard = Some(new_session);
+        Ok(())
+    }
+    
+    /// Create a new session with preview text and save session config
+    pub fn create_new_session_with_text(preview_text: String) -> FontResult<String> {
+        let session_id = Uuid::now_v7().to_string();
+        let new_session = Self::with_id(session_id.clone())?;
+        
+        // Save session configuration
+        let session_config = SessionConfig::new(preview_text, session_id.clone());
+        session_config.save_to_dir(&new_session.get_session_dir())?;
+        
+        let mut session_guard = SESSION_MANAGER.write().unwrap();
+        *session_guard = Some(new_session);
+        
+        Ok(session_id)
+    }
+    
+    /// Restore a session by ID
+    pub fn restore_session(session_id: String) -> FontResult<()> {
+        let session = Self::with_id(session_id)?;
+        
+        // Verify session config exists
+        let session_dir = session.get_session_dir();
+        SessionConfig::load_from_dir(&session_dir)?;
+        
+        let mut session_guard = SESSION_MANAGER.write().unwrap();
+        *session_guard = Some(session);
         Ok(())
     }
     
@@ -201,5 +229,56 @@ impl SessionManager {
         }
         
         Ok(())
+    }
+    
+    /// Get all available sessions sorted by date (newest first)
+    pub fn get_available_sessions(max_sessions: Option<usize>) -> FontResult<Vec<SessionInfo>> {
+        let base_dir = Self::get_base_data_dir()?;
+        let generated_dir = base_dir.join("Generated");
+        
+        if !generated_dir.exists() {
+            return Ok(Vec::new());
+        }
+        
+        let mut sessions = Vec::new();
+        
+        for entry in fs::read_dir(&generated_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Skip default directory
+                    if dir_name == "default" {
+                        continue;
+                    }
+                    
+                    // Try to load session info
+                    if let Ok(session_info) = SessionInfo::from_session_dir(&path) {
+                        sessions.push(session_info);
+                    }
+                }
+            }
+        }
+        
+        // Sort by date (newest first)
+        sessions.sort_by(|a, b| b.date.cmp(&a.date));
+        
+        // Limit to max_sessions if specified
+        if let Some(max) = max_sessions {
+            sessions.truncate(max);
+        }
+        
+        Ok(sessions)
+    }
+    
+    /// Get current session info
+    pub fn get_current_session_info(&self) -> FontResult<Option<SessionInfo>> {
+        let session_dir = self.get_session_dir();
+        if session_dir.join("config.json").exists() {
+            Ok(Some(SessionInfo::from_session_dir(&session_dir)?))
+        } else {
+            Ok(None)
+        }
     }
 }

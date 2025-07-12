@@ -41,4 +41,6 @@ rand = "0.8"
 hdbscan = "0.9"
 # UUIDv7 for session management
 uuid = { version = "1.0", features = ["v7", "serde"] }
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
 

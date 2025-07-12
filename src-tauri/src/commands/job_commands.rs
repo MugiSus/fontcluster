@@ -17,10 +17,9 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
         let _result = Pipeline::new(processing_text.clone())
             .inspect(|text| println!("📂 Step 0/4: Creating new session for text: '{}'", text))
             .then(|text| {
-                SessionManager::create_new_session()
-                    .map(|_| {
-                        let session = SessionManager::global();
-                        println!("✅ Session created: {}", session.session_id());
+                SessionManager::create_new_session_with_text(text.clone())
+                    .map(|session_id| {
+                        println!("✅ Session created: {}", session_id);
                         text
                     })
             })

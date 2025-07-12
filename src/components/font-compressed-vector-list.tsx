@@ -22,10 +22,10 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             'bg-yellow-500',
             'bg-purple-500',
             'bg-orange-500',
-            'bg-fuchsia-500',
             'bg-teal-500',
             'bg-indigo-500',
             'bg-cyan-500',
+            'bg-fuchsia-500',
           ];
 
           // Handle noise cluster (-1) with gray-300
