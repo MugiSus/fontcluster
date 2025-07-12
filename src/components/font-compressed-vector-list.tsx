@@ -11,7 +11,7 @@ interface FontCompressedVectorListProps {
 
 export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
   return (
-    <ul class='flex flex-col items-start gap-0 overflow-scroll rounded-md border bg-muted/20'>
+    <ul class='flex flex-col items-start gap-0 bg-muted/20'>
       <For each={props.compressedVectors}>
         {(vectorData: FontVectorData) => {
           // Define cluster colors (same as in SVG)
