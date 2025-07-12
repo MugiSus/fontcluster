@@ -1,5 +1,5 @@
 use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer, SessionManager};
-use crate::config::FONT_SIZE;
+use crate::config::{FONT_SIZE, SessionConfig};
 use crate::utils::{Pipeline, with_text_or_default, with_progress_events_async};
 use tauri::AppHandle;
 
@@ -33,9 +33,16 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
                     "font_generation_complete",
                     || generator.generate_all()
                 ).await
-                .map(|path| {
+                .and_then(|path| {
                     println!("✅ Font images generated in: {}", path.display());
-                    text
+                    
+                    // Update session config to mark images as completed
+                    let session_manager = SessionManager::global();
+                    let session_dir = session_manager.get_session_dir();
+                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    config.mark_images_completed(&session_dir)?;
+                    
+                    Ok(text)
                 })
             }).await
             
@@ -48,9 +55,16 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
                     "vectorization_complete", 
                     || vectorizer.vectorize_all()
                 ).await
-                .map(|path| {
+                .and_then(|path| {
                     println!("✅ Font images vectorized in: {}", path.display());
-                    text
+                    
+                    // Update session config to mark vectors as completed
+                    let session_manager = SessionManager::global();
+                    let session_dir = session_manager.get_session_dir();
+                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    config.mark_vectors_completed(&session_dir)?;
+                    
+                    Ok(text)
                 })
             }).await
             
@@ -63,9 +77,16 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
                     "compression_complete",
                     || compressor.compress_all()
                 ).await
-                .map(|path| {
+                .and_then(|path| {
                     println!("✅ Vectors compressed to 2D in: {}", path.display());
-                    text
+                    
+                    // Update session config to mark compression as completed
+                    let session_manager = SessionManager::global();
+                    let session_dir = session_manager.get_session_dir();
+                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    config.mark_compressed_completed(&session_dir)?;
+                    
+                    Ok(text)
                 })
             }).await
             
@@ -78,9 +99,16 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
                     "clustering_complete",
                     || clusterer.cluster_compressed_vectors()
                 ).await
-                .map(|path| {
+                .and_then(|path| {
                     println!("✅ Compressed vectors clustered in: {}", path.display());
-                    text
+                    
+                    // Update session config to mark clustering as completed
+                    let session_manager = SessionManager::global();
+                    let session_dir = session_manager.get_session_dir();
+                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    config.mark_clusters_completed(&session_dir)?;
+                    
+                    Ok(text)
                 })
             }).await
             .execute()?;
