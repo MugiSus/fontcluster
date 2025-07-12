@@ -130,7 +130,7 @@ impl VectorClusterer {
         println!("Matrix created, using fixed K=6 for clustering...");
         
         // Use fixed K=6 for clustering
-        let k = 6;
+        let k = 7; 
         let cluster_labels = Self::perform_kmeans_clustering(&data_matrix, k)?;
         
         println!("Clustering completed, saving updated compressed vectors with cluster labels...");

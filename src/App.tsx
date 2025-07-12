@@ -322,14 +322,14 @@ function App() {
 
                   // Define cluster colors
                   const clusterColors = [
-                    'fill-red-500 stroke-red-700',
-                    'fill-blue-500 stroke-blue-700',
-                    'fill-green-500 stroke-green-700',
-                    'fill-purple-500 stroke-purple-700',
-                    'fill-orange-500 stroke-orange-700',
-                    'fill-pink-500 stroke-pink-700',
-                    'fill-teal-500 stroke-teal-700',
-                    'fill-indigo-500 stroke-indigo-700',
+                    'stroke-red-500',
+                    'stroke-blue-500',
+                    'stroke-green-500',
+                    'stroke-purple-500',
+                    'stroke-orange-500',
+                    'stroke-pink-500',
+                    'stroke-teal-500',
+                    'stroke-indigo-500',
                   ];
 
                   const clusterColor =
@@ -340,12 +340,9 @@ function App() {
                       <circle
                         cx={scaledX}
                         cy={scaledY}
-                        r='3'
-                        class={`stroke-1 ${
-                          nearestFont() === config.safe_name
-                            ? 'fill-yellow-300 stroke-yellow-500'
-                            : clusterColor
-                        }`}
+                        r={nearestFont() === config.safe_name ? 3 : 1}
+                        stroke-width={2}
+                        class={`${clusterColor} fill-background`}
                       />
                       <circle
                         cx={scaledX}
