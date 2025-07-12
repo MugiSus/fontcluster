@@ -367,10 +367,10 @@ function App() {
 
                             // Define cluster colors
                             const clusterColors = [
-                              'fill-red-500',
                               'fill-blue-500',
-                              'fill-green-500',
+                              'fill-red-500',
                               'fill-yellow-500',
+                              'fill-green-500',
                               'fill-purple-500',
                               'fill-orange-500',
                               'fill-teal-500',

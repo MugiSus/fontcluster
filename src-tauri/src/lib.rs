@@ -27,11 +27,11 @@ fn create_menu(app_handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         let app_menu = Submenu::with_items(app_handle, "FontCluster", true, &[
             &PredefinedMenuItem::about(app_handle, Some("About FontCluster"), Some(about_metadata))?,
             &PredefinedMenuItem::separator(app_handle)?,
+            &restore_sessions,
+            &PredefinedMenuItem::separator(app_handle)?,
             &PredefinedMenuItem::hide(app_handle, None)?,
             &PredefinedMenuItem::hide_others(app_handle, None)?,
             &PredefinedMenuItem::show_all(app_handle, None)?,
-            &PredefinedMenuItem::separator(app_handle)?,
-            &restore_sessions,
             &PredefinedMenuItem::separator(app_handle)?,
             &PredefinedMenuItem::quit(app_handle, None)?,
         ])?;

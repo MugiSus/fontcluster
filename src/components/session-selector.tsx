@@ -18,6 +18,8 @@ interface SessionInfo {
   has_vectors: boolean;
   has_compressed: boolean;
   has_clusters: boolean;
+  clusters_amount: number;
+  samples_amount: number;
 }
 
 interface SessionSelectorProps {
@@ -118,12 +120,45 @@ export function SessionSelector(props: SessionSelectorProps) {
                       <div class='flex items-start justify-between gap-2'>
                         <div class='min-w-0 flex-1'>
                           <div class='mb-2 flex items-center gap-2'>
-                            <Badge variant={badge.variant} round>
+                            <Badge
+                              variant={badge.variant}
+                              round
+                              class='px-2 py-0'
+                            >
                               {badge.text}
                             </Badge>
-                            <span class='text-xs text-muted-foreground'>
+                            <time class='text-xs tabular-nums text-muted-foreground'>
                               {formatDate(session.date)}
-                            </span>
+                            </time>
+                            <div class='flex gap-1.5'>
+                              <For
+                                each={new Array(session.clusters_amount)
+                                  .fill(0)
+                                  .map((_, i) => i)}
+                              >
+                                {(i) => (
+                                  <div
+                                    class={`size-2 rounded-full ${
+                                      [
+                                        'bg-blue-500',
+                                        'bg-red-500',
+                                        'bg-yellow-500',
+                                        'bg-green-500',
+                                        'bg-purple-500',
+                                        'bg-orange-500',
+                                        'bg-teal-500',
+                                        'bg-indigo-500',
+                                        'bg-cyan-500',
+                                        'bg-fuchsia-500',
+                                      ][i]
+                                    }`}
+                                  />
+                                )}
+                              </For>
+                            </div>
+                            <div class='text-xs text-muted-foreground'>
+                              {session.samples_amount}
+                            </div>
                           </div>
                           <div class='mb-1 truncate text-sm font-medium'>
                             "{session.preview_text}"
