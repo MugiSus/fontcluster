@@ -133,9 +133,9 @@ impl VectorClusterer {
         
         // Configure HDBSCAN parameters for practical cluster count (≤10)
         let hyper_params = HdbscanHyperParams::builder()
-            .min_cluster_size((data_points.len() as f64 * 0.035) as usize)
+            .min_cluster_size((data_points.len() as f64 * 0.075) as usize)
             .max_cluster_size((data_points.len() as f64 * 0.25) as usize)
-            .min_samples((data_points.len() as f64 * 0.01) as usize)
+            .min_samples(10)
             .build();
         
         // Create HDBSCAN clusterer and perform clustering
