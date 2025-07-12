@@ -15,17 +15,37 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
       <For each={props.compressedVectors}>
         {(vectorData: FontVectorData) => {
           // Define category colors for supervised learning
-          const categoryColors = [
-            'text-blue-500 bg-blue-500', // 0: sans-serif
-            'text-red-500 bg-red-500', // 1: serif
-            'text-yellow-500 bg-yellow-500', // 2: handwriting
-            'text-purple-500 bg-purple-500', // 3: monospace
-            'text-green-500 bg-green-500', // 4: display
+          const categoryBgColors = [
+            'bg-blue-500', // 0: sans-serif
+            'bg-red-500', // 1: serif
+            'bg-yellow-500', // 2: handwriting
+            'bg-purple-500', // 3: monospace
+            'bg-green-500', // 4: display
+          ];
+
+          const categoryTextColors = [
+            'text-blue-500', // 0: sans-serif
+            'text-red-500', // 1: serif
+            'text-yellow-500', // 2: handwriting
+            'text-purple-500', // 3: monospace
+            'text-green-500', // 4: display
+          ];
+
+          const categoryNames = [
+            'Sans Serif',
+            'Serif',
+            'Handwriting',
+            'Monospace',
+            'Display',
           ];
 
           // Get category color (no noise handling needed for supervised learning)
-          const categoryColor =
-            categoryColors[vectorData.k % categoryColors.length];
+          const categoryBgColor =
+            categoryBgColors[vectorData.k % categoryBgColors.length];
+          const categoryTextColor =
+            categoryTextColors[vectorData.k % categoryTextColors.length];
+          const categoryName =
+            categoryNames[vectorData.k % categoryNames.length];
 
           return (
             <li
@@ -36,9 +56,11 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
               onClick={() => props.onFontClick(vectorData.config.safe_name)}
             >
               <div class='flex items-center gap-2 px-4'>
-                <div class={`mb-0.5 h-3 w-1 rounded-full ${categoryColor}`} />
-                <div />
-                <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
+                <div class={`mb-0.5 h-3 w-1 rounded-full ${categoryBgColor}`} />
+                <div class={`${categoryTextColor} text-sm font-light`}>
+                  {categoryName}
+                </div>
+                <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-semibold text-muted-foreground'>
                   {vectorData.config.font_name}
                 </div>
               </div>
