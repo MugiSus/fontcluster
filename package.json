@@ -15,7 +15,7 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc --noEmit",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check",
-    "train-google-font": "cd src-tauri && cargo run --bin train_classifier"
+    "train-classifier": "cd src-tauri && cargo run --bin train_classifier"
   },
   "license": "MIT",
   "dependencies": {
