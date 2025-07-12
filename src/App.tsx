@@ -7,25 +7,12 @@ import {
   TextFieldInput,
   TextFieldLabel,
 } from './components/ui/text-field';
-import { ArrowRightIcon, LoaderIcon } from 'lucide-solid';
-import {
-  // FontConfig,
-  CompressedFontVectorMap,
-  FontVectorData,
-} from './types/font';
+import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
+import { CompressedFontVectorMap, FontVectorData } from './types/font';
 import { FontCompressedVectorList } from './components/font-compressed-vector-list';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 
 function App() {
-  // const [fonts, { refetch: refetchFonts }] = createResource(() =>
-  //   invoke<string>('get_session_fonts')
-  //     .then((jsonStr) => JSON.parse(jsonStr) as FontConfig[])
-  //     .catch((error) => {
-  //       console.error('Failed to get session fonts:', error);
-  //       return [] as FontConfig[];
-  //     }),
-  // );
-
   // Get session ID for debugging/logging purposes
   const [sessionId, { refetch: refetchSessionId }] = createResource(() =>
     invoke<string>('get_session_id').catch((error) => {
@@ -42,25 +29,23 @@ function App() {
   const [sampleText, setSampleText] = createSignal('');
   const [nearestFont, setNearestFont] = createSignal('');
 
-  const [sessionDirectory] = createResource(
-    () => isCompressing() === false && sessionId(),
-    () =>
+  const [sessionDirectory, { refetch: refetchSessionDirectory }] =
+    createResource(() =>
       invoke<string>('get_session_directory').catch((error) => {
         console.error('Failed to get session directory:', error);
         return '';
       }),
-  );
+    );
 
-  const [compressedVectors] = createResource(
-    () => isClustering() === false && sessionId(),
-    () =>
+  const [compressedVectors, { refetch: refetchCompressedVectors }] =
+    createResource(() =>
       invoke<string>('get_compressed_vectors')
         .then((jsonStr) => JSON.parse(jsonStr) as CompressedFontVectorMap)
         .catch((error) => {
           console.error('Failed to get compressed vectors:', error);
           return {} as CompressedFontVectorMap;
         }),
-  );
+    );
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
@@ -115,35 +100,11 @@ function App() {
   const generateFontImages = async (text: string) => {
     setIsGenerating(true);
     try {
-      // Step 0: Create new session for this clustering operation
-      const sessionResult = await invoke<string>('create_new_session');
-      console.log('Session creation result:', sessionResult);
-
-      // Step 1: Generate font images
-      const imageResult = await invoke<string>('generate_font_images', {
+      // Single command to run all jobs sequentially
+      const result = await invoke<string>('run_jobs', {
         text,
       });
-      console.log('Image generation result:', imageResult);
-
-      // Step 2: Vectorize images
-      setIsGenerating(false);
-      setIsVectorizing(true);
-      const vectorResult = await invoke<string>('vectorize_font_images');
-      console.log('Vectorization result:', vectorResult);
-
-      // Step 3: Compress vectors to 2D
-      setIsVectorizing(false);
-      setIsCompressing(true);
-      const compressionResult = await invoke<string>('compress_vectors_to_2d');
-      console.log('Compression result:', compressionResult);
-
-      // Step 4: Cluster compressed vectors
-      setIsCompressing(false);
-      setIsClustering(true);
-      const clusteringResult = await invoke<string>(
-        'cluster_compressed_vectors',
-      );
-      console.log('Clustering result:', clusteringResult);
+      console.log('Complete pipeline result:', result);
 
       refetchSessionId(); // Trigger reload of compressed vectors
       // refetchFonts(); // Trigger reload of font list
@@ -160,18 +121,35 @@ function App() {
   onMount(() => {
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
+      setIsGenerating(false);
+      setIsVectorizing(true);
+
+      refetchSessionId();
+      refetchSessionDirectory();
     });
 
     listen('vectorization_complete', () => {
       console.log('Vectorization completed');
+      setIsVectorizing(false);
+      setIsCompressing(true);
     });
 
     listen('compression_complete', () => {
       console.log('Compression completed');
+      setIsCompressing(false);
+      setIsClustering(true);
     });
 
     listen('clustering_complete', () => {
       console.log('Clustering completed');
+      setIsClustering(false);
+
+      refetchCompressedVectors();
+    });
+
+    listen('all_jobs_complete', () => {
+      console.log('All jobs completed successfully!');
+      // All states are reset in the finally block of generateFontImages
     });
   });
 
@@ -207,22 +185,22 @@ function App() {
             {isGenerating() ? (
               <>
                 Generating Images... (1/4)
-                <LoaderIcon class='animate-spin' />
+                <LoaderCircleIcon class='animate-spin' />
               </>
             ) : isVectorizing() ? (
               <>
                 Vectorizing Images... (2/4)
-                <LoaderIcon class='animate-spin' />
+                <LoaderCircleIcon class='animate-spin' />
               </>
             ) : isCompressing() ? (
               <>
                 Compressing Vectors... (3/4)
-                <LoaderIcon class='animate-spin' />
+                <LoaderCircleIcon class='animate-spin' />
               </>
             ) : isClustering() ? (
               <>
-                Clusterizing... (4/4)
-                <LoaderIcon class='animate-spin' />
+                Clustering... (4/4)
+                <LoaderCircleIcon class='animate-spin' />
               </>
             ) : (
               <>
