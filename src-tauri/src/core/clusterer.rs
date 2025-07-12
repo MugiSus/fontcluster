@@ -11,7 +11,6 @@ use std::io::Write;
 // Type aliases for better readability
 type VectorData = (String, f32, f32);
 type ClusterLabels = Vec<usize>;
-type WcssValues = Vec<f32>;
 
 // Vector clustering service
 pub struct VectorClusterer;
@@ -24,8 +23,8 @@ impl VectorClusterer {
     pub async fn cluster_compressed_vectors(&self) -> FontResult<PathBuf> {
         let vector_data = self.load_compressed_vectors().await?;
         
-        let optimal_k = Self::estimate_optimal_k(&vector_data)?;
-        let cluster_labels = Self::cluster_vectors(&vector_data, optimal_k)?;
+        let k = 8; // Fixed K=8 for consistent clustering
+        let cluster_labels = Self::cluster_vectors(&vector_data, k)?;
         
         Self::save_clustered_vectors(&vector_data, &cluster_labels).await?;
         
@@ -133,111 +132,7 @@ impl VectorClusterer {
         })
     }
     
-    // Pure function: calculate WCSS for a given clustering
-    fn calculate_wcss(data: &Array2<f32>, centroids: &Array2<f32>, labels: &[usize]) -> f32 {
-        labels
-            .iter()
-            .enumerate()
-            .map(|(i, &label)| {
-                let point = data.row(i);
-                let centroid_row = centroids.row(label);
-                point
-                    .iter()
-                    .zip(centroid_row.iter())
-                    .map(|(a, b)| (a - b).powi(2))
-                    .sum::<f32>()
-            })
-            .sum()
-    }
     
-    // Pure function: compute WCSS values for different K
-    fn compute_wcss_values(data: &Array2<f32>, k_range: std::ops::RangeInclusive<usize>) -> FontResult<WcssValues> {
-        k_range
-            .map(|k| {
-                Self::simple_kmeans(data, k, 100)
-                    .map(|(centroids, labels)| Self::calculate_wcss(data, &centroids, &labels))
-            })
-            .collect::<FontResult<Vec<_>>>()
-    }
-    
-    // Pure function: find elbow using curvature
-    fn find_elbow_by_curvature(wcss_values: &[f32], min_k: usize) -> (usize, f32) {
-        (1..wcss_values.len().saturating_sub(1))
-            .map(|i| {
-                let second_derivative = wcss_values[i - 1] - 2.0 * wcss_values[i] + wcss_values[i + 1];
-                let curvature = second_derivative.abs();
-                (min_k + i, curvature)
-            })
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-            .unwrap_or((2, 0.0))
-    }
-    
-    // Pure function: find elbow using rate change
-    fn find_elbow_by_rate_change(wcss_values: &[f32], min_k: usize) -> (usize, f32) {
-        (1..wcss_values.len().saturating_sub(1))
-            .map(|i| {
-                let improvement = wcss_values[i - 1] - wcss_values[i];
-                let next_improvement = wcss_values[i] - wcss_values[i + 1];
-                let rate_change = improvement - next_improvement;
-                (min_k + i, rate_change)
-            })
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-            .unwrap_or((2, 0.0))
-    }
-    
-    // Pure function: find optimal elbow point
-    fn find_elbow_point(wcss_values: &[f32], min_k: usize) -> FontResult<usize> {
-        if wcss_values.len() < 3 {
-            return Ok(2);
-        }
-        
-        let (curvature_k, max_curvature) = Self::find_elbow_by_curvature(wcss_values, min_k);
-        let (rate_change_k, max_rate_change) = Self::find_elbow_by_rate_change(wcss_values, min_k);
-        
-        println!("Curvature method: K={} (curvature={:.3})", curvature_k, max_curvature);
-        println!("Rate change method: K={} (rate={:.3})", rate_change_k, max_rate_change);
-        
-        let selected_k = if (curvature_k as i32 - rate_change_k as i32).abs() <= 1 {
-            curvature_k
-        } else {
-            std::cmp::min(curvature_k, rate_change_k)
-        };
-        
-        println!("Selected: K={}", selected_k);
-        Ok(selected_k)
-    }
-    
-    // Pure function: estimate optimal K using elbow method
-    fn estimate_optimal_k(vector_data: &[VectorData]) -> FontResult<usize> {
-        let data_matrix = Self::create_data_matrix(vector_data);
-        let n_samples = data_matrix.nrows();
-        
-        println!("Dataset size: {} samples", n_samples);
-        
-        if n_samples <= 2 {
-            println!("Very small dataset: using K=1");
-            return Ok(1);
-        }
-        
-        let min_k = 1;
-        let max_k = std::cmp::min(10, std::cmp::max(3, n_samples / 3));
-        
-        println!("Testing K values from {} to {} using Elbow method...", min_k, max_k);
-        
-        let wcss_values = Self::compute_wcss_values(&data_matrix, min_k..=max_k)?;
-        
-        // Log WCSS values
-        wcss_values
-            .iter()
-            .enumerate()
-            .for_each(|(i, &wcss)| println!("K={}: WCSS={:.3}", min_k + i, wcss));
-        
-        let optimal_k = Self::find_elbow_point(&wcss_values, min_k)?;
-        let final_k = std::cmp::max(2, std::cmp::min(optimal_k, 8));
-        
-        println!("Elbow method selected K={}, final K={}", optimal_k, final_k);
-        Ok(final_k)
-    }
     
     // Pure function: perform clustering
     fn cluster_vectors(vector_data: &[VectorData], k: usize) -> FontResult<ClusterLabels> {
@@ -321,7 +216,7 @@ impl VectorClusterer {
                 .map_err(|e| e)?;
         }
         
-        println!("Clustered {} vectors using K-means and updated files", vector_data.len());
+        println!("Clustered {} vectors using K-means (K=8) and updated files", vector_data.len());
         Ok(())
     }
     
