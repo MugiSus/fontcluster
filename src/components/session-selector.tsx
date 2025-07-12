@@ -84,8 +84,8 @@ export function SessionSelector(props: SessionSelectorProps) {
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
-            Select a previous session to restore. You can continue processing
-            from where you left off.
+            Select a previous session to restore.
+            {/* You can continue processing from where you left off. */}
           </DialogDescription>
         </DialogHeader>
 
@@ -140,7 +140,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                               onClick={() => restoreSession(session.session_id)}
                               disabled={isRestoring()}
                             >
-                              {isRestoring() ? 'Restoring...' : 'Restore'}
+                              Restore
                             </Button>
                           }
                         >

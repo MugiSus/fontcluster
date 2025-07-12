@@ -140,9 +140,6 @@ function App() {
       console.log('Font generation completed, refreshing images');
       setIsGenerating(false);
       setIsVectorizing(true);
-
-      refetchSessionId();
-      refetchSessionDirectory();
     });
 
     listen('vectorization_complete', () => {
@@ -161,6 +158,8 @@ function App() {
       console.log('Clustering completed');
       setIsClustering(false);
 
+      refetchSessionId();
+      refetchSessionDirectory();
       refetchCompressedVectors();
     });
 
