@@ -27,7 +27,7 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
           ];
 
           const clusterColor =
-            clusterColors[(vectorData.k - 1) % clusterColors.length];
+            clusterColors[vectorData.k % clusterColors.length];
 
           return (
             <li
