@@ -17,4 +17,6 @@ pub enum FontError {
     GlyphProcessing(String),
     #[error("Vectorization failed: {0}")]
     Vectorization(String),
+    #[error("Classification failed: {0}")]
+    Classification(String),
 }

@@ -27,7 +27,9 @@ pub fn run() {
             get_session_directory,
             create_new_session,
             cleanup_old_sessions,
-            get_session_fonts
+            get_session_fonts,
+            classify_font,
+            train_font_classifier
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

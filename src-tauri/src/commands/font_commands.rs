@@ -1,4 +1,4 @@
-use crate::core::{FontService, SessionManager};
+use crate::core::{FontService, SessionManager, FontClassifier};
 
 /// Tauri command handlers for font-related operations
 /// 
@@ -74,4 +74,32 @@ pub fn get_font_config(safe_font_name: String) -> Result<Option<String>, String>
             }).transpose()
         })
         .map_err(|e| format!("Failed to get font config: {}", e))
+}
+
+/// Classify a font using supervised learning
+/// 
+/// # Returns
+/// - `Ok(String)` - Font category (sans-serif, serif, etc.)
+/// - `Err(String)` - Error message if classification fails
+#[tauri::command]
+pub async fn classify_font(font_name: String) -> Result<String, String> {
+    let classifier = FontClassifier::load_pretrained()
+        .map_err(|e| format!("Failed to load classifier: {}", e))?;
+    
+    let category = classifier.classify_font(&font_name).await
+        .map_err(|e| format!("Classification failed: {}", e))?;
+    
+    Ok(category.as_str().to_string())
+}
+
+/// Train the font classifier with Google Fonts data
+/// 
+/// # Returns
+/// - `Ok(())` - Training completed successfully
+/// - `Err(String)` - Error message if training fails
+#[tauri::command]
+pub async fn train_font_classifier() -> Result<(), String> {
+    FontClassifier::full_training_process().await
+        .map(|_| ())
+        .map_err(|e| format!("Training failed: {}", e))
 }
