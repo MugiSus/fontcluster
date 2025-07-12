@@ -32,6 +32,8 @@ fn create_menu(app_handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &PredefinedMenuItem::show_all(app_handle, None)?,
             &PredefinedMenuItem::separator(app_handle)?,
             &PredefinedMenuItem::quit(app_handle, None)?,
+            &PredefinedMenuItem::separator(app_handle)?,
+            &restore_sessions,
         ])?;
 
         let edit_menu = Submenu::with_items(app_handle, "Edit", true, &[
@@ -47,8 +49,6 @@ fn create_menu(app_handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         let window_menu = Submenu::with_items(app_handle, "Window", true, &[
             &PredefinedMenuItem::minimize(app_handle, None)?,
             &PredefinedMenuItem::close_window(app_handle, None)?,
-            &PredefinedMenuItem::separator(app_handle)?,
-            &restore_sessions,
         ])?;
         
         Menu::with_items(app_handle, &[
