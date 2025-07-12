@@ -50,8 +50,23 @@ impl SessionManager {
                 base_dir: session.base_dir.clone(),
             }
         } else {
-            // Return default session if no session is active
+            // Try to use the latest existing session, otherwise use default
             drop(session_guard);
+            
+            if let Ok(Some(latest_session_id)) = Self::get_latest_session_id() {
+                // Set the latest session as global and return it
+                if let Ok(latest_session) = Self::with_id(latest_session_id) {
+                    let mut session_guard = SESSION_MANAGER.write().unwrap();
+                    let session_copy = SessionManager {
+                        session_id: latest_session.session_id.clone(),
+                        base_dir: latest_session.base_dir.clone(),
+                    };
+                    *session_guard = Some(latest_session);
+                    return session_copy;
+                }
+            }
+            
+            // Fallback to default session if no valid sessions exist
             Self::default().expect("Failed to create default session")
         }
     }
@@ -280,5 +295,47 @@ impl SessionManager {
         } else {
             Ok(None)
         }
+    }
+
+    /// Get the session ID of the most recent session (by UUIDv7 timestamp)
+    pub fn get_latest_session_id() -> FontResult<Option<String>> {
+        let base_dir = Self::get_base_data_dir()?;
+        let generated_dir = base_dir.join("Generated");
+        
+        if !generated_dir.exists() {
+            return Ok(None);
+        }
+        
+        let mut session_ids = Vec::new();
+        
+        for entry in fs::read_dir(&generated_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Skip default directory and only consider valid UUIDs
+                    if dir_name != "default" && Uuid::parse_str(dir_name).is_ok() {
+                        // Verify this session has a config.json
+                        if path.join("config.json").exists() {
+                            session_ids.push(dir_name.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        
+        if session_ids.is_empty() {
+            return Ok(None);
+        }
+        
+        // Sort by UUIDv7 timestamp (newest first)
+        session_ids.sort_by(|a, b| {
+            let uuid_a = Uuid::parse_str(a).unwrap();
+            let uuid_b = Uuid::parse_str(b).unwrap();
+            uuid_b.cmp(&uuid_a) // Reverse order for newest first
+        });
+        
+        Ok(Some(session_ids[0].clone()))
     }
 }
