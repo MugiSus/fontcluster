@@ -455,3 +455,38 @@ pnpm run train-google-font
 **次のステップ:** フロントエンドで`classify_font(font_name)`呼び出し機能の実装
 
 **重要:** 一度モデル生成すれば、以降は再訓練不要。埋め込みモデルで即座に分類実行可能。
+
+## `2025/07/12 23:30:23 (UTC+9)` - mugisus
+
+**mugisus:** clusterer.rsの機能をフォント分類機能で置き換えてください。clusterer.rsは必要でないと思うので削除して構わない
+
+**Claude:** clusterer.rsの機能を完全にfont_classifier.rsで置き換えました：
+
+### 実施した変更
+
+1. **clusterer.rs削除**
+   - `src/core/clusterer.rs`ファイル削除
+   - `core/mod.rs`からclustererインポート削除
+   - HDBSCAN依存関係をCargo.tomlから削除
+
+2. **コマンド置き換え**
+   - `cluster_compressed_vectors` → `classify_all_fonts`に変更
+   - 教師あり学習による分類処理を実装
+   - 各フォントに対して分類結果をcompressed-vector.csvに保存
+
+3. **フロントエンド更新**
+   - クラスタ色配列 → カテゴリ色配列に変更
+   - 5色のカテゴリ対応: blue(sans-serif), red(serif), green(handwriting), purple(monospace), orange(display)
+   - ノイズ処理(-1)を削除（教師あり学習では不要）
+   - `clustering_complete` → `classification_complete`イベント変更
+
+4. **機能改善**
+   - HDBSCAN動的クラスタリング → 固定5カテゴリ分類
+   - ノイズポイントなし → 全フォントが必ず分類される
+   - 一貫した色分け → Googleの標準カテゴリに対応
+
+### 結果
+- ✅ 不要なclusterer.rs削除完了
+- ✅ 教師あり学習ベース分類システム稼働
+- ✅ 5カテゴリ固定分類で安定性向上
+- ✅ Googleの公式分類との整合性確保

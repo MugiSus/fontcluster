@@ -14,25 +14,18 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
     <ul class='flex flex-col items-start gap-0 bg-muted/20'>
       <For each={props.compressedVectors}>
         {(vectorData: FontVectorData) => {
-          // Define cluster colors (same as in SVG)
-          const clusterColors = [
-            'bg-red-500',
-            'bg-blue-500',
-            'bg-green-500',
-            'bg-purple-500',
-            'bg-orange-500',
-            'bg-fuchsia-500',
-            'bg-teal-500',
-            'bg-indigo-500',
-            'bg-yellow-500',
-            'bg-cyan-500',
+          // Define category colors for supervised learning
+          const categoryColors = [
+            'bg-blue-500', // 0: sans-serif
+            'bg-red-500', // 1: serif
+            'bg-green-500', // 2: handwriting
+            'bg-purple-500', // 3: monospace
+            'bg-orange-500', // 4: display
           ];
 
-          // Handle noise cluster (-1) with gray-300
-          const clusterColor =
-            vectorData.k === -1
-              ? 'bg-gray-300'
-              : clusterColors[vectorData.k % clusterColors.length];
+          // Get category color (no noise handling needed for supervised learning)
+          const categoryColor =
+            categoryColors[vectorData.k % categoryColors.length];
 
           return (
             <li
@@ -43,7 +36,7 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
               onClick={() => props.onFontClick(vectorData.config.safe_name)}
             >
               <div class='flex items-center gap-2 px-4'>
-                <div class={`mb-0.5 h-3 w-1 rounded-full ${clusterColor}`} />
+                <div class={`mb-0.5 h-3 w-1 rounded-full ${categoryColor}`} />
                 <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {vectorData.config.font_name}
                 </div>

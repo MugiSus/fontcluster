@@ -3,7 +3,6 @@ use crate::error::{FontResult, FontError};
 use serde::{Serialize, Deserialize};
 use smartcore::ensemble::random_forest_classifier::*;
 use smartcore::linalg::basic::matrix::DenseMatrix;
-use smartcore::linalg::basic::arrays::{Array1, Array2};
 use std::fs;
 
 // 事前訓練済みモデルをバイナリに埋め込み
@@ -48,7 +47,6 @@ pub struct FontClassifier {
 
 #[derive(Debug, Clone)]
 pub struct TrainingSample {
-    font_name: String,
     features: Vec<f32>,
     category: FontCategory,
 }
@@ -161,16 +159,30 @@ impl FontClassifier {
     
     // Google Fonts APIから訓練データを収集
     pub async fn fetch_training_data() -> FontResult<Vec<TrainingSample>> {
+        let api_key = std::env::var("GOOGLE_FONTS_API_KEY")
+            .map_err(|_| FontError::Classification("GOOGLE_FONTS_API_KEY not set".to_string()))?;
+            
         let client = reqwest::Client::new();
+        let url = format!("https://www.googleapis.com/webfonts/v1/webfonts?key={}", api_key);
         let response = client
-            .get("https://www.googleapis.com/webfonts/v1/webfonts?key=YOUR_API_KEY")
+            .get(&url)
             .send()
             .await
             .map_err(|e| FontError::Classification(format!("API request failed: {}", e)))?;
             
-        let google_fonts: GoogleFontsResponse = response
-            .json()
-            .await
+        // Debug: Check response status and body
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(FontError::Classification(format!("API error {}: {}", status, error_text)));
+        }
+        
+        let response_text = response.text().await
+            .map_err(|e| FontError::Classification(format!("Failed to read response: {}", e)))?;
+            
+        println!("API Response preview: {}", &response_text[..std::cmp::min(500, response_text.len())]);
+        
+        let google_fonts: GoogleFontsResponse = serde_json::from_str(&response_text)
             .map_err(|e| FontError::Classification(format!("JSON parsing failed: {}", e)))?;
             
         println!("Fetched {} fonts from Google Fonts API", google_fonts.items.len());
@@ -184,7 +196,6 @@ impl FontClassifier {
             let category = FontCategory::from_google_category(&font_item.category);
             
             training_samples.push(TrainingSample {
-                font_name: font_item.family,
                 features,
                 category,
             });
@@ -271,27 +282,22 @@ impl FontClassifier {
     pub fn generate_demo_training_data() -> Vec<TrainingSample> {
         vec![
             TrainingSample {
-                font_name: "Arial".to_string(),
                 features: vec![-0.5, 0.2],
                 category: FontCategory::SansSerif,
             },
             TrainingSample {
-                font_name: "Times New Roman".to_string(),
                 features: vec![0.3, -0.4],
                 category: FontCategory::Serif,
             },
             TrainingSample {
-                font_name: "Comic Sans MS".to_string(),
                 features: vec![0.8, 0.6],
                 category: FontCategory::Handwriting,
             },
             TrainingSample {
-                font_name: "Courier New".to_string(),
                 features: vec![-0.2, -0.8],
                 category: FontCategory::Monospace,
             },
             TrainingSample {
-                font_name: "Impact".to_string(),
                 features: vec![1.0, 0.1],
                 category: FontCategory::Display,
             },

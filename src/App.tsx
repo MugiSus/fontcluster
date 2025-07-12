@@ -137,13 +137,11 @@ function App() {
       const compressionResult = await invoke<string>('compress_vectors_to_2d');
       console.log('Compression result:', compressionResult);
 
-      // Step 4: Cluster compressed vectors
+      // Step 4: Classify all fonts
       setIsCompressing(false);
       setIsClustering(true);
-      const clusteringResult = await invoke<string>(
-        'cluster_compressed_vectors',
-      );
-      console.log('Clustering result:', clusteringResult);
+      const classificationResult = await invoke<string>('classify_all_fonts');
+      console.log('Classification result:', classificationResult);
 
       refetchSessionId(); // Trigger reload of compressed vectors
       // refetchFonts(); // Trigger reload of font list
@@ -170,8 +168,8 @@ function App() {
       console.log('Compression completed');
     });
 
-    listen('clustering_complete', () => {
-      console.log('Clustering completed');
+    listen('classification_complete', () => {
+      console.log('Classification completed');
     });
   });
 
@@ -337,25 +335,18 @@ function App() {
                         const scaledX = ((x - minX) / (maxX - minX)) * 600;
                         const scaledY = ((y - minY) / (maxY - minY)) * 600;
 
-                        // Define cluster colors
-                        const clusterColors = [
-                          'fill-red-500',
-                          'fill-blue-500',
-                          'fill-green-500',
-                          'fill-purple-500',
-                          'fill-orange-500',
-                          'fill-fuchsia-500',
-                          'fill-teal-500',
-                          'fill-indigo-500',
-                          'fill-yellow-500',
-                          'fill-cyan-500',
+                        // Define category colors for supervised learning
+                        const categoryColors = [
+                          'fill-blue-500', // 0: sans-serif
+                          'fill-red-500', // 1: serif
+                          'fill-green-500', // 2: handwriting
+                          'fill-purple-500', // 3: monospace
+                          'fill-orange-500', // 4: display
                         ];
 
-                        // Handle noise cluster (-1) with gray-300
-                        const clusterColor =
-                          k === -1
-                            ? 'stroke-gray-300'
-                            : clusterColors[k % clusterColors.length];
+                        // Get category color (no noise handling needed for supervised learning)
+                        const categoryColor =
+                          categoryColors[k % categoryColors.length];
 
                         return (
                           <g>
@@ -363,7 +354,7 @@ function App() {
                               cx={scaledX}
                               cy={scaledY}
                               r={nearestFont() === config.safe_name ? 5 : 2}
-                              class={`${clusterColor}`}
+                              class={`${categoryColor}`}
                             />
                             {nearestFont() === config.safe_name && (
                               <circle

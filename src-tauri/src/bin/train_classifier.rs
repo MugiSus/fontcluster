@@ -3,6 +3,9 @@ use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load .env file
+    dotenv::dotenv().ok();
+    
     println!("🚀 Starting Google Fonts font classifier training...");
     
     // Google Fonts API キーの確認
