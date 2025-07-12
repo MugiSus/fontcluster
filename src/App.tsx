@@ -340,8 +340,10 @@ function App() {
                       <circle
                         cx={scaledX}
                         cy={scaledY}
-                        r={nearestFont() === config.safe_name ? 3 : 1}
-                        stroke-width={2}
+                        r={nearestFont() === config.safe_name ? 4 : 1}
+                        stroke-width={
+                          nearestFont() === config.safe_name ? 3 : 2
+                        }
                         class={`${clusterColor} fill-background`}
                       />
                       <circle
@@ -352,7 +354,7 @@ function App() {
                         data-font-name={config.safe_name}
                         data-font-select-area
                       />
-                      <text
+                      {/* <text
                         x={scaledX}
                         y={scaledY - 8}
                         class={`pointer-events-none select-none fill-foreground text-xs ${
@@ -365,7 +367,7 @@ function App() {
                           : config.font_name.length > 12
                             ? config.font_name.substring(0, 12) + '…'
                             : config.font_name}
-                      </text>
+                      </text> */}
                     </g>
                   );
                 }}

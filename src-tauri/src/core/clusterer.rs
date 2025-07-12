@@ -8,6 +8,11 @@ use ndarray::Array2;
 use rand::Rng;
 use std::io::Write;
 
+// Type aliases for better readability
+type VectorData = (String, f32, f32);
+type ClusterLabels = Vec<usize>;
+type WcssValues = Vec<f32>;
+
 // Vector clustering service
 pub struct VectorClusterer;
 
@@ -17,6 +22,67 @@ impl VectorClusterer {
     }
     
     pub async fn cluster_compressed_vectors(&self) -> FontResult<PathBuf> {
+        let vector_data = self.load_compressed_vectors().await?;
+        
+        let optimal_k = Self::estimate_optimal_k(&vector_data)?;
+        let cluster_labels = Self::cluster_vectors(&vector_data, optimal_k)?;
+        
+        Self::save_clustered_vectors(&vector_data, &cluster_labels).await?;
+        
+        println!("Clustering completed successfully!");
+        Ok(SessionManager::global().get_session_dir())
+    }
+    
+    // Pure function: file discovery
+    fn get_compressed_vector_files(&self) -> FontResult<Vec<PathBuf>> {
+        let session_dir = SessionManager::global().get_session_dir();
+        
+        fs::read_dir(&session_dir)?
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().is_dir())
+            .map(|entry| entry.path().join("compressed-vector.csv"))
+            .filter(|path| path.exists())
+            .collect::<Vec<_>>()
+            .pipe(Ok)
+    }
+    
+    // Pure function: parse coordinate pair
+    fn parse_coordinates(content: &str) -> FontResult<(f32, f32)> {
+        let coordinates: Result<Vec<f32>, _> = content
+            .trim()
+            .split(',')
+            .take(2)
+            .map(str::parse)
+            .collect();
+            
+        coordinates
+            .map_err(|e| FontError::Vectorization(format!("Failed to parse coordinates: {}", e)))
+            .and_then(|coords| {
+                if coords.len() >= 2 {
+                    Ok((coords[0], coords[1]))
+                } else {
+                    Err(FontError::Vectorization("Insufficient coordinates".to_string()))
+                }
+            })
+    }
+    
+    // Pure function: read single vector file
+    fn read_compressed_vector_file_static(path: &PathBuf) -> FontResult<(f32, f32)> {
+        fs::read_to_string(path)
+            .map_err(|e| FontError::Vectorization(format!("Failed to read file: {}", e)))
+            .and_then(|content| Self::parse_coordinates(&content))
+    }
+    
+    // Higher-order function: extract font name from path
+    fn extract_font_name(path: &PathBuf) -> Option<String> {
+        path.parent()
+            .and_then(|parent| parent.file_name())
+            .and_then(|name| name.to_str())
+            .map(String::from)
+    }
+    
+    // Async composition: load all vectors
+    async fn load_compressed_vectors(&self) -> FontResult<Vec<VectorData>> {
         let compressed_vectors = self.get_compressed_vector_files()?;
         println!("Found {} compressed vector files to cluster", compressed_vectors.len());
         
@@ -24,291 +90,386 @@ impl VectorClusterer {
             return Err(FontError::Vectorization("No compressed vector files found".to_string()));
         }
         
-        // Read all compressed vectors in parallel
-        println!("Starting parallel compressed vector reading for {} files...", compressed_vectors.len());
-        let vector_tasks: Vec<_> = compressed_vectors.into_iter()
-            .filter_map(|vector_path| {
-                // Extract font name from path: Generated/session_id/font_name/compressed-vector.csv
-                vector_path.parent()
-                    .and_then(|parent| parent.file_name())
-                    .and_then(|name| name.to_str())
-                    .map(|font_name| {
-                        let font_name = font_name.to_string();
-                        let path = vector_path.clone();
-                        task::spawn_blocking(move || {
-                            match VectorClusterer::read_compressed_vector_file_static(&path) {
-                                Ok((x, y)) => {
-                                    println!("✓ Compressed vector file '{}' loaded successfully: ({:.3}, {:.3})", font_name, x, y);
-                                    Some((font_name, x, y))
-                                },
-                                Err(e) => {
-                                    eprintln!("Failed to read compressed vector file {}: {}", path.display(), e);
-                                    None
-                                }
-                            }
-                        })
+        let vector_tasks = compressed_vectors
+            .into_iter()
+            .filter_map(|path| {
+                Self::extract_font_name(&path).map(|font_name| {
+                    let path_clone = path.clone();
+                    task::spawn_blocking(move || {
+                        Self::read_compressed_vector_file_static(&path_clone)
+                            .map(|(x, y)| {
+                                println!("✓ Loaded vector '{}': ({:.3}, {:.3})", font_name, x, y);
+                                (font_name, x, y)
+                            })
+                            .ok()
                     })
+                })
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         let results = join_all(vector_tasks).await;
-        println!("Completed parallel compressed vector reading, processing results...");
-        
-        let vector_data: Vec<(String, f32, f32)> = results
+        let vector_data = results
             .into_iter()
-            .filter_map(|task_result| match task_result {
-                Ok(Some(data)) => Some(data),
-                Ok(None) => None, // File read failed, already logged
-                Err(e) => {
-                    eprintln!("Task execution failed: {}", e);
-                    None
-                }
-            })
-            .collect();
+            .filter_map(|result| result.ok().flatten())
+            .collect::<Vec<_>>();
         
         if vector_data.is_empty() {
-            return Err(FontError::Vectorization("No valid compressed vectors found".to_string()));
+            Err(FontError::Vectorization("No valid compressed vectors found".to_string()))
+        } else {
+            println!("Successfully loaded {} compressed vectors", vector_data.len());
+            Ok(vector_data)
         }
-        
-        println!("Successfully loaded {} compressed vectors, starting clustering...", vector_data.len());
-        
-        // Perform clustering
-        Self::cluster_vectors_and_save(&vector_data).await?;
-        
-        println!("Clustering completed successfully!");
-        Ok(SessionManager::global().get_session_dir())
     }
     
-    fn get_compressed_vector_files(&self) -> FontResult<Vec<PathBuf>> {
-        let session_manager = SessionManager::global();
-        let session_dir = session_manager.get_session_dir();
-        
-        Ok(fs::read_dir(&session_dir)?
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.path().is_dir())
-            .filter_map(|entry| {
-                let font_dir = entry.path();
-                let compressed_vector_path = font_dir.join("compressed-vector.csv");
-                if compressed_vector_path.exists() {
-                    Some(compressed_vector_path)
-                } else {
-                    None
-                }
-            })
-            .collect())
-    }
-    
-    fn read_compressed_vector_file_static(path: &PathBuf) -> FontResult<(f32, f32)> {
-        let content = fs::read_to_string(path)
-            .map_err(|e| FontError::Vectorization(format!("Failed to read compressed vector file: {}", e)))?;
-        
-        let mut values = content.trim().split(',');
-        let x = values.next()
-            .ok_or_else(|| FontError::Vectorization("Missing X coordinate".to_string()))?
-            .parse::<f32>()
-            .map_err(|e| FontError::Vectorization(format!("Failed to parse X coordinate: {}", e)))?;
-        let y = values.next()
-            .ok_or_else(|| FontError::Vectorization("Missing Y coordinate".to_string()))?
-            .parse::<f32>()
-            .map_err(|e| FontError::Vectorization(format!("Failed to parse Y coordinate: {}", e)))?;
-        
-        Ok((x, y))
-    }
-
-    async fn cluster_vectors_and_save(vector_data: &[(String, f32, f32)]) -> FontResult<()> {
+    // Pure function: create data matrix
+    fn create_data_matrix(vector_data: &[VectorData]) -> Array2<f32> {
         let n_samples = vector_data.len();
-        
-        // Create ndarray from vector data for clustering
-        let data_matrix = Array2::from_shape_fn((n_samples, 2), |(i, j)| {
+        Array2::from_shape_fn((n_samples, 2), |(i, j)| {
             match j {
                 0 => vector_data[i].1, // x coordinate
                 1 => vector_data[i].2, // y coordinate
                 _ => 0.0,
             }
-        });
-        
-        println!("Matrix created, using fixed K=6 for clustering...");
-        
-        // Use fixed K=6 for clustering
-        let k = 7; 
-        let cluster_labels = Self::perform_kmeans_clustering(&data_matrix, k)?;
-        
-        println!("Clustering completed, saving updated compressed vectors with cluster labels...");
-        
-        // Save updated compressed vectors in parallel (format: X,Y,ClusterNumber)
-        println!("Creating {} parallel save tasks...", vector_data.len());
-        let save_tasks: Vec<_> = vector_data.iter().enumerate().map(|(i, (font_name, x, y))| {
-            let cluster = cluster_labels[i];
-            let font_name = font_name.clone();
-            let x = *x;
-            let y = *y;
-            task::spawn_blocking(move || {
-                let session_manager = SessionManager::global();
-                let font_dir = session_manager.get_font_directory(&font_name);
-                let file_path = font_dir.join("compressed-vector.csv");
-                
-                let mut file = fs::File::create(&file_path)
-                    .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
-                
-                // Write in format: X,Y,ClusterNumber
-                writeln!(file, "{},{},{}", x, y, cluster)
-                    .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
-                
-                println!("✓ Updated compressed vector for '{}': ({:.3}, {:.3}, cluster={})", font_name, x, y, cluster);
-                Ok(())
-            })
-        }).collect();
-        
-        // Wait for all save tasks to complete
-        let save_results = join_all(save_tasks).await;
-        println!("Parallel save tasks completed, checking results...");
-        
-        // Check for any errors in saving
-        save_results
-            .into_iter()
-            .enumerate()
-            .try_for_each(|(i, result)| match result {
-                Ok(Ok(())) => Ok(()),
-                Ok(Err(e)) => Err(e),
-                Err(e) => Err(FontError::Vectorization(format!("Save task {} failed: {}", i, e))),
-            })?;
-        
-        println!("Clustered {} vectors using K-means (K=6) and updated files", vector_data.len());
-        Ok(())
+        })
     }
     
+    // Pure function: calculate WCSS for a given clustering
+    fn calculate_wcss(data: &Array2<f32>, centroids: &Array2<f32>, labels: &[usize]) -> f32 {
+        labels
+            .iter()
+            .enumerate()
+            .map(|(i, &label)| {
+                let point = data.row(i);
+                let centroid_row = centroids.row(label);
+                point
+                    .iter()
+                    .zip(centroid_row.iter())
+                    .map(|(a, b)| (a - b).powi(2))
+                    .sum::<f32>()
+            })
+            .sum()
+    }
     
-    fn perform_kmeans_clustering(embedding: &Array2<f32>, k: usize) -> FontResult<Vec<usize>> {
+    // Pure function: compute WCSS values for different K
+    fn compute_wcss_values(data: &Array2<f32>, k_range: std::ops::RangeInclusive<usize>) -> FontResult<WcssValues> {
+        k_range
+            .map(|k| {
+                Self::simple_kmeans(data, k, 100)
+                    .map(|(centroids, labels)| Self::calculate_wcss(data, &centroids, &labels))
+            })
+            .collect::<FontResult<Vec<_>>>()
+    }
+    
+    // Pure function: find elbow using curvature
+    fn find_elbow_by_curvature(wcss_values: &[f32], min_k: usize) -> (usize, f32) {
+        (1..wcss_values.len().saturating_sub(1))
+            .map(|i| {
+                let second_derivative = wcss_values[i - 1] - 2.0 * wcss_values[i] + wcss_values[i + 1];
+                let curvature = second_derivative.abs();
+                (min_k + i, curvature)
+            })
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or((2, 0.0))
+    }
+    
+    // Pure function: find elbow using rate change
+    fn find_elbow_by_rate_change(wcss_values: &[f32], min_k: usize) -> (usize, f32) {
+        (1..wcss_values.len().saturating_sub(1))
+            .map(|i| {
+                let improvement = wcss_values[i - 1] - wcss_values[i];
+                let next_improvement = wcss_values[i] - wcss_values[i + 1];
+                let rate_change = improvement - next_improvement;
+                (min_k + i, rate_change)
+            })
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .unwrap_or((2, 0.0))
+    }
+    
+    // Pure function: find optimal elbow point
+    fn find_elbow_point(wcss_values: &[f32], min_k: usize) -> FontResult<usize> {
+        if wcss_values.len() < 3 {
+            return Ok(2);
+        }
+        
+        let (curvature_k, max_curvature) = Self::find_elbow_by_curvature(wcss_values, min_k);
+        let (rate_change_k, max_rate_change) = Self::find_elbow_by_rate_change(wcss_values, min_k);
+        
+        println!("Curvature method: K={} (curvature={:.3})", curvature_k, max_curvature);
+        println!("Rate change method: K={} (rate={:.3})", rate_change_k, max_rate_change);
+        
+        let selected_k = if (curvature_k as i32 - rate_change_k as i32).abs() <= 1 {
+            curvature_k
+        } else {
+            std::cmp::min(curvature_k, rate_change_k)
+        };
+        
+        println!("Selected: K={}", selected_k);
+        Ok(selected_k)
+    }
+    
+    // Pure function: estimate optimal K using elbow method
+    fn estimate_optimal_k(vector_data: &[VectorData]) -> FontResult<usize> {
+        let data_matrix = Self::create_data_matrix(vector_data);
+        let n_samples = data_matrix.nrows();
+        
+        println!("Dataset size: {} samples", n_samples);
+        
+        if n_samples <= 2 {
+            println!("Very small dataset: using K=1");
+            return Ok(1);
+        }
+        
+        let min_k = 1;
+        let max_k = std::cmp::min(10, std::cmp::max(3, n_samples / 3));
+        
+        println!("Testing K values from {} to {} using Elbow method...", min_k, max_k);
+        
+        let wcss_values = Self::compute_wcss_values(&data_matrix, min_k..=max_k)?;
+        
+        // Log WCSS values
+        wcss_values
+            .iter()
+            .enumerate()
+            .for_each(|(i, &wcss)| println!("K={}: WCSS={:.3}", min_k + i, wcss));
+        
+        let optimal_k = Self::find_elbow_point(&wcss_values, min_k)?;
+        let final_k = std::cmp::max(2, std::cmp::min(optimal_k, 8));
+        
+        println!("Elbow method selected K={}, final K={}", optimal_k, final_k);
+        Ok(final_k)
+    }
+    
+    // Pure function: perform clustering
+    fn cluster_vectors(vector_data: &[VectorData], k: usize) -> FontResult<ClusterLabels> {
+        let data_matrix = Self::create_data_matrix(vector_data);
         println!("Performing K-means clustering with K={}...", k);
         
-        let (_centroids, labels) = Self::simple_kmeans(embedding, k, 300)?;
+        let (_centroids, labels) = Self::simple_kmeans(&data_matrix, k, 300)?;
         
-        // Convert to 1-based indexing
-        let cluster_labels: Vec<usize> = labels.iter().map(|&label| label + 1).collect();
+        // Convert to 1-based indexing and log distribution
+        let cluster_labels: ClusterLabels = labels.iter().map(|&label| label + 1).collect();
         
-        // Print cluster distribution
-        let mut cluster_counts = vec![0; k];
-        for &label in &cluster_labels {
-            cluster_counts[label - 1] += 1;
-        }
-        
-        println!("Cluster distribution:");
-        for (i, &count) in cluster_counts.iter().enumerate() {
-            println!("  Cluster {}: {} fonts", i + 1, count);
-        }
+        let cluster_counts = Self::count_clusters(&cluster_labels, k);
+        Self::log_cluster_distribution(&cluster_counts);
         
         Ok(cluster_labels)
     }
     
+    // Pure function: count cluster distribution
+    fn count_clusters(cluster_labels: &[usize], k: usize) -> Vec<usize> {
+        let mut counts = vec![0; k];
+        cluster_labels.iter().for_each(|&label| {
+            if label > 0 && label <= k {
+                counts[label - 1] += 1;
+            }
+        });
+        counts
+    }
+    
+    // Pure function: log cluster distribution
+    fn log_cluster_distribution(cluster_counts: &[usize]) {
+        println!("Cluster distribution:");
+        cluster_counts
+            .iter()
+            .enumerate()
+            .for_each(|(i, &count)| println!("  Cluster {}: {} fonts", i + 1, count));
+    }
+    
+    // Higher-order function: create save task
+    fn create_save_task(
+        font_name: String, 
+        x: f32, 
+        y: f32, 
+        cluster: usize
+    ) -> task::JoinHandle<FontResult<()>> {
+        task::spawn_blocking(move || {
+            let session_manager = SessionManager::global();
+            let font_dir = session_manager.get_font_directory(&font_name);
+            let file_path = font_dir.join("compressed-vector.csv");
+            
+            let mut file = fs::File::create(&file_path)
+                .map_err(|e| FontError::Vectorization(format!("Failed to create file: {}", e)))?;
+            
+            writeln!(file, "{},{},{}", x, y, cluster)
+                .map_err(|e| FontError::Vectorization(format!("Failed to write: {}", e)))?;
+            
+            println!("✓ Updated vector '{}': ({:.3}, {:.3}, cluster={})", font_name, x, y, cluster);
+            Ok(())
+        })
+    }
+    
+    // Async composition: save all clustered vectors
+    async fn save_clustered_vectors(
+        vector_data: &[VectorData], 
+        cluster_labels: &[usize]
+    ) -> FontResult<()> {
+        println!("Creating {} parallel save tasks...", vector_data.len());
+        
+        let save_tasks = vector_data
+            .iter()
+            .zip(cluster_labels.iter())
+            .map(|((font_name, x, y), &cluster)| {
+                Self::create_save_task(font_name.clone(), *x, *y, cluster)
+            })
+            .collect::<Vec<_>>();
+        
+        let save_results = join_all(save_tasks).await;
+        
+        for (i, result) in save_results.into_iter().enumerate() {
+            result
+                .map_err(|e| FontError::Vectorization(format!("Save task {} failed: {}", i, e)))?
+                .map_err(|e| e)?;
+        }
+        
+        println!("Clustered {} vectors using K-means and updated files", vector_data.len());
+        Ok(())
+    }
+    
+    // Pure function: create single cluster centroid
+    fn create_single_cluster_centroid(data: &Array2<f32>) -> FontResult<Array2<f32>> {
+        let n_samples = data.nrows();
+        let n_features = data.ncols();
+        
+        let centroid_data = (0..n_features)
+            .map(|j| (0..n_samples).map(|i| data[[i, j]]).sum::<f32>() / n_samples as f32)
+            .collect();
+            
+        Array2::from_shape_vec((1, n_features), centroid_data)
+            .map_err(|e| FontError::Vectorization(format!("Failed to create centroid: {}", e)))
+    }
+    
+    // Pure function: initialize first centroid
+    fn initialize_first_centroid(data: &Array2<f32>, rng: &mut impl Rng) -> (Array2<f32>, usize) {
+        let n_samples = data.nrows();
+        let n_features = data.ncols();
+        let first_idx = rng.gen_range(0..n_samples);
+        
+        let mut centroids = Array2::zeros((1, n_features));
+        (0..n_features).for_each(|j| centroids[[0, j]] = data[[first_idx, j]]);
+        
+        (centroids, first_idx)
+    }
+    
+    // Pure function: calculate distances to existing centroids
+    fn calculate_distances_to_centroids(
+        data: &Array2<f32>, 
+        centroids: &Array2<f32>, 
+        num_centroids: usize
+    ) -> Vec<f32> {
+        let n_samples = data.nrows();
+        let n_features = data.ncols();
+        
+        (0..n_samples)
+            .map(|p| {
+                (0..num_centroids)
+                    .map(|c| {
+                        (0..n_features)
+                            .map(|j| (data[[p, j]] - centroids[[c, j]]).powi(2))
+                            .sum::<f32>()
+                    })
+                    .fold(f32::INFINITY, f32::min)
+            })
+            .collect()
+    }
+    
+    // Pure function: select next centroid using weighted probability
+    fn select_next_centroid(distances: &[f32], rng: &mut impl Rng) -> usize {
+        let total_dist: f32 = distances.iter().sum();
+        let threshold = rng.gen::<f32>() * total_dist;
+        
+        distances
+            .iter()
+            .scan(0.0, |cumulative, &dist| {
+                *cumulative += dist;
+                Some(*cumulative)
+            })
+            .position(|cumulative| cumulative >= threshold)
+            .unwrap_or(0)
+    }
+    
+    // K-means implementation with functional approach
     fn simple_kmeans(data: &Array2<f32>, k: usize, max_iters: usize) -> FontResult<(Array2<f32>, Vec<usize>)> {
         let n_samples = data.nrows();
         let n_features = data.ncols();
         
         if k == 1 {
-            // Special case: single cluster
-            let centroid = Array2::from_shape_vec((1, n_features), 
-                (0..n_features).map(|j| {
-                    (0..n_samples).map(|i| data[[i, j]]).sum::<f32>() / n_samples as f32
-                }).collect()
-            ).map_err(|e| FontError::Vectorization(format!("Failed to create centroid: {}", e)))?;
-            
+            let centroid = Self::create_single_cluster_centroid(data)?;
             return Ok((centroid, vec![0; n_samples]));
         }
         
-        // Initialize centroids randomly using K-means++
         let mut rng = rand::thread_rng();
         let mut centroids = Array2::zeros((k, n_features));
         
-        // First centroid: random point
+        // Initialize with k-means++
         let first_idx = rng.gen_range(0..n_samples);
-        for j in 0..n_features {
-            centroids[[0, j]] = data[[first_idx, j]];
-        }
+        (0..n_features).for_each(|j| centroids[[0, j]] = data[[first_idx, j]]);
         
-        // Remaining centroids: K-means++
         for i in 1..k {
-            let mut distances = vec![f32::INFINITY; n_samples];
-            
-            // Calculate minimum distance to existing centroids
-            for p in 0..n_samples {
-                for c in 0..i {
-                    let dist: f32 = (0..n_features)
-                        .map(|j| (data[[p, j]] - centroids[[c, j]]).powi(2))
-                        .sum();
-                    distances[p] = distances[p].min(dist);
-                }
-            }
-            
-            // Choose next centroid with probability proportional to squared distance
-            let total_dist: f32 = distances.iter().sum();
-            let mut cumulative = 0.0;
-            let threshold = rng.gen::<f32>() * total_dist;
-            
-            let mut chosen_idx = 0;
-            for (idx, &dist) in distances.iter().enumerate() {
-                cumulative += dist;
-                if cumulative >= threshold {
-                    chosen_idx = idx;
-                    break;
-                }
-            }
-            
-            for j in 0..n_features {
-                centroids[[i, j]] = data[[chosen_idx, j]];
-            }
+            let distances = Self::calculate_distances_to_centroids(data, &centroids, i);
+            let chosen_idx = Self::select_next_centroid(&distances, &mut rng);
+            (0..n_features).for_each(|j| centroids[[i, j]] = data[[chosen_idx, j]]);
         }
         
         let mut labels = vec![0; n_samples];
         
-        // K-means iterations
+        // Iterative refinement
         for _iter in 0..max_iters {
-            let mut changed = false;
+            let old_labels = labels.clone();
             
-            // Assign points to nearest centroid
-            for i in 0..n_samples {
-                let mut min_dist = f32::INFINITY;
-                let mut best_cluster = 0;
-                
-                for c in 0..k {
-                    let dist: f32 = (0..n_features)
-                        .map(|j| (data[[i, j]] - centroids[[c, j]]).powi(2))
-                        .sum::<f32>()
-                        .sqrt();
-                    
-                    if dist < min_dist {
-                        min_dist = dist;
-                        best_cluster = c;
-                    }
-                }
-                
-                if labels[i] != best_cluster {
-                    labels[i] = best_cluster;
-                    changed = true;
-                }
-            }
+            // Assign points to nearest centroids
+            labels = (0..n_samples)
+                .map(|i| {
+                    (0..k)
+                        .map(|c| {
+                            (0..n_features)
+                                .map(|j| (data[[i, j]] - centroids[[c, j]]).powi(2))
+                                .sum::<f32>()
+                                .sqrt()
+                        })
+                        .enumerate()
+                        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+                        .map(|(cluster, _)| cluster)
+                        .unwrap_or(0)
+                })
+                .collect();
             
             // Update centroids
             for c in 0..k {
-                let cluster_points: Vec<usize> = labels.iter().enumerate()
+                let cluster_points: Vec<usize> = labels
+                    .iter()
+                    .enumerate()
                     .filter(|(_, &label)| label == c)
                     .map(|(idx, _)| idx)
                     .collect();
                 
                 if !cluster_points.is_empty() {
-                    for j in 0..n_features {
-                        let mean = cluster_points.iter()
+                    (0..n_features).for_each(|j| {
+                        let mean = cluster_points
+                            .iter()
                             .map(|&idx| data[[idx, j]])
                             .sum::<f32>() / cluster_points.len() as f32;
                         centroids[[c, j]] = mean;
-                    }
+                    });
                 }
             }
             
-            if !changed {
+            // Check convergence
+            if labels == old_labels {
                 break;
             }
         }
         
         Ok((centroids, labels))
+    }
+}
+
+// Extension trait for pipeline operations
+trait Pipe<T> {
+    fn pipe<U, F>(self, f: F) -> U where F: FnOnce(T) -> U;
+}
+
+impl<T> Pipe<T> for T {
+    fn pipe<U, F>(self, f: F) -> U where F: FnOnce(T) -> U {
+        f(self)
     }
 }
