@@ -31,9 +31,9 @@ fn create_menu(app_handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &PredefinedMenuItem::hide_others(app_handle, None)?,
             &PredefinedMenuItem::show_all(app_handle, None)?,
             &PredefinedMenuItem::separator(app_handle)?,
-            &PredefinedMenuItem::quit(app_handle, None)?,
-            &PredefinedMenuItem::separator(app_handle)?,
             &restore_sessions,
+            &PredefinedMenuItem::separator(app_handle)?,
+            &PredefinedMenuItem::quit(app_handle, None)?,
         ])?;
 
         let edit_menu = Submenu::with_items(app_handle, "Edit", true, &[

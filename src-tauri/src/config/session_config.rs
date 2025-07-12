@@ -26,6 +26,12 @@ pub struct SessionConfig {
     /// Whether clustering has been completed for this session
     #[serde(default)]
     pub has_clusters: bool,
+    /// Number of clusters found during the session
+    #[serde(default)]
+    pub clusters_amount: usize,
+    /// Number of samples processed during the session
+    #[serde(default)]
+    pub samples_amount: usize,
 }
 
 impl SessionConfig {
@@ -39,6 +45,8 @@ impl SessionConfig {
             has_vectors: false,
             has_compressed: false,
             has_clusters: false,
+            clusters_amount: 0,
+            samples_amount: 0,
         }
     }
 
@@ -74,11 +82,14 @@ impl SessionConfig {
     }
 
     /// Updates the progress flags and saves the config
-    pub fn update_progress(&mut self, session_dir: &Path, images: Option<bool>, vectors: Option<bool>, compressed: Option<bool>, clusters: Option<bool>) -> FontResult<()> {
+    pub fn update_progress(&mut self, session_dir: &Path, images: Option<bool>, vectors: Option<bool>, compressed: Option<bool>, clusters: Option<bool>,  clusters_amount: Option<usize>, samples_amount: Option<usize>) -> FontResult<()> {
         if let Some(val) = images { self.has_images = val; }
         if let Some(val) = vectors { self.has_vectors = val; }
         if let Some(val) = compressed { self.has_compressed = val; }
         if let Some(val) = clusters { self.has_clusters = val; }
+        if let Some(val) = clusters_amount { self.clusters_amount = val; }
+        if let Some(val) = samples_amount { self.samples_amount = val; }
+
         self.save_to_dir(session_dir)
     }
 
@@ -105,6 +116,17 @@ impl SessionConfig {
         self.has_clusters = true;
         self.save_to_dir(session_dir)
     }
+
+    /// Updates the number of clusters found
+    pub fn update_clusters_amount(&mut self, session_dir: &Path, amount: usize) -> FontResult<()> {
+        self.clusters_amount = amount;
+        self.save_to_dir(session_dir)
+    }
+
+    pub fn update_samples_amount(&mut self, session_dir: &Path, amount: usize) -> FontResult<()> {
+        self.samples_amount = amount;
+        self.save_to_dir(session_dir)
+    }
 }
 
 /// Session info for UI display
@@ -117,6 +139,8 @@ pub struct SessionInfo {
     pub has_vectors: bool,
     pub has_compressed: bool,
     pub has_clusters: bool,
+    pub clusters_amount: usize,
+    pub samples_amount: usize,
 }
 
 impl SessionInfo {
@@ -132,29 +156,8 @@ impl SessionInfo {
             has_vectors: config.has_vectors,
             has_compressed: config.has_compressed,
             has_clusters: config.has_clusters,
+            clusters_amount: config.clusters_amount,
+            samples_amount: config.samples_amount,
         })
-    }
-
-    /// Gets the completion percentage of this session
-    pub fn completion_percentage(&self) -> u8 {
-        let steps = [
-            self.has_images,
-            self.has_vectors,
-            self.has_compressed,
-            self.has_clusters,
-        ];
-        let completed = steps.iter().filter(|&&x| x).count();
-        ((completed as f32 / steps.len() as f32) * 100.0) as u8
-    }
-
-    /// Gets a human-readable status description
-    pub fn status_description(&self) -> String {
-        match (self.has_images, self.has_vectors, self.has_compressed, self.has_clusters) {
-            (false, _, _, _) => "Not processed".to_string(),
-            (true, false, _, _) => "Images generated".to_string(),
-            (true, true, false, _) => "Vectors generated".to_string(),
-            (true, true, true, false) => "Vectors compressed".to_string(),
-            (true, true, true, true) => "Fully processed".to_string(),
-        }
     }
 }
