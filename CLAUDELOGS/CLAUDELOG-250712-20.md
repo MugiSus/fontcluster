@@ -111,3 +111,28 @@
 - **扱いやすさ**: -1という明確な値でノイズ判定が容易
 
 これで、ノイズクラスタが視覚的に区別され、データ処理も簡潔になりました。
+
+**mugisus:** クラスタの数を減らしたい。だいたい実用的な10個以下になると良いんだけど...
+
+**Claude:** クラスタ数を実用的な範囲に調整しました。パラメータを段階的に調整：
+
+1. **最初の調整**: `min_cluster_size=15, min_samples=8` → 3個のクラスタ（少なすぎ）
+2. **中間調整**: `min_cluster_size=8, min_samples=4` → 5-8個程度（適切）
+
+**mugisus:** webdingsを除外リストに入れたい
+
+**Claude:** Webdingsフォントを除外リストに追加しました：
+
+### フォント除外の強化
+
+`src/core/font_service.rs`の`excluded_patterns`配列に`"webdings"`を追加：
+- **既存**: wingdings, dingbats, emoji, font awesome, bodoni ornaments
+- **追加**: webdings
+
+### 最終的なパラメータ設定
+
+- **min_cluster_size**: 8（中程度のクラスタサイズ）
+- **min_samples**: 4（バランスの取れた密度要件）
+- **除外フォント**: シンボルフォント類を適切に除外
+
+これで実用的な5-8個のクラスタが生成され、不要なシンボルフォントも除外されます。

@@ -134,7 +134,7 @@ impl VectorCompressor {
         let config = Configuration::builder()
             .embedding_dimensions(2)
             .seed(42)
-            .num_iters((50, 800, 250))   // Minimal neighbor pairs, maximum mid-range focus
+            .num_iters((50, 500, 250))   // Minimal neighbor pairs, maximum mid-range focus
             .learning_rate(0.5)          // Conservative learning rate for gradual positioning
             .mid_near_ratio(3.0)         // Maximum mid-range emphasis for smooth gradients
             .far_pair_ratio(0.3)         // Minimal global structure to prevent separation
