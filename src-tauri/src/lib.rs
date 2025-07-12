@@ -10,7 +10,7 @@ pub mod utils;
 pub use commands::*;
 
 use tauri::{
-    menu::{Menu, MenuItem}, 
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, AboutMetadata}, 
     AppHandle, Emitter
 };
 
@@ -18,15 +18,56 @@ use tauri::{
 fn create_menu(app_handle: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let restore_sessions = MenuItem::with_id(app_handle, "restore_sessions", "Restore Recent Session...", true, None::<&str>)?;
     
-    // Start with default menu (includes Edit, View, Window menus with standard shortcuts)
-    let menu = Menu::default(app_handle)?;
-    
-    // Add our custom menu item to the Window menu
-    if let Some(window_submenu) = menu.get("Window") {
-        window_submenu.as_submenu_unchecked().append(&restore_sessions)?;
+    // If default menu doesn't work reliably, let's try a different approach
+    // Let's build manually but keep it minimal
+    #[cfg(target_os = "macos")]
+    {
+        let about_metadata = AboutMetadata::default();
+        
+        let app_menu = Submenu::with_items(app_handle, "FontCluster", true, &[
+            &PredefinedMenuItem::about(app_handle, Some("About FontCluster"), Some(about_metadata))?,
+            &PredefinedMenuItem::separator(app_handle)?,
+            &PredefinedMenuItem::hide(app_handle, None)?,
+            &PredefinedMenuItem::hide_others(app_handle, None)?,
+            &PredefinedMenuItem::show_all(app_handle, None)?,
+            &PredefinedMenuItem::separator(app_handle)?,
+            &PredefinedMenuItem::quit(app_handle, None)?,
+        ])?;
+
+        let edit_menu = Submenu::with_items(app_handle, "Edit", true, &[
+            &PredefinedMenuItem::undo(app_handle, None)?,
+            &PredefinedMenuItem::redo(app_handle, None)?,
+            &PredefinedMenuItem::separator(app_handle)?,
+            &PredefinedMenuItem::cut(app_handle, None)?,
+            &PredefinedMenuItem::copy(app_handle, None)?,
+            &PredefinedMenuItem::paste(app_handle, None)?,
+            &PredefinedMenuItem::select_all(app_handle, None)?,
+        ])?;
+
+        let window_menu = Submenu::with_items(app_handle, "Window", true, &[
+            &PredefinedMenuItem::minimize(app_handle, None)?,
+            &PredefinedMenuItem::close_window(app_handle, None)?,
+            &PredefinedMenuItem::separator(app_handle)?,
+            &restore_sessions,
+        ])?;
+        
+        Menu::with_items(app_handle, &[
+            &app_menu,
+            &edit_menu,
+            &window_menu,
+        ])
     }
     
-    Ok(menu)
+    #[cfg(not(target_os = "macos"))]
+    {
+        let window_menu = Submenu::with_items(app_handle, "Window", true, &[
+            &restore_sessions,
+        ])?;
+        
+        Menu::with_items(app_handle, &[
+            &window_menu,
+        ])
+    }
 }
 
 /// Handles menu events
