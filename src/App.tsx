@@ -339,14 +339,14 @@ function App() {
 
                         // Define cluster colors
                         const clusterColors = [
-                          'stroke-red-500',
-                          'stroke-blue-500',
-                          'stroke-green-500',
-                          'stroke-purple-500',
-                          'stroke-orange-500',
-                          'stroke-pink-500',
-                          'stroke-teal-500',
-                          'stroke-indigo-500',
+                          'fill-red-500',
+                          'fill-blue-500',
+                          'fill-green-500',
+                          'fill-purple-500',
+                          'fill-orange-500',
+                          'fill-fuchsia-500',
+                          'fill-teal-500',
+                          'fill-indigo-500',
                         ];
 
                         // Handle noise cluster (-1) with gray-300
@@ -360,12 +360,17 @@ function App() {
                             <circle
                               cx={scaledX}
                               cy={scaledY}
-                              r={nearestFont() === config.safe_name ? 4 : 1}
-                              stroke-width={
-                                nearestFont() === config.safe_name ? 3 : 2
-                              }
-                              class={`${clusterColor} fill-background`}
+                              r={nearestFont() === config.safe_name ? 5 : 2}
+                              class={`${clusterColor}`}
                             />
+                            {nearestFont() === config.safe_name && (
+                              <circle
+                                cx={scaledX}
+                                cy={scaledY}
+                                r='2.5'
+                                class='fill-background'
+                              />
+                            )}
                             <circle
                               cx={scaledX}
                               cy={scaledY}

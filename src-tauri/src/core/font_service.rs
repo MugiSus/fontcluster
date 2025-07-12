@@ -33,6 +33,7 @@ impl FontService {
         // List of font patterns to exclude (minimal list to avoid excluding useful fonts)
         let excluded_patterns = [
             "wingdings",
+            "webdings",
             "dingbats", 
             "emoji",
             "font awesome",
