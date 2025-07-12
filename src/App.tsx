@@ -350,7 +350,7 @@ function App() {
                         ];
 
                         const clusterColor =
-                          clusterColors[(k - 1) % clusterColors.length];
+                          clusterColors[k % clusterColors.length];
 
                         return (
                           <g>

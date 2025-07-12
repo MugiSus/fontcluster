@@ -11,7 +11,9 @@
       "Bash(date:*)",
       "Bash(cargo check:*)",
       "WebFetch(domain:docs.rs)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(cargo doc:*)",
+      "Bash(cargo test)"
     ],
     "deny": []
   },
@@ -25,9 +27,63 @@
             "command": "echo 'Remember: Read CLAUDE.md, commit changes, log conversations'"
           }
         ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Remember: Read CLAUDE.md, commit changes, log conversations'"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Remember: Read CLAUDE.md, commit changes, log conversations'"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Remember: Read CLAUDE.md, commit changes, log conversations'"
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Did you: commit changes, log conversations?'"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Did you: commit changes, log conversations?'"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Did you: commit changes, log conversations?'"
+          }
+        ]
+      },
       {
         "matcher": "Task",
         "hooks": [
