@@ -146,13 +146,19 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       onContextMenu={(e) => e.preventDefault()}
     >
       <g>
+        <path
+          d='M 295 295 L 305 305 M 305 295 L 295 305'
+          fill='none'
+          stroke='1'
+          class='pointer-events-none stroke-muted'
+        />
         <circle
           cx='300'
           cy='300'
           r='75'
           fill='none'
           stroke='1'
-          class='pointer-events-none stroke-border'
+          class='pointer-events-none stroke-muted'
         />
         <circle
           cx='300'
@@ -160,7 +166,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           r='150'
           fill='none'
           stroke='1'
-          class='pointer-events-none stroke-border'
+          class='pointer-events-none stroke-muted'
         />
         <circle
           cx='300'
@@ -168,7 +174,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           r='250'
           fill='none'
           stroke='1'
-          class='pointer-events-none stroke-border'
+          class='pointer-events-none stroke-muted'
         />
         <circle
           cx='300'
@@ -176,7 +182,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           r='400'
           fill='none'
           stroke='1'
-          class='pointer-events-none stroke-border'
+          class='pointer-events-none stroke-muted'
         />
       </g>
       {(() => {
@@ -221,10 +227,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                       'fill-fuchsia-500',
                     ];
 
-                    // Handle noise cluster (-1) with gray-300
+                    // Handle noise cluster (-1) with gray-400
                     const clusterColor =
                       k === -1
-                        ? 'fill-gray-300'
+                        ? 'fill-gray-400'
                         : clusterColors[k % clusterColors.length];
 
                     return (
@@ -243,14 +249,14 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             cx={0}
                             cy={0}
                             r={props.nearestFont === config.safe_name ? 5 : 2}
-                            class={`${clusterColor}`}
+                            class={`${clusterColor} pointer-events-none`}
                           />
                           {props.nearestFont === config.safe_name && (
                             <circle
                               cx={0}
                               cy={0}
                               r='2.5'
-                              class='fill-background'
+                              class='pointer-events-none fill-background'
                             />
                           )}
                           <circle

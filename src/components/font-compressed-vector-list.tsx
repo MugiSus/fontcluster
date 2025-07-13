@@ -28,10 +28,10 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             'bg-fuchsia-500',
           ];
 
-          // Handle noise cluster (-1) with gray-300
+          // Handle noise cluster (-1) with gray-400
           const clusterColor =
             vectorData.k === -1
-              ? 'bg-gray-300'
+              ? 'bg-gray-400'
               : clusterColors[vectorData.k % clusterColors.length];
 
           return (
