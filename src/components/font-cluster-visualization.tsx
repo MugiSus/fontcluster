@@ -21,31 +21,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
 
-  const handleMouseMove = (event: MouseEvent) => {
-    // Handle pan dragging
-    if (isDragging() && event.buttons === 2) {
-      const deltaX = event.clientX - lastMousePos().x;
-      const deltaY = event.clientY - lastMousePos().y;
-
-      const currentViewBox = viewBox();
-      const { x, y, width, height } = currentViewBox;
-
-      // Convert screen delta to SVG coordinates
-      const svgElement = event.currentTarget as SVGElement;
-      const rect = svgElement.getBoundingClientRect();
-      const scaleX = width / Math.min(rect.width, rect.height);
-      const scaleY = height / Math.min(rect.width, rect.height);
-
-      const newX = x - deltaX * scaleX;
-      const newY = y - deltaY * scaleY;
-
-      setViewBox({ x: newX, y: newY, width, height });
-      setLastMousePos({ x: event.clientX, y: event.clientY });
-      return;
-    }
-
-    if (event.buttons === 0) return;
-
+  const selectNearestFont = (event: MouseEvent) => {
     const elements = document.elementsFromPoint(event.clientX, event.clientY);
 
     const fontElements = elements.filter((el) =>
@@ -74,7 +50,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       }
     });
 
-    // 最も近いフォントのli要素にスクロール
     if (nearestFont) {
       props.onFontSelect(nearestFont);
       const elements = document.querySelectorAll(
@@ -86,12 +61,43 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     }
   };
 
+  const handleMouseMove = (event: MouseEvent) => {
+    // Handle pan dragging
+    if (isDragging() && event.buttons === 2) {
+      const deltaX = event.clientX - lastMousePos().x;
+      const deltaY = event.clientY - lastMousePos().y;
+
+      const currentViewBox = viewBox();
+      const { x, y, width, height } = currentViewBox;
+
+      // Convert screen delta to SVG coordinates
+      const svgElement = event.currentTarget as SVGElement;
+      const rect = svgElement.getBoundingClientRect();
+      const scaleX = width / Math.min(rect.width, rect.height);
+      const scaleY = height / Math.min(rect.width, rect.height);
+
+      const newX = x - deltaX * scaleX;
+      const newY = y - deltaY * scaleY;
+
+      setViewBox({ x: newX, y: newY, width, height });
+      setLastMousePos({ x: event.clientX, y: event.clientY });
+      return;
+    }
+
+    if (event.buttons === 0) return;
+
+    selectNearestFont(event);
+  };
+
   const handleMouseDown = (event: MouseEvent) => {
     if (event.button === 2) {
       // Right click
       event.preventDefault();
       setIsDragging(true);
       setLastMousePos({ x: event.clientX, y: event.clientY });
+    } else if (event.button === 0) {
+      // Left click
+      selectNearestFont(event);
     }
   };
 
