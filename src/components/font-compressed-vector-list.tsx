@@ -16,22 +16,22 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
         {(vectorData: FontVectorData) => {
           // Define cluster colors (same as in SVG)
           const clusterColors = [
-            'bg-blue-500',
-            'bg-red-500',
-            'bg-yellow-500',
-            'bg-green-500',
-            'bg-purple-500',
-            'bg-orange-500',
-            'bg-teal-500',
-            'bg-indigo-500',
-            'bg-cyan-500',
-            'bg-fuchsia-500',
+            'text-blue-500',
+            'text-red-500',
+            'text-yellow-500',
+            'text-green-500',
+            'text-purple-500',
+            'text-orange-500',
+            'text-teal-500',
+            'text-indigo-500',
+            'text-cyan-500',
+            'text-fuchsia-500',
           ];
 
           // Handle noise cluster (-1) with gray-400
           const clusterColor =
             vectorData.k === -1
-              ? 'bg-gray-400'
+              ? 'text-gray-400'
               : clusterColors[vectorData.k % clusterColors.length];
 
           return (
@@ -43,7 +43,12 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
               onClick={() => props.onFontClick(vectorData.config.safe_name)}
             >
               <div class='flex items-center gap-2 px-4'>
-                <div class={`mb-0.5 h-3 w-1 rounded-full ${clusterColor}`} />
+                <div
+                  class={`mb-0.5 h-3 w-1 rounded-full bg-current ${clusterColor}`}
+                />
+                <div class={`text-sm ${clusterColor}`}>
+                  {vectorData.k < 0 ? -1 : vectorData.k + 1}
+                </div>
                 <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
                   {vectorData.config.font_name}
                 </div>
