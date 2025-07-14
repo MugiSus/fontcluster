@@ -134,8 +134,9 @@ impl VectorClusterer {
         
         // Configure HDBSCAN parameters for 4-8 clusters with minimal noise (400 samples target)
         let hyper_params = HdbscanHyperParams::builder()
-            .min_cluster_size((data_points.len() as f64 * 0.06) as usize)
-            .max_cluster_size((data_points.len() as f64 * 0.38) as usize)
+            .min_cluster_size((data_points.len() as f64 * 0.03) as usize)
+            .max_cluster_size((data_points.len() as f64 * 0.35) as usize)
+            // .epsilon(0.5)
             .min_samples(1)  // Lower density requirement to reduce noise
             .build();
         
