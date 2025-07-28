@@ -137,7 +137,7 @@ impl VectorCompressor {
             .num_iters((100, 400, 200))  // More neighbor pairs for local structure preservation
             .learning_rate(0.1)          // Lower learning rate for stable positioning
             .mid_near_ratio(1.0)         // Balanced mid-range emphasis
-            .far_pair_ratio(10.0)         // Higher ratio to prevent extreme outlier separation
+            .far_pair_ratio(8.0)         // Higher ratio to prevent extreme outlier separation
             .build();
         
         println!("Data prepared, running PaCMAP dimensionality reduction...");
