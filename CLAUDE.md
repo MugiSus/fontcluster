@@ -43,7 +43,7 @@ The backend uses a modular architecture organized into several core modules:
   - `image_generator.rs` - Font rendering to images using pathfinder_geometry
   - `vectorizer.rs` - Image-to-vector conversion for analysis
   - `compressor.rs` - Dimensionality reduction using PaCMAP and PCA
-  - `clusterer.rs` - Font clustering using HDBSCAN algorithm
+  - `clusterer.rs` - Font clustering using Gaussian Mixture Model (linfa-clustering)
   - `session.rs` - Session management with UUIDv7 for persistence
 
 - **Commands** (`src-tauri/src/commands/`):
@@ -106,7 +106,7 @@ cargo check         # Quick syntax check
 ## Key Technologies
 
 ### Machine Learning & Analysis
-- **HDBSCAN**: Hierarchical density-based clustering for font grouping
+- **Gaussian Mixture Model**: Font clustering using linfa-clustering (replaced HDBSCAN)
 - **PaCMAP**: Pairwise Controlled Manifold Approximation for dimensionality reduction
 - **PCA**: Principal Component Analysis as fallback for dimensionality reduction
 - **Vector Search**: Similarity search using compressed font vectors
@@ -134,5 +134,23 @@ Currently no automated tests are configured. When adding tests:
 - All font processing is CPU-intensive and runs asynchronously
 - Sessions are stored in OS-specific directories using the `dirs` crate
 - The application supports system font discovery across platforms
-- Clustering parameters in `constants.rs` may need adjustment based on font dataset size
 - Icon files are automatically generated - only edit the root `icon.png` file
+
+## Recent Technical Changes
+
+### Clustering Algorithm
+- **Replaced HDBSCAN with Gaussian Mixture Model** using linfa-clustering@0.7.1
+- **Epsilon tolerance**: Set to 0.5 for clustering convergence
+- **Dependency management**: Uses `ndarray_015` alias to resolve version conflicts with pacmap
+
+### PaCMAP Parameter Optimization
+Recent adjustments to improve outlier positioning and prevent extreme separation:
+- **learning_rate**: 0.1 (lower for stable positioning)
+- **far_pair_ratio**: 10.0 (higher to prevent outlier separation)
+- **mid_near_ratio**: 1.0 (balanced mid-range emphasis)
+- **num_iters**: (100, 400, 200) for better local structure preservation
+
+### Development Dependencies
+- **linfa**: 0.7 (machine learning framework)
+- **linfa-clustering**: 0.7.1 (Gaussian Mixture implementation)
+- **ndarray**: Dual versions (0.15 for linfa, 0.16 for pacmap) using package aliases
