@@ -29,9 +29,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex w-full flex-col items-stretch gap-2'
+      class='flex w-full flex-col items-stretch gap-3'
     >
-      <TextField class='grid w-full items-center gap-2'>
+      <TextField class='grid w-full items-center gap-2 pt-1'>
         <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
         <TextFieldInput
           type='text'
@@ -70,7 +70,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : (
           <>
-            Clusterize with this preview text
+            Cluster with current text
             <ArrowRightIcon />
           </>
         )}
