@@ -8,19 +8,7 @@ import { useEventListeners } from './hooks/use-event-listeners';
 
 function App() {
   const appState = useAppState();
-
-  // Set up event listeners
-  useEventListeners({
-    setIsGenerating: appState.setIsGenerating,
-    setIsVectorizing: appState.setIsVectorizing,
-    setIsCompressing: appState.setIsCompressing,
-    setIsClustering: appState.setIsClustering,
-    setShowSessionSelector: appState.setShowSessionSelector,
-    setSampleText: appState.setSampleText,
-    refetchSessionId: appState.refetchSessionId,
-    refetchSessionDirectory: appState.refetchSessionDirectory,
-    refetchCompressedVectors: appState.refetchCompressedVectors,
-  });
+  useEventListeners(appState);
 
   return (
     <>
