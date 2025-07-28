@@ -5,7 +5,9 @@ use std::fs;
 use tokio::task;
 use futures::future::join_all;
 use std::io::Write;
-use hdbscan::{Hdbscan, HdbscanHyperParams};
+use linfa::prelude::*;
+use linfa_clustering::GaussianMixtureModel;
+use ndarray_015::{Array1, Array2};
 
 // Type aliases for better readability
 type VectorData = (String, f32, f32);
@@ -122,39 +124,47 @@ impl VectorClusterer {
     
     
     
-    // Pure function: perform clustering
+    // Pure function: perform clustering using Gaussian Mixture Model
     fn cluster_vectors(vector_data: &[VectorData]) -> FontResult<(ClusterLabels, usize)> {
-        // Convert data to the format expected by HDBSCAN
-        let data_points: Vec<Vec<f32>> = vector_data
+        let n_samples = vector_data.len();
+        
+        // Convert data to ndarray format for linfa
+        let data_flat: Vec<f64> = vector_data
             .iter()
-            .map(|(_, x, y)| vec![*x, *y])
+            .flat_map(|(_, x, y)| vec![*x as f64, *y as f64])
             .collect();
         
-        println!("Performing HDBSCAN clustering on {} points...", data_points.len());
+        let data_matrix = Array2::from_shape_vec((n_samples, 2), data_flat)
+            .map_err(|e| FontError::Vectorization(format!("Failed to create data matrix: {}", e)))?;
         
-        // Configure HDBSCAN parameters for 4-8 clusters with minimal noise (400 samples target)
-        let hyper_params = HdbscanHyperParams::builder()
-            .min_cluster_size((data_points.len() as f64 * 0.06) as usize)
-            .max_cluster_size((data_points.len() as f64 * 0.38) as usize)
-            .min_samples(1)  // Lower density requirement to reduce noise
-            .build();
+        println!("Performing Gaussian Mixture clustering on {} points...", n_samples);
         
-        // Create HDBSCAN clusterer and perform clustering
-        let clusterer = Hdbscan::new(&data_points, hyper_params);
-        let labels = clusterer.cluster()
-            .map_err(|e| FontError::Vectorization(format!("HDBSCAN clustering failed: {:?}", e)))?;
+        // Estimate optimal number of components based on data size
+        let n_components = std::cmp::min(8, std::cmp::max(2, (n_samples as f64 * 0.1) as usize));
+        println!("Using {} components for Gaussian Mixture Model", n_components);
         
-        // Keep original HDBSCAN labels (-1 for noise, 0+ for clusters)
-        let cluster_labels: ClusterLabels = labels;
+        // Create dataset for unsupervised learning
+        let targets = Array1::<usize>::zeros(n_samples);
+        let dataset = Dataset::new(data_matrix, targets);
         
-        // Count unique clusters (excluding noise)
-        let unique_clusters: std::collections::HashSet<_> = cluster_labels.iter().filter(|&&label| label >= 0).collect();
+        // Configure Gaussian Mixture Model with epsilon tolerance of 0.5
+        let gmm = GaussianMixtureModel::params(n_components)
+            .tolerance(0.5)  // Set epsilon to 0.5 as absolutely requested
+            .fit(&dataset)
+            .map_err(|e| FontError::Vectorization(format!("Gaussian Mixture clustering failed: {:?}", e)))?;
+        
+        // Predict cluster assignments
+        let predictions = gmm.predict(&dataset);
+        let cluster_labels: ClusterLabels = predictions.iter().map(|&x| x as i32).collect();
+        
+        // Count unique clusters
+        let unique_clusters: std::collections::HashSet<_> = cluster_labels.iter().collect();
         let num_clusters = unique_clusters.len();
         
         let cluster_counts = Self::count_clusters(&cluster_labels);
         Self::log_cluster_distribution(&cluster_counts);
         
-        println!("HDBSCAN found {} clusters", num_clusters);
+        println!("Gaussian Mixture found {} clusters", num_clusters);
         
         Ok((cluster_labels, num_clusters))
     }
@@ -229,7 +239,7 @@ impl VectorClusterer {
                 .map_err(|e| e)?;
         }
         
-        println!("Clustered {} vectors using HDBSCAN and updated files", vector_data.len());
+        println!("Clustered {} vectors using Gaussian Mixture and updated files", vector_data.len());
         Ok(())
     }
 }

@@ -27,6 +27,8 @@ codegen-units = 1
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# Force linfa-compatible ndarray version for clustering only
+ndarray_015 = { package = "ndarray", version = "0.15" }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
@@ -48,6 +50,9 @@ pacmap = "0.2"
 rand = "0.8"
 # HDBSCAN clustering algorithm
 hdbscan = "0.9"
+# Linfa clustering algorithms including Gaussian Mixture
+linfa = "0.7"
+linfa-clustering = "0.7.1"
 # UUIDv7 for session management
 uuid = { version = "1.0", features = ["v7", "serde"] }
 # Date/time handling
