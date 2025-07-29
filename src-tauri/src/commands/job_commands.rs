@@ -26,7 +26,7 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
             
             .inspect(|_| println!("🎨 Step 1/4: Generating font images..."))
             .then_async(|text| async {
-                let generator = FontImageGenerator::new(Some(text.clone()), FONT_SIZE)?;
+                let generator = FontImageGenerator::new(Some(text.clone()), FONT_SIZE, vec![100, 200, 300, 400, 500, 600, 700, 800, 900])?;
                 with_progress_events_async(
                     app_handle.clone(),
                     "font_generation_start", 

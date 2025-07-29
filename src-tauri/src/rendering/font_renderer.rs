@@ -24,35 +24,15 @@ impl<'a> FontRenderer<'a> {
         }
     }
     
-    pub fn generate_font_image(&self, family_name: &str) -> FontResult<()> {
-        let target_weights = [
-            (Weight::THIN, "Thin"),
-            (Weight::EXTRA_LIGHT, "Extra Light"),
-            (Weight::LIGHT, "Light"),
-            (Weight::NORMAL, "Regular"),
-            (Weight::MEDIUM, "Medium"),
-            (Weight::SEMIBOLD, "Semi Bold"),
-            (Weight::BOLD, "Bold"),
-            (Weight::EXTRA_BOLD, "Extra Bold"),
-            (Weight::BLACK, "Black"),
-        ];
-
-        for (weight, weight_name) in &target_weights {
-            match self.load_font_with_weight(family_name, *weight) {
-                Ok(font) => {
-                    let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, *weight)?;
-                    let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
-                    let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
-                    
-                    let variant_name = format!("{} {}", family_name, weight_name);
-                    self.save_image(img_buffer, &variant_name)?;
-                }
-                Err(_) => {
-                    println!("Skipping {} {} - weight not available", family_name, weight_name);
-                    continue;
-                }
-            }
-        }
+    pub fn generate_font_image(&self, family_name: &str, weight_value: i32) -> FontResult<()> {
+        let weight = Weight(weight_value as f32);
+        
+        let font = self.load_font_with_weight(family_name, weight)?;
+        let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, weight)?;
+        let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
+        let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
+        
+        self.save_image(img_buffer, family_name, weight_value)?;
         
         Ok(())
     }
@@ -183,24 +163,27 @@ impl<'a> FontRenderer<'a> {
     fn save_image(
         &self,
         img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
-        variant_name: &str,
+        family_name: &str,
+        weight_value: i32,
     ) -> FontResult<()> {
         // Check if image is empty or fully transparent
         if self.is_image_empty(&img_buffer) {
-            println!("Skipping font variant '{}' - image is empty or fully transparent", variant_name);
+            println!("Skipping font '{}' weight {} - image is empty or fully transparent", family_name, weight_value);
             return Ok(());
         }
         
-        let safe_name = variant_name.replace(" ", "_").replace("/", "_");
+        let safe_name = format!("{}_{}", weight_value, family_name.replace(" ", "_").replace("/", "_"));
+        let display_name = format!("{} {}", family_name, weight_value);
+        
         let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, variant_name)?;
+        let font_dir = session_manager.create_font_directory(&safe_name, &display_name)?;
         let output_path = font_dir.join("sample.png");
         
         img_buffer
             .save(&output_path)
             .map_err(|e| FontError::ImageGeneration(format!("Failed to save image: {}", e)))?;
         
-        println!("Saved font variant image: {} -> {}", variant_name, output_path.display());
+        println!("Saved font image: {} weight {} -> {}", family_name, weight_value, output_path.display());
         Ok(())
     }
     
