@@ -107,6 +107,7 @@ pub fn run() {
             create_new_session,
             create_new_session_with_text,
             get_available_sessions,
+            get_latest_session_id,
             get_current_session_info,
             cleanup_old_sessions,
             get_session_fonts,

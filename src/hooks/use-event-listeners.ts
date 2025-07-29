@@ -1,4 +1,5 @@
 import { onMount, untrack } from 'solid-js';
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 interface UseEventListenersProps {
@@ -22,10 +23,23 @@ interface UseEventListenersProps {
 
 export function useEventListeners(props: UseEventListenersProps) {
   onMount(() => {
-    // Note: Session loading is now handled through event-driven updates
-    // Current session info will be set when processing starts or completes
+    // Load latest session ID on startup
     const loadCurrentSession = async () => {
-      console.log('Session loading now handled through event-driven updates');
+      try {
+        const latestSessionId = await invoke<string | null>(
+          'get_latest_session_id',
+        );
+        if (latestSessionId) {
+          console.log('Setting latest session ID on startup:', latestSessionId);
+          untrack(() => {
+            props.setCurrentSessionId(latestSessionId);
+          });
+        } else {
+          console.log('No existing sessions found');
+        }
+      } catch (error) {
+        console.error('Failed to get latest session ID:', error);
+      }
     };
 
     loadCurrentSession();

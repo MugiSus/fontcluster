@@ -96,6 +96,13 @@ pub fn get_available_sessions() -> Result<String, String> {
 }
 
 
+/// Get the latest session ID (most recent)
+#[tauri::command]
+pub fn get_latest_session_id() -> Result<Option<String>, String> {
+    SessionManager::get_latest_session_id()
+        .map_err(|e| format!("Failed to get latest session ID: {}", e))
+}
+
 /// Get current session information
 #[tauri::command]
 pub fn get_current_session_info() -> Result<Option<String>, String> {
