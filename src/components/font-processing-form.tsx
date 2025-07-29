@@ -87,7 +87,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         type='submit'
         disabled={isProcessing()}
         variant='outline'
-        class='mt-1 flex items-center gap-2'
+        class='relative mt-1 flex items-center gap-2 pb-1.5'
       >
         {props.isGenerating ? (
           <>
@@ -95,29 +95,29 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             {Math.trunc(
               (props.progressLabelNumerator / props.progressLabelDenominator) *
                 100,
-            ) || 0}
+            )}
             %)
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : props.isVectorizing ? (
           <>
             Vectorizing Images...
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : props.isCompressing ? (
           <>
             Compressing Vectors...
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : props.isClustering ? (
           <>
             Clustering...
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : (
           <>
             Cluster with current text
-            <ArrowRightIcon />
+            <ArrowRightIcon class='absolute right-3' />
           </>
         )}
       </Button>

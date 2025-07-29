@@ -18,10 +18,25 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [profile.dev]
 incremental = true
 debug = 1  # Reduce debug info for faster builds
+opt-level = 1  # Basic optimization for better dev performance
 
 [profile.release]
 lto = "thin"  # Enable thin LTO for faster release builds
 codegen-units = 1
+opt-level = 3  # Maximum optimization
+
+# Optimize heavy computational dependencies even in dev mode
+[profile.dev.package."*"]
+opt-level = 2  # Higher optimization for dependencies
+
+[profile.dev.package.pacmap]
+opt-level = 3  # Max optimization for PaCMAP
+
+[profile.dev.package.linfa-clustering]
+opt-level = 3  # Max optimization for clustering
+
+[profile.dev.package.imageproc]
+opt-level = 2  # Good optimization for image processing
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
