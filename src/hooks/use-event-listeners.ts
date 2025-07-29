@@ -1,4 +1,4 @@
-import { onMount } from 'solid-js';
+import { onMount, untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
@@ -29,8 +29,10 @@ export function useEventListeners(props: UseEventListenersProps) {
         const sessionInfoStr = await invoke<string>('get_current_session_info');
         if (sessionInfoStr) {
           const sessionInfo = JSON.parse(sessionInfoStr);
-          props.setSampleText(sessionInfo.preview_text);
-          props.setCheckedWeights(sessionInfo.weights || [400]);
+          untrack(() => {
+            props.setSampleText(sessionInfo.preview_text);
+            props.setCheckedWeights(sessionInfo.weights || [400]);
+          });
         }
       } catch (error) {
         console.error('Failed to get current session preview text:', error);
@@ -41,28 +43,35 @@ export function useEventListeners(props: UseEventListenersProps) {
 
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');
-      props.setIsGenerating(false);
-      props.setIsVectorizing(true);
+      untrack(() => {
+        props.setIsGenerating(false);
+        props.setIsVectorizing(true);
+      });
     });
 
     listen('vectorization_complete', () => {
       console.log('Vectorization completed');
-      props.setIsVectorizing(false);
-      props.setIsCompressing(true);
+      untrack(() => {
+        props.setIsVectorizing(false);
+        props.setIsCompressing(true);
+      });
     });
 
     listen('compression_complete', () => {
       console.log('Compression completed');
-      props.setIsCompressing(false);
-      props.setIsClustering(true);
+      untrack(() => {
+        props.setIsCompressing(false);
+        props.setIsClustering(true);
+      });
     });
 
     listen('clustering_complete', () => {
       console.log('Clustering completed');
-      props.setIsClustering(false);
-
-      props.refetchSessionDirectory();
-      props.refetchCompressedVectors();
+      untrack(() => {
+        props.setIsClustering(false);
+        props.refetchSessionDirectory();
+        props.refetchCompressedVectors();
+      });
     });
 
     listen('all_jobs_complete', () => {
@@ -71,28 +80,40 @@ export function useEventListeners(props: UseEventListenersProps) {
     });
 
     listen('show_session_selection', () => {
-      props.setShowSessionSelector(true);
+      untrack(() => {
+        props.setShowSessionSelector(true);
+      });
     });
 
     // Progress tracking event listeners
     listen('progress_numerator_reset', (event: { payload: number }) => {
-      props.setProgressLabelNumerator(event.payload);
+      untrack(() => {
+        props.setProgressLabelNumerator(event.payload);
+      });
     });
 
     listen('progress_denominator_reset', (event: { payload: number }) => {
-      props.setProgressLabelDenominator(event.payload);
+      untrack(() => {
+        props.setProgressLabelDenominator(event.payload);
+      });
     });
 
     listen('progress_numerator_increment', () => {
-      props.setProgressLabelNumerator((prev: number) => prev + 1);
+      untrack(() => {
+        props.setProgressLabelNumerator((prev: number) => prev + 1);
+      });
     });
 
     listen('progress_denominator_set', (event: { payload: number }) => {
-      props.setProgressLabelDenominator(event.payload);
+      untrack(() => {
+        props.setProgressLabelDenominator(event.payload);
+      });
     });
 
     listen('progress_denominator_decrement', () => {
-      props.setProgressLabelDenominator((prev: number) => prev - 1);
+      untrack(() => {
+        props.setProgressLabelDenominator((prev: number) => prev - 1);
+      });
     });
   });
 }

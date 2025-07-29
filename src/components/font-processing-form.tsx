@@ -43,7 +43,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex w-full flex-col items-stretch gap-3'
+      class='flex w-full flex-col items-stretch gap-2'
     >
       <TextField class='grid w-full items-center gap-2 pt-1'>
         <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
@@ -56,48 +56,47 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           placeholder='A quick brown fox jumps over the lazy dog'
         />
       </TextField>
-      <fieldset class='grid grid-cols-11 place-items-stretch items-center gap-0'>
-        <div class='flex justify-center font-thin'>F</div>
-        <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900]}>
-          {(weight) => (
-            <div class='flex size-auto flex-col items-center justify-center'>
-              <input
-                type='checkbox'
-                id={`font-weight-${weight}`}
-                name='font-weights'
-                value={weight}
-                class='peer sr-only'
-                onChange={(event) => {
+      <div class='flex w-full flex-col gap-2'>
+        <Label class='text-sm font-medium'>Weights</Label>
+        <div class='flex w-full items-center gap-px overflow-hidden rounded border'>
+          <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900]}>
+            {(weight, index) => (
+              <Button
+                type='button'
+                variant={
+                  props.checkedWeights.includes(weight) ? 'default' : 'ghost'
+                }
+                size='sm'
+                class='h-8 flex-1 rounded-none'
+                style={{ 'font-weight': weight }}
+                onClick={() => {
                   const currentWeights = props.checkedWeights;
-                  const newWeights = event.currentTarget.checked
-                    ? [...currentWeights, weight]
-                    : currentWeights.filter((w) => w !== weight);
+                  const newWeights = currentWeights.includes(weight)
+                    ? currentWeights.filter((w) => w !== weight)
+                    : [...currentWeights, weight];
                   props.onCheckedWeightsChange(newWeights);
                 }}
-                checked={props.checkedWeights.includes(weight)}
-              />
-              <Label
-                class='size-full cursor-pointer py-2 text-center opacity-20 peer-checked:opacity-100'
-                for={`font-weight-${weight}`}
-                style={{ 'font-weight': weight }}
               >
-                {weight}
-              </Label>
-            </div>
-          )}
-        </For>
-        <div class='flex justify-center font-black'>F</div>
-      </fieldset>
+                {['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'][index()]}
+              </Button>
+            )}
+          </For>
+        </div>
+      </div>
       <Button
         type='submit'
         disabled={isProcessing()}
         variant='outline'
-        class='flex items-center gap-2'
+        class='mt-1 flex items-center gap-2'
       >
         {props.isGenerating ? (
           <>
-            Generating fonts image... ({props.progressLabelNumerator}/
-            {props.progressLabelDenominator})
+            Generating fonts image... (
+            {Math.trunc(
+              (props.progressLabelNumerator / props.progressLabelDenominator) *
+                1000,
+            ) / 10}
+            %)
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isVectorizing ? (
