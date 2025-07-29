@@ -5,7 +5,6 @@ import { FontClusterVisualization } from './components/font-cluster-visualizatio
 import { FontProcessingForm } from './components/font-processing-form';
 import { useAppState } from './hooks/use-app-state';
 import { useEventListeners } from './hooks/use-event-listeners';
-import { Label } from './components/ui/label';
 
 function App() {
   const appState = useAppState();
@@ -35,9 +34,6 @@ function App() {
             onSampleTextChange={appState.setSampleText}
             onSubmit={appState.generateFontImages}
           />
-          <Label class='text-xs text-muted-foreground'>
-            Session ID: {appState.currentSessionId() || 'None'}
-          </Label>
           <Tabs value='name' class='flex min-h-0 flex-1 flex-col'>
             <TabsList class='grid w-full shrink-0 grid-cols-2'>
               <TabsTrigger value='name'>Name (A-Z)</TabsTrigger>
