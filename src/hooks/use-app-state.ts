@@ -11,7 +11,7 @@ export function useAppState() {
 
   // UI state
   const [sampleText, setSampleText] = createSignal('');
-  const [checkedWeights, setCheckedWeights] = createSignal<number[]>([]);
+  const [checkedWeights, setCheckedWeights] = createSignal<number[]>([400]);
   const [nearestFont, setNearestFont] = createSignal('');
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
 

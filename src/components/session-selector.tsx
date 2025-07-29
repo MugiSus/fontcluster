@@ -27,11 +27,11 @@ interface SessionSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSessionRestore?: () => void;
+  currentSessionId: string;
 }
 
 export function SessionSelector(props: SessionSelectorProps) {
   const [isRestoring, setIsRestoring] = createSignal(false);
-  const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
   const [availableSessions, { refetch }] = createResource(
     () => props.open,
@@ -39,10 +39,6 @@ export function SessionSelector(props: SessionSelectorProps) {
       if (!open) return [];
 
       try {
-        // Get current session ID
-        const sessionId = await invoke<string>('get_session_id');
-        setCurrentSessionId(sessionId);
-
         const result = await invoke<string>('get_available_sessions');
         return JSON.parse(result) as SessionInfo[];
       } catch (error) {
@@ -171,7 +167,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                           </div>
                         </div>
                         <Show
-                          when={session.session_id === currentSessionId()}
+                          when={session.session_id === props.currentSessionId}
                           fallback={
                             <Button
                               size='sm'

@@ -45,7 +45,11 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
               <div class='flex items-center gap-2 px-4'>
                 <div class={`mb-0.5 h-3 w-1 rounded-full ${clusterColor}`} />
                 <div class='text-sm font-light text-foreground'>
-                  {vectorData.config.weight}
+                  {
+                    ['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'][
+                      Math.trunc(vectorData.config.weight / 100) - 1
+                    ]
+                  }
                 </div>
                 <div class='text-sm font-light text-muted-foreground'>
                   {vectorData.config.font_name}

@@ -25,8 +25,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     const text = formData.get('preview-text') as string;
 
     // Get selected font weights
-    const weightInputs = formData.getAll('font-weights') as string[];
-    const selectedWeights = weightInputs.map((w) => parseInt(w, 10));
+    const selectedWeights = props.checkedWeights;
 
     props.onSubmit(
       text || 'A quick brown fox jumps over the lazy dog',
@@ -76,6 +75,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                     : [...currentWeights, weight];
                   props.onCheckedWeightsChange(newWeights);
                 }}
+                data-checked={props.checkedWeights.includes(weight)}
               >
                 {['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'][index()]}
               </Button>
@@ -94,8 +94,8 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             Generating fonts image... (
             {Math.trunc(
               (props.progressLabelNumerator / props.progressLabelDenominator) *
-                1000,
-            ) / 10}
+                100,
+            )}
             %)
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>

@@ -29,7 +29,9 @@ export function useEventListeners(props: UseEventListenersProps) {
         const sessionInfoStr = await invoke<string>('get_current_session_info');
         if (sessionInfoStr) {
           const sessionInfo = JSON.parse(sessionInfoStr);
+
           untrack(() => {
+            props.refetchSessionId();
             props.setSampleText(sessionInfo.preview_text);
             props.setCheckedWeights(sessionInfo.weights || [400]);
           });
@@ -69,6 +71,7 @@ export function useEventListeners(props: UseEventListenersProps) {
       console.log('Clustering completed');
       untrack(() => {
         props.setIsClustering(false);
+        props.refetchSessionId();
         props.refetchSessionDirectory();
         props.refetchCompressedVectors();
       });
