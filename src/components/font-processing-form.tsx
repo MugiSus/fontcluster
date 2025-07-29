@@ -97,22 +97,22 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         {props.isGenerating ? (
           <>
             Generating fonts image... ({props.progressLabelNumerator}/
-            {props.progressLabelDenominator}) (1/4)
+            {props.progressLabelDenominator})
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isVectorizing ? (
           <>
-            Vectorizing Images... (2/4)
+            Vectorizing Images...
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isCompressing ? (
           <>
-            Compressing Vectors... (3/4)
+            Compressing Vectors...
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isClustering ? (
           <>
-            Clustering... (4/4)
+            Clustering...
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : (
