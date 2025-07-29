@@ -11,6 +11,7 @@ export function useAppState() {
 
   // UI state
   const [sampleText, setSampleText] = createSignal('');
+  const [checkedWeights, setCheckedWeights] = createSignal<number[]>([]);
   const [nearestFont, setNearestFont] = createSignal('');
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
 
@@ -77,6 +78,7 @@ export function useAppState() {
       if (sessionInfoStr) {
         const sessionInfo = JSON.parse(sessionInfoStr);
         setSampleText(sessionInfo.preview_text);
+        setCheckedWeights(sessionInfo.weights || [400]);
       }
     } catch (error) {
       console.error('Failed to get session preview text:', error);
@@ -90,6 +92,7 @@ export function useAppState() {
     isCompressing,
     isClustering,
     sampleText,
+    checkedWeights,
     nearestFont,
     showSessionSelector,
     sessionDirectory,
@@ -102,6 +105,7 @@ export function useAppState() {
     setIsCompressing,
     setIsClustering,
     setSampleText,
+    setCheckedWeights,
     setNearestFont,
     setShowSessionSelector,
     refetchSessionDirectory,

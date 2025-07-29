@@ -6,10 +6,12 @@ import { Label } from './ui/label';
 
 interface FontProcessingFormProps {
   sampleText: string;
+  checkedWeights: number[];
   isGenerating: boolean;
   isVectorizing: boolean;
   isCompressing: boolean;
   isClustering: boolean;
+  onCheckedWeightsChange: (weights: number[]) => void;
   onSampleTextChange: (text: string) => void;
   onSubmit: (text: string, weights: number[]) => void;
 }
@@ -63,7 +65,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 name='font-weights'
                 value={weight}
                 class='peer sr-only'
-                checked={true} // Assuming all weights are enabled by default
+                onChange={(event) => {
+                  const currentWeights = props.checkedWeights;
+                  const newWeights = event.currentTarget.checked
+                    ? [...currentWeights, weight]
+                    : currentWeights.filter((w) => w !== weight);
+                  props.onCheckedWeightsChange(newWeights);
+                }}
+                checked={props.checkedWeights.includes(weight)}
               />
               <Label
                 class='size-full cursor-pointer py-2 text-center opacity-20 peer-checked:opacity-100'

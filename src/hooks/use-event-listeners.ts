@@ -9,6 +9,7 @@ interface UseEventListenersProps {
   setIsClustering: (value: boolean) => void;
   setShowSessionSelector: (value: boolean) => void;
   setSampleText: (value: string) => void;
+  setCheckedWeights: (weights: number[]) => void;
   refetchSessionId: () => void;
   refetchSessionDirectory: () => void;
   refetchCompressedVectors: () => void;
@@ -17,19 +18,20 @@ interface UseEventListenersProps {
 export function useEventListeners(props: UseEventListenersProps) {
   onMount(() => {
     // Load preview text from current session on startup
-    const loadCurrentSessionText = async () => {
+    const loadCurrentSession = async () => {
       try {
         const sessionInfoStr = await invoke<string>('get_current_session_info');
         if (sessionInfoStr) {
           const sessionInfo = JSON.parse(sessionInfoStr);
           props.setSampleText(sessionInfo.preview_text);
+          props.setCheckedWeights(sessionInfo.weights || [400]);
         }
       } catch (error) {
         console.error('Failed to get current session preview text:', error);
       }
     };
 
-    loadCurrentSessionText();
+    loadCurrentSession();
 
     listen('font_generation_complete', () => {
       console.log('Font generation completed, refreshing images');

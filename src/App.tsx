@@ -21,10 +21,12 @@ function App() {
         <div class='col-span-3 flex flex-col gap-3'>
           <FontProcessingForm
             sampleText={appState.sampleText()}
+            checkedWeights={appState.checkedWeights()}
             isGenerating={appState.isGenerating()}
             isVectorizing={appState.isVectorizing()}
             isCompressing={appState.isCompressing()}
             isClustering={appState.isClustering()}
+            onCheckedWeightsChange={appState.setCheckedWeights}
             onSampleTextChange={appState.setSampleText}
             onSubmit={appState.generateFontImages}
           />
