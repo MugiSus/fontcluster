@@ -61,6 +61,7 @@ impl<'a> FontRenderer<'a> {
             
         // Verify the loaded font has the requested weight
         let actual_properties = font.properties();
+        println!("Font: {} | Requested weight: {:?} | Actual weight: {:?}", family_name, weight, actual_properties.weight);
         if actual_properties.weight != weight {
             return Err(FontError::FontSelection(format!("Font {} loaded with weight {:?} but requested weight {:?}", family_name, actual_properties.weight, weight)));
         }
