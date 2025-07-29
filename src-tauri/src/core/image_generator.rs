@@ -39,7 +39,7 @@ impl FontImageGenerator {
     }
     
     pub async fn generate_all(&self) -> FontResult<PathBuf> {
-        let font_families = FontService::get_system_fonts();
+        let font_families = FontService::get_system_fonts_with_source(&self.shared_source);
         
         // Individual font configs will be created during font processing
         let tasks = self.spawn_font_processing_tasks(font_families, self.weights.clone());

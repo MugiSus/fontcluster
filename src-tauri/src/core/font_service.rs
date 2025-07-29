@@ -10,8 +10,8 @@ pub struct FontService;
 
 impl FontService {
     /// Returns a list of system fonts, excluding symbol fonts and noise fonts
-    pub fn get_system_fonts() -> Vec<String> {
-        SystemSource::new()
+    pub fn get_system_fonts_with_source(source: &SystemSource) -> Vec<String> {
+        source
             .all_families()
             .map(|families| {
                 let mut fonts: Vec<String> = families.into_iter()
@@ -24,6 +24,12 @@ impl FontService {
                 fonts
             })
             .unwrap_or_default()
+    }
+    
+    /// Returns a list of system fonts, excluding symbol fonts and noise fonts
+    pub fn get_system_fonts() -> Vec<String> {
+        let source = SystemSource::new();
+        Self::get_system_fonts_with_source(&source)
     }
     
     /// Filters out symbol fonts, dingbats, and other noise fonts
