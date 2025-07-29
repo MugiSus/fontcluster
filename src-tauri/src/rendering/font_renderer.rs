@@ -36,11 +36,12 @@ impl<'a> FontRenderer<'a> {
         let weight = Weight(weight_value as f32);
         
         let font = self.load_font_with_weight(family_name, weight)?;
+        let full_name = font.full_name();
         let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, weight)?;
         let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
         let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
         
-        self.save_image(img_buffer, family_name, weight_value)?;
+        self.save_image(img_buffer, family_name, &full_name, weight_value)?;
         
         Ok(())
     }
@@ -172,17 +173,18 @@ impl<'a> FontRenderer<'a> {
         &self,
         img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
         family_name: &str,
+        full_name: &str,
         weight_value: i32,
     ) -> FontResult<()> {
         // Check if image is empty or fully transparent
         if self.is_image_empty(&img_buffer) {
-            println!("Skipping font '{}' weight {} - image is empty or fully transparent", family_name, weight_value);
+            println!("Skipping font '{}' weight {} - image is empty or fully transparent", full_name, weight_value);
             return Ok(());
         }
         
         let safe_name = format!("{}_{}", weight_value, family_name.replace(" ", "_").replace("/", "_"));
-        let display_name = format!("{} {}", family_name, weight_value);
-        
+        let display_name = full_name.to_string();
+
         let session_manager = SessionManager::global();
         let font_dir = session_manager.create_font_directory(&safe_name, &display_name, weight_value)?;
         let output_path = font_dir.join("sample.png");
@@ -191,7 +193,7 @@ impl<'a> FontRenderer<'a> {
             .save(&output_path)
             .map_err(|e| FontError::ImageGeneration(format!("Failed to save image: {}", e)))?;
         
-        println!("Saved font image: {} weight {} -> {}", family_name, weight_value, output_path.display());
+        println!("Saved font image: {} weight {} -> {}", full_name, weight_value, output_path.display());
         Ok(())
     }
     

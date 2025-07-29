@@ -44,7 +44,10 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
             >
               <div class='flex items-center gap-2 px-4'>
                 <div class={`mb-0.5 h-3 w-1 rounded-full ${clusterColor}`} />
-                <div class='overflow-hidden text-ellipsis text-nowrap break-all text-sm font-light text-muted-foreground'>
+                <div class='text-sm font-light text-foreground'>
+                  {vectorData.config.weight}
+                </div>
+                <div class='text-sm font-light text-muted-foreground'>
                   {vectorData.config.font_name}
                 </div>
               </div>
