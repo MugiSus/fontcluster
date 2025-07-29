@@ -1,7 +1,7 @@
 use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer, SessionManager};
 use crate::config::{FONT_SIZE, SessionConfig};
 use crate::utils::{Pipeline, with_text_or_default, with_progress_events_async};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 /// Single command to run all font processing jobs sequentially
 /// 
@@ -118,11 +118,15 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
             }).await
             .execute()?;
 
-        // Emit final completion
-        crate::utils::emit_completion(&app_handle, "all_jobs_complete")?;
-        
+        // Emit final completion with session_id as payload
         let session_manager = SessionManager::global();
+        let session_id = session_manager.get_session_id();
         let session_dir = session_manager.get_session_dir();
+        
+        // Emit completion with session_id payload for frontend
+        if let Err(e) = app_handle.emit("all_jobs_complete", session_id) {
+            println!("Warning: Failed to emit all_jobs_complete event: {}", e);
+        }
         
         Ok(format!(
             "🎉 Complete font processing pipeline finished successfully!\n\

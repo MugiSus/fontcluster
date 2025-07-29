@@ -39,7 +39,7 @@ impl<'a> FontRenderer<'a> {
         let full_name = font.full_name();
         let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, weight)?;
         let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
-        let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
+        let img_buffer = self.convert_canvas_to_image(canvas, canvas_size)?;
         
         self.save_image(img_buffer, family_name, &full_name, weight_value)?;
         
@@ -160,26 +160,47 @@ impl<'a> FontRenderer<'a> {
         Ok(canvas)
     }
 
-    fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> FontResult<ImageBuffer<Rgba<u8>, Vec<u8>>> {
         let width = canvas_size.x() as u32;
         let height = canvas_size.y() as u32;
         let total_pixels = (width * height) as usize;
         
-        // Pre-allocate buffer for better performance
-        let mut buffer = Vec::with_capacity(total_pixels * 4);
+        // Memory safety: Check for reasonable size limits before allocation
+        const MAX_PIXELS: usize = 50_000_000; // 50M pixels (~200MB for RGBA)
+        if total_pixels > MAX_PIXELS {
+            return Err(FontError::ImageGeneration(format!(
+                "Image too large: {}x{} = {} pixels (max: {})", 
+                width, height, total_pixels, MAX_PIXELS
+            )));
+        }
         
-        for pixel in canvas.pixels.iter().take(total_pixels) {
+        // Use Result-based allocation to handle OOM gracefully
+        let mut buffer = Vec::new();
+        if let Err(_) = buffer.try_reserve_exact(total_pixels * 4) {
+            return Err(FontError::ImageGeneration(format!(
+                "Failed to allocate {} bytes for image buffer", total_pixels * 4
+            )));
+        }
+        buffer.reserve_exact(total_pixels * 4);
+        
+        // Process pixels with bounds checking
+        let available_pixels = canvas.pixels.len().min(total_pixels);
+        for pixel in canvas.pixels.iter().take(available_pixels) {
             let alpha = if *pixel > 0 { 255 } else { 0 };
             buffer.extend_from_slice(&[*pixel, *pixel, *pixel, alpha]);
         }
         
-        // Fill remaining pixels if canvas is smaller than expected
-        while buffer.len() < total_pixels * 4 {
+        // Fill remaining pixels safely with bounds check
+        let remaining_pixels = total_pixels.saturating_sub(available_pixels);
+        for _ in 0..remaining_pixels {
             buffer.extend_from_slice(&[0, 0, 0, 0]);
         }
         
+        // Safe conversion with proper error handling
         ImageBuffer::from_raw(width, height, buffer)
-            .expect("Buffer size should be correct")
+            .ok_or_else(|| FontError::ImageGeneration(
+                "Failed to create ImageBuffer from raw data - buffer size mismatch".to_string()
+            ))
     }
 
     fn save_image(

@@ -1,5 +1,4 @@
 import { onMount, untrack } from 'solid-js';
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 interface UseEventListenersProps {
@@ -10,75 +9,72 @@ interface UseEventListenersProps {
   setShowSessionSelector: (value: boolean) => void;
   setSampleText: (value: string) => void;
   setCheckedWeights: (weights: number[]) => void;
+  setCurrentSessionId: (sessionId: string) => void;
   setProgressLabelNumerator: (
     value: number | ((prev: number) => number),
   ) => void;
   setProgressLabelDenominator: (
     value: number | ((prev: number) => number),
   ) => void;
-  refetchSessionId: () => void;
   refetchSessionDirectory: () => void;
   refetchCompressedVectors: () => void;
 }
 
 export function useEventListeners(props: UseEventListenersProps) {
   onMount(() => {
-    // Load preview text from current session on startup
+    // Note: Session loading is now handled through event-driven updates
+    // Current session info will be set when processing starts or completes
     const loadCurrentSession = async () => {
-      try {
-        const sessionInfoStr = await invoke<string>('get_current_session_info');
-        if (sessionInfoStr) {
-          const sessionInfo = JSON.parse(sessionInfoStr);
-
-          untrack(() => {
-            props.refetchSessionId();
-            props.setSampleText(sessionInfo.preview_text);
-            props.setCheckedWeights(sessionInfo.weights || [400]);
-          });
-        }
-      } catch (error) {
-        console.error('Failed to get current session preview text:', error);
-      }
+      console.log('Session loading now handled through event-driven updates');
     };
 
     loadCurrentSession();
 
-    listen('font_generation_complete', () => {
-      console.log('Font generation completed, refreshing images');
+    listen('font_generation_complete', (event: { payload: string }) => {
+      console.log('Font generation completed for session:', event.payload);
       untrack(() => {
+        props.setCurrentSessionId(event.payload);
         props.setIsGenerating(false);
         props.setIsVectorizing(true);
       });
     });
 
-    listen('vectorization_complete', () => {
-      console.log('Vectorization completed');
+    listen('vectorization_complete', (event: { payload: string }) => {
+      console.log('Vectorization completed for session:', event.payload);
       untrack(() => {
+        props.setCurrentSessionId(event.payload);
         props.setIsVectorizing(false);
         props.setIsCompressing(true);
       });
     });
 
-    listen('compression_complete', () => {
-      console.log('Compression completed');
+    listen('compression_complete', (event: { payload: string }) => {
+      console.log('Compression completed for session:', event.payload);
       untrack(() => {
+        props.setCurrentSessionId(event.payload);
         props.setIsCompressing(false);
         props.setIsClustering(true);
       });
     });
 
-    listen('clustering_complete', () => {
-      console.log('Clustering completed');
+    listen('clustering_complete', (event: { payload: string }) => {
+      console.log('Clustering completed for session:', event.payload);
       untrack(() => {
+        props.setCurrentSessionId(event.payload);
         props.setIsClustering(false);
-        props.refetchSessionId();
         props.refetchSessionDirectory();
         props.refetchCompressedVectors();
       });
     });
 
-    listen('all_jobs_complete', () => {
-      console.log('All jobs completed successfully!');
+    listen('all_jobs_complete', (event: { payload: string }) => {
+      console.log(
+        'All jobs completed successfully for session:',
+        event.payload,
+      );
+      untrack(() => {
+        props.setCurrentSessionId(event.payload);
+      });
       // All states are reset in the finally block of generateFontImages
     });
 

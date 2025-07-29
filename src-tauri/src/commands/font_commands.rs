@@ -25,7 +25,11 @@ pub fn get_system_fonts() -> Vec<String> {
 /// Returns a JSON string containing a Map where font names are keys and values contain coordinates.
 /// Format: { "font_name": { x: number, y: number, k: number, config: FontConfig } }
 #[tauri::command]
-pub fn get_compressed_vectors() -> Result<String, String> {
+pub fn get_compressed_vectors(session_id: String) -> Result<String, String> {
+    // Restore the specific session first
+    SessionManager::restore_session(session_id)
+        .map_err(|e| format!("Failed to restore session: {}", e))?;
+        
     FontService::read_compressed_vectors()
         .map_err(|e| format!("Failed to read compressed vectors: {}", e))
 }

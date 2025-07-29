@@ -48,53 +48,53 @@ impl FontImageGenerator {
         progress_events::reset_progress(app_handle);
         progress_events::set_progress_denominator(app_handle, total_tasks as i32);
         
-        // Individual font configs will be created during font processing
-        let tasks = self.spawn_font_processing_tasks(font_families, self.weights.clone(), app_handle);
-        join_all(tasks).await;
+        // Process fonts in batches to prevent memory exhaustion
+        // This maintains the same behavior but reduces peak memory usage
+        const BATCH_SIZE: usize = 100; // Process 100 tasks at a time
+        
+        // Create all task combinations
+        let mut all_task_params = Vec::new();
+        for family_name in font_families {
+            for &weight in &self.weights {
+                all_task_params.push((family_name.clone(), weight));
+            }
+        }
+        
+        // Process in batches with the same logic as before
+        for batch in all_task_params.chunks(BATCH_SIZE) {
+            let batch_tasks = batch.iter()
+                .map(|(family_name, weight)| {
+                    let config_clone = self.config.clone();
+                    let shared_source = Arc::clone(&self.shared_source);
+                    let semaphore = Arc::clone(&self.semaphore);
+                    let app_handle_clone = app_handle.clone();
+                    let family_name = family_name.clone();
+                    let weight = *weight;
+                    
+                    task::spawn_blocking(move || {
+                        // Acquire permit before processing (blocking)
+                        let rt = tokio::runtime::Handle::current();
+                        let _permit = rt.block_on(semaphore.acquire()).unwrap();
+                        
+                        let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
+                        if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
+                            // Skip silently - renderer handles logging
+                            // Decrement denominator for failed tasks to keep progress accurate
+                            progress_events::decrement_progress_denominator(&app_handle_clone);
+                        } else {
+                            println!("Successfully generated image for font: {} weight: {}", family_name, weight);
+                            // Increment progress after successful completion
+                            progress_events::increment_progress(&app_handle_clone);
+                        }
+                    })
+                })
+                .collect::<Vec<_>>();
+                
+            // Wait for this batch to complete before starting the next
+            join_all(batch_tasks).await;
+        }
         
         Ok(self.config.output_dir.clone())
     }
     
-    fn spawn_font_processing_tasks(
-        &self,
-        font_families: Vec<String>,
-        weights: Vec<i32>,
-        app_handle: &AppHandle,
-    ) -> Vec<task::JoinHandle<()>> {
-        // Create all tasks first (without spawning them)
-        let all_tasks: Vec<_> = font_families
-            .into_iter()
-            .flat_map(|family_name| {
-                weights.iter().map(move |&weight| (family_name.clone(), weight))
-            })
-            .collect();
-
-        // Process tasks in controlled batches using semaphore
-        all_tasks
-            .into_iter()
-            .map(|(family_name, weight)| {
-                let config_clone = self.config.clone();
-                let shared_source = Arc::clone(&self.shared_source);
-                let semaphore = Arc::clone(&self.semaphore);
-                let app_handle_clone = app_handle.clone();
-                
-                task::spawn_blocking(move || {
-                    // Acquire permit before processing (blocking)
-                    let rt = tokio::runtime::Handle::current();
-                    let _permit = rt.block_on(semaphore.acquire()).unwrap();
-                    
-                    let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
-                    if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                        // Skip silently - renderer handles logging
-                        // Decrement denominator for failed tasks to keep progress accurate
-                        progress_events::decrement_progress_denominator(&app_handle_clone);
-                    } else {
-                        println!("Successfully generated image for font: {} weight: {}", family_name, weight);
-                        // Increment progress after successful completion
-                        progress_events::increment_progress(&app_handle_clone);
-                    }
-                })
-            })
-            .collect()
-    }
 }

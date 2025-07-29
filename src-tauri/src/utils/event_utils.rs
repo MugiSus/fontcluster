@@ -33,6 +33,21 @@ pub fn emit_completion(
         ))
 }
 
+/// Emits completion event with session_id payload
+pub fn emit_completion_with_session_id(
+    app_handle: &AppHandle,
+    event_name: &str,
+    session_id: &str,
+) -> FontResult<()> {
+    app_handle.emit(event_name, session_id)
+        .map_err(|e| crate::error::FontError::Io(
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to emit completion event '{}': {}", event_name, e)
+            )
+        ))
+}
+
 /// Creates a function that emits an event and returns the input unchanged
 pub fn emit_and_pass_through<T: Clone + serde::Serialize + 'static>(
     app_handle: AppHandle,
@@ -79,6 +94,11 @@ where
 {
     emit_completion(&app_handle, start_event)?;
     let result = operation().await?;
-    emit_completion(&app_handle, complete_event)?;
+    
+    // Emit completion event with session_id payload
+    let session_manager = crate::core::SessionManager::global();
+    let session_id = session_manager.get_session_id();
+    emit_completion_with_session_id(&app_handle, complete_event, session_id)?;
+    
     Ok(result)
 }

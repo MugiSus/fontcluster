@@ -24,6 +24,11 @@ impl SessionManager {
         Self::with_id(Uuid::now_v7().to_string())
     }
     
+    /// Get the current session ID
+    pub fn get_session_id(&self) -> &str {
+        &self.session_id
+    }
+    
     /// Create a default session (fallback)
     pub fn default() -> FontResult<Self> {
         Self::with_id("default".to_string())

@@ -14,6 +14,7 @@ export function useAppState() {
   const [checkedWeights, setCheckedWeights] = createSignal<number[]>([400]);
   const [nearestFont, setNearestFont] = createSignal('');
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
+  const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
   // Progress tracking
   const [progressLabelNumerator, setProgressLabelNumerator] = createSignal(0);
@@ -22,35 +23,37 @@ export function useAppState() {
 
   // Resources
   const [sessionDirectory, { refetch: refetchSessionDirectory }] =
-    createResource(() =>
-      invoke<string>('get_session_directory').catch((error) => {
-        console.error('Failed to get session directory:', error);
-        return '';
-      }),
+    createResource(
+      () => currentSessionId(),
+      async (sessionId): Promise<string> => {
+        if (!sessionId) return '';
+        try {
+          return await invoke<string>('get_session_directory', { sessionId });
+        } catch (error) {
+          console.error('Failed to get session directory:', error);
+          return '';
+        }
+      },
     );
-
-  const [sessionId, { refetch: refetchSessionId }] = createResource(() =>
-    invoke<string>('get_current_session_id').catch((error) => {
-      console.error('Failed to get session ID:', error);
-      return '';
-    }),
-  );
 
   const [compressedVectors, { refetch: refetchCompressedVectors }] =
     createResource(
-      () => sessionId(),
-      () =>
-        invoke<string>('get_compressed_vectors').then((response) => {
+      () => currentSessionId(),
+      async (sessionId): Promise<CompressedFontVectorMap> => {
+        if (!sessionId) return {};
+        try {
+          const response = await invoke<string>('get_compressed_vectors', {
+            sessionId,
+          });
           if (!response) {
             return {};
           }
-          try {
-            return JSON.parse(response) as CompressedFontVectorMap;
-          } catch (error) {
-            console.error('Failed to parse compressed vectors:', error);
-            return {};
-          }
-        }),
+          return JSON.parse(response) as CompressedFontVectorMap;
+        } catch (error) {
+          console.error('Failed to parse compressed vectors:', error);
+          return {};
+        }
+      },
     );
 
   // Processing actions
@@ -74,20 +77,10 @@ export function useAppState() {
   };
 
   const handleSessionRestore = async () => {
+    // Note: Session restoration now handled through SessionSelector component
+    // Data will automatically refresh through reactive dependencies when currentSessionId changes
     refetchSessionDirectory();
     refetchCompressedVectors();
-
-    // Load preview text from the restored session
-    try {
-      const sessionInfoStr = await invoke<string>('get_current_session_info');
-      if (sessionInfoStr) {
-        const sessionInfo = JSON.parse(sessionInfoStr);
-        setSampleText(sessionInfo.preview_text);
-        setCheckedWeights(sessionInfo.weights || [400]);
-      }
-    } catch (error) {
-      console.error('Failed to get session preview text:', error);
-    }
   };
 
   return {
@@ -103,7 +96,7 @@ export function useAppState() {
     progressLabelNumerator,
     progressLabelDenominator,
     sessionDirectory,
-    sessionId,
+    currentSessionId,
     compressedVectors,
 
     // Actions
@@ -115,10 +108,10 @@ export function useAppState() {
     setCheckedWeights,
     setNearestFont,
     setShowSessionSelector,
+    setCurrentSessionId,
     setProgressLabelNumerator,
     setProgressLabelDenominator,
     refetchSessionDirectory,
-    refetchSessionId,
     refetchCompressedVectors,
     generateFontImages,
     handleSessionRestore,

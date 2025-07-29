@@ -17,11 +17,16 @@ pub fn get_session_id() -> String {
 
 /// Get the session directory path
 /// 
-/// Returns the full path to the current session's directory structure.
+/// Returns the full path to the specified session's directory structure.
 /// This is useful for debugging and frontend path construction.
 #[tauri::command]
-pub fn get_session_directory() -> String {
-    SessionManager::global().get_session_dir().to_string_lossy().to_string()
+pub fn get_session_directory(session_id: String) -> Result<String, String> {
+    // Restore the specific session first
+    SessionManager::restore_session(session_id)
+        .map_err(|e| format!("Failed to restore session: {}", e))?;
+        
+    let session_manager = SessionManager::global();
+    Ok(session_manager.get_session_dir().to_string_lossy().to_string())
 }
 
 /// Create a new session for processing
