@@ -27,8 +27,8 @@ impl FontImageGenerator {
         
         // Create shared SystemSource once for all tasks
         let shared_source = Arc::new(SystemSource::new());
-        // Limit concurrent font processing to prevent resource exhaustion
-        let semaphore = Arc::new(Semaphore::new(100)); // Max 20 concurrent tasks
+        // Limit concurrent font processing to prevent resource exhaustion (CPU cores * 2)
+        let semaphore = Arc::new(Semaphore::new(16)); // Max 16 concurrent tasks
         
         Ok(Self { 
             config, 
@@ -53,28 +53,33 @@ impl FontImageGenerator {
         font_families: Vec<String>,
         weights: Vec<i32>,
     ) -> Vec<task::JoinHandle<()>> {
-        font_families
+        // Create all tasks first (without spawning them)
+        let all_tasks: Vec<_> = font_families
             .into_iter()
             .flat_map(|family_name| {
-                weights.iter().map(move |&weight| {
-                    let family_name = family_name.clone();
-                    let config_clone = self.config.clone();
-                    let shared_source = Arc::clone(&self.shared_source);
-                    let semaphore = Arc::clone(&self.semaphore);
+                weights.iter().map(move |&weight| (family_name.clone(), weight))
+            })
+            .collect();
+
+        // Process tasks in controlled batches using semaphore
+        all_tasks
+            .into_iter()
+            .map(|(family_name, weight)| {
+                let config_clone = self.config.clone();
+                let shared_source = Arc::clone(&self.shared_source);
+                let semaphore = Arc::clone(&self.semaphore);
+                
+                task::spawn_blocking(move || {
+                    // Acquire permit before processing (blocking)
+                    let rt = tokio::runtime::Handle::current();
+                    let _permit = rt.block_on(semaphore.acquire()).unwrap();
                     
-                    task::spawn(async move {
-                        // Acquire semaphore permit to limit concurrency
-                        let _permit = semaphore.acquire().await.unwrap();
-                        
-                        task::spawn_blocking(move || {
-                            let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
-                            if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                                // Skip silently - renderer handles logging
-                            } else {
-                                println!("Successfully generated image for font: {} weight: {}", family_name, weight);
-                            }
-                        }).await.unwrap();
-                    })
+                    let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
+                    if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
+                        // Skip silently - renderer handles logging
+                    } else {
+                        println!("Successfully generated image for font: {} weight: {}", family_name, weight);
+                    }
                 })
             })
             .collect()
