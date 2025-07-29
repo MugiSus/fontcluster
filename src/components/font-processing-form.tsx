@@ -1,6 +1,8 @@
+import { For } from 'solid-js';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
+import { Label } from './ui/label';
 
 interface FontProcessingFormProps {
   sampleText: string;
@@ -42,6 +44,31 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           placeholder='A quick brown fox jumps over the lazy dog'
         />
       </TextField>
+      <div class='grid grid-cols-11 place-items-stretch items-center gap-0'>
+        <div class='flex justify-center font-thin'>F</div>
+        <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900]}>
+          {(weight) => (
+            <div class='flex size-auto flex-col items-center justify-center'>
+              <input
+                type='checkbox'
+                id={`font-weight-${weight}`}
+                name='font-weights'
+                value={weight}
+                class='peer sr-only'
+                checked={true} // Assuming all weights are enabled by default
+              />
+              <Label
+                class='size-full cursor-pointer text-center opacity-20 peer-checked:opacity-100'
+                for={`font-weight-${weight}`}
+                style={{ 'font-weight': weight }}
+              >
+                {weight}
+              </Label>
+            </div>
+          )}
+        </For>
+        <div class='flex justify-center font-black'>F</div>
+      </div>
       <Button
         type='submit'
         disabled={isProcessing()}
@@ -51,22 +78,22 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         {props.isGenerating ? (
           <>
             Generating Images... (1/4)
-            <LoaderCircleIcon class='animate-spin' />
+            <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isVectorizing ? (
           <>
             Vectorizing Images... (2/4)
-            <LoaderCircleIcon class='animate-spin' />
+            <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isCompressing ? (
           <>
             Compressing Vectors... (3/4)
-            <LoaderCircleIcon class='animate-spin' />
+            <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isClustering ? (
           <>
             Clustering... (4/4)
-            <LoaderCircleIcon class='animate-spin' />
+            <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : (
           <>

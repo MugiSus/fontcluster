@@ -6,7 +6,7 @@ use tauri::AppHandle;
 #[tauri::command]
 pub async fn generate_font_images(text: Option<String>, app_handle: AppHandle) -> Result<String, String> {
     async {
-        let generator = FontImageGenerator::new(text, FONT_SIZE, vec![100, 200, 300, 400, 500, 600, 700, 800, 900])?;
+        let generator = FontImageGenerator::new(text, FONT_SIZE, vec![400])?;
         
         with_progress_events_async(
             app_handle.clone(),
