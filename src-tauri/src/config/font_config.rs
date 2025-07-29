@@ -7,6 +7,8 @@ pub struct FontConfig {
     pub safe_name: String,
     /// Display name (e.g., "Arial")
     pub font_name: String,
+    /// Font family name (e.g., "Arial")
+    pub family_name: String,
     /// Font weight value (e.g., 400)
     pub weight: i32,
     /// Available weights for this font family (empty if not detected)
@@ -15,10 +17,11 @@ pub struct FontConfig {
 
 impl FontConfig {
     /// Create a new font configuration
-    pub fn new(safe_name: String, font_name: String, weight: i32) -> Self {
+    pub fn new(safe_name: String, font_name: String, family_name: String, weight: i32) -> Self {
         Self {
             safe_name,
             font_name,
+            family_name,
             weight,
             weights: Vec::new(), // Start with empty weights array
         }

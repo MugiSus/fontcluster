@@ -228,22 +228,22 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
                     // Define cluster colors
                     const clusterColors = [
-                      'fill-blue-500',
-                      'fill-red-500',
-                      'fill-yellow-500',
-                      'fill-green-500',
-                      'fill-purple-500',
-                      'fill-orange-500',
-                      'fill-teal-500',
-                      'fill-indigo-500',
-                      'fill-cyan-500',
-                      'fill-fuchsia-500',
+                      'text-blue-500',
+                      'text-red-500',
+                      'text-yellow-500',
+                      'text-green-500',
+                      'text-purple-500',
+                      'text-orange-500',
+                      'text-teal-500',
+                      'text-indigo-500',
+                      'text-cyan-500',
+                      'text-fuchsia-500',
                     ];
 
                     // Handle noise cluster (-1) with gray-400
                     const clusterColor =
                       k === -1
-                        ? 'fill-gray-400'
+                        ? 'text-gray-400'
                         : clusterColors[k % clusterColors.length];
 
                     return (
@@ -257,12 +257,13 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                       >
                         <g
                           transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
+                          class={clusterColor}
                         >
                           <circle
                             cx={0}
                             cy={0}
                             r={props.nearestFont === config.safe_name ? 5 : 2}
-                            class={`${clusterColor} pointer-events-none`}
+                            class='pointer-events-none fill-current'
                           />
                           {props.nearestFont === config.safe_name && (
                             <circle

@@ -62,8 +62,9 @@ impl<'a> FontRenderer<'a> {
         // Verify the loaded font has the requested weight
         let actual_properties = font.properties();
         println!("Font: {} | Requested weight: {:?} | Actual weight: {:?}", family_name, weight, actual_properties.weight);
-        if actual_properties.weight != weight {
-            return Err(FontError::FontSelection(format!("Font {} loaded with weight {:?} but requested weight {:?}", family_name, actual_properties.weight, weight)));
+        let weight_diff = (actual_properties.weight.0 - weight.0).abs();
+        if weight_diff > 50.0 {
+            return Err(FontError::FontSelection(format!("Font {} loaded with weight {:?} but requested weight {:?} (difference: {})", family_name, actual_properties.weight, weight, weight_diff)));
         }
         
         Ok(font)
@@ -221,7 +222,7 @@ impl<'a> FontRenderer<'a> {
         let display_name = full_name.to_string();
 
         let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, weight_value)?;
+        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, family_name, weight_value)?;
         let output_path = font_dir.join("sample.png");
         
         img_buffer
