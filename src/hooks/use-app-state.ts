@@ -2,12 +2,17 @@ import { createSignal, createResource } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { CompressedFontVectorMap } from '../types/font';
 
+export type ProcessingStatus =
+  | 'idle'
+  | 'generating'
+  | 'vectorizing'
+  | 'compressing'
+  | 'clustering';
+
 export function useAppState() {
   // Processing state
-  const [isGenerating, setIsGenerating] = createSignal(false);
-  const [isVectorizing, setIsVectorizing] = createSignal(false);
-  const [isCompressing, setIsCompressing] = createSignal(false);
-  const [isClustering, setIsClustering] = createSignal(false);
+  const [processingStatus, setProcessingStatus] =
+    createSignal<ProcessingStatus>('idle');
 
   // UI state
   const [sampleText, setSampleText] = createSignal('');
@@ -58,7 +63,7 @@ export function useAppState() {
 
   // Processing actions
   const generateFontImages = async (text: string, weights: number[]) => {
-    setIsGenerating(true);
+    setProcessingStatus('generating');
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
@@ -69,10 +74,7 @@ export function useAppState() {
     } catch (error) {
       console.error('Failed to process fonts:', error);
     } finally {
-      setIsGenerating(false);
-      setIsVectorizing(false);
-      setIsCompressing(false);
-      setIsClustering(false);
+      setProcessingStatus('idle');
     }
   };
 
@@ -85,10 +87,7 @@ export function useAppState() {
 
   return {
     // State
-    isGenerating,
-    isVectorizing,
-    isCompressing,
-    isClustering,
+    processingStatus,
     sampleText,
     checkedWeights,
     nearestFont,
@@ -100,10 +99,7 @@ export function useAppState() {
     compressedVectors,
 
     // Actions
-    setIsGenerating,
-    setIsVectorizing,
-    setIsCompressing,
-    setIsClustering,
+    setProcessingStatus,
     setSampleText,
     setCheckedWeights,
     setNearestFont,

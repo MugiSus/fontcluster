@@ -3,14 +3,12 @@ import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
 import { Label } from './ui/label';
+import { ProcessingStatus } from '../hooks/use-app-state';
 
 interface FontProcessingFormProps {
   sampleText: string;
   checkedWeights: number[];
-  isGenerating: boolean;
-  isVectorizing: boolean;
-  isCompressing: boolean;
-  isClustering: boolean;
+  processingStatus: ProcessingStatus;
   progressLabelNumerator: number;
   progressLabelDenominator: number;
   onCheckedWeightsChange: (weights: number[]) => void;
@@ -33,11 +31,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     );
   };
 
-  const isProcessing = () =>
-    props.isGenerating ||
-    props.isVectorizing ||
-    props.isCompressing ||
-    props.isClustering;
+  const isProcessing = () => props.processingStatus !== 'idle';
 
   return (
     <form
@@ -89,7 +83,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         variant='outline'
         class='relative mt-1 flex items-center gap-2 pb-1.5'
       >
-        {props.isGenerating ? (
+        {props.processingStatus === 'generating' ? (
           <>
             Generating fonts image... (
             {Math.trunc(
@@ -99,17 +93,17 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             %)
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.isVectorizing ? (
+        ) : props.processingStatus === 'vectorizing' ? (
           <>
             Vectorizing Images...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.isCompressing ? (
+        ) : props.processingStatus === 'compressing' ? (
           <>
             Compressing Vectors...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.isClustering ? (
+        ) : props.processingStatus === 'clustering' ? (
           <>
             Clustering...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />

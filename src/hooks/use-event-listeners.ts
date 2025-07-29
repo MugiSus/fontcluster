@@ -1,12 +1,10 @@
 import { onMount, untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { ProcessingStatus } from './use-app-state';
 
 interface UseEventListenersProps {
-  setIsGenerating: (value: boolean) => void;
-  setIsVectorizing: (value: boolean) => void;
-  setIsCompressing: (value: boolean) => void;
-  setIsClustering: (value: boolean) => void;
+  setProcessingStatus: (value: ProcessingStatus) => void;
   setShowSessionSelector: (value: boolean) => void;
   setSampleText: (value: string) => void;
   setCheckedWeights: (weights: number[]) => void;
@@ -47,24 +45,21 @@ export function useEventListeners(props: UseEventListenersProps) {
     listen('font_generation_complete', (event: { payload: string }) => {
       console.log('Font generation completed for session:', event.payload);
       untrack(() => {
-        props.setIsGenerating(false);
-        props.setIsVectorizing(true);
+        props.setProcessingStatus('vectorizing');
       });
     });
 
     listen('vectorization_complete', (event: { payload: string }) => {
       console.log('Vectorization completed for session:', event.payload);
       untrack(() => {
-        props.setIsVectorizing(false);
-        props.setIsCompressing(true);
+        props.setProcessingStatus('compressing');
       });
     });
 
     listen('compression_complete', (event: { payload: string }) => {
       console.log('Compression completed for session:', event.payload);
       untrack(() => {
-        props.setIsCompressing(false);
-        props.setIsClustering(true);
+        props.setProcessingStatus('clustering');
       });
     });
 
@@ -72,7 +67,7 @@ export function useEventListeners(props: UseEventListenersProps) {
       console.log('Clustering completed for session:', event.payload);
       untrack(() => {
         props.setCurrentSessionId(event.payload);
-        props.setIsClustering(false);
+        props.setProcessingStatus('idle');
         props.refetchSessionDirectory();
         props.refetchCompressedVectors();
       });

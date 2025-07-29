@@ -24,10 +24,7 @@ function App() {
           <FontProcessingForm
             sampleText={appState.sampleText()}
             checkedWeights={appState.checkedWeights()}
-            isGenerating={appState.isGenerating()}
-            isVectorizing={appState.isVectorizing()}
-            isCompressing={appState.isCompressing()}
-            isClustering={appState.isClustering()}
+            processingStatus={appState.processingStatus()}
             progressLabelNumerator={appState.progressLabelNumerator()}
             progressLabelDenominator={appState.progressLabelDenominator()}
             onCheckedWeightsChange={appState.setCheckedWeights}
