@@ -26,11 +26,11 @@ pub fn get_system_fonts() -> Vec<String> {
 /// Format: { "font_name": { x: number, y: number, k: number, config: FontConfig } }
 #[tauri::command]
 pub fn get_compressed_vectors(session_id: String) -> Result<String, String> {
-    // Restore the specific session first
-    SessionManager::restore_session(session_id)
-        .map_err(|e| format!("Failed to restore session: {}", e))?;
+    // Get session directory without changing global state
+    let session_dir = SessionManager::get_session_dir_for_id(&session_id)
+        .map_err(|e| format!("Failed to get session directory: {}", e))?;
         
-    FontService::read_compressed_vectors()
+    FontService::read_compressed_vectors_for_session(session_dir)
         .map_err(|e| format!("Failed to read compressed vectors: {}", e))
 }
 

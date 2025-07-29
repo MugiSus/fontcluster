@@ -18,6 +18,7 @@ function App() {
         onOpenChange={appState.setShowSessionSelector}
         onSessionRestore={appState.handleSessionRestore}
         currentSessionId={appState.currentSessionId() || ''}
+        onSessionSelect={appState.setCurrentSessionId}
       />
       <main class='grid min-h-0 flex-1 grid-cols-10 grid-rows-1 gap-4 px-4 pb-4'>
         <div class='col-span-3 flex flex-col gap-3'>

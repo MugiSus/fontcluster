@@ -29,6 +29,12 @@ impl SessionManager {
         &self.session_id
     }
     
+    /// Get session directory for a specific session ID without changing global state
+    pub fn get_session_dir_for_id(session_id: &str) -> FontResult<PathBuf> {
+        let temp_session = Self::with_id(session_id.to_string())?;
+        Ok(temp_session.get_session_dir())
+    }
+    
     /// Create a default session (fallback)
     pub fn default() -> FontResult<Self> {
         Self::with_id("default".to_string())

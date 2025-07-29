@@ -64,6 +64,28 @@ impl FontService {
     pub fn read_compressed_vectors() -> FontResult<String> {
         let session_manager = SessionManager::global();
         let session_dir = session_manager.get_session_dir();
+        Self::read_compressed_vectors_for_session(session_dir)
+    }
+    
+    fn load_font_config_from_path(config_path: &PathBuf) -> FontResult<Option<crate::config::FontConfig>> {
+        use std::fs;
+        use serde_json;
+        
+        if !config_path.exists() {
+            return Ok(None);
+        }
+        
+        let content = fs::read_to_string(config_path)?;
+        let config: crate::config::FontConfig = serde_json::from_str(&content)
+            .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Failed to parse font config: {}", e)
+            )))?;
+        
+        Ok(Some(config))
+    }
+    
+    pub fn read_compressed_vectors_for_session(session_dir: PathBuf) -> FontResult<String> {
         
         let mut result = serde_json::Map::new();
         
@@ -74,15 +96,17 @@ impl FontService {
             }
             
             let font_dir = entry.path();
-            let safe_font_name = match font_dir.file_name().and_then(|n| n.to_str()) {
+            let _safe_font_name = match font_dir.file_name().and_then(|n| n.to_str()) {
                 Some(name) => name,
                 None => continue,
             };
             
-            // Load font config
-            let config = match session_manager.load_font_config(safe_font_name)? {
-                Some(config) => config,
-                None => continue,
+            // Load font config directly from the font directory
+            let config_path = font_dir.join("config.json");
+            let config = match Self::load_font_config_from_path(&config_path) {
+                Ok(Some(config)) => config,
+                Ok(None) => continue,
+                Err(_) => continue,
             };
             
             // Load compressed vector

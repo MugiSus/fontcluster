@@ -21,12 +21,11 @@ pub fn get_session_id() -> String {
 /// This is useful for debugging and frontend path construction.
 #[tauri::command]
 pub fn get_session_directory(session_id: String) -> Result<String, String> {
-    // Restore the specific session first
-    SessionManager::restore_session(session_id)
-        .map_err(|e| format!("Failed to restore session: {}", e))?;
+    // Get session directory without changing global state
+    let session_dir = SessionManager::get_session_dir_for_id(&session_id)
+        .map_err(|e| format!("Failed to get session directory: {}", e))?;
         
-    let session_manager = SessionManager::global();
-    Ok(session_manager.get_session_dir().to_string_lossy().to_string())
+    Ok(session_dir.to_string_lossy().to_string())
 }
 
 /// Create a new session for processing
@@ -96,15 +95,6 @@ pub fn get_available_sessions() -> Result<String, String> {
     .map_err(|e| format!("Failed to get available sessions: {}", e))
 }
 
-/// Restore a session by ID
-#[tauri::command]
-pub fn restore_session(session_id: String) -> Result<String, String> {
-    || -> FontResult<String> {
-        SessionManager::restore_session(session_id.clone())?;
-        Ok(format!("Session restored: {}", session_id))
-    }()
-    .map_err(|e| format!("Failed to restore session: {}", e))
-}
 
 /// Get current session information
 #[tauri::command]

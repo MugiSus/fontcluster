@@ -28,6 +28,7 @@ interface SessionSelectorProps {
   onOpenChange: (open: boolean) => void;
   onSessionRestore?: () => void;
   currentSessionId: string;
+  onSessionSelect: (sessionId: string) => void;
 }
 
 export function SessionSelector(props: SessionSelectorProps) {
@@ -48,14 +49,15 @@ export function SessionSelector(props: SessionSelectorProps) {
     },
   );
 
-  const restoreSession = async (sessionId: string) => {
+  const selectSession = (sessionId: string) => {
     setIsRestoring(true);
     try {
-      await invoke('restore_session', { sessionId });
+      // Simply update the current session ID in the frontend
+      props.onSessionSelect(sessionId);
       props.onSessionRestore?.();
       props.onOpenChange(false);
     } catch (error) {
-      console.error('Failed to restore session:', error);
+      console.error('Failed to select session:', error);
     } finally {
       setIsRestoring(false);
     }
@@ -171,7 +173,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                           fallback={
                             <Button
                               size='sm'
-                              onClick={() => restoreSession(session.session_id)}
+                              onClick={() => selectSession(session.session_id)}
                               disabled={isRestoring()}
                             >
                               Restore

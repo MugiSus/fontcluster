@@ -33,7 +33,6 @@ export function useEventListeners(props: UseEventListenersProps) {
     listen('font_generation_complete', (event: { payload: string }) => {
       console.log('Font generation completed for session:', event.payload);
       untrack(() => {
-        props.setCurrentSessionId(event.payload);
         props.setIsGenerating(false);
         props.setIsVectorizing(true);
       });
@@ -42,7 +41,6 @@ export function useEventListeners(props: UseEventListenersProps) {
     listen('vectorization_complete', (event: { payload: string }) => {
       console.log('Vectorization completed for session:', event.payload);
       untrack(() => {
-        props.setCurrentSessionId(event.payload);
         props.setIsVectorizing(false);
         props.setIsCompressing(true);
       });
@@ -51,7 +49,6 @@ export function useEventListeners(props: UseEventListenersProps) {
     listen('compression_complete', (event: { payload: string }) => {
       console.log('Compression completed for session:', event.payload);
       untrack(() => {
-        props.setCurrentSessionId(event.payload);
         props.setIsCompressing(false);
         props.setIsClustering(true);
       });
