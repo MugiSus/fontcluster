@@ -220,7 +220,7 @@ impl<'a> FontRenderer<'a> {
         let display_name = full_name.to_string();
 
         let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, weight_value)?;
+        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, family_name, weight_value)?;
         let output_path = font_dir.join("sample.png");
         
         img_buffer
