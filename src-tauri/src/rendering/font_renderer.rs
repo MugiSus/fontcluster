@@ -26,19 +26,32 @@ impl<'a> FontRenderer<'a> {
     
     pub fn generate_font_image(&self, family_name: &str) -> FontResult<()> {
         let target_weights = [
+            (Weight::THIN, "Thin"),
+            (Weight::EXTRA_LIGHT, "Extra Light"),
+            (Weight::LIGHT, "Light"),
             (Weight::NORMAL, "Regular"),
+            (Weight::MEDIUM, "Medium"),
+            (Weight::SEMIBOLD, "Semi Bold"),
             (Weight::BOLD, "Bold"),
+            (Weight::EXTRA_BOLD, "Extra Bold"),
+            (Weight::BLACK, "Black"),
         ];
 
         for (weight, weight_name) in &target_weights {
-            let font = self.load_font_with_weight(family_name, *weight)?;
-
-            let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font)?;
-            let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
-            let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
-            
-            let variant_name = format!("{} {}", family_name, weight_name);
-            self.save_image(img_buffer, &variant_name)?;
+            match self.load_font_with_weight(family_name, *weight) {
+                Ok(font) => {
+                    let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, *weight)?;
+                    let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
+                    let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
+                    
+                    let variant_name = format!("{} {}", family_name, weight_name);
+                    self.save_image(img_buffer, &variant_name)?;
+                }
+                Err(_) => {
+                    println!("Skipping {} {} - weight not available", family_name, weight_name);
+                    continue;
+                }
+            }
         }
         
         Ok(())
@@ -50,14 +63,23 @@ impl<'a> FontRenderer<'a> {
             ..Default::default()
         };
         
-        self.source
+        let handle = self.source
             .select_best_match(&[FamilyName::Title(family_name.to_string())], &properties)
-            .map_err(|e| FontError::FontSelection(format!("Failed to select font {} with weight {:?}: {}", family_name, weight, e)))?
-            .load()
-            .map_err(|e| FontError::FontLoad(format!("Failed to load font {} with weight {:?}: {}", family_name, weight, e)))
+            .map_err(|e| FontError::FontSelection(format!("Failed to select font {} with weight {:?}: {}", family_name, weight, e)))?;
+            
+        let font = handle.load()
+            .map_err(|e| FontError::FontLoad(format!("Failed to load font {} with weight {:?}: {}", family_name, weight, e)))?;
+            
+        // Verify the loaded font has the requested weight
+        let actual_properties = font.properties();
+        if actual_properties.weight != weight {
+            return Err(FontError::FontSelection(format!("Font {} loaded with weight {:?} but requested weight {:?}", family_name, actual_properties.weight, weight)));
+        }
+        
+        Ok(font)
     }
 
-    fn prepare_glyph_data(&self, font: font_kit::loaders::default::Font) -> FontResult<GlyphData> {
+    fn prepare_glyph_data(&self, font: font_kit::loaders::default::Font, _weight: Weight) -> FontResult<GlyphData> {
         let metrics = font.metrics();
         let scale = self.config.font_size / metrics.units_per_em as f32;
         
