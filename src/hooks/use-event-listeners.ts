@@ -10,8 +10,12 @@ interface UseEventListenersProps {
   setShowSessionSelector: (value: boolean) => void;
   setSampleText: (value: string) => void;
   setCheckedWeights: (weights: number[]) => void;
-  setProgressLabelNumerator: (value: number | ((prev: number) => number)) => void;
-  setProgressLabelDenominator: (value: number | ((prev: number) => number)) => void;
+  setProgressLabelNumerator: (
+    value: number | ((prev: number) => number),
+  ) => void;
+  setProgressLabelDenominator: (
+    value: number | ((prev: number) => number),
+  ) => void;
   refetchSessionId: () => void;
   refetchSessionDirectory: () => void;
   refetchCompressedVectors: () => void;
@@ -67,16 +71,15 @@ export function useEventListeners(props: UseEventListenersProps) {
     });
 
     listen('show_session_selection', () => {
-      console.log('Show session selection dialog');
       props.setShowSessionSelector(true);
     });
 
     // Progress tracking event listeners
-    listen('progress_numerator_reset', (event: any) => {
+    listen('progress_numerator_reset', (event: { payload: number }) => {
       props.setProgressLabelNumerator(event.payload);
     });
 
-    listen('progress_denominator_reset', (event: any) => {
+    listen('progress_denominator_reset', (event: { payload: number }) => {
       props.setProgressLabelDenominator(event.payload);
     });
 
@@ -84,7 +87,7 @@ export function useEventListeners(props: UseEventListenersProps) {
       props.setProgressLabelNumerator((prev: number) => prev + 1);
     });
 
-    listen('progress_denominator_set', (event: any) => {
+    listen('progress_denominator_set', (event: { payload: number }) => {
       props.setProgressLabelDenominator(event.payload);
     });
 
