@@ -3,14 +3,12 @@ import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
 import { Label } from './ui/label';
+import { ProcessingStatus } from '../hooks/use-app-state';
 
 interface FontProcessingFormProps {
   sampleText: string;
   checkedWeights: number[];
-  isGenerating: boolean;
-  isVectorizing: boolean;
-  isCompressing: boolean;
-  isClustering: boolean;
+  processingStatus: ProcessingStatus;
   progressLabelNumerator: number;
   progressLabelDenominator: number;
   onCheckedWeightsChange: (weights: number[]) => void;
@@ -33,11 +31,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     );
   };
 
-  const isProcessing = () =>
-    props.isGenerating ||
-    props.isVectorizing ||
-    props.isCompressing ||
-    props.isClustering;
+  const isProcessing = () => props.processingStatus !== 'idle';
 
   return (
     <form
@@ -87,37 +81,37 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         type='submit'
         disabled={isProcessing()}
         variant='outline'
-        class='mt-1 flex items-center gap-2'
+        class='relative mt-1 flex items-center gap-2 pb-1.5'
       >
-        {props.isGenerating ? (
+        {props.processingStatus === 'generating' ? (
           <>
             Generating fonts image... (
             {Math.trunc(
               (props.progressLabelNumerator / props.progressLabelDenominator) *
                 100,
-            ) || 0}
+            )}
             %)
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.isVectorizing ? (
+        ) : props.processingStatus === 'vectorizing' ? (
           <>
             Vectorizing Images...
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.isCompressing ? (
+        ) : props.processingStatus === 'compressing' ? (
           <>
             Compressing Vectors...
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.isClustering ? (
+        ) : props.processingStatus === 'clustering' ? (
           <>
             Clustering...
-            <LoaderCircleIcon class='origin-center animate-spin' />
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : (
           <>
             Cluster with current text
-            <ArrowRightIcon />
+            <ArrowRightIcon class='absolute right-3' />
           </>
         )}
       </Button>

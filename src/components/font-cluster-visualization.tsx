@@ -270,6 +270,11 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             cy={0}
                             r='48'
                             fill='transparent'
+                            stroke={
+                              props.nearestFont === config.safe_name
+                                ? 'currentColor'
+                                : 'none'
+                            }
                             data-font-name={config.safe_name}
                             data-font-select-area
                           />
