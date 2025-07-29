@@ -149,7 +149,7 @@ impl VectorClusterer {
         
         // Configure Gaussian Mixture Model with epsilon tolerance of 0.5
         let gmm = GaussianMixtureModel::params(n_components)
-            .tolerance(0.5)  // Set epsilon to 0.5 as absolutely requested
+            .tolerance(0.5)
             .fit(&dataset)
             .map_err(|e| FontError::Vectorization(format!("Gaussian Mixture clustering failed: {:?}", e)))?;
         
