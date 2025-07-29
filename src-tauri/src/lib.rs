@@ -111,7 +111,11 @@ pub fn run() {
             get_current_session_info,
             cleanup_old_sessions,
             get_session_fonts,
-            run_jobs
+            run_jobs,
+            reset_progress,
+            increment_progress,
+            set_progress_denominator,
+            decrement_progress_denominator
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

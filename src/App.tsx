@@ -26,6 +26,8 @@ function App() {
             isVectorizing={appState.isVectorizing()}
             isCompressing={appState.isCompressing()}
             isClustering={appState.isClustering()}
+            progressLabelNumerator={appState.progressLabelNumerator()}
+            progressLabelDenominator={appState.progressLabelDenominator()}
             onCheckedWeightsChange={appState.setCheckedWeights}
             onSampleTextChange={appState.setSampleText}
             onSubmit={appState.generateFontImages}

@@ -10,6 +10,8 @@ interface UseEventListenersProps {
   setShowSessionSelector: (value: boolean) => void;
   setSampleText: (value: string) => void;
   setCheckedWeights: (weights: number[]) => void;
+  setProgressLabelNumerator: (value: number | ((prev: number) => number)) => void;
+  setProgressLabelDenominator: (value: number | ((prev: number) => number)) => void;
   refetchSessionId: () => void;
   refetchSessionDirectory: () => void;
   refetchCompressedVectors: () => void;
@@ -67,6 +69,27 @@ export function useEventListeners(props: UseEventListenersProps) {
     listen('show_session_selection', () => {
       console.log('Show session selection dialog');
       props.setShowSessionSelector(true);
+    });
+
+    // Progress tracking event listeners
+    listen('progress_numerator_reset', (event: any) => {
+      props.setProgressLabelNumerator(event.payload);
+    });
+
+    listen('progress_denominator_reset', (event: any) => {
+      props.setProgressLabelDenominator(event.payload);
+    });
+
+    listen('progress_numerator_increment', () => {
+      props.setProgressLabelNumerator((prev: number) => prev + 1);
+    });
+
+    listen('progress_denominator_set', (event: any) => {
+      props.setProgressLabelDenominator(event.payload);
+    });
+
+    listen('progress_denominator_decrement', () => {
+      props.setProgressLabelDenominator((prev: number) => prev - 1);
     });
   });
 }

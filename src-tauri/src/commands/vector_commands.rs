@@ -13,7 +13,7 @@ pub async fn generate_font_images(text: Option<String>, weights: Option<Vec<i32>
             app_handle.clone(),
             "font_generation_start",
             "font_generation_complete",
-            || generator.generate_all()
+            || generator.generate_all(&app_handle)
         ).await
         .map(format_completion_message("Font images generated"))
     }

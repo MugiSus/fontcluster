@@ -11,6 +11,8 @@ interface FontProcessingFormProps {
   isVectorizing: boolean;
   isCompressing: boolean;
   isClustering: boolean;
+  progressLabelNumerator: number;
+  progressLabelDenominator: number;
   onCheckedWeightsChange: (weights: number[]) => void;
   onSampleTextChange: (text: string) => void;
   onSubmit: (text: string, weights: number[]) => void;
@@ -94,7 +96,8 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       >
         {props.isGenerating ? (
           <>
-            Generating Images... (1/4)
+            Generating fonts image... ({props.progressLabelNumerator}/
+            {props.progressLabelDenominator}) (1/4)
             <LoaderCircleIcon class='origin-center animate-spin' />
           </>
         ) : props.isVectorizing ? (

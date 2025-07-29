@@ -15,6 +15,11 @@ export function useAppState() {
   const [nearestFont, setNearestFont] = createSignal('');
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
 
+  // Progress tracking
+  const [progressLabelNumerator, setProgressLabelNumerator] = createSignal(0);
+  const [progressLabelDenominator, setProgressLabelDenominator] =
+    createSignal(0);
+
   // Resources
   const [sessionDirectory, { refetch: refetchSessionDirectory }] =
     createResource(() =>
@@ -95,6 +100,8 @@ export function useAppState() {
     checkedWeights,
     nearestFont,
     showSessionSelector,
+    progressLabelNumerator,
+    progressLabelDenominator,
     sessionDirectory,
     sessionId,
     compressedVectors,
@@ -108,6 +115,8 @@ export function useAppState() {
     setCheckedWeights,
     setNearestFont,
     setShowSessionSelector,
+    setProgressLabelNumerator,
+    setProgressLabelDenominator,
     refetchSessionDirectory,
     refetchSessionId,
     refetchCompressedVectors,

@@ -32,7 +32,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                     app_handle.clone(),
                     "font_generation_start", 
                     "font_generation_complete",
-                    || generator.generate_all()
+                    || generator.generate_all(&app_handle)
                 ).await
                 .and_then(|path| {
                     println!("✅ Font images generated in: {}", path.display());
@@ -126,9 +126,9 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
         
         Ok(format!(
             "🎉 Complete font processing pipeline finished successfully!\n\
-             📊 Results available in: {}\n\
-             📝 Processed text: '{}'\n\
-             ✅ All steps completed: Session → Images → Vectors → Compression → Clustering", 
+            📊 Results available in: {}\n\
+            📝 Processed text: '{}'\n\
+            ✅ All steps completed: Session → Images → Vectors → Compression → Clustering", 
             session_dir.display(), 
             processing_text
         ))

@@ -2,12 +2,14 @@ use crate::core::FontService;
 use crate::rendering::FontRenderer;
 use crate::config::{FontImageConfig, PREVIEW_TEXT};
 use crate::error::FontResult;
+use crate::commands::progress_commands::progress_events;
 use std::path::PathBuf;
 use tokio::task;
 use futures::future::join_all;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use font_kit::source::SystemSource;
+use tauri::AppHandle;
 
 // Main font image generation orchestrator
 pub struct FontImageGenerator {
@@ -38,11 +40,16 @@ impl FontImageGenerator {
         })
     }
     
-    pub async fn generate_all(&self) -> FontResult<PathBuf> {
+    pub async fn generate_all(&self, app_handle: &AppHandle) -> FontResult<PathBuf> {
         let font_families = FontService::get_system_fonts_with_source(&self.shared_source);
         
+        // Calculate total tasks and reset progress
+        let total_tasks = font_families.len() * self.weights.len();
+        progress_events::reset_progress(app_handle);
+        progress_events::set_progress_denominator(app_handle, total_tasks as i32);
+        
         // Individual font configs will be created during font processing
-        let tasks = self.spawn_font_processing_tasks(font_families, self.weights.clone());
+        let tasks = self.spawn_font_processing_tasks(font_families, self.weights.clone(), app_handle);
         join_all(tasks).await;
         
         Ok(self.config.output_dir.clone())
@@ -52,6 +59,7 @@ impl FontImageGenerator {
         &self,
         font_families: Vec<String>,
         weights: Vec<i32>,
+        app_handle: &AppHandle,
     ) -> Vec<task::JoinHandle<()>> {
         // Create all tasks first (without spawning them)
         let all_tasks: Vec<_> = font_families
@@ -68,6 +76,7 @@ impl FontImageGenerator {
                 let config_clone = self.config.clone();
                 let shared_source = Arc::clone(&self.shared_source);
                 let semaphore = Arc::clone(&self.semaphore);
+                let app_handle_clone = app_handle.clone();
                 
                 task::spawn_blocking(move || {
                     // Acquire permit before processing (blocking)
@@ -77,8 +86,12 @@ impl FontImageGenerator {
                     let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
                     if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
                         // Skip silently - renderer handles logging
+                        // Decrement denominator for failed tasks to keep progress accurate
+                        progress_events::decrement_progress_denominator(&app_handle_clone);
                     } else {
                         println!("Successfully generated image for font: {} weight: {}", family_name, weight);
+                        // Increment progress after successful completion
+                        progress_events::increment_progress(&app_handle_clone);
                     }
                 })
             })
