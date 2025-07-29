@@ -11,7 +11,7 @@ interface FontProcessingFormProps {
   isCompressing: boolean;
   isClustering: boolean;
   onSampleTextChange: (text: string) => void;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string, weights: number[]) => void;
 }
 
 export function FontProcessingForm(props: FontProcessingFormProps) {
@@ -19,7 +19,15 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const text = formData.get('preview-text') as string;
-    props.onSubmit(text || 'A quick brown fox jumps over the lazy dog');
+
+    // Get selected font weights
+    const weightInputs = formData.getAll('font-weights') as string[];
+    const selectedWeights = weightInputs.map((w) => parseInt(w, 10));
+
+    props.onSubmit(
+      text || 'A quick brown fox jumps over the lazy dog',
+      selectedWeights.length > 0 ? selectedWeights : [400], // Default to 400 if none selected
+    );
   };
 
   const isProcessing = () =>
@@ -44,7 +52,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           placeholder='A quick brown fox jumps over the lazy dog'
         />
       </TextField>
-      <div class='grid grid-cols-11 place-items-stretch items-center gap-0'>
+      <fieldset class='grid grid-cols-11 place-items-stretch items-center gap-0'>
         <div class='flex justify-center font-thin'>F</div>
         <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900]}>
           {(weight) => (
@@ -58,7 +66,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 checked={true} // Assuming all weights are enabled by default
               />
               <Label
-                class='size-full cursor-pointer text-center opacity-20 peer-checked:opacity-100'
+                class='size-full cursor-pointer py-2 text-center opacity-20 peer-checked:opacity-100'
                 for={`font-weight-${weight}`}
                 style={{ 'font-weight': weight }}
               >
@@ -68,7 +76,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           )}
         </For>
         <div class='flex justify-center font-black'>F</div>
-      </div>
+      </fieldset>
       <Button
         type='submit'
         disabled={isProcessing()}

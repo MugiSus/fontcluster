@@ -48,12 +48,13 @@ export function useAppState() {
     );
 
   // Processing actions
-  const generateFontImages = async (text: string) => {
+  const generateFontImages = async (text: string, weights: number[]) => {
     setIsGenerating(true);
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
         text,
+        weights,
       });
       console.log('Complete pipeline result:', result);
     } catch (error) {

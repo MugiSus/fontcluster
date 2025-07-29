@@ -4,9 +4,10 @@ use crate::utils::{with_progress_events_async, format_completion_message};
 use tauri::AppHandle;
 
 #[tauri::command]
-pub async fn generate_font_images(text: Option<String>, app_handle: AppHandle) -> Result<String, String> {
+pub async fn generate_font_images(text: Option<String>, weights: Option<Vec<i32>>, app_handle: AppHandle) -> Result<String, String> {
     async {
-        let generator = FontImageGenerator::new(text, FONT_SIZE, vec![400])?;
+        let font_weights = weights.unwrap_or_else(|| vec![400]);
+        let generator = FontImageGenerator::new(text, FONT_SIZE, font_weights)?;
         
         with_progress_events_async(
             app_handle.clone(),

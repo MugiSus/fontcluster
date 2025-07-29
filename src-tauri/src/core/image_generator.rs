@@ -5,11 +5,16 @@ use crate::error::FontResult;
 use std::path::PathBuf;
 use tokio::task;
 use futures::future::join_all;
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+use font_kit::source::SystemSource;
 
 // Main font image generation orchestrator
 pub struct FontImageGenerator {
     config: FontImageConfig,
     weights: Vec<i32>,
+    shared_source: Arc<SystemSource>,
+    semaphore: Arc<Semaphore>,
 }
 
 impl FontImageGenerator {
@@ -20,7 +25,17 @@ impl FontImageGenerator {
             output_dir: FontService::create_output_directory()?,
         };
         
-        Ok(Self { config, weights })
+        // Create shared SystemSource once for all tasks
+        let shared_source = Arc::new(SystemSource::new());
+        // Limit concurrent font processing to prevent resource exhaustion
+        let semaphore = Arc::new(Semaphore::new(100)); // Max 20 concurrent tasks
+        
+        Ok(Self { 
+            config, 
+            weights, 
+            shared_source,
+            semaphore,
+        })
     }
     
     pub async fn generate_all(&self) -> FontResult<PathBuf> {
@@ -44,14 +59,21 @@ impl FontImageGenerator {
                 weights.iter().map(move |&weight| {
                     let family_name = family_name.clone();
                     let config_clone = self.config.clone();
+                    let shared_source = Arc::clone(&self.shared_source);
+                    let semaphore = Arc::clone(&self.semaphore);
                     
-                    task::spawn_blocking(move || {
-                        let renderer = FontRenderer::new(&config_clone);
-                        if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                            // Skip silently - renderer handles logging
-                        } else {
-                            println!("Successfully generated image for font: {} weight: {}", family_name, weight);
-                        }
+                    task::spawn(async move {
+                        // Acquire semaphore permit to limit concurrency
+                        let _permit = semaphore.acquire().await.unwrap();
+                        
+                        task::spawn_blocking(move || {
+                            let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
+                            if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
+                                // Skip silently - renderer handles logging
+                            } else {
+                                println!("Successfully generated image for font: {} weight: {}", family_name, weight);
+                            }
+                        }).await.unwrap();
                     })
                 })
             })

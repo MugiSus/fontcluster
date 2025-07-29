@@ -8,10 +8,11 @@ use tauri::AppHandle;
 /// This replaces the need for frontend to call multiple commands individually.
 /// Each step emits completion events that the frontend can listen to for state updates.
 #[tauri::command]
-pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<String, String> {
+pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handle: AppHandle) -> Result<String, String> {
     async {
         let processing_text = with_text_or_default("A quick brown fox jumps over the lazy dog")(text);
-        println!("🚀 Starting complete font processing pipeline with text: '{}'", processing_text);
+        let font_weights = weights.unwrap_or_else(|| vec![400]);
+        println!("🚀 Starting complete font processing pipeline with text: '{}' and weights: {:?}", processing_text, font_weights);
 
         // Create functional pipeline
         let _result = Pipeline::new(processing_text.clone())
@@ -26,7 +27,7 @@ pub async fn run_jobs(text: Option<String>, app_handle: AppHandle) -> Result<Str
             
             .inspect(|_| println!("🎨 Step 1/4: Generating font images..."))
             .then_async(|text| async {
-                let generator = FontImageGenerator::new(Some(text.clone()), FONT_SIZE, vec![400])?;
+                let generator = FontImageGenerator::new(Some(text.clone()), FONT_SIZE, font_weights.clone())?;
                 with_progress_events_async(
                     app_handle.clone(),
                     "font_generation_start", 

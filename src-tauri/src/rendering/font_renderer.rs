@@ -6,6 +6,7 @@ use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::family_name::FamilyName;
 use font_kit::hinting::HintingOptions;
 use font_kit::properties::{Properties, Weight};
+use std::sync::Arc;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::{ImageBuffer, Rgba};
@@ -13,14 +14,21 @@ use image::{ImageBuffer, Rgba};
 // Font rendering engine
 pub struct FontRenderer<'a> {
     config: &'a FontImageConfig,
-    source: SystemSource,
+    source: Arc<SystemSource>,
 }
 
 impl<'a> FontRenderer<'a> {
     pub fn new(config: &'a FontImageConfig) -> Self {
         Self {
             config,
-            source: SystemSource::new(),
+            source: Arc::new(SystemSource::new()),
+        }
+    }
+    
+    pub fn with_shared_source(config: &'a FontImageConfig, source: Arc<SystemSource>) -> Self {
+        Self {
+            config,
+            source,
         }
     }
     
@@ -43,7 +51,7 @@ impl<'a> FontRenderer<'a> {
             ..Default::default()
         };
         
-        let handle = self.source
+        let handle = self.source.as_ref()
             .select_best_match(&[FamilyName::Title(family_name.to_string())], &properties)
             .map_err(|e| FontError::FontSelection(format!("Failed to select font {} with weight {:?}: {}", family_name, weight, e)))?;
             
