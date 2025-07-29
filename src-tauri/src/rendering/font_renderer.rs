@@ -72,16 +72,23 @@ impl<'a> FontRenderer<'a> {
         let metrics = font.metrics();
         let scale = self.config.font_size / metrics.units_per_em as f32;
         
-        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = self.config.text.chars()
-            .map(|ch| {
-                let glyph_id = font.glyph_for_char(ch)
-                    .ok_or_else(|| FontError::GlyphProcessing(format!("Glyph for character '{}' not found in font", ch)))?;
-                
+        // Pre-collect character glyph IDs to reduce repeated font calls
+        let char_glyphs: Vec<_> = self.config.text.chars()
+            .filter_map(|ch| font.glyph_for_char(ch).map(|glyph_id| (ch, glyph_id)))
+            .collect();
+
+        if char_glyphs.is_empty() {
+            return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
+        }
+
+        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = char_glyphs
+            .into_iter()
+            .map(|(_ch, glyph_id)| {
                 let advance = font.advance(glyph_id)
-                    .map_err(|e| FontError::GlyphProcessing(format!("Failed to get glyph advance: {}", e)))?;
+                    .map_err(|_| FontError::GlyphProcessing("Failed to get glyph advance".to_string()))?;
                 
                 let bounds = font.typographic_bounds(glyph_id)
-                    .map_err(|e| FontError::GlyphProcessing(format!("Failed to get glyph bounds: {}", e)))?;
+                    .map_err(|_| FontError::GlyphProcessing("Failed to get glyph bounds".to_string()))?;
                 
                 let glyph_width = (advance.x() * scale) as i32;
                 let scaled_min_y = bounds.min_y() * scale;
@@ -97,10 +104,6 @@ impl<'a> FontRenderer<'a> {
             .collect();
         
         let glyph_data = glyph_results?;
-        
-        if glyph_data.is_empty() {
-            return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
-        }
         
         let (min_y, max_y) = glyph_data.iter()
             .fold((f32::MAX, f32::MIN), |(min, max), (_, min_y, max_y)| {
@@ -160,13 +163,23 @@ impl<'a> FontRenderer<'a> {
     fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
         let width = canvas_size.x() as u32;
         let height = canvas_size.y() as u32;
+        let total_pixels = (width * height) as usize;
         
-        ImageBuffer::from_fn(width, height, |x, y| {
-            let i = (y * width + x) as usize;
-            let pixel = canvas.pixels.get(i).copied().unwrap_or(0);
-            let alpha = if pixel > 0 { 255 } else { 0 };
-            Rgba([pixel, pixel, pixel, alpha])
-        })
+        // Pre-allocate buffer for better performance
+        let mut buffer = Vec::with_capacity(total_pixels * 4);
+        
+        for pixel in canvas.pixels.iter().take(total_pixels) {
+            let alpha = if *pixel > 0 { 255 } else { 0 };
+            buffer.extend_from_slice(&[*pixel, *pixel, *pixel, alpha]);
+        }
+        
+        // Fill remaining pixels if canvas is smaller than expected
+        while buffer.len() < total_pixels * 4 {
+            buffer.extend_from_slice(&[0, 0, 0, 0]);
+        }
+        
+        ImageBuffer::from_raw(width, height, buffer)
+            .expect("Buffer size should be correct")
     }
 
     fn save_image(
