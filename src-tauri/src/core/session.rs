@@ -139,15 +139,10 @@ impl SessionManager {
     }
     
     /// Create directory structure for a specific font and its config
-    pub fn create_font_directory(&self, safe_font_name: &str, font_name: &str) -> FontResult<PathBuf> {
+    pub fn create_font_directory(&self, safe_font_name: &str, font_name: &str, weight: i32) -> FontResult<PathBuf> {
         let font_dir = self.get_font_directory(safe_font_name);
         fs::create_dir_all(&font_dir)?;
         
-        // Extract weight from safe_font_name (format: "weight_fontname")
-        let weight = safe_font_name.split('_').next()
-            .and_then(|w| w.parse::<i32>().ok())
-            .unwrap_or(400);
-            
         let config = FontConfig::new(
             safe_font_name.to_string(),
             font_name.to_string(),

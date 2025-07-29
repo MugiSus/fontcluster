@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct FontConfig {
     /// Safe name used for file system (e.g., "400_Arial")
     pub safe_name: String,
-    /// Font name (e.g., "Arial")
+    /// Display name (e.g., "Arial")
     pub font_name: String,
     /// Font weight value (e.g., 400)
     pub weight: i32,

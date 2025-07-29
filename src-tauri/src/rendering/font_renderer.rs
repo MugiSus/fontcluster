@@ -184,7 +184,7 @@ impl<'a> FontRenderer<'a> {
         let display_name = format!("{} {}", family_name, weight_value);
         
         let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, &display_name)?;
+        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, weight_value)?;
         let output_path = font_dir.join("sample.png");
         
         img_buffer
