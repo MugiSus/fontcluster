@@ -216,8 +216,15 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                 <For each={vectors}>
                   {(vectorData: FontVectorData) => {
                     const { x, y, k, config } = vectorData;
-                    const scaledX = ((x - minX) / (maxX - minX)) * 600;
-                    const scaledY = ((y - minY) / (maxY - minY)) * 600;
+
+                    // Convert x to 0 ~ 400 range
+                    const r = ((x - minX) / (maxX - minX)) * 400;
+                    // Convert y to 0 - 2PI range
+                    const theta = ((y - minY) / (maxY - minY)) * Math.PI * 2;
+
+                    // Convert back to Cartesian for SVG rendering with center at (300, 300)
+                    const scaledX = 300 + r * Math.cos(theta);
+                    const scaledY = 300 + r * Math.sin(theta);
 
                     // Define cluster colors
                     const clusterColors = [
@@ -269,12 +276,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             cx={0}
                             cy={0}
                             r='48'
+                            stroke='1'
+                            // opacity={0.01}
+                            // class={clusterColor}
                             fill='transparent'
-                            stroke={
-                              props.nearestFont === config.safe_name
-                                ? 'currentColor'
-                                : 'none'
-                            }
                             data-font-name={config.safe_name}
                             data-font-select-area
                           />
