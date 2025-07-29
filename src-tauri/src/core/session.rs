@@ -81,11 +81,16 @@ impl SessionManager {
     
     /// Create a new session with preview text and save session config
     pub fn create_new_session_with_text(preview_text: String) -> FontResult<String> {
+        Self::create_new_session_with_text_and_weights(preview_text, vec![400])
+    }
+    
+    /// Create a new session with preview text and weights
+    pub fn create_new_session_with_text_and_weights(preview_text: String, weights: Vec<i32>) -> FontResult<String> {
         let session_id = Uuid::now_v7().to_string();
         let new_session = Self::with_id(session_id.clone())?;
         
         // Save session configuration
-        let session_config = SessionConfig::new(preview_text, session_id.clone());
+        let session_config = SessionConfig::new(preview_text, session_id.clone(), weights);
         session_config.save_to_dir(&new_session.get_session_dir())?;
         
         let mut session_guard = SESSION_MANAGER.write().unwrap();

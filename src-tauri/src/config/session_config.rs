@@ -32,11 +32,14 @@ pub struct SessionConfig {
     /// Number of samples processed during the session
     #[serde(default)]
     pub samples_amount: usize,
+    /// Font weights used in this session
+    #[serde(default)]
+    pub weights: Vec<i32>,
 }
 
 impl SessionConfig {
     /// Creates a new session config
-    pub fn new(preview_text: String, session_id: String) -> Self {
+    pub fn new(preview_text: String, session_id: String, weights: Vec<i32>) -> Self {
         Self {
             preview_text,
             date: Utc::now(),
@@ -47,6 +50,7 @@ impl SessionConfig {
             has_clusters: false,
             clusters_amount: 0,
             samples_amount: 0,
+            weights,
         }
     }
 
@@ -141,6 +145,7 @@ pub struct SessionInfo {
     pub has_clusters: bool,
     pub clusters_amount: usize,
     pub samples_amount: usize,
+    pub weights: Vec<i32>,
 }
 
 impl SessionInfo {
@@ -158,6 +163,7 @@ impl SessionInfo {
             has_clusters: config.has_clusters,
             clusters_amount: config.clusters_amount,
             samples_amount: config.samples_amount,
+            weights: config.weights,
         })
     }
 }
