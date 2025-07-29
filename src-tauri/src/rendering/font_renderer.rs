@@ -5,7 +5,7 @@ use font_kit::source::SystemSource;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::family_name::FamilyName;
 use font_kit::hinting::HintingOptions;
-use font_kit::properties::Properties;
+use font_kit::properties::{Properties, Weight};
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::{ImageBuffer, Rgba};
@@ -25,21 +25,36 @@ impl<'a> FontRenderer<'a> {
     }
     
     pub fn generate_font_image(&self, family_name: &str) -> FontResult<()> {
-        let font = self.load_font(family_name)?;
-        let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font)?;
-        let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
-        let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
-        self.save_image(img_buffer, family_name)?;
+        let target_weights = [
+            (Weight::NORMAL, "Regular"),
+            (Weight::BOLD, "Bold"),
+        ];
+
+        for (weight, weight_name) in &target_weights {
+            let font = self.load_font_with_weight(family_name, *weight)?;
+
+            let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font)?;
+            let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
+            let img_buffer = self.convert_canvas_to_image(canvas, canvas_size);
+            
+            let variant_name = format!("{} {}", family_name, weight_name);
+            self.save_image(img_buffer, &variant_name)?;
+        }
         
         Ok(())
     }
 
-    fn load_font(&self, family_name: &str) -> FontResult<font_kit::loaders::default::Font> {
+    fn load_font_with_weight(&self, family_name: &str, weight: Weight) -> FontResult<font_kit::loaders::default::Font> {
+        let properties = Properties {
+            weight,
+            ..Default::default()
+        };
+        
         self.source
-            .select_best_match(&[FamilyName::Title(family_name.to_string())], &Properties::new())
-            .map_err(|e| FontError::FontSelection(format!("Failed to select font {}: {}", family_name, e)))?
+            .select_best_match(&[FamilyName::Title(family_name.to_string())], &properties)
+            .map_err(|e| FontError::FontSelection(format!("Failed to select font {} with weight {:?}: {}", family_name, weight, e)))?
             .load()
-            .map_err(|e| FontError::FontLoad(format!("Failed to load font {}: {}", family_name, e)))
+            .map_err(|e| FontError::FontLoad(format!("Failed to load font {} with weight {:?}: {}", family_name, weight, e)))
     }
 
     fn prepare_glyph_data(&self, font: font_kit::loaders::default::Font) -> FontResult<GlyphData> {
@@ -146,24 +161,24 @@ impl<'a> FontRenderer<'a> {
     fn save_image(
         &self,
         img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
-        family_name: &str,
+        variant_name: &str,
     ) -> FontResult<()> {
         // Check if image is empty or fully transparent
         if self.is_image_empty(&img_buffer) {
-            println!("Skipping font '{}' - image is empty or fully transparent", family_name);
+            println!("Skipping font variant '{}' - image is empty or fully transparent", variant_name);
             return Ok(());
         }
         
-        let safe_name = family_name.replace(" ", "_").replace("/", "_");
+        let safe_name = variant_name.replace(" ", "_").replace("/", "_");
         let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, family_name)?;
+        let font_dir = session_manager.create_font_directory(&safe_name, variant_name)?;
         let output_path = font_dir.join("sample.png");
         
         img_buffer
             .save(&output_path)
             .map_err(|e| FontError::ImageGeneration(format!("Failed to save image: {}", e)))?;
         
-        println!("Saved font image: {} -> {}", family_name, output_path.display());
+        println!("Saved font variant image: {} -> {}", variant_name, output_path.display());
         Ok(())
     }
     
