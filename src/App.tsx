@@ -48,8 +48,8 @@ function App() {
                   a.config.font_name.localeCompare(b.config.font_name),
                 )}
                 sessionDirectory={appState.sessionDirectory() || ''}
-                nearestFont={appState.nearestFont()}
-                onFontClick={appState.setNearestFont}
+                nearestFontConfig={appState.nearestFontConfig()}
+                onFontClick={appState.setNearestFontConfig}
               />
             </TabsContent>
 
@@ -66,8 +66,8 @@ function App() {
                     a.config.font_name.localeCompare(b.config.font_name),
                 )}
                 sessionDirectory={appState.sessionDirectory() || ''}
-                nearestFont={appState.nearestFont()}
-                onFontClick={appState.setNearestFont}
+                nearestFontConfig={appState.nearestFontConfig()}
+                onFontClick={appState.setNearestFontConfig}
               />
             </TabsContent>
           </Tabs>
@@ -76,8 +76,8 @@ function App() {
         <div class='col-span-7 flex min-h-0 flex-1 flex-col gap-3 rounded-md border bg-muted/20'>
           <FontClusterVisualization
             compressedVectors={appState.compressedVectors()}
-            nearestFont={appState.nearestFont()}
-            onFontSelect={appState.setNearestFont}
+            nearestFontConfig={appState.nearestFontConfig()}
+            onFontSelect={appState.setNearestFontConfig}
           />
         </div>
       </main>

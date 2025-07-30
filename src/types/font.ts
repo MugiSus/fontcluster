@@ -1,6 +1,7 @@
 export interface FontConfig {
   safe_name: string;
   font_name: string;
+  family_name: string;
   weight: number;
   weights: string[];
 }

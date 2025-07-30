@@ -1,5 +1,9 @@
 import { For, Show, createSignal } from 'solid-js';
-import { CompressedFontVectorMap, FontVectorData } from '../types/font';
+import {
+  CompressedFontVectorMap,
+  FontVectorData,
+  FontConfig,
+} from '../types/font';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -11,8 +15,8 @@ const INITIAL_VIEWBOX = {
 
 interface FontClusterVisualizationProps {
   compressedVectors: CompressedFontVectorMap | undefined;
-  nearestFont: string;
-  onFontSelect: (fontName: string) => void;
+  nearestFontConfig: FontConfig | null;
+  onFontSelect: (fontConfig: FontConfig) => void;
 }
 
 export function FontClusterVisualization(props: FontClusterVisualizationProps) {
@@ -51,13 +55,17 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     });
 
     if (nearestFont) {
-      props.onFontSelect(nearestFont);
-      const elements = document.querySelectorAll(
-        `[data-font-name="${nearestFont}"] > img`,
-      );
-      elements.forEach((element) => {
-        element.scrollIntoView({ behavior: 'instant', block: 'center' });
-      });
+      const vectors = props.compressedVectors;
+      const fontVector = vectors?.[nearestFont];
+      if (fontVector) {
+        props.onFontSelect(fontVector.config);
+        const elements = document.querySelectorAll(
+          `[data-font-name="${nearestFont}"] > img`,
+        );
+        elements.forEach((element) => {
+          element.scrollIntoView({ behavior: 'instant', block: 'center' });
+        });
+      }
     }
   };
 
@@ -255,10 +263,16 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                           <circle
                             cx={0}
                             cy={0}
-                            r={props.nearestFont === config.safe_name ? 5 : 2}
+                            r={
+                              props.nearestFontConfig?.family_name ===
+                              config.family_name
+                                ? 5
+                                : 2
+                            }
                             class='pointer-events-none fill-current'
                           />
-                          {props.nearestFont === config.safe_name && (
+                          {props.nearestFontConfig?.family_name ===
+                            config.family_name && (
                             <circle
                               cx={0}
                               cy={0}
@@ -286,13 +300,15 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                                 )
                               }
                               class={`pointer-events-none select-none fill-foreground text-xs ${
-                                props.nearestFont === config.safe_name
+                                props.nearestFontConfig?.family_name ===
+                                config.family_name
                                   ? 'font-bold'
                                   : ''
                               }`}
                               text-anchor='middle'
                             >
-                              {props.nearestFont === config.safe_name
+                              {props.nearestFontConfig?.family_name ===
+                              config.family_name
                                 ? config.font_name
                                 : config.font_name.length > 12
                                   ? config.font_name.substring(0, 12) + '…'

@@ -1,12 +1,12 @@
 import { For } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { FontVectorData } from '../types/font';
+import { FontVectorData, FontConfig } from '../types/font';
 
 interface FontCompressedVectorListProps {
   compressedVectors: FontVectorData[];
   sessionDirectory: string;
-  nearestFont: string;
-  onFontClick: (safeName: string) => void;
+  nearestFontConfig: FontConfig | null;
+  onFontClick: (fontConfig: FontConfig) => void;
 }
 
 export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
@@ -37,10 +37,11 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
           return (
             <li
               class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-                props.nearestFont === vectorData.config.safe_name && 'bg-border'
+                props.nearestFontConfig?.safe_name ===
+                  vectorData.config.safe_name && 'bg-border'
               }`}
               data-font-name={vectorData.config.safe_name}
-              onClick={() => props.onFontClick(vectorData.config.safe_name)}
+              onClick={() => props.onFontClick(vectorData.config)}
             >
               <div class='flex items-center gap-2 px-4'>
                 <div class={`mb-0.5 h-3 w-1 rounded-full ${clusterColor}`} />

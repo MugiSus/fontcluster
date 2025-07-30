@@ -1,6 +1,6 @@
 import { createSignal, createResource } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
-import { CompressedFontVectorMap } from '../types/font';
+import { CompressedFontVectorMap, FontConfig } from '../types/font';
 
 export type ProcessingStatus =
   | 'idle'
@@ -17,7 +17,8 @@ export function useAppState() {
   // UI state
   const [sampleText, setSampleText] = createSignal('');
   const [checkedWeights, setCheckedWeights] = createSignal<number[]>([400]);
-  const [nearestFont, setNearestFont] = createSignal('');
+  const [nearestFontConfig, setNearestFontConfig] =
+    createSignal<FontConfig | null>(null);
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
@@ -90,7 +91,7 @@ export function useAppState() {
     processingStatus,
     sampleText,
     checkedWeights,
-    nearestFont,
+    nearestFontConfig,
     showSessionSelector,
     progressLabelNumerator,
     progressLabelDenominator,
@@ -102,7 +103,7 @@ export function useAppState() {
     setProcessingStatus,
     setSampleText,
     setCheckedWeights,
-    setNearestFont,
+    setNearestFontConfig,
     setShowSessionSelector,
     setCurrentSessionId,
     setProgressLabelNumerator,
