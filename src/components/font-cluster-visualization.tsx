@@ -208,6 +208,54 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
         // Convert map to array for processing
         const vectors = Object.values(vectorsMap);
 
+        // Function to calculate shortest path for a group of points (TSP approximation)
+        const calculateShortestPath = (
+          points: Array<{
+            x: number;
+            y: number;
+            scaledX: number;
+            scaledY: number;
+          }>,
+        ) => {
+          if (points.length <= 2) return points;
+
+          const distance = (p1: (typeof points)[0], p2: (typeof points)[0]) =>
+            Math.sqrt(
+              (p1.scaledX - p2.scaledX) ** 2 + (p1.scaledY - p2.scaledY) ** 2,
+            );
+
+          const findNearest = (
+            currentIndex: number,
+            unvisitedIndices: number[],
+          ) =>
+            unvisitedIndices.reduce((nearestIndex, candidateIndex) =>
+              distance(points[currentIndex]!, points[candidateIndex]!) <
+              distance(points[currentIndex]!, points[nearestIndex]!)
+                ? candidateIndex
+                : nearestIndex,
+            );
+
+          const buildPath = (
+            visited: number[],
+            remaining: number[],
+          ): number[] =>
+            remaining.length === 0
+              ? visited
+              : (() => {
+                  const currentIndex = visited[visited.length - 1]!;
+                  const nextIndex = findNearest(currentIndex, remaining);
+                  return buildPath(
+                    [...visited, nextIndex],
+                    remaining.filter((i) => i !== nextIndex),
+                  );
+                })();
+
+          const allIndices = points.map((_, i) => i);
+          const pathIndices = buildPath([0], allIndices.slice(1));
+
+          return pathIndices.map((index) => points[index]);
+        };
+
         return (
           <Show when={vectors.length > 0}>
             {(() => {
@@ -222,106 +270,171 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                 [Infinity, -Infinity],
               );
 
+              // Group vectors by family_name and calculate shortest paths
+              const familyGroups = new Map<
+                string,
+                Array<{
+                  x: number;
+                  y: number;
+                  scaledX: number;
+                  scaledY: number;
+                }>
+              >();
+
+              vectors.forEach((vectorData) => {
+                const scaledX = ((vectorData.x - minX) / (maxX - minX)) * 600;
+                const scaledY = ((vectorData.y - minY) / (maxY - minY)) * 600;
+
+                const familyName = vectorData.config.family_name;
+                if (!familyGroups.has(familyName)) {
+                  familyGroups.set(familyName, []);
+                }
+                familyGroups.get(familyName)!.push({
+                  x: vectorData.x,
+                  y: vectorData.y,
+                  scaledX,
+                  scaledY,
+                });
+              });
+
               return (
-                <For each={vectors}>
-                  {(vectorData: FontVectorData) => {
-                    const { x, y, k, config } = vectorData;
-                    const scaledX = ((x - minX) / (maxX - minX)) * 600;
-                    const scaledY = ((y - minY) / (maxY - minY)) * 600;
+                <>
+                  {/* Draw family connection paths */}
+                  <For each={Array.from(familyGroups.entries())}>
+                    {([familyName, points]) => {
+                      if (points.length < 2) return null;
 
-                    // Define cluster colors
-                    const clusterColors = [
-                      'text-blue-500',
-                      'text-red-500',
-                      'text-yellow-500',
-                      'text-green-500',
-                      'text-purple-500',
-                      'text-orange-500',
-                      'text-teal-500',
-                      'text-indigo-500',
-                      'text-cyan-500',
-                      'text-fuchsia-500',
-                    ];
+                      const orderedPoints = calculateShortestPath(points);
+                      const pathData = orderedPoints
+                        .filter(
+                          (point) =>
+                            point &&
+                            typeof point.scaledX === 'number' &&
+                            typeof point.scaledY === 'number',
+                        )
+                        .map(
+                          (point, index) =>
+                            point &&
+                            `${index === 0 ? 'M' : 'L'} ${point.scaledX} ${point.scaledY}`,
+                        )
+                        .join(' ');
 
-                    // Handle noise cluster (-1) with gray-400
-                    const clusterColor =
-                      k === -1
-                        ? 'text-gray-400'
-                        : clusterColors[k % clusterColors.length];
+                      return (
+                        <path
+                          d={pathData}
+                          stroke-width={zoomFactor * 1}
+                          fill='none'
+                          class={`pointer-events-none ${
+                            familyName === props.nearestFontConfig?.family_name
+                              ? 'stroke-foreground'
+                              : 'stroke-muted'
+                          }`}
+                        />
+                      );
+                    }}
+                  </For>
 
-                    return (
-                      <Show
-                        when={
-                          scaledX > viewBox().x - 150 &&
-                          scaledX < viewBox().x + viewBox().width + 150 &&
-                          scaledY > viewBox().y - 50 &&
-                          scaledY < viewBox().y + viewBox().height + 50
-                        }
-                      >
-                        <g
-                          transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
-                          class={clusterColor}
+                  {/* Draw points */}
+                  <For each={vectors}>
+                    {(vectorData: FontVectorData) => {
+                      const { x, y, k, config } = vectorData;
+                      const scaledX = ((x - minX) / (maxX - minX)) * 600;
+                      const scaledY = ((y - minY) / (maxY - minY)) * 600;
+
+                      // Define cluster colors
+                      const clusterColors = [
+                        'text-blue-500',
+                        'text-red-500',
+                        'text-yellow-500',
+                        'text-green-500',
+                        'text-purple-500',
+                        'text-orange-500',
+                        'text-teal-500',
+                        'text-indigo-500',
+                        'text-cyan-500',
+                        'text-fuchsia-500',
+                      ];
+
+                      // Handle noise cluster (-1) with gray-400
+                      const clusterColor =
+                        k === -1
+                          ? 'text-gray-400'
+                          : clusterColors[k % clusterColors.length];
+
+                      return (
+                        <Show
+                          when={
+                            scaledX > viewBox().x - 150 &&
+                            scaledX < viewBox().x + viewBox().width + 150 &&
+                            scaledY > viewBox().y - 50 &&
+                            scaledY < viewBox().y + viewBox().height + 50
+                          }
                         >
-                          <circle
-                            cx={0}
-                            cy={0}
-                            r={
-                              props.nearestFontConfig?.family_name ===
-                              config.family_name
-                                ? 5
-                                : 2
-                            }
-                            class='pointer-events-none fill-current'
-                          />
-                          {props.nearestFontConfig?.family_name ===
-                            config.family_name && (
+                          <g
+                            transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
+                            class={clusterColor}
+                          >
                             <circle
                               cx={0}
                               cy={0}
-                              r='2.5'
-                              class='pointer-events-none fill-background'
-                            />
-                          )}
-                          <circle
-                            cx={0}
-                            cy={0}
-                            r='48'
-                            fill='transparent'
-                            data-font-config={JSON.stringify(config)}
-                            data-font-select-area
-                          />
-                          <Show when={zoomFactor < 0.4}>
-                            <text
-                              x={0}
-                              y={-8}
-                              opacity={
-                                1 -
-                                Math.min(
-                                  Math.max((zoomFactor - 0.2) / 0.2, 0),
-                                  1,
-                                )
-                              }
-                              class={`pointer-events-none select-none fill-foreground text-xs ${
+                              r={
                                 props.nearestFontConfig?.family_name ===
                                 config.family_name
-                                  ? 'font-bold'
-                                  : ''
-                              }`}
-                              text-anchor='middle'
-                            >
-                              {props.nearestFontConfig?.family_name ===
-                              config.family_name
-                                ? config.font_name
-                                : config.font_name.length > 12
-                                  ? config.font_name.substring(0, 12) + '…'
-                                  : config.font_name}
-                            </text>
-                          </Show>
-                        </g>
-                      </Show>
-                    );
-                  }}
-                </For>
+                                  ? 5
+                                  : 2
+                              }
+                              class='pointer-events-none fill-current'
+                            />
+                            {props.nearestFontConfig?.family_name ===
+                              config.family_name && (
+                              <circle
+                                cx={0}
+                                cy={0}
+                                r='2.5'
+                                class='pointer-events-none fill-background'
+                              />
+                            )}
+                            <circle
+                              cx={0}
+                              cy={0}
+                              r='48'
+                              fill='transparent'
+                              data-font-config={JSON.stringify(config)}
+                              data-font-select-area
+                            />
+                            <Show when={zoomFactor < 0.4}>
+                              <text
+                                x={0}
+                                y={-8}
+                                opacity={
+                                  1 -
+                                  Math.min(
+                                    Math.max((zoomFactor - 0.2) / 0.2, 0),
+                                    1,
+                                  )
+                                }
+                                class={`pointer-events-none select-none fill-foreground text-xs ${
+                                  props.nearestFontConfig?.family_name ===
+                                  config.family_name
+                                    ? 'font-bold'
+                                    : ''
+                                }`}
+                                text-anchor='middle'
+                              >
+                                {props.nearestFontConfig?.family_name ===
+                                config.family_name
+                                  ? config.font_name
+                                  : config.font_name.length > 12
+                                    ? config.font_name.substring(0, 12) + '…'
+                                    : config.font_name}
+                              </text>
+                            </Show>
+                          </g>
+                        </Show>
+                      );
+                    }}
+                  </For>
+                </>
               );
             })()}
           </Show>
