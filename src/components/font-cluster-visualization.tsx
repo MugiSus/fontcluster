@@ -36,7 +36,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       return;
     }
 
-    let nearestFont = '';
+    let nearestFontConfig = null;
     let nearestDistance = Infinity;
 
     fontElements.forEach((el) => {
@@ -50,17 +50,19 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        nearestFont = circle.getAttribute('data-font-name') || '';
+        nearestFontConfig = circle.getAttribute('data-font-config') || '';
       }
     });
 
-    if (nearestFont) {
-      const vectors = props.compressedVectors;
-      const fontVector = vectors?.[nearestFont];
-      if (fontVector) {
-        props.onFontSelect(fontVector.config);
+    if (nearestFontConfig) {
+      const nearestFontConfigParse = JSON.parse(
+        nearestFontConfig,
+      ) as FontConfig;
+
+      if (nearestFontConfigParse) {
+        props.onFontSelect(nearestFontConfigParse);
         const elements = document.querySelectorAll(
-          `[data-font-name="${nearestFont}"] > img`,
+          `[data-font-name="${nearestFontConfigParse.safe_name}"] > img`,
         );
         elements.forEach((element) => {
           element.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -285,7 +287,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             cy={0}
                             r='48'
                             fill='transparent'
-                            data-font-name={config.safe_name}
+                            data-font-config={JSON.stringify(config)}
                             data-font-select-area
                           />
                           <Show when={zoomFactor < 0.4}>
