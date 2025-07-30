@@ -218,7 +218,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                     const { x, y, k, config } = vectorData;
 
                     // Convert x to 0 ~ 400 range
-                    const r = ((x - minX) / (maxX - minX)) * 400;
+                    const r = ((x - minX) / (maxX - minX)) * 350;
                     // Convert y to 0 - 2PI range
                     const theta = ((y - minY) / (maxY - minY)) * Math.PI * 2;
 
