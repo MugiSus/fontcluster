@@ -24,7 +24,6 @@ export function useAppState() {
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
-  const [sessionWeights, setSessionWeights] = createSignal<FontWeight[]>([400]);
   const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
     400,
   ]);
@@ -39,39 +38,56 @@ export function useAppState() {
     createSignal(0);
 
   // Resources
-  const [sessionDirectory, { refetch: refetchSessionDirectory }] =
-    createResource(
-      () => currentSessionId(),
-      async (sessionId): Promise<string> => {
-        if (!sessionId) return '';
-        try {
-          return await invoke<string>('get_session_directory', { sessionId });
-        } catch (error) {
-          console.error('Failed to get session directory:', error);
-          return '';
-        }
-      },
-    );
+  const [sessionDirectory] = createResource(
+    () => currentSessionId(),
+    async (sessionId): Promise<string> => {
+      if (!sessionId) return '';
+      try {
+        return await invoke<string>('get_session_directory', { sessionId });
+      } catch (error) {
+        console.error('Failed to get session directory:', error);
+        return '';
+      }
+    },
+  );
 
-  const [compressedVectors, { refetch: refetchCompressedVectors }] =
-    createResource(
-      () => currentSessionId(),
-      async (sessionId): Promise<CompressedFontVectorMap> => {
-        if (!sessionId) return {};
-        try {
-          const response = await invoke<string>('get_compressed_vectors', {
-            sessionId,
-          });
-          if (!response) {
-            return {};
-          }
-          return JSON.parse(response) as CompressedFontVectorMap;
-        } catch (error) {
-          console.error('Failed to parse compressed vectors:', error);
+  const [sessionInfo] = createResource(
+    () => currentSessionId(),
+    async (sessionId): Promise<SessionInfo | null> => {
+      if (!sessionId) return null;
+      try {
+        const response = await invoke<string | null>('get_session_info', {
+          sessionId,
+        });
+        if (!response) {
+          return null;
+        }
+        return JSON.parse(response) as SessionInfo;
+      } catch (error) {
+        console.error('Failed to get session info:', error);
+        return null;
+      }
+    },
+  );
+
+  const [compressedVectors] = createResource(
+    () => currentSessionId(),
+    async (sessionId): Promise<CompressedFontVectorMap> => {
+      if (!sessionId) return {};
+      try {
+        const response = await invoke<string>('get_compressed_vectors', {
+          sessionId,
+        });
+        if (!response) {
           return {};
         }
-      },
-    );
+        return JSON.parse(response) as CompressedFontVectorMap;
+      } catch (error) {
+        console.error('Failed to parse compressed vectors:', error);
+        return {};
+      }
+    },
+  );
 
   // Processing actions
   const generateFontImages = async (text: string, weights: FontWeight[]) => {
@@ -98,14 +114,8 @@ export function useAppState() {
         return;
       }
 
-      // Get session configuration by ID
-      const sessionInfoResponse = await invoke<string | null>(
-        'get_session_info',
-        { sessionId },
-      );
-
-      if (sessionInfoResponse) {
-        const sessionConfig: SessionInfo = JSON.parse(sessionInfoResponse);
+      const sessionConfig = sessionInfo();
+      if (sessionConfig) {
         console.log('Restoring session config:', sessionConfig);
 
         // Restore sample text (preview_text in Rust)
@@ -117,17 +127,12 @@ export function useAppState() {
         if (sessionConfig.weights && Array.isArray(sessionConfig.weights)) {
           const weights = sessionConfig.weights as FontWeight[];
           setSelectedWeights(weights);
-          setSessionWeights(weights);
           setVisualizerWeights(weights); // Default visualizer to session weights
         }
       }
     } catch (error) {
       console.error('Failed to restore session config:', error);
     }
-
-    // Refresh data
-    refetchSessionDirectory();
-    refetchCompressedVectors();
   };
 
   return {
@@ -135,7 +140,7 @@ export function useAppState() {
     processingStatus,
     sampleText,
     selectedWeights,
-    sessionWeights,
+    sessionInfo,
     visualizerWeights,
     nearestFontConfig,
     showSessionSelector,
@@ -149,15 +154,12 @@ export function useAppState() {
     setProcessingStatus,
     setSampleText,
     setSelectedWeights,
-    setSessionWeights,
     setVisualizerWeights,
     setNearestFontConfig,
     setShowSessionSelector,
     setCurrentSessionId,
     setProgressLabelNumerator,
     setProgressLabelDenominator,
-    refetchSessionDirectory,
-    refetchCompressedVectors,
     generateFontImages,
     handleSessionRestore,
   };

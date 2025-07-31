@@ -16,8 +16,6 @@ interface UseEventListenersProps {
   setProgressLabelDenominator: (
     value: number | ((prev: number) => number),
   ) => void;
-  refetchSessionDirectory: () => void;
-  refetchCompressedVectors: () => void;
 }
 
 export function useEventListeners(props: UseEventListenersProps) {
@@ -69,8 +67,6 @@ export function useEventListeners(props: UseEventListenersProps) {
       untrack(() => {
         props.setCurrentSessionId(event.payload);
         props.setProcessingStatus('idle');
-        props.refetchSessionDirectory();
-        props.refetchCompressedVectors();
       });
     });
 

@@ -5,6 +5,7 @@ import { FontClusterVisualization } from './components/font-cluster-visualizatio
 import { FontProcessingForm } from './components/font-processing-form';
 import { useAppState } from './hooks/use-app-state';
 import { useEventListeners } from './hooks/use-event-listeners';
+import { type FontWeight } from './types/font';
 
 function App() {
   const appState = useAppState();
@@ -77,7 +78,9 @@ function App() {
           <FontClusterVisualization
             compressedVectors={appState.compressedVectors()}
             nearestFontConfig={appState.nearestFontConfig()}
-            sessionWeights={appState.sessionWeights()}
+            sessionWeights={
+              (appState.sessionInfo()?.weights as FontWeight[]) || [400]
+            }
             visualizerWeights={appState.visualizerWeights()}
             onVisualizerWeightsChange={appState.setVisualizerWeights}
             onFontSelect={appState.setNearestFontConfig}
