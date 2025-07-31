@@ -31,7 +31,7 @@ export function WeightSelector(props: WeightSelectorProps) {
 
   return (
     <div
-      class='grid w-full items-center gap-px overflow-hidden rounded border bg-background/50'
+      class='grid w-full items-center gap-px overflow-hidden rounded border bg-background/25'
       style={{
         'grid-template-columns': `repeat(${props.weights.length}, minmax(0, 1fr))`,
       }}
