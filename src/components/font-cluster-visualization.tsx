@@ -266,15 +266,15 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             cx={0}
                             cy={0}
                             r={
-                              props.nearestFontConfig?.family_name ===
-                              config.family_name
+                              props.nearestFontConfig?.font_name ===
+                              config.font_name
                                 ? 5
                                 : 2
                             }
                             class='pointer-events-none fill-current'
                           />
-                          {props.nearestFontConfig?.family_name ===
-                            config.family_name && (
+                          {props.nearestFontConfig?.font_name ===
+                            config.font_name && (
                             <circle
                               cx={0}
                               cy={0}
@@ -288,13 +288,13 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             r='48'
                             fill='transparent'
                             stroke={
-                              props.nearestFontConfig?.family_name ===
-                              config.family_name
+                              props.nearestFontConfig?.font_name ===
+                              config.font_name
                                 ? 'currentColor'
                                 : 'transparent'
                             }
                             stroke-width={1.5}
-                            class={`transition-colors ease-in-out ${props.nearestFontConfig?.family_name === config.family_name ? 'duration-0' : 'duration-200'}`}
+                            class={`transition-colors ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'duration-0' : 'duration-200'}`}
                             data-font-config={JSON.stringify(config)}
                             data-font-select-area
                           />
@@ -310,15 +310,15 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                                 )
                               }
                               class={`pointer-events-none select-none fill-foreground text-xs ${
-                                props.nearestFontConfig?.family_name ===
-                                config.family_name
+                                props.nearestFontConfig?.font_name ===
+                                config.font_name
                                   ? 'font-bold'
                                   : ''
                               }`}
                               text-anchor='middle'
                             >
-                              {props.nearestFontConfig?.family_name ===
-                              config.family_name
+                              {props.nearestFontConfig?.font_name ===
+                              config.font_name
                                 ? config.font_name
                                 : config.font_name.length > 12
                                   ? config.font_name.substring(0, 12) + '…'

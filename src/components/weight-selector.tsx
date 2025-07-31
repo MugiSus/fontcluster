@@ -10,7 +10,17 @@ interface WeightSelectorProps {
 }
 
 export function WeightSelector(props: WeightSelectorProps) {
-  const weightLabels = ['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'];
+  const weightLabels: Record<FontWeight, string> = {
+    100: 'UL',
+    200: 'EL',
+    300: 'L',
+    400: 'R',
+    500: 'M',
+    600: 'DB',
+    700: 'B',
+    800: 'EB',
+    900: 'UB',
+  };
 
   const handleWeightToggle = (weight: FontWeight) => {
     console.log('Weight toggle clicked:', weight);
@@ -29,20 +39,19 @@ export function WeightSelector(props: WeightSelectorProps) {
       <div class='flex w-full items-center gap-px overflow-hidden rounded border'>
         <For each={props.weights}>
           {(weight) => {
-            const weightIndex = Math.floor(weight / 100) - 1;
-            const isSelected = props.selectedWeights.includes(weight);
+            const isSelected = () => props.selectedWeights.includes(weight);
 
             return (
               <Button
                 type='button'
-                variant={isSelected ? 'default' : 'ghost'}
+                variant={isSelected() ? 'default' : 'ghost'}
                 size='sm'
                 class='h-8 flex-1 rounded-none'
                 style={{ 'font-weight': weight }}
                 onClick={() => handleWeightToggle(weight)}
-                data-checked={isSelected}
+                data-checked={isSelected()}
               >
-                {weightLabels[weightIndex] || weight}
+                {weightLabels[weight] || weight}
               </Button>
             );
           }}
