@@ -3,6 +3,7 @@ import {
   CompressedFontVectorMap,
   FontVectorData,
   FontConfig,
+  type FontWeight,
 } from '../types/font';
 import { WeightSelector } from './weight-selector';
 
@@ -14,9 +15,14 @@ const INITIAL_VIEWBOX = {
   height: 700,
 };
 
+const ZOOM_FACTOR = 1.1;
+
 interface FontClusterVisualizationProps {
   compressedVectors: CompressedFontVectorMap | undefined;
   nearestFontConfig: FontConfig | null;
+  sessionWeights: FontWeight[];
+  visualizerWeights: FontWeight[];
+  onVisualizerWeightsChange: (weights: FontWeight[]) => void;
   onFontSelect: (fontConfig: FontConfig) => void;
 }
 
@@ -139,7 +145,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
 
     // Zoom factor
-    const zoomFactor = event.deltaY > 0 ? 1.1 : 1 / 1.1;
+    const zoomFactor = event.deltaY > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
 
     const newWidth = width * zoomFactor;
     const newHeight = height * zoomFactor;
@@ -155,9 +161,9 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     <div class='relative flex size-full items-center justify-center'>
       <div class='absolute bottom-0 z-10 flex items-center justify-between p-2'>
         <WeightSelector
-          weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-          selectedWeights={[400]}
-          onWeightChange={(weights) => console.log(weights)}
+          weights={props.sessionWeights}
+          selectedWeights={props.visualizerWeights}
+          onWeightChange={props.onVisualizerWeightsChange}
         />
       </div>
       <svg
@@ -217,131 +223,126 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           // Convert map to array for processing
           const vectors = Object.values(vectorsMap);
 
-          return (
-            <Show when={vectors.length > 0}>
-              {(() => {
-                // Calculate bounds once
-                const [minX, maxX] = vectors.reduce(
-                  ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
-                  [Infinity, -Infinity],
-                );
+          // Filter vectors by selected visualizer weights
 
-                const [minY, maxY] = vectors.reduce(
-                  ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
-                  [Infinity, -Infinity],
-                );
+          const [minX, maxX] = vectors.reduce(
+            ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
+            [Infinity, -Infinity],
+          );
+
+          const [minY, maxY] = vectors.reduce(
+            ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
+            [Infinity, -Infinity],
+          );
+
+          return (
+            <For each={vectors}>
+              {(vectorData: FontVectorData) => {
+                const { x, y, k, config } = vectorData;
+                const scaledX = ((x - minX) / (maxX - minX)) * 600;
+                const scaledY = ((y - minY) / (maxY - minY)) * 600;
+
+                // Define cluster colors
+                const clusterColors = [
+                  'text-blue-500',
+                  'text-red-500',
+                  'text-yellow-500',
+                  'text-green-500',
+                  'text-purple-500',
+                  'text-orange-500',
+                  'text-teal-500',
+                  'text-indigo-500',
+                  'text-cyan-500',
+                  'text-fuchsia-500',
+                ];
+
+                // Handle noise cluster (-1) with gray-400
+                const clusterColor =
+                  k === -1
+                    ? 'text-gray-400'
+                    : clusterColors[k % clusterColors.length];
 
                 return (
-                  <For each={vectors}>
-                    {(vectorData: FontVectorData) => {
-                      const { x, y, k, config } = vectorData;
-                      const scaledX = ((x - minX) / (maxX - minX)) * 600;
-                      const scaledY = ((y - minY) / (maxY - minY)) * 600;
-
-                      // Define cluster colors
-                      const clusterColors = [
-                        'text-blue-500',
-                        'text-red-500',
-                        'text-yellow-500',
-                        'text-green-500',
-                        'text-purple-500',
-                        'text-orange-500',
-                        'text-teal-500',
-                        'text-indigo-500',
-                        'text-cyan-500',
-                        'text-fuchsia-500',
-                      ];
-
-                      // Handle noise cluster (-1) with gray-400
-                      const clusterColor =
-                        k === -1
-                          ? 'text-gray-400'
-                          : clusterColors[k % clusterColors.length];
-
-                      return (
-                        <Show
-                          when={
-                            scaledX > viewBox().x - 150 &&
-                            scaledX < viewBox().x + viewBox().width + 150 &&
-                            scaledY > viewBox().y - 50 &&
-                            scaledY < viewBox().y + viewBox().height + 50
+                  <Show
+                    when={
+                      props.visualizerWeights.includes(
+                        config.weight as FontWeight,
+                      ) &&
+                      scaledX > viewBox().x - 150 &&
+                      scaledX < viewBox().x + viewBox().width + 150 &&
+                      scaledY > viewBox().y - 50 &&
+                      scaledY < viewBox().y + viewBox().height + 50
+                    }
+                  >
+                    <g
+                      transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
+                      class={clusterColor}
+                    >
+                      <circle
+                        cx={0}
+                        cy={0}
+                        r={
+                          props.nearestFontConfig?.font_name ===
+                          config.font_name
+                            ? 5
+                            : 2
+                        }
+                        class='pointer-events-none fill-current'
+                      />
+                      {props.nearestFontConfig?.font_name ===
+                        config.font_name && (
+                        <circle
+                          cx={0}
+                          cy={0}
+                          r='2.5'
+                          class='pointer-events-none fill-background'
+                        />
+                      )}
+                      <circle
+                        cx={0}
+                        cy={0}
+                        r='48'
+                        fill='transparent'
+                        stroke={
+                          props.nearestFontConfig?.font_name ===
+                          config.font_name
+                            ? 'currentColor'
+                            : 'transparent'
+                        }
+                        stroke-width={1.5}
+                        class={`transition-colors ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'duration-0' : 'duration-500'}`}
+                        data-font-config={JSON.stringify(config)}
+                        data-font-select-area
+                      />
+                      <Show when={zoomFactor < 0.4}>
+                        <text
+                          x={0}
+                          y={-8}
+                          opacity={
+                            1 -
+                            Math.min(Math.max((zoomFactor - 0.2) / 0.2, 0), 1)
                           }
+                          class={`pointer-events-none select-none fill-foreground text-xs ${
+                            props.nearestFontConfig?.font_name ===
+                            config.font_name
+                              ? 'font-bold'
+                              : ''
+                          }`}
+                          text-anchor='middle'
                         >
-                          <g
-                            transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
-                            class={clusterColor}
-                          >
-                            <circle
-                              cx={0}
-                              cy={0}
-                              r={
-                                props.nearestFontConfig?.font_name ===
-                                config.font_name
-                                  ? 5
-                                  : 2
-                              }
-                              class='pointer-events-none fill-current'
-                            />
-                            {props.nearestFontConfig?.font_name ===
-                              config.font_name && (
-                              <circle
-                                cx={0}
-                                cy={0}
-                                r='2.5'
-                                class='pointer-events-none fill-background'
-                              />
-                            )}
-                            <circle
-                              cx={0}
-                              cy={0}
-                              r='48'
-                              fill='transparent'
-                              stroke={
-                                props.nearestFontConfig?.font_name ===
-                                config.font_name
-                                  ? 'currentColor'
-                                  : 'transparent'
-                              }
-                              stroke-width={1.5}
-                              class={`transition-colors ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'duration-0' : 'duration-200'}`}
-                              data-font-config={JSON.stringify(config)}
-                              data-font-select-area
-                            />
-                            <Show when={zoomFactor < 0.4}>
-                              <text
-                                x={0}
-                                y={-8}
-                                opacity={
-                                  1 -
-                                  Math.min(
-                                    Math.max((zoomFactor - 0.2) / 0.2, 0),
-                                    1,
-                                  )
-                                }
-                                class={`pointer-events-none select-none fill-foreground text-xs ${
-                                  props.nearestFontConfig?.font_name ===
-                                  config.font_name
-                                    ? 'font-bold'
-                                    : ''
-                                }`}
-                                text-anchor='middle'
-                              >
-                                {props.nearestFontConfig?.font_name ===
-                                config.font_name
-                                  ? config.font_name
-                                  : config.font_name.length > 12
-                                    ? config.font_name.substring(0, 12) + '…'
-                                    : config.font_name}
-                              </text>
-                            </Show>
-                          </g>
-                        </Show>
-                      );
-                    }}
-                  </For>
+                          {props.nearestFontConfig?.font_name ===
+                          config.font_name
+                            ? config.font_name
+                            : config.font_name.length > 12
+                              ? config.font_name.substring(0, 12) + '…'
+                              : config.font_name}
+                        </text>
+                      </Show>
+                    </g>
+                  </Show>
                 );
-              })()}
-            </Show>
+              }}
+            </For>
           );
         })()}
       </svg>

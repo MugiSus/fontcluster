@@ -77,6 +77,9 @@ function App() {
           <FontClusterVisualization
             compressedVectors={appState.compressedVectors()}
             nearestFontConfig={appState.nearestFontConfig()}
+            sessionWeights={appState.sessionWeights()}
+            visualizerWeights={appState.visualizerWeights()}
+            onVisualizerWeightsChange={appState.setVisualizerWeights}
             onFontSelect={appState.setNearestFontConfig}
           />
         </div>

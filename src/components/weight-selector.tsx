@@ -36,7 +36,7 @@ export function WeightSelector(props: WeightSelectorProps) {
         'grid-template-columns': `repeat(${props.weights.length}, minmax(0, 1fr))`,
       }}
     >
-      <For each={props.weights}>
+      <For each={props.weights.sort((a, b) => a - b)}>
         {(weight) => {
           const isSelected = () => props.selectedWeights.includes(weight);
 

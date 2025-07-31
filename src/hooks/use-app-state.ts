@@ -24,6 +24,10 @@ export function useAppState() {
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
+  const [sessionWeights, setSessionWeights] = createSignal<FontWeight[]>([400]);
+  const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
+    400,
+  ]);
   const [nearestFontConfig, setNearestFontConfig] =
     createSignal<FontConfig | null>(null);
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
@@ -111,7 +115,10 @@ export function useAppState() {
 
         // Restore selected weights
         if (sessionConfig.weights && Array.isArray(sessionConfig.weights)) {
-          setSelectedWeights(sessionConfig.weights as FontWeight[]);
+          const weights = sessionConfig.weights as FontWeight[];
+          setSelectedWeights(weights);
+          setSessionWeights(weights);
+          setVisualizerWeights(weights); // Default visualizer to session weights
         }
       }
     } catch (error) {
@@ -128,6 +135,8 @@ export function useAppState() {
     processingStatus,
     sampleText,
     selectedWeights,
+    sessionWeights,
+    visualizerWeights,
     nearestFontConfig,
     showSessionSelector,
     progressLabelNumerator,
@@ -140,6 +149,8 @@ export function useAppState() {
     setProcessingStatus,
     setSampleText,
     setSelectedWeights,
+    setSessionWeights,
+    setVisualizerWeights,
     setNearestFontConfig,
     setShowSessionSelector,
     setCurrentSessionId,
