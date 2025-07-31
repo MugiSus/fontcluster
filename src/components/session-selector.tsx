@@ -10,23 +10,12 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { ArchiveRestoreIcon, RefreshCwIcon } from 'lucide-solid';
-
-interface SessionInfo {
-  session_id: string;
-  preview_text: string;
-  date: string;
-  has_images: boolean;
-  has_vectors: boolean;
-  has_compressed: boolean;
-  has_clusters: boolean;
-  clusters_amount: number;
-  samples_amount: number;
-}
+import { type SessionInfo } from '../types/font';
 
 interface SessionSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSessionRestore?: () => void;
+  onSessionRestore: () => void;
   currentSessionId: string;
   onSessionSelect: (sessionId: string) => void;
 }
@@ -54,7 +43,7 @@ export function SessionSelector(props: SessionSelectorProps) {
     try {
       // Simply update the current session ID in the frontend
       props.onSessionSelect(sessionId);
-      props.onSessionRestore?.();
+      props.onSessionRestore();
       props.onOpenChange(false);
     } catch (error) {
       console.error('Failed to select session:', error);
@@ -86,7 +75,6 @@ export function SessionSelector(props: SessionSelectorProps) {
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
             Select a previous session to restore.
-            {/* You can continue processing from where you left off. */}
           </DialogDescription>
         </DialogHeader>
 

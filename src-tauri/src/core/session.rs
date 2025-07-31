@@ -315,6 +315,16 @@ impl SessionManager {
         }
     }
 
+    /// Get session info by session ID
+    pub fn get_session_info_by_id(session_id: &str) -> FontResult<Option<SessionInfo>> {
+        let session_dir = Self::get_session_dir_for_id(session_id)?;
+        if session_dir.join("config.json").exists() {
+            Ok(Some(SessionInfo::from_session_dir(&session_dir)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Get the session ID of the most recent session (by UUIDv7 timestamp)
     pub fn get_latest_session_id() -> FontResult<Option<String>> {
         let base_dir = Self::get_base_data_dir()?;

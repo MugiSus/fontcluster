@@ -4,6 +4,7 @@ import {
   CompressedFontVectorMap,
   FontConfig,
   type FontWeight,
+  type SessionInfo,
 } from '../types/font';
 
 export type ProcessingStatus =
@@ -86,8 +87,38 @@ export function useAppState() {
   };
 
   const handleSessionRestore = async () => {
-    // Note: Session restoration now handled through SessionSelector component
-    // Data will automatically refresh through reactive dependencies when currentSessionId changes
+    try {
+      const sessionId = currentSessionId();
+      if (!sessionId) {
+        console.warn('No current session ID available for restore');
+        return;
+      }
+
+      // Get session configuration by ID
+      const sessionInfoResponse = await invoke<string | null>(
+        'get_session_info',
+        { sessionId },
+      );
+
+      if (sessionInfoResponse) {
+        const sessionConfig: SessionInfo = JSON.parse(sessionInfoResponse);
+        console.log('Restoring session config:', sessionConfig);
+
+        // Restore sample text (preview_text in Rust)
+        if (sessionConfig.preview_text) {
+          setSampleText(sessionConfig.preview_text);
+        }
+
+        // Restore selected weights
+        if (sessionConfig.weights && Array.isArray(sessionConfig.weights)) {
+          setSelectedWeights(sessionConfig.weights as FontWeight[]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore session config:', error);
+    }
+
+    // Refresh data
     refetchSessionDirectory();
     refetchCompressedVectors();
   };

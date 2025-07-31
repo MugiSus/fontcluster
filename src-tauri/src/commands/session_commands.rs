@@ -103,12 +103,11 @@ pub fn get_latest_session_id() -> Result<Option<String>, String> {
         .map_err(|e| format!("Failed to get latest session ID: {}", e))
 }
 
-/// Get current session information
+/// Get session information by session ID
 #[tauri::command]
-pub fn get_current_session_info() -> Result<Option<String>, String> {
+pub fn get_session_info(session_id: String) -> Result<Option<String>, String> {
     || -> FontResult<Option<String>> {
-        let session_manager = SessionManager::global();
-        if let Some(session_info) = session_manager.get_current_session_info()? {
+        if let Some(session_info) = SessionManager::get_session_info_by_id(&session_id)? {
             let json = serde_json::to_string(&session_info)
                 .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
@@ -119,5 +118,5 @@ pub fn get_current_session_info() -> Result<Option<String>, String> {
             Ok(None)
         }
     }()
-    .map_err(|e| format!("Failed to get current session info: {}", e))
+    .map_err(|e| format!("Failed to get session info: {}", e))
 }
