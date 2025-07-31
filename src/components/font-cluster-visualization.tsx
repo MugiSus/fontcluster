@@ -287,6 +287,14 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                             cy={0}
                             r='48'
                             fill='transparent'
+                            stroke={
+                              props.nearestFontConfig?.family_name ===
+                              config.family_name
+                                ? 'currentColor'
+                                : 'transparent'
+                            }
+                            stroke-width={1.5}
+                            class={`transition-colors ease-in-out ${props.nearestFontConfig?.family_name === config.family_name ? 'duration-0' : 'duration-200'}`}
                             data-font-config={JSON.stringify(config)}
                             data-font-select-area
                           />

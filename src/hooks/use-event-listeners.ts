@@ -2,12 +2,13 @@ import { onMount, untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { ProcessingStatus } from './use-app-state';
+import { type FontWeight } from '../types/font';
 
 interface UseEventListenersProps {
   setProcessingStatus: (value: ProcessingStatus) => void;
   setShowSessionSelector: (value: boolean) => void;
   setSampleText: (value: string) => void;
-  setCheckedWeights: (weights: number[]) => void;
+  setSelectedWeights: (weights: FontWeight[]) => void;
   setCurrentSessionId: (sessionId: string) => void;
   setProgressLabelNumerator: (
     value: number | ((prev: number) => number),

@@ -23,11 +23,11 @@ function App() {
         <div class='col-span-3 flex flex-col gap-3'>
           <FontProcessingForm
             sampleText={appState.sampleText()}
-            checkedWeights={appState.checkedWeights()}
+            selectedWeights={appState.selectedWeights()}
             processingStatus={appState.processingStatus()}
             progressLabelNumerator={appState.progressLabelNumerator()}
             progressLabelDenominator={appState.progressLabelDenominator()}
-            onCheckedWeightsChange={appState.setCheckedWeights}
+            onSelectedWeightsChange={appState.setSelectedWeights}
             onSampleTextChange={appState.setSampleText}
             onSubmit={appState.generateFontImages}
           />

@@ -1,6 +1,10 @@
 import { createSignal, createResource } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
-import { CompressedFontVectorMap, FontConfig } from '../types/font';
+import {
+  CompressedFontVectorMap,
+  FontConfig,
+  type FontWeight,
+} from '../types/font';
 
 export type ProcessingStatus =
   | 'idle'
@@ -16,7 +20,9 @@ export function useAppState() {
 
   // UI state
   const [sampleText, setSampleText] = createSignal('');
-  const [checkedWeights, setCheckedWeights] = createSignal<number[]>([400]);
+  const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
+    400,
+  ]);
   const [nearestFontConfig, setNearestFontConfig] =
     createSignal<FontConfig | null>(null);
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
@@ -63,7 +69,7 @@ export function useAppState() {
     );
 
   // Processing actions
-  const generateFontImages = async (text: string, weights: number[]) => {
+  const generateFontImages = async (text: string, weights: FontWeight[]) => {
     setProcessingStatus('generating');
     try {
       // Single command to run all jobs sequentially
@@ -90,7 +96,7 @@ export function useAppState() {
     // State
     processingStatus,
     sampleText,
-    checkedWeights,
+    selectedWeights,
     nearestFontConfig,
     showSessionSelector,
     progressLabelNumerator,
@@ -102,7 +108,7 @@ export function useAppState() {
     // Actions
     setProcessingStatus,
     setSampleText,
-    setCheckedWeights,
+    setSelectedWeights,
     setNearestFontConfig,
     setShowSessionSelector,
     setCurrentSessionId,
