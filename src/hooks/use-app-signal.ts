@@ -14,12 +14,10 @@ export type ProcessingStatus =
   | 'compressing'
   | 'clustering';
 
-export function useAppState() {
-  // Processing state
+export function useAppSignal() {
+  // Signals
   const [processingStatus, setProcessingStatus] =
     createSignal<ProcessingStatus>('idle');
-
-  // UI state
   const [sampleText, setSampleText] = createSignal('');
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
@@ -31,8 +29,6 @@ export function useAppState() {
     createSignal<FontConfig | null>(null);
   const [showSessionSelector, setShowSessionSelector] = createSignal(false);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
-
-  // Progress tracking
   const [progressLabelNumerator, setProgressLabelNumerator] = createSignal(0);
   const [progressLabelDenominator, setProgressLabelDenominator] =
     createSignal(0);
@@ -136,18 +132,20 @@ export function useAppState() {
   };
 
   return {
-    // State
+    // Signals
     processingStatus,
     sampleText,
     selectedWeights,
-    sessionInfo,
     visualizerWeights,
     nearestFontConfig,
     showSessionSelector,
+    currentSessionId,
     progressLabelNumerator,
     progressLabelDenominator,
+
+    // Resources
+    sessionInfo,
     sessionDirectory,
-    currentSessionId,
     compressedVectors,
 
     // Actions

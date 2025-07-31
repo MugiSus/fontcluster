@@ -1,7 +1,7 @@
 import { onMount, untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { ProcessingStatus } from './use-app-state';
+import { ProcessingStatus } from './use-app-signal';
 import { type FontWeight } from '../types/font';
 
 interface UseEventListenersProps {

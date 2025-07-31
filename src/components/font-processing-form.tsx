@@ -1,7 +1,7 @@
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
-import { ProcessingStatus } from '../hooks/use-app-state';
+import { ProcessingStatus } from '../hooks/use-app-signal';
 import { WeightSelector } from './weight-selector';
 import { type FontWeight } from '../types/font';
 import { Label } from './ui/label';
