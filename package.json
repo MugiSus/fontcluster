@@ -18,6 +18,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@corvu/resizable": "^0.2.5",
     "@fontsource-variable/chivo": "^5.2.6",
     "@kobalte/core": "^0.13.10",
     "@tauri-apps/api": "^2",

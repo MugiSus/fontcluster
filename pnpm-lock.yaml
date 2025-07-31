@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@corvu/resizable':
+        specifier: ^0.2.5
+        version: 0.2.5(solid-js@1.9.7)
       '@fontsource-variable/chivo':
         specifier: ^5.2.6
         version: 5.2.6
@@ -186,6 +189,11 @@ packages:
   '@babel/types@7.27.6':
     resolution: {integrity: sha512-ETyHEk2VHHvl9b9jZP5IHPavHYk57EhanlRRuae9XCpb/j5bDCbPPMOBfCWhnl/7EDJz0jEMCi/RhccCE8r1+Q==}
     engines: {node: '>=6.9.0'}
+
+  '@corvu/resizable@0.2.5':
+    resolution: {integrity: sha512-psax38DraM9SXtaNh/sfvizGO6xLCL4sqT4rWYlMZP5ZsUM05Q30tvXgnTo2roQFNOz2e06WofhDsBXTjY6g4A==}
+    peerDependencies:
+      solid-js: ^1.8
 
   '@corvu/utils@0.4.2':
     resolution: {integrity: sha512-Ox2kYyxy7NoXdKWdHeDEjZxClwzO4SKM8plAaVwmAJPxHMqA0rLOoAsa+hBDwRLpctf+ZRnAd/ykguuJidnaTA==}
@@ -1989,6 +1997,11 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.27.1
+
+  '@corvu/resizable@0.2.5(solid-js@1.9.7)':
+    dependencies:
+      '@corvu/utils': 0.4.2(solid-js@1.9.7)
+      solid-js: 1.9.7
 
   '@corvu/utils@0.4.2(solid-js@1.9.7)':
     dependencies:
