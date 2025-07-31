@@ -14,8 +14,6 @@ function App() {
   return (
     <>
       <SessionSelector
-        open={appSignal.showSessionSelector()}
-        onOpenChange={appSignal.setShowSessionSelector}
         currentSessionId={appSignal.currentSessionId() || ''}
         onSessionSelect={appSignal.setCurrentSessionId}
       />
@@ -24,9 +22,6 @@ function App() {
           <FontProcessingForm
             sampleText={appSignal.sessionConfig()?.preview_text || ''}
             selectedWeights={appSignal.selectedWeights()}
-            processingStatus={appSignal.processingStatus()}
-            progressLabelNumerator={appSignal.progressLabelNumerator()}
-            progressLabelDenominator={appSignal.progressLabelDenominator()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
           />

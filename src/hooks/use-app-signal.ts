@@ -7,17 +7,8 @@ import {
   type SessionConfig,
 } from '../types/font';
 
-export type ProcessingStatus =
-  | 'idle'
-  | 'generating'
-  | 'vectorizing'
-  | 'compressing'
-  | 'clustering';
-
 export function useAppSignal() {
   // Signals
-  const [processingStatus, setProcessingStatus] =
-    createSignal<ProcessingStatus>('idle');
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
@@ -26,11 +17,7 @@ export function useAppSignal() {
   ]);
   const [nearestFontConfig, setNearestFontConfig] =
     createSignal<FontConfig | null>(null);
-  const [showSessionSelector, setShowSessionSelector] = createSignal(false);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
-  const [progressLabelNumerator, setProgressLabelNumerator] = createSignal(0);
-  const [progressLabelDenominator, setProgressLabelDenominator] =
-    createSignal(0);
 
   // Resources
   const [sessionDirectory] = createResource(
@@ -96,7 +83,6 @@ export function useAppSignal() {
 
   // Processing actions
   const generateFontImages = async (text: string, weights: FontWeight[]) => {
-    setProcessingStatus('generating');
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
@@ -106,21 +92,15 @@ export function useAppSignal() {
       console.log('Complete pipeline result:', result);
     } catch (error) {
       console.error('Failed to process fonts:', error);
-    } finally {
-      setProcessingStatus('idle');
     }
   };
 
   return {
     // Signals
-    processingStatus,
     selectedWeights,
     visualizerWeights,
     nearestFontConfig,
-    showSessionSelector,
     currentSessionId,
-    progressLabelNumerator,
-    progressLabelDenominator,
 
     // Resources
     sessionConfig,
@@ -128,14 +108,10 @@ export function useAppSignal() {
     compressedVectors,
 
     // Actions
-    setProcessingStatus,
     setSelectedWeights,
     setVisualizerWeights,
     setNearestFontConfig,
-    setShowSessionSelector,
     setCurrentSessionId,
-    setProgressLabelNumerator,
-    setProgressLabelDenominator,
     generateFontImages,
   };
 }
