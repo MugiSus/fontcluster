@@ -7,6 +7,7 @@ interface WeightSelectorProps {
   selectedWeights: FontWeight[];
   name?: string;
   onWeightChange: (weights: FontWeight[]) => void;
+  isVertical?: boolean;
 }
 
 export function WeightSelector(props: WeightSelectorProps) {
@@ -31,7 +32,9 @@ export function WeightSelector(props: WeightSelectorProps) {
   };
 
   return (
-    <div class='grid w-full grid-cols-9 items-center gap-px overflow-hidden rounded border bg-background/25'>
+    <div
+      class={`grid w-full items-center gap-px overflow-hidden rounded border bg-background/25 ${props.isVertical ? 'grid-rows-9' : 'grid-cols-9'}`}
+    >
       <input
         type='hidden'
         name={props.name || 'weights'}

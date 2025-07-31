@@ -52,7 +52,7 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
                     ]
                   }
                 </div>
-                <div class='text-sm font-light text-muted-foreground'>
+                <div class='text-nowrap text-sm font-light text-muted-foreground'>
                   {vectorData.config.font_name}
                 </div>
               </div>

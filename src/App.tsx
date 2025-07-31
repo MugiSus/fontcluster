@@ -26,7 +26,7 @@ function App() {
         <ResizablePanel
           class='flex min-h-0 min-w-0 flex-col gap-3 p-4 pt-2'
           initialSize={0.25}
-          minSize={0.225}
+          minSize={0.25}
           maxSize={0.75}
         >
           <FontProcessingForm

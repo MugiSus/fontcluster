@@ -170,11 +170,12 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-muted/20'>
-      <div class='absolute bottom-0 z-10 m-2 flex items-center justify-between'>
+      <div class='absolute bottom-0 right-0 z-10 m-2 flex items-center justify-between'>
         <WeightSelector
           weights={props.sessionWeights}
           selectedWeights={visualizerWeights()}
           onWeightChange={setVisualizerWeights}
+          isVertical
         />
       </div>
       <svg
