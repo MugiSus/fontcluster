@@ -6,6 +6,11 @@ import { FontProcessingForm } from './components/font-processing-form';
 import { useAppSignal } from './hooks/use-app-signal';
 import { useEventListeners } from './hooks/use-event-listeners';
 import { type FontWeight } from './types/font';
+import {
+  Resizable,
+  ResizableHandle,
+  ResizablePanel,
+} from './components/ui/resizable';
 
 function App() {
   const appSignal = useAppSignal();
@@ -17,8 +22,13 @@ function App() {
         currentSessionId={appSignal.currentSessionId() || ''}
         onSessionSelect={appSignal.setCurrentSessionId}
       />
-      <main class='grid min-h-0 flex-1 grid-cols-10 grid-rows-1 gap-4 px-4 pb-4'>
-        <div class='col-span-3 flex flex-col gap-3'>
+      <Resizable class='min-h-0 overflow-hidden border-t'>
+        <ResizablePanel
+          class='flex min-h-0 min-w-0 flex-col gap-3 p-4 pt-2'
+          initialSize={0.25}
+          minSize={0.225}
+          maxSize={0.75}
+        >
           <FontProcessingForm
             sampleText={appSignal.sessionConfig()?.preview_text || ''}
             selectedWeights={appSignal.selectedWeights()}
@@ -65,9 +75,14 @@ function App() {
               />
             </TabsContent>
           </Tabs>
-        </div>
+        </ResizablePanel>
 
-        <div class='col-span-7 flex min-h-0 flex-1 flex-col gap-3 rounded-md border bg-muted/20'>
+        <ResizableHandle withHandle />
+
+        <ResizablePanel
+          class='flex min-h-0 min-w-0 overflow-hidden p-4'
+          initialSize={0.75}
+        >
           <FontClusterVisualization
             compressedVectors={appSignal.compressedVectors()}
             nearestFontConfig={appSignal.nearestFontConfig()}
@@ -76,8 +91,8 @@ function App() {
             }
             onFontSelect={appSignal.setNearestFontConfig}
           />
-        </div>
-      </main>
+        </ResizablePanel>
+      </Resizable>
     </>
   );
 }
