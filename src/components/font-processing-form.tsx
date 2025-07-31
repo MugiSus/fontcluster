@@ -1,38 +1,97 @@
+import { createSignal, onMount } from 'solid-js';
+import { listen } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
-import { ProcessingStatus } from '../hooks/use-app-state';
 import { WeightSelector } from './weight-selector';
 import { type FontWeight } from '../types/font';
 import { Label } from './ui/label';
 
+export type ProcessingStatus =
+  | 'idle'
+  | 'generating'
+  | 'vectorizing'
+  | 'compressing'
+  | 'clustering';
+
 interface FontProcessingFormProps {
   sampleText: string;
   selectedWeights: FontWeight[];
-  processingStatus: ProcessingStatus;
-  progressLabelNumerator: number;
-  progressLabelDenominator: number;
   onSelectedWeightsChange: (weights: FontWeight[]) => void;
-  onSampleTextChange: (text: string) => void;
   onSubmit: (text: string, weights: FontWeight[]) => void;
 }
 
 export function FontProcessingForm(props: FontProcessingFormProps) {
+  const [processingStatus, setProcessingStatus] =
+    createSignal<ProcessingStatus>('idle');
+  const [progressLabelNumerator, setProgressLabelNumerator] = createSignal(0);
+  const [progressLabelDenominator, setProgressLabelDenominator] =
+    createSignal(0);
+
+  // Listen for processing events
+  onMount(() => {
+    listen('font_generation_complete', () => {
+      setProcessingStatus('vectorizing');
+    });
+
+    listen('vectorization_complete', () => {
+      setProcessingStatus('compressing');
+    });
+
+    listen('compression_complete', () => {
+      setProcessingStatus('clustering');
+    });
+
+    listen('clustering_complete', () => {
+      // setProcessingStatus('idle');
+    });
+
+    listen('all_jobs_complete', () => {
+      setProcessingStatus('idle');
+    });
+
+    // Progress tracking event listeners
+    listen('progress_numerator_reset', (event: { payload: number }) => {
+      setProgressLabelNumerator(event.payload);
+    });
+
+    listen('progress_denominator_reset', (event: { payload: number }) => {
+      setProgressLabelDenominator(event.payload);
+    });
+
+    listen('progress_numerator_increment', () => {
+      setProgressLabelNumerator((prev: number) => prev + 1);
+    });
+
+    listen('progress_denominator_set', (event: { payload: number }) => {
+      setProgressLabelDenominator(event.payload);
+    });
+
+    listen('progress_denominator_decrement', () => {
+      setProgressLabelDenominator((prev: number) => prev - 1);
+    });
+  });
+
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const text = formData.get('preview-text') as string;
 
     // Get selected font weights
-    const selectedWeights = props.selectedWeights;
+    const selectedWeights = formData.get('weights') as string;
+    const selectedWeightsArray = selectedWeights
+      .split(',')
+      .map(Number) as FontWeight[];
 
     props.onSubmit(
       text || 'A quick brown fox jumps over the lazy dog',
-      selectedWeights.length > 0 ? selectedWeights : [400], // Default to 400 if none selected
+      selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
     );
+
+    setProcessingStatus('generating');
   };
 
-  const isProcessing = () => props.processingStatus !== 'idle';
+  const isProcessing = () => processingStatus() !== 'idle';
 
   return (
     <form
@@ -46,7 +105,6 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           name='preview-text'
           id='preview-text'
           value={props.sampleText}
-          onInput={(e) => props.onSampleTextChange(e.currentTarget.value)}
           placeholder='A quick brown fox jumps over the lazy dog'
         />
       </TextField>
@@ -64,27 +122,26 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         variant='outline'
         class='relative mt-1 flex items-center gap-2 pb-1.5'
       >
-        {props.processingStatus === 'generating' ? (
+        {processingStatus() === 'generating' ? (
           <>
             Generating fonts image... (
             {Math.trunc(
-              (props.progressLabelNumerator / props.progressLabelDenominator) *
-                100,
+              (progressLabelNumerator() / progressLabelDenominator()) * 100,
             ) || 0}
             %)
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.processingStatus === 'vectorizing' ? (
+        ) : processingStatus() === 'vectorizing' ? (
           <>
             Vectorizing Images...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.processingStatus === 'compressing' ? (
+        ) : processingStatus() === 'compressing' ? (
           <>
             Compressing Vectors...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
-        ) : props.processingStatus === 'clustering' ? (
+        ) : processingStatus() === 'clustering' ? (
           <>
             Clustering...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />

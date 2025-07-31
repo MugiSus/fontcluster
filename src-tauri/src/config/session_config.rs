@@ -5,9 +5,9 @@ use chrono::{DateTime, Utc};
 use std::path::Path;
 use crate::error::{FontResult, FontError};
 
-/// Session configuration stored in Generated/<sessionID>/config.json
+/// Session data stored in Generated/<sessionID>/config.json
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionConfig {
+pub struct SessionData {
     /// Preview text used for this session
     pub preview_text: String,
     /// Session creation date in ISO string format
@@ -37,7 +37,7 @@ pub struct SessionConfig {
     pub weights: Vec<i32>,
 }
 
-impl SessionConfig {
+impl SessionData {
     /// Creates a new session config
     pub fn new(preview_text: String, session_id: String, weights: Vec<i32>) -> Self {
         Self {
@@ -76,7 +76,7 @@ impl SessionConfig {
         let json = std::fs::read_to_string(&config_path)
             .map_err(|e| FontError::Io(e.into()))?;
 
-        let config: SessionConfig = serde_json::from_str(&json)
+        let config: SessionData = serde_json::from_str(&json)
             .map_err(|e| FontError::Io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!("Failed to deserialize session config: {}", e)
@@ -133,9 +133,9 @@ impl SessionConfig {
     }
 }
 
-/// Session info for UI display
+/// Session config for UI display
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SessionInfo {
+pub struct SessionConfig {
     pub session_id: String,
     pub preview_text: String,
     pub date: DateTime<Utc>,
@@ -148,12 +148,12 @@ pub struct SessionInfo {
     pub weights: Vec<i32>,
 }
 
-impl SessionInfo {
+impl SessionConfig {
     /// Creates session info from a session directory
     pub fn from_session_dir(session_dir: &Path) -> FontResult<Self> {
-        let config = SessionConfig::load_from_dir(session_dir)?;
+        let config = SessionData::load_from_dir(session_dir)?;
 
-        Ok(SessionInfo {
+        Ok(SessionConfig {
             session_id: config.session_id,
             preview_text: config.preview_text,
             date: config.date,

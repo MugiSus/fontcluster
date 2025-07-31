@@ -5,6 +5,7 @@ import { type FontWeight } from '../types/font';
 interface WeightSelectorProps {
   weights: FontWeight[];
   selectedWeights: FontWeight[];
+  name?: string;
   onWeightChange: (weights: FontWeight[]) => void;
 }
 
@@ -30,15 +31,16 @@ export function WeightSelector(props: WeightSelectorProps) {
   };
 
   return (
-    <div
-      class='grid w-full items-center gap-px overflow-hidden rounded border bg-background/25'
-      style={{
-        'grid-template-columns': `repeat(${props.weights.length}, minmax(0, 1fr))`,
-      }}
-    >
-      <For each={props.weights.sort((a, b) => a - b)}>
+    <div class='grid w-full grid-cols-9 items-center gap-px overflow-hidden rounded border bg-background/25'>
+      <input
+        type='hidden'
+        name={props.name || 'weights'}
+        value={props.selectedWeights.join(',')}
+      />
+      <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900] as FontWeight[]}>
         {(weight) => {
           const isSelected = () => props.selectedWeights.includes(weight);
+          const isSelectable = () => props.weights.includes(weight);
 
           return (
             <Button
@@ -49,6 +51,7 @@ export function WeightSelector(props: WeightSelectorProps) {
               style={{ 'font-weight': weight }}
               onClick={() => handleWeightToggle(weight)}
               data-checked={isSelected()}
+              disabled={!isSelectable()}
             >
               {weightLabels[weight] || weight}
             </Button>

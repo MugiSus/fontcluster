@@ -1,6 +1,6 @@
 export type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
 
-export interface SessionInfo {
+export interface SessionConfig {
   session_id: string;
   preview_text: string;
   date: string;

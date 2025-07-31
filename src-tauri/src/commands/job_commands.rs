@@ -1,5 +1,5 @@
 use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer, SessionManager};
-use crate::config::{FONT_SIZE, SessionConfig};
+use crate::config::{FONT_SIZE, SessionData};
 use crate::utils::{Pipeline, with_text_or_default, with_progress_events_async};
 use tauri::{AppHandle, Emitter};
 
@@ -40,7 +40,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                     // Update session config to mark images as completed
                     let session_manager = SessionManager::global();
                     let session_dir = session_manager.get_session_dir();
-                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    let mut config = SessionData::load_from_dir(&session_dir)?;
                     config.mark_images_completed(&session_dir)?;
                     
                     Ok(text)
@@ -62,7 +62,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                     // Update session config to mark vectors as completed
                     let session_manager = SessionManager::global();
                     let session_dir = session_manager.get_session_dir();
-                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    let mut config = SessionData::load_from_dir(&session_dir)?;
                     config.mark_vectors_completed(&session_dir)?;
                     
                     Ok(text)
@@ -84,7 +84,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                     // Update session config to mark compression as completed
                     let session_manager = SessionManager::global();
                     let session_dir = session_manager.get_session_dir();
-                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    let mut config = SessionData::load_from_dir(&session_dir)?;
                     config.mark_compressed_completed(&session_dir)?;
                     
                     Ok(text)
@@ -106,7 +106,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                     // Update session config to mark clustering as completed and record metrics
                     let session_manager = SessionManager::global();
                     let session_dir = session_manager.get_session_dir();
-                    let mut config = SessionConfig::load_from_dir(&session_dir)?;
+                    let mut config = SessionData::load_from_dir(&session_dir)?;
                     config.mark_clusters_completed(&session_dir)?;
                     config.update_clusters_amount(&session_dir, cluster_size)?;
                     config.update_samples_amount(&session_dir, sample_amount)?;

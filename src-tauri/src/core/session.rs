@@ -1,5 +1,5 @@
 use crate::error::{FontResult, FontError};
-use crate::config::{FontConfig, SessionConfig, SessionInfo};
+use crate::config::{FontConfig, SessionData, SessionConfig};
 use std::path::PathBuf;
 use std::fs;
 use std::sync::RwLock;
@@ -101,7 +101,7 @@ impl SessionManager {
         let new_session = Self::with_id(session_id.clone())?;
         
         // Save session configuration
-        let session_config = SessionConfig::new(preview_text, session_id.clone(), weights);
+        let session_config = SessionData::new(preview_text, session_id.clone(), weights);
         session_config.save_to_dir(&new_session.get_session_dir())?;
         
         let mut session_guard = SESSION_MANAGER.write().unwrap();
@@ -116,7 +116,7 @@ impl SessionManager {
         
         // Verify session config exists
         let session_dir = session.get_session_dir();
-        SessionConfig::load_from_dir(&session_dir)?;
+        SessionData::load_from_dir(&session_dir)?;
         
         let mut session_guard = SESSION_MANAGER.write().unwrap();
         *session_guard = Some(session);
@@ -265,7 +265,7 @@ impl SessionManager {
     }
     
     /// Get all available sessions sorted by date (newest first)
-    pub fn get_available_sessions(max_sessions: Option<usize>) -> FontResult<Vec<SessionInfo>> {
+    pub fn get_available_sessions(max_sessions: Option<usize>) -> FontResult<Vec<SessionConfig>> {
         let base_dir = Self::get_base_data_dir()?;
         let generated_dir = base_dir.join("Generated");
         
@@ -287,7 +287,7 @@ impl SessionManager {
                     }
                     
                     // Try to load session info
-                    if let Ok(session_info) = SessionInfo::from_session_dir(&path) {
+                    if let Ok(session_info) = SessionConfig::from_session_dir(&path) {
                         sessions.push(session_info);
                     }
                 }
@@ -306,20 +306,20 @@ impl SessionManager {
     }
     
     /// Get current session info
-    pub fn get_current_session_info(&self) -> FontResult<Option<SessionInfo>> {
+    pub fn get_current_session_info(&self) -> FontResult<Option<SessionConfig>> {
         let session_dir = self.get_session_dir();
         if session_dir.join("config.json").exists() {
-            Ok(Some(SessionInfo::from_session_dir(&session_dir)?))
+            Ok(Some(SessionConfig::from_session_dir(&session_dir)?))
         } else {
             Ok(None)
         }
     }
 
     /// Get session info by session ID
-    pub fn get_session_info_by_id(session_id: &str) -> FontResult<Option<SessionInfo>> {
+    pub fn get_session_info_by_id(session_id: &str) -> FontResult<Option<SessionConfig>> {
         let session_dir = Self::get_session_dir_for_id(session_id)?;
         if session_dir.join("config.json").exists() {
-            Ok(Some(SessionInfo::from_session_dir(&session_dir)?))
+            Ok(Some(SessionConfig::from_session_dir(&session_dir)?))
         } else {
             Ok(None)
         }

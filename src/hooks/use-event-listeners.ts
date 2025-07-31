@@ -1,23 +1,9 @@
 import { onMount, untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { ProcessingStatus } from './use-app-state';
-import { type FontWeight } from '../types/font';
 
 interface UseEventListenersProps {
-  setProcessingStatus: (value: ProcessingStatus) => void;
-  setShowSessionSelector: (value: boolean) => void;
-  setSampleText: (value: string) => void;
-  setSelectedWeights: (weights: FontWeight[]) => void;
   setCurrentSessionId: (sessionId: string) => void;
-  setProgressLabelNumerator: (
-    value: number | ((prev: number) => number),
-  ) => void;
-  setProgressLabelDenominator: (
-    value: number | ((prev: number) => number),
-  ) => void;
-  refetchSessionDirectory: () => void;
-  refetchCompressedVectors: () => void;
 }
 
 export function useEventListeners(props: UseEventListenersProps) {
@@ -43,34 +29,10 @@ export function useEventListeners(props: UseEventListenersProps) {
 
     loadCurrentSession();
 
-    listen('font_generation_complete', (event: { payload: string }) => {
-      console.log('Font generation completed for session:', event.payload);
-      untrack(() => {
-        props.setProcessingStatus('vectorizing');
-      });
-    });
-
-    listen('vectorization_complete', (event: { payload: string }) => {
-      console.log('Vectorization completed for session:', event.payload);
-      untrack(() => {
-        props.setProcessingStatus('compressing');
-      });
-    });
-
-    listen('compression_complete', (event: { payload: string }) => {
-      console.log('Compression completed for session:', event.payload);
-      untrack(() => {
-        props.setProcessingStatus('clustering');
-      });
-    });
-
     listen('clustering_complete', (event: { payload: string }) => {
       console.log('Clustering completed for session:', event.payload);
       untrack(() => {
         props.setCurrentSessionId(event.payload);
-        props.setProcessingStatus('idle');
-        props.refetchSessionDirectory();
-        props.refetchCompressedVectors();
       });
     });
 
@@ -81,44 +43,6 @@ export function useEventListeners(props: UseEventListenersProps) {
       );
       untrack(() => {
         props.setCurrentSessionId(event.payload);
-      });
-      // All states are reset in the finally block of generateFontImages
-    });
-
-    listen('show_session_selection', () => {
-      untrack(() => {
-        props.setShowSessionSelector(true);
-      });
-    });
-
-    // Progress tracking event listeners
-    listen('progress_numerator_reset', (event: { payload: number }) => {
-      untrack(() => {
-        props.setProgressLabelNumerator(event.payload);
-      });
-    });
-
-    listen('progress_denominator_reset', (event: { payload: number }) => {
-      untrack(() => {
-        props.setProgressLabelDenominator(event.payload);
-      });
-    });
-
-    listen('progress_numerator_increment', () => {
-      untrack(() => {
-        props.setProgressLabelNumerator((prev: number) => prev + 1);
-      });
-    });
-
-    listen('progress_denominator_set', (event: { payload: number }) => {
-      untrack(() => {
-        props.setProgressLabelDenominator(event.payload);
-      });
-    });
-
-    listen('progress_denominator_decrement', () => {
-      untrack(() => {
-        props.setProgressLabelDenominator((prev: number) => prev - 1);
       });
     });
   });

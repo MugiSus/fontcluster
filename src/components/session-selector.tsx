@@ -1,5 +1,6 @@
-import { createSignal, createResource, For, Show } from 'solid-js';
+import { createSignal, createResource, For, Show, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {
@@ -10,27 +11,32 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { ArchiveRestoreIcon, RefreshCwIcon } from 'lucide-solid';
-import { type SessionInfo } from '../types/font';
+import { type SessionConfig } from '../types/font';
 
 interface SessionSelectorProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSessionRestore: () => void;
   currentSessionId: string;
   onSessionSelect: (sessionId: string) => void;
 }
 
 export function SessionSelector(props: SessionSelectorProps) {
+  const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
 
+  // Listen for show_session_selection event
+  onMount(() => {
+    listen('show_session_selection', () => {
+      setOpen(true);
+    });
+  });
+
   const [availableSessions, { refetch }] = createResource(
-    () => props.open,
-    async (open: boolean) => {
-      if (!open) return [];
+    () => open(),
+    async (isOpen: boolean) => {
+      if (!isOpen) return [];
 
       try {
         const result = await invoke<string>('get_available_sessions');
-        return JSON.parse(result) as SessionInfo[];
+        return JSON.parse(result) as SessionConfig[];
       } catch (error) {
         console.error('Failed to get available sessions:', error);
         return [];
@@ -43,8 +49,7 @@ export function SessionSelector(props: SessionSelectorProps) {
     try {
       // Simply update the current session ID in the frontend
       props.onSessionSelect(sessionId);
-      props.onSessionRestore();
-      props.onOpenChange(false);
+      setOpen(false);
     } catch (error) {
       console.error('Failed to select session:', error);
     } finally {
@@ -56,7 +61,7 @@ export function SessionSelector(props: SessionSelectorProps) {
     return new Date(dateStr).toLocaleString();
   };
 
-  const getCompletionBadge = (session: SessionInfo) => {
+  const getCompletionBadge = (session: SessionConfig) => {
     if (session.has_clusters)
       return { text: 'Complete', variant: 'default' as const };
     if (session.has_compressed)
@@ -69,7 +74,7 @@ export function SessionSelector(props: SessionSelectorProps) {
   };
 
   return (
-    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+    <Dialog open={open()} onOpenChange={setOpen}>
       <DialogContent class='h-[75vh] max-w-2xl'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
@@ -183,7 +188,7 @@ export function SessionSelector(props: SessionSelectorProps) {
         </div>
 
         <div class='flex justify-end gap-2'>
-          <Button variant='outline' onClick={() => props.onOpenChange(false)}>
+          <Button variant='outline' onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button
