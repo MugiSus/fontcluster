@@ -12,9 +12,6 @@ export function useAppSignal() {
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
-  const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
-    400,
-  ]);
   const [nearestFontConfig, setNearestFontConfig] =
     createSignal<FontConfig | null>(null);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
@@ -77,7 +74,6 @@ export function useAppSignal() {
     if (config?.weights) {
       const weights = config.weights as FontWeight[];
       setSelectedWeights(weights);
-      setVisualizerWeights(weights);
     }
   });
 
@@ -98,7 +94,6 @@ export function useAppSignal() {
   return {
     // Signals
     selectedWeights,
-    visualizerWeights,
     nearestFontConfig,
     currentSessionId,
 
@@ -109,7 +104,6 @@ export function useAppSignal() {
 
     // Actions
     setSelectedWeights,
-    setVisualizerWeights,
     setNearestFontConfig,
     setCurrentSessionId,
     generateFontImages,

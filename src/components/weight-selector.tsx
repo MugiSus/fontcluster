@@ -5,6 +5,7 @@ import { type FontWeight } from '../types/font';
 interface WeightSelectorProps {
   weights: FontWeight[];
   selectedWeights: FontWeight[];
+  name?: string;
   onWeightChange: (weights: FontWeight[]) => void;
 }
 
@@ -31,6 +32,11 @@ export function WeightSelector(props: WeightSelectorProps) {
 
   return (
     <div class='grid w-full grid-cols-9 items-center gap-px overflow-hidden rounded border bg-background/25'>
+      <input
+        type='hidden'
+        name={props.name || 'weights'}
+        value={props.selectedWeights.join(',')}
+      />
       <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900] as FontWeight[]}>
         {(weight) => {
           const isSelected = () => props.selectedWeights.includes(weight);

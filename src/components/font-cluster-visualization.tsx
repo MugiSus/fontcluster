@@ -1,4 +1,4 @@
-import { For, Show, createSignal } from 'solid-js';
+import { For, Show, createSignal, createEffect } from 'solid-js';
 import {
   CompressedFontVectorMap,
   FontVectorData,
@@ -21,8 +21,6 @@ interface FontClusterVisualizationProps {
   compressedVectors: CompressedFontVectorMap | undefined;
   nearestFontConfig: FontConfig | null;
   sessionWeights: FontWeight[];
-  visualizerWeights: FontWeight[];
-  onVisualizerWeightsChange: (weights: FontWeight[]) => void;
   onFontSelect: (fontConfig: FontConfig) => void;
 }
 
@@ -31,6 +29,19 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
+
+  // Internal visualizer weights management
+  const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
+    400,
+  ]);
+
+  // Sync visualizer weights with session weights when they change
+  createEffect(() => {
+    const sessionWeights = props.sessionWeights;
+    if (sessionWeights && sessionWeights.length > 0) {
+      setVisualizerWeights(sessionWeights);
+    }
+  });
 
   const selectNearestFont = (event: MouseEvent) => {
     const elements = document.elementsFromPoint(event.clientX, event.clientY);
@@ -162,8 +173,8 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       <div class='absolute bottom-0 z-10 flex items-center justify-between p-2'>
         <WeightSelector
           weights={props.sessionWeights}
-          selectedWeights={props.visualizerWeights}
-          onWeightChange={props.onVisualizerWeightsChange}
+          selectedWeights={visualizerWeights()}
+          onWeightChange={setVisualizerWeights}
         />
       </div>
       <svg
@@ -265,7 +276,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                 return (
                   <Show
                     when={
-                      props.visualizerWeights.includes(
+                      visualizerWeights().includes(
                         config.weight as FontWeight,
                       ) &&
                       scaledX > viewBox().x - 150 &&

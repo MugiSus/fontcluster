@@ -74,8 +74,6 @@ function App() {
             sessionWeights={
               (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
             }
-            visualizerWeights={appSignal.visualizerWeights()}
-            onVisualizerWeightsChange={appSignal.setVisualizerWeights}
             onFontSelect={appSignal.setNearestFontConfig}
           />
         </div>

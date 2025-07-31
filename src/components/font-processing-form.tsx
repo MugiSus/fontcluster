@@ -78,11 +78,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     const text = formData.get('preview-text') as string;
 
     // Get selected font weights
-    const selectedWeights = props.selectedWeights;
+    const selectedWeights = formData.get('weights') as string;
+    const selectedWeightsArray = selectedWeights
+      .split(',')
+      .map(Number) as FontWeight[];
 
     props.onSubmit(
       text || 'A quick brown fox jumps over the lazy dog',
-      selectedWeights.length > 0 ? selectedWeights : [400], // Default to 400 if none selected
+      selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
     );
 
     setProcessingStatus('generating');
