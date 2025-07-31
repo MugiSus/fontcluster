@@ -50,7 +50,7 @@ export function WeightSelector(props: WeightSelectorProps) {
               type='button'
               variant={isSelected() ? 'default' : 'ghost'}
               size='sm'
-              class='h-8 flex-1 rounded-none'
+              class='h-8 rounded-none px-2'
               style={{ 'font-weight': weight }}
               onClick={() => handleWeightToggle(weight)}
               data-checked={isSelected()}
