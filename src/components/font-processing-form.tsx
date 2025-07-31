@@ -70,7 +70,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             {Math.trunc(
               (props.progressLabelNumerator / props.progressLabelDenominator) *
                 100,
-            )}
+            ) || 0}
             %)
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
