@@ -23,13 +23,10 @@ export function WeightSelector(props: WeightSelectorProps) {
   };
 
   const handleWeightToggle = (weight: FontWeight) => {
-    console.log('Weight toggle clicked:', weight);
-    console.log('Current weights:', props.selectedWeights);
     const currentWeights = props.selectedWeights;
     const newWeights = currentWeights.includes(weight)
       ? currentWeights.filter((w) => w !== weight)
       : [...currentWeights, weight];
-    console.log('New weights:', newWeights);
     props.onWeightChange(newWeights);
   };
 
