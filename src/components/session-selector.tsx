@@ -15,7 +15,6 @@ import { type SessionConfig } from '../types/font';
 interface SessionSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSessionRestore: () => void;
   currentSessionId: string;
   onSessionSelect: (sessionId: string) => void;
 }
@@ -43,7 +42,6 @@ export function SessionSelector(props: SessionSelectorProps) {
     try {
       // Simply update the current session ID in the frontend
       props.onSessionSelect(sessionId);
-      props.onSessionRestore();
       props.onOpenChange(false);
     } catch (error) {
       console.error('Failed to select session:', error);

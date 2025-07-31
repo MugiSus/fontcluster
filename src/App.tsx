@@ -16,7 +16,6 @@ function App() {
       <SessionSelector
         open={appSignal.showSessionSelector()}
         onOpenChange={appSignal.setShowSessionSelector}
-        onSessionRestore={appSignal.handleSessionRestore}
         currentSessionId={appSignal.currentSessionId() || ''}
         onSessionSelect={appSignal.setCurrentSessionId}
       />
