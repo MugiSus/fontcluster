@@ -79,7 +79,7 @@ function App() {
             compressedVectors={appSignal.compressedVectors()}
             nearestFontConfig={appSignal.nearestFontConfig()}
             sessionWeights={
-              (appSignal.sessionInfo()?.weights as FontWeight[]) || [400]
+              (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
             }
             visualizerWeights={appSignal.visualizerWeights()}
             onVisualizerWeightsChange={appSignal.setVisualizerWeights}

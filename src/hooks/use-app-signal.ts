@@ -4,7 +4,7 @@ import {
   CompressedFontVectorMap,
   FontConfig,
   type FontWeight,
-  type SessionInfo,
+  type SessionConfig,
 } from '../types/font';
 
 export type ProcessingStatus =
@@ -47,9 +47,9 @@ export function useAppSignal() {
     },
   );
 
-  const [sessionInfo] = createResource(
+  const [sessionConfig] = createResource(
     () => currentSessionId(),
-    async (sessionId): Promise<SessionInfo | null> => {
+    async (sessionId): Promise<SessionConfig | null> => {
       if (!sessionId) return null;
       try {
         const response = await invoke<string | null>('get_session_info', {
@@ -58,7 +58,7 @@ export function useAppSignal() {
         if (!response) {
           return null;
         }
-        return JSON.parse(response) as SessionInfo;
+        return JSON.parse(response) as SessionConfig;
       } catch (error) {
         console.error('Failed to get session info:', error);
         return null;
@@ -110,18 +110,21 @@ export function useAppSignal() {
         return;
       }
 
-      const sessionConfig = sessionInfo();
-      if (sessionConfig) {
-        console.log('Restoring session config:', sessionConfig);
+      const sessionConfigData = sessionConfig();
+      if (sessionConfigData) {
+        console.log('Restoring session config:', sessionConfigData);
 
         // Restore sample text (preview_text in Rust)
-        if (sessionConfig.preview_text) {
-          setSampleText(sessionConfig.preview_text);
+        if (sessionConfigData.preview_text) {
+          setSampleText(sessionConfigData.preview_text);
         }
 
         // Restore selected weights
-        if (sessionConfig.weights && Array.isArray(sessionConfig.weights)) {
-          const weights = sessionConfig.weights as FontWeight[];
+        if (
+          sessionConfigData.weights &&
+          Array.isArray(sessionConfigData.weights)
+        ) {
+          const weights = sessionConfigData.weights as FontWeight[];
           setSelectedWeights(weights);
           setVisualizerWeights(weights); // Default visualizer to session weights
         }
@@ -144,7 +147,7 @@ export function useAppSignal() {
     progressLabelDenominator,
 
     // Resources
-    sessionInfo,
+    sessionConfig,
     sessionDirectory,
     compressedVectors,
 

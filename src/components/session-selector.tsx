@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { ArchiveRestoreIcon, RefreshCwIcon } from 'lucide-solid';
-import { type SessionInfo } from '../types/font';
+import { type SessionConfig } from '../types/font';
 
 interface SessionSelectorProps {
   open: boolean;
@@ -30,7 +30,7 @@ export function SessionSelector(props: SessionSelectorProps) {
 
       try {
         const result = await invoke<string>('get_available_sessions');
-        return JSON.parse(result) as SessionInfo[];
+        return JSON.parse(result) as SessionConfig[];
       } catch (error) {
         console.error('Failed to get available sessions:', error);
         return [];
@@ -56,7 +56,7 @@ export function SessionSelector(props: SessionSelectorProps) {
     return new Date(dateStr).toLocaleString();
   };
 
-  const getCompletionBadge = (session: SessionInfo) => {
+  const getCompletionBadge = (session: SessionConfig) => {
     if (session.has_clusters)
       return { text: 'Complete', variant: 'default' as const };
     if (session.has_compressed)
