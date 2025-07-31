@@ -1,4 +1,4 @@
-import { createSignal, createResource } from 'solid-js';
+import { createSignal, createResource, createEffect } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import {
   CompressedFontVectorMap,
@@ -84,6 +84,16 @@ export function useAppSignal() {
     },
   );
 
+  // Auto-sync weights when sessionConfig changes
+  createEffect(() => {
+    const config = sessionConfig();
+    if (config?.weights) {
+      const weights = config.weights as FontWeight[];
+      setSelectedWeights(weights);
+      setVisualizerWeights(weights);
+    }
+  });
+
   // Processing actions
   const generateFontImages = async (text: string, weights: FontWeight[]) => {
     setProcessingStatus('generating');
@@ -98,33 +108,6 @@ export function useAppSignal() {
       console.error('Failed to process fonts:', error);
     } finally {
       setProcessingStatus('idle');
-    }
-  };
-
-  const handleSessionRestore = async () => {
-    try {
-      const sessionId = currentSessionId();
-      if (!sessionId) {
-        console.warn('No current session ID available for restore');
-        return;
-      }
-
-      const sessionConfigData = sessionConfig();
-      if (sessionConfigData) {
-        console.log('Restoring session config:', sessionConfigData);
-
-        // Restore selected weights
-        if (
-          sessionConfigData.weights &&
-          Array.isArray(sessionConfigData.weights)
-        ) {
-          const weights = sessionConfigData.weights as FontWeight[];
-          setSelectedWeights(weights);
-          setVisualizerWeights(weights); // Default visualizer to session weights
-        }
-      }
-    } catch (error) {
-      console.error('Failed to restore session config:', error);
     }
   };
 
@@ -154,6 +137,5 @@ export function useAppSignal() {
     setProgressLabelNumerator,
     setProgressLabelDenominator,
     generateFontImages,
-    handleSessionRestore,
   };
 }
