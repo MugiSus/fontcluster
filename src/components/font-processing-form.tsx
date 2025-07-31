@@ -13,7 +13,6 @@ interface FontProcessingFormProps {
   progressLabelNumerator: number;
   progressLabelDenominator: number;
   onSelectedWeightsChange: (weights: FontWeight[]) => void;
-  onSampleTextChange: (text: string) => void;
   onSubmit: (text: string, weights: FontWeight[]) => void;
 }
 
@@ -46,7 +45,6 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           name='preview-text'
           id='preview-text'
           value={props.sampleText}
-          onInput={(e) => props.onSampleTextChange(e.currentTarget.value)}
           placeholder='A quick brown fox jumps over the lazy dog'
         />
       </TextField>

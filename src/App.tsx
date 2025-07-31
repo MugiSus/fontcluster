@@ -23,13 +23,12 @@ function App() {
       <main class='grid min-h-0 flex-1 grid-cols-10 grid-rows-1 gap-4 px-4 pb-4'>
         <div class='col-span-3 flex flex-col gap-3'>
           <FontProcessingForm
-            sampleText={appSignal.sampleText()}
+            sampleText={appSignal.sessionConfig()?.preview_text || ''}
             selectedWeights={appSignal.selectedWeights()}
             processingStatus={appSignal.processingStatus()}
             progressLabelNumerator={appSignal.progressLabelNumerator()}
             progressLabelDenominator={appSignal.progressLabelDenominator()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
-            onSampleTextChange={appSignal.setSampleText}
             onSubmit={appSignal.generateFontImages}
           />
           <Tabs value='name' class='flex min-h-0 flex-1 flex-col'>

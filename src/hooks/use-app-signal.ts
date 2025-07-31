@@ -18,7 +18,6 @@ export function useAppSignal() {
   // Signals
   const [processingStatus, setProcessingStatus] =
     createSignal<ProcessingStatus>('idle');
-  const [sampleText, setSampleText] = createSignal('');
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
@@ -114,11 +113,6 @@ export function useAppSignal() {
       if (sessionConfigData) {
         console.log('Restoring session config:', sessionConfigData);
 
-        // Restore sample text (preview_text in Rust)
-        if (sessionConfigData.preview_text) {
-          setSampleText(sessionConfigData.preview_text);
-        }
-
         // Restore selected weights
         if (
           sessionConfigData.weights &&
@@ -137,7 +131,6 @@ export function useAppSignal() {
   return {
     // Signals
     processingStatus,
-    sampleText,
     selectedWeights,
     visualizerWeights,
     nearestFontConfig,
@@ -153,7 +146,6 @@ export function useAppSignal() {
 
     // Actions
     setProcessingStatus,
-    setSampleText,
     setSelectedWeights,
     setVisualizerWeights,
     setNearestFontConfig,
