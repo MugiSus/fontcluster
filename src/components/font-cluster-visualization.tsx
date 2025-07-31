@@ -4,6 +4,7 @@ import {
   FontVectorData,
   FontConfig,
 } from '../types/font';
+import { WeightSelector } from './weight-selector';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -151,190 +152,199 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   };
 
   return (
-    <svg
-      class='size-full select-none'
-      viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
-      xmlns='http://www.w3.org/2000/svg'
-      onMouseMove={handleMouseMove}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onWheel={handleWheel}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <g>
-        <path
-          d='M 295 295 L 305 305 M 305 295 L 295 305'
-          fill='none'
-          stroke='1'
-          class='pointer-events-none stroke-muted'
+    <div class='relative flex size-full items-center justify-center'>
+      <div class='absolute bottom-0 z-10 flex items-center justify-between p-2'>
+        <WeightSelector
+          weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
+          selectedWeights={[400]}
+          onWeightChange={(weights) => console.log(weights)}
         />
-        <circle
-          cx='300'
-          cy='300'
-          r='75'
-          fill='none'
-          stroke='1'
-          class='pointer-events-none stroke-muted'
-        />
-        <circle
-          cx='300'
-          cy='300'
-          r='150'
-          fill='none'
-          stroke='1'
-          class='pointer-events-none stroke-muted'
-        />
-        <circle
-          cx='300'
-          cy='300'
-          r='250'
-          fill='none'
-          stroke='1'
-          class='pointer-events-none stroke-muted'
-        />
-        <circle
-          cx='300'
-          cy='300'
-          r='400'
-          fill='none'
-          stroke='1'
-          class='pointer-events-none stroke-muted'
-        />
-      </g>
-      {(() => {
-        const vectorsMap = props.compressedVectors || {};
-        const zoomFactor = viewBox().width / 700;
+      </div>
+      <svg
+        class='size-full select-none'
+        viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
+        xmlns='http://www.w3.org/2000/svg'
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <g>
+          <path
+            d='M 295 295 L 305 305 M 305 295 L 295 305'
+            fill='none'
+            stroke='1'
+            class='pointer-events-none stroke-muted'
+          />
+          <circle
+            cx='300'
+            cy='300'
+            r='75'
+            fill='none'
+            stroke='1'
+            class='pointer-events-none stroke-muted'
+          />
+          <circle
+            cx='300'
+            cy='300'
+            r='150'
+            fill='none'
+            stroke='1'
+            class='pointer-events-none stroke-muted'
+          />
+          <circle
+            cx='300'
+            cy='300'
+            r='250'
+            fill='none'
+            stroke='1'
+            class='pointer-events-none stroke-muted'
+          />
+          <circle
+            cx='300'
+            cy='300'
+            r='400'
+            fill='none'
+            stroke='1'
+            class='pointer-events-none stroke-muted'
+          />
+        </g>
+        {(() => {
+          const vectorsMap = props.compressedVectors || {};
+          const zoomFactor = viewBox().width / 700;
 
-        // Convert map to array for processing
-        const vectors = Object.values(vectorsMap);
+          // Convert map to array for processing
+          const vectors = Object.values(vectorsMap);
 
-        return (
-          <Show when={vectors.length > 0}>
-            {(() => {
-              // Calculate bounds once
-              const [minX, maxX] = vectors.reduce(
-                ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
-                [Infinity, -Infinity],
-              );
+          return (
+            <Show when={vectors.length > 0}>
+              {(() => {
+                // Calculate bounds once
+                const [minX, maxX] = vectors.reduce(
+                  ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
+                  [Infinity, -Infinity],
+                );
 
-              const [minY, maxY] = vectors.reduce(
-                ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
-                [Infinity, -Infinity],
-              );
+                const [minY, maxY] = vectors.reduce(
+                  ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
+                  [Infinity, -Infinity],
+                );
 
-              return (
-                <For each={vectors}>
-                  {(vectorData: FontVectorData) => {
-                    const { x, y, k, config } = vectorData;
-                    const scaledX = ((x - minX) / (maxX - minX)) * 600;
-                    const scaledY = ((y - minY) / (maxY - minY)) * 600;
+                return (
+                  <For each={vectors}>
+                    {(vectorData: FontVectorData) => {
+                      const { x, y, k, config } = vectorData;
+                      const scaledX = ((x - minX) / (maxX - minX)) * 600;
+                      const scaledY = ((y - minY) / (maxY - minY)) * 600;
 
-                    // Define cluster colors
-                    const clusterColors = [
-                      'text-blue-500',
-                      'text-red-500',
-                      'text-yellow-500',
-                      'text-green-500',
-                      'text-purple-500',
-                      'text-orange-500',
-                      'text-teal-500',
-                      'text-indigo-500',
-                      'text-cyan-500',
-                      'text-fuchsia-500',
-                    ];
+                      // Define cluster colors
+                      const clusterColors = [
+                        'text-blue-500',
+                        'text-red-500',
+                        'text-yellow-500',
+                        'text-green-500',
+                        'text-purple-500',
+                        'text-orange-500',
+                        'text-teal-500',
+                        'text-indigo-500',
+                        'text-cyan-500',
+                        'text-fuchsia-500',
+                      ];
 
-                    // Handle noise cluster (-1) with gray-400
-                    const clusterColor =
-                      k === -1
-                        ? 'text-gray-400'
-                        : clusterColors[k % clusterColors.length];
+                      // Handle noise cluster (-1) with gray-400
+                      const clusterColor =
+                        k === -1
+                          ? 'text-gray-400'
+                          : clusterColors[k % clusterColors.length];
 
-                    return (
-                      <Show
-                        when={
-                          scaledX > viewBox().x - 150 &&
-                          scaledX < viewBox().x + viewBox().width + 150 &&
-                          scaledY > viewBox().y - 50 &&
-                          scaledY < viewBox().y + viewBox().height + 50
-                        }
-                      >
-                        <g
-                          transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
-                          class={clusterColor}
+                      return (
+                        <Show
+                          when={
+                            scaledX > viewBox().x - 150 &&
+                            scaledX < viewBox().x + viewBox().width + 150 &&
+                            scaledY > viewBox().y - 50 &&
+                            scaledY < viewBox().y + viewBox().height + 50
+                          }
                         >
-                          <circle
-                            cx={0}
-                            cy={0}
-                            r={
-                              props.nearestFontConfig?.font_name ===
-                              config.font_name
-                                ? 5
-                                : 2
-                            }
-                            class='pointer-events-none fill-current'
-                          />
-                          {props.nearestFontConfig?.font_name ===
-                            config.font_name && (
+                          <g
+                            transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
+                            class={clusterColor}
+                          >
                             <circle
                               cx={0}
                               cy={0}
-                              r='2.5'
-                              class='pointer-events-none fill-background'
-                            />
-                          )}
-                          <circle
-                            cx={0}
-                            cy={0}
-                            r='48'
-                            fill='transparent'
-                            stroke={
-                              props.nearestFontConfig?.font_name ===
-                              config.font_name
-                                ? 'currentColor'
-                                : 'transparent'
-                            }
-                            stroke-width={1.5}
-                            class={`transition-colors ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'duration-0' : 'duration-200'}`}
-                            data-font-config={JSON.stringify(config)}
-                            data-font-select-area
-                          />
-                          <Show when={zoomFactor < 0.4}>
-                            <text
-                              x={0}
-                              y={-8}
-                              opacity={
-                                1 -
-                                Math.min(
-                                  Math.max((zoomFactor - 0.2) / 0.2, 0),
-                                  1,
-                                )
-                              }
-                              class={`pointer-events-none select-none fill-foreground text-xs ${
+                              r={
                                 props.nearestFontConfig?.font_name ===
                                 config.font_name
-                                  ? 'font-bold'
-                                  : ''
-                              }`}
-                              text-anchor='middle'
-                            >
-                              {props.nearestFontConfig?.font_name ===
-                              config.font_name
-                                ? config.font_name
-                                : config.font_name.length > 12
-                                  ? config.font_name.substring(0, 12) + '…'
-                                  : config.font_name}
-                            </text>
-                          </Show>
-                        </g>
-                      </Show>
-                    );
-                  }}
-                </For>
-              );
-            })()}
-          </Show>
-        );
-      })()}
-    </svg>
+                                  ? 5
+                                  : 2
+                              }
+                              class='pointer-events-none fill-current'
+                            />
+                            {props.nearestFontConfig?.font_name ===
+                              config.font_name && (
+                              <circle
+                                cx={0}
+                                cy={0}
+                                r='2.5'
+                                class='pointer-events-none fill-background'
+                              />
+                            )}
+                            <circle
+                              cx={0}
+                              cy={0}
+                              r='48'
+                              fill='transparent'
+                              stroke={
+                                props.nearestFontConfig?.font_name ===
+                                config.font_name
+                                  ? 'currentColor'
+                                  : 'transparent'
+                              }
+                              stroke-width={1.5}
+                              class={`transition-colors ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'duration-0' : 'duration-200'}`}
+                              data-font-config={JSON.stringify(config)}
+                              data-font-select-area
+                            />
+                            <Show when={zoomFactor < 0.4}>
+                              <text
+                                x={0}
+                                y={-8}
+                                opacity={
+                                  1 -
+                                  Math.min(
+                                    Math.max((zoomFactor - 0.2) / 0.2, 0),
+                                    1,
+                                  )
+                                }
+                                class={`pointer-events-none select-none fill-foreground text-xs ${
+                                  props.nearestFontConfig?.font_name ===
+                                  config.font_name
+                                    ? 'font-bold'
+                                    : ''
+                                }`}
+                                text-anchor='middle'
+                              >
+                                {props.nearestFontConfig?.font_name ===
+                                config.font_name
+                                  ? config.font_name
+                                  : config.font_name.length > 12
+                                    ? config.font_name.substring(0, 12) + '…'
+                                    : config.font_name}
+                              </text>
+                            </Show>
+                          </g>
+                        </Show>
+                      );
+                    }}
+                  </For>
+                );
+              })()}
+            </Show>
+          );
+        })()}
+      </svg>
+    </div>
   );
 }

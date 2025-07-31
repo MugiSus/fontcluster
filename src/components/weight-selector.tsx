@@ -1,6 +1,5 @@
 import { For } from 'solid-js';
 import { Button } from './ui/button';
-import { Label } from './ui/label';
 import { type FontWeight } from '../types/font';
 
 interface WeightSelectorProps {
@@ -31,29 +30,31 @@ export function WeightSelector(props: WeightSelectorProps) {
   };
 
   return (
-    <div class='flex w-full flex-col gap-2'>
-      <Label class='text-sm font-medium'>Weights</Label>
-      <div class='flex w-full items-center gap-px overflow-hidden rounded border'>
-        <For each={props.weights}>
-          {(weight) => {
-            const isSelected = () => props.selectedWeights.includes(weight);
+    <div
+      class='grid w-full items-center gap-px overflow-hidden rounded border'
+      style={{
+        'grid-template-columns': `repeat(${props.weights.length}, minmax(0, 1fr))`,
+      }}
+    >
+      <For each={props.weights}>
+        {(weight) => {
+          const isSelected = () => props.selectedWeights.includes(weight);
 
-            return (
-              <Button
-                type='button'
-                variant={isSelected() ? 'default' : 'ghost'}
-                size='sm'
-                class='h-8 flex-1 rounded-none'
-                style={{ 'font-weight': weight }}
-                onClick={() => handleWeightToggle(weight)}
-                data-checked={isSelected()}
-              >
-                {weightLabels[weight] || weight}
-              </Button>
-            );
-          }}
-        </For>
-      </div>
+          return (
+            <Button
+              type='button'
+              variant={isSelected() ? 'default' : 'ghost'}
+              size='sm'
+              class='h-8 flex-1 rounded-none'
+              style={{ 'font-weight': weight }}
+              onClick={() => handleWeightToggle(weight)}
+              data-checked={isSelected()}
+            >
+              {weightLabels[weight] || weight}
+            </Button>
+          );
+        }}
+      </For>
     </div>
   );
 }

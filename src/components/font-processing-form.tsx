@@ -4,6 +4,7 @@ import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
 import { ProcessingStatus } from '../hooks/use-app-state';
 import { WeightSelector } from './weight-selector';
 import { type FontWeight } from '../types/font';
+import { Label } from './ui/label';
 
 interface FontProcessingFormProps {
   sampleText: string;
@@ -49,11 +50,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           placeholder='A quick brown fox jumps over the lazy dog'
         />
       </TextField>
-      <WeightSelector
-        weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-        selectedWeights={props.selectedWeights}
-        onWeightChange={props.onSelectedWeightsChange}
-      />
+      <div class='flex w-full flex-col gap-2'>
+        <Label class='text-sm font-medium'>Weights</Label>
+        <WeightSelector
+          weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
+          selectedWeights={props.selectedWeights}
+          onWeightChange={props.onSelectedWeightsChange}
+        />
+      </div>
       <Button
         type='submit'
         disabled={isProcessing()}
