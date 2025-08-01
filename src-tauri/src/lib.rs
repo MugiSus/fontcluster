@@ -112,6 +112,8 @@ pub fn run() {
             cleanup_old_sessions,
             get_session_fonts,
             run_jobs,
+            generate_fonts_with_skia,
+            benchmark_rendering_methods,
             reset_progress,
             increment_progress,
             set_progress_denominator,
