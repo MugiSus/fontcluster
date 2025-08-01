@@ -1,5 +1,6 @@
 use crate::core::SessionManager;
 use crate::error::FontResult;
+use crate::commands::progress_commands::progress_events;
 use std::path::PathBuf;
 use std::fs;
 use tokio::task;
@@ -7,6 +8,7 @@ use futures::future::join_all;
 use image::GrayImage;
 use imageproc::hog::*;
 use std::io::Write;
+use tauri::AppHandle;
 
 // Image vectorization service
 pub struct FontImageVectorizer;
@@ -16,19 +18,39 @@ impl FontImageVectorizer {
         Ok(Self)
     }
     
-    pub async fn vectorize_all(&self) -> FontResult<PathBuf> {
+    pub async fn vectorize_all(&self, app_handle: &AppHandle) -> FontResult<PathBuf> {
         let png_files = self.get_png_files()?;
-        println!("Found {} PNG files to vectorize", png_files.len());
+        let total_files = png_files.len();
+        println!("🔢 Found {} PNG files to vectorize", total_files);
         
-        let tasks = self.spawn_vectorization_tasks(png_files);
-        let results = join_all(tasks).await;
+        // Initialize progress tracking
+        progress_events::reset_progress(app_handle);
+        progress_events::set_progress_denominator(app_handle, total_files as i32);
         
-        // Count successful vectorizations
-        let success_count = results.into_iter()
-            .filter(|r| matches!(r, Ok(Ok(_))))
-            .count();
+        // Process in batches to avoid overwhelming the system
+        const BATCH_SIZE: usize = 50; // Process 50 images at a time
+        let mut success_count = 0;
         
-        println!("Successfully vectorized {} images", success_count);
+        for (batch_idx, batch) in png_files.chunks(BATCH_SIZE).enumerate() {
+            println!("🚀 Processing vectorization batch {}/{} ({} files)", 
+                batch_idx + 1,
+                (total_files + BATCH_SIZE - 1) / BATCH_SIZE,
+                batch.len()
+            );
+            
+            let tasks = self.spawn_vectorization_tasks(batch.to_vec(), app_handle);
+            let results = join_all(tasks).await;
+            
+            // Count successful vectorizations in this batch
+            let batch_success = results.into_iter()
+                .filter(|r| matches!(r, Ok(Ok(_))))
+                .count();
+            success_count += batch_success;
+            
+            println!("✅ Batch {} completed: {}/{} successful", batch_idx + 1, batch_success, batch.len());
+        }
+        
+        println!("🎉 Vectorization completed: {}/{} files successfully processed", success_count, total_files);
         
         Ok(SessionManager::global().get_session_dir())
     }
@@ -52,13 +74,34 @@ impl FontImageVectorizer {
             .collect())
     }
     
-    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {
+    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>, app_handle: &AppHandle) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {
         png_files
             .into_iter()
             .map(|png_path| {
+                let app_handle_clone = app_handle.clone();
                 task::spawn_blocking(move || {
                     let vectorizer = ImageVectorizer::new();
-                    vectorizer.vectorize_image(&png_path)
+                    let result = vectorizer.vectorize_image(&png_path);
+                    
+                    // Update progress regardless of success/failure
+                    match &result {
+                        Ok(features) => {
+                            let file_name = png_path.file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("unknown");
+                            println!("✅ Vectorized: {} ({} features)", file_name, features.len());
+                            progress_events::increment_progress(&app_handle_clone);
+                        }
+                        Err(e) => {
+                            let file_name = png_path.file_name()
+                                .and_then(|n| n.to_str())
+                                .unwrap_or("unknown");
+                            println!("❌ Failed to vectorize {}: {}", file_name, e);
+                            progress_events::decrement_progress_denominator(&app_handle_clone);
+                        }
+                    }
+                    
+                    result
                 })
             })
             .collect()
@@ -87,10 +130,7 @@ impl ImageVectorizer {
         // Save vector to Vector directory
         self.save_vector_to_file(&feature_vector, png_path)?;
         
-        println!("Vectorized: {} -> {} (HOG features: {})", 
-                png_path.display(), 
-                self.get_vector_file_path(png_path).display(),
-                feature_vector.len());
+        // Detailed logging moved to spawn_vectorization_tasks for progress tracking
         
         Ok(feature_vector)
     }

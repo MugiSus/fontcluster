@@ -133,7 +133,11 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : processingStatus() === 'vectorizing' ? (
           <>
-            Vectorizing Images...
+            Vectorizing Images... (
+            {Math.trunc(
+              (progressLabelNumerator() / progressLabelDenominator()) * 100,
+            ) || 0}
+            %)
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : processingStatus() === 'compressing' ? (

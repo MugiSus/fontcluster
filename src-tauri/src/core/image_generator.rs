@@ -50,8 +50,8 @@ impl FontImageGenerator {
         
         // Process fonts in batches to prevent memory exhaustion
         // This maintains the same behavior but reduces peak memory usage
-        const BATCH_SIZE: usize = 100; // Process 100 tasks at a time
-        
+        const BATCH_SIZE: usize = 128; // Process 128 tasks at a time
+
         // Create all task combinations
         let mut all_task_params = Vec::new();
         for family_name in font_families {

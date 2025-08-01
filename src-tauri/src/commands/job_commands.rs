@@ -54,7 +54,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                     app_handle.clone(),
                     "vectorization_start",
                     "vectorization_complete", 
-                    || vectorizer.vectorize_all()
+                    || vectorizer.vectorize_all(&app_handle)
                 ).await
                 .and_then(|path| {
                     println!("✅ Font images vectorized in: {}", path.display());

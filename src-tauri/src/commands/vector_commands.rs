@@ -30,7 +30,7 @@ pub async fn vectorize_font_images(app_handle: AppHandle) -> Result<String, Stri
             app_handle.clone(),
             "vectorization_start",
             "vectorization_complete",
-            || vectorizer.vectorize_all()
+            || vectorizer.vectorize_all(&app_handle)
         ).await
         .map(format_completion_message("Font images vectorized"))
     }
