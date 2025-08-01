@@ -98,7 +98,7 @@ impl ImageVectorizer {
     fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
         // Create padded image with fixed canvas size while preserving aspect ratio
         let canvas_width = 512;
-        let canvas_height = 128;
+        let canvas_height = 96;
         let padded_img = self.resize_with_padding(img, canvas_width, canvas_height)?;
         
         // Configure HOG parameters
