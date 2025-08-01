@@ -6,6 +6,7 @@ use font_kit::properties::{Properties, Weight};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::fs;
+use std::sync::Arc;
 
 /// Represents a validated font-weight pair that is guaranteed to work
 #[derive(Debug, Clone)]
@@ -43,7 +44,12 @@ impl FontService {
     }
     
     /// Returns validated font-weight pairs that are guaranteed to work
-    pub fn get_validated_font_weight_pairs(source: &SystemSource, weights: &[i32]) -> Vec<FontWeightPair> {
+    pub async fn get_validated_font_weight_pairs(source: Arc<SystemSource>, weights: &[i32]) -> Vec<FontWeightPair> {
+        use tokio::task;
+        use futures::future::join_all;
+        use std::sync::Arc;
+        use tokio::sync::Semaphore;
+        
         println!("🔍 Pre-resolving font-weight pairs for weights: {:?}", weights);
         let start_time = std::time::Instant::now();
         
@@ -51,33 +57,86 @@ impl FontService {
         let total_families = all_families.len();
         println!("📊 Total font families found: {}", total_families);
         
-        let mut validated_pairs = Vec::new();
+        // Pre-filter regular fonts to reduce work
+        let regular_families: Vec<String> = all_families
+            .into_iter()
+            .filter(|family_name| Self::is_regular_font(family_name))
+            .collect();
         
-        for family_name in all_families {
-            // Skip symbol fonts first
-            if !Self::is_regular_font(&family_name) {
-                continue;
-            }
-            
-            // Check each weight for this family
+        println!("📊 Regular font families after filtering: {}", regular_families.len());
+        
+        // Generate all font-weight combinations for parallel processing
+        let mut font_weight_combinations = Vec::new();
+        for family_name in &regular_families {
             for &weight_value in weights {
-                if let Some(actual_weight) = Self::validate_font_weight(source, &family_name, weight_value) {
-                    validated_pairs.push(FontWeightPair {
-                        family_name: family_name.clone(),
-                        requested_weight: weight_value,
-                        actual_weight,
-                    });
-                }
+                font_weight_combinations.push((family_name.clone(), weight_value));
             }
+        }
+        
+        let total_tasks = font_weight_combinations.len();
+        println!("🔄 Processing {} font-weight combinations", total_tasks);
+        
+        if font_weight_combinations.is_empty() {
+            return Vec::new();
+        }
+        
+        // Process combinations in batches like image_generator
+        const BATCH_SIZE: usize = 128; // Same as image_generator
+        let shared_source = source;
+        let semaphore = Arc::new(Semaphore::new(16)); // Same as image_generator
+        
+        let total_batches = (total_tasks + BATCH_SIZE - 1) / BATCH_SIZE;
+        println!("🚀 Processing {} font-weight combinations in {} batches", 
+                total_tasks, total_batches);
+        
+        let mut all_validated_pairs = Vec::new();
+        
+        // Process combinations in chunks
+        for (batch_idx, combination_chunk) in font_weight_combinations.chunks(BATCH_SIZE).enumerate() {
+            let batch_tasks: Vec<_> = combination_chunk.iter()
+                .map(|(family_name, weight_value)| {
+                    let shared_source = Arc::clone(&shared_source);
+                    let semaphore = Arc::clone(&semaphore);
+                    let family_name = family_name.clone();
+                    let weight_value = *weight_value;
+                    
+                    task::spawn_blocking(move || {
+                        // Acquire permit before processing (blocking)
+                        let rt = tokio::runtime::Handle::current();
+                        let _permit = rt.block_on(semaphore.acquire()).unwrap();
+                        
+                        if let Some(actual_weight) = Self::validate_font_weight(&shared_source, &family_name, weight_value) {
+                            Some(FontWeightPair {
+                                family_name,
+                                requested_weight: weight_value,
+                                actual_weight,
+                            })
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect();
+            
+            println!("🔄 Processing batch {}/{} ({} tasks)", batch_idx + 1, total_batches, batch_tasks.len());
+            
+            // Wait for this batch to complete before starting the next
+            let batch_results = join_all(batch_tasks).await;
+            let batch_pairs: Vec<FontWeightPair> = batch_results
+                .into_iter()
+                .filter_map(|result| result.unwrap())
+                .collect();
+            
+            all_validated_pairs.extend(batch_pairs);
         }
         
         let elapsed = start_time.elapsed();
         println!("✅ Pre-validation completed in {:.2}ms: {} valid font-weight pairs from {} families", 
-                elapsed.as_millis(), validated_pairs.len(), total_families);
+                elapsed.as_millis(), all_validated_pairs.len(), total_families);
         
         // Sort by family name for consistent ordering
-        validated_pairs.sort_by(|a, b| a.family_name.cmp(&b.family_name));
-        validated_pairs
+        all_validated_pairs.sort_by(|a, b| a.family_name.cmp(&b.family_name));
+        all_validated_pairs
     }
     
     /// Validate that a font family supports a specific weight and return the actual weight

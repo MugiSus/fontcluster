@@ -44,7 +44,7 @@ impl FontImageGenerator {
         // Get pre-validated font-weight pairs that are guaranteed to work
         progress_events::reset_progress(app_handle);
         progress_events::set_progress_denominator(app_handle, 0);
-        let font_weight_pairs = FontService::get_validated_font_weight_pairs(&self.shared_source, &self.weights);
+        let font_weight_pairs = FontService::get_validated_font_weight_pairs(Arc::clone(&self.shared_source), &self.weights).await;
         
         // Calculate total tasks and reset progress
         let total_tasks = font_weight_pairs.len();
