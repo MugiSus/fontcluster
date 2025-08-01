@@ -79,9 +79,11 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
 
     // Get selected font weights
     const selectedWeights = formData.get('weights') as string;
+    const validWeights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
     const selectedWeightsArray = selectedWeights
       .split(',')
-      .map(Number) as FontWeight[];
+      .map(Number)
+      .filter((weight) => validWeights.includes(weight)) as FontWeight[]; // Only allow valid font weights
 
     props.onSubmit(
       text || 'A quick brown fox jumps over the lazy dog',

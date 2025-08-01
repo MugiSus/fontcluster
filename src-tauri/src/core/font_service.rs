@@ -1,9 +1,19 @@
 use crate::error::FontResult;
 use crate::core::SessionManager;
 use font_kit::source::SystemSource;
+use font_kit::family_name::FamilyName;
+use font_kit::properties::{Properties, Weight};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::fs;
+
+/// Represents a validated font-weight pair that is guaranteed to work
+#[derive(Debug, Clone)]
+pub struct FontWeightPair {
+    pub family_name: String,
+    pub requested_weight: i32,
+    pub actual_weight: i32,
+}
 
 // Service layer for font operations
 pub struct FontService;
@@ -31,6 +41,71 @@ impl FontService {
         let source = SystemSource::new();
         Self::get_system_fonts_with_source(&source)
     }
+    
+    /// Returns validated font-weight pairs that are guaranteed to work
+    pub fn get_validated_font_weight_pairs(source: &SystemSource, weights: &[i32]) -> Vec<FontWeightPair> {
+        println!("🔍 Pre-resolving font-weight pairs for weights: {:?}", weights);
+        let start_time = std::time::Instant::now();
+        
+        let all_families = source.all_families().unwrap_or_default();
+        let total_families = all_families.len();
+        println!("📊 Total font families found: {}", total_families);
+        
+        let mut validated_pairs = Vec::new();
+        
+        for family_name in all_families {
+            // Skip symbol fonts first
+            if !Self::is_regular_font(&family_name) {
+                continue;
+            }
+            
+            // Check each weight for this family
+            for &weight_value in weights {
+                if let Some(actual_weight) = Self::validate_font_weight(source, &family_name, weight_value) {
+                    validated_pairs.push(FontWeightPair {
+                        family_name: family_name.clone(),
+                        requested_weight: weight_value,
+                        actual_weight,
+                    });
+                }
+            }
+        }
+        
+        let elapsed = start_time.elapsed();
+        println!("✅ Pre-validation completed in {:.2}ms: {} valid font-weight pairs from {} families", 
+                elapsed.as_millis(), validated_pairs.len(), total_families);
+        
+        // Sort by family name for consistent ordering
+        validated_pairs.sort_by(|a, b| a.family_name.cmp(&b.family_name));
+        validated_pairs
+    }
+    
+    /// Validate that a font family supports a specific weight and return the actual weight
+    fn validate_font_weight(source: &SystemSource, family_name: &str, weight_value: i32) -> Option<i32> {
+        let properties = Properties {
+            weight: Weight(weight_value as f32),
+            ..Default::default()
+        };
+        
+        // Try to select and load the font
+        if let Ok(handle) = source.select_best_match(
+            &[FamilyName::Title(family_name.to_string())], 
+            &properties
+        ) {
+            if let Ok(font) = handle.load() {
+                let actual_weight = font.properties().weight.0 as i32;
+                let weight_diff = (actual_weight - weight_value).abs();
+                
+                // Accept if weight difference is reasonable
+                if weight_diff <= 50 {
+                    return Some(actual_weight);
+                }
+            }
+        }
+        
+        None
+    }
+    
     
     /// Filters out symbol fonts, dingbats, and other noise fonts
     fn is_regular_font(font_name: &str) -> bool {

@@ -41,35 +41,38 @@ impl FontImageGenerator {
     }
     
     pub async fn generate_all(&self, app_handle: &AppHandle) -> FontResult<PathBuf> {
-        let font_families = FontService::get_system_fonts_with_source(&self.shared_source);
+        // Get pre-validated font-weight pairs that are guaranteed to work
+        progress_events::reset_progress(app_handle);
+        progress_events::set_progress_denominator(app_handle, 0);
+        let font_weight_pairs = FontService::get_validated_font_weight_pairs(&self.shared_source, &self.weights);
         
         // Calculate total tasks and reset progress
-        let total_tasks = font_families.len() * self.weights.len();
-        progress_events::reset_progress(app_handle);
+        let total_tasks = font_weight_pairs.len();
         progress_events::set_progress_denominator(app_handle, total_tasks as i32);
+        
+        if font_weight_pairs.is_empty() {
+            println!("⚠️  No valid font-weight pairs found for weights: {:?}", self.weights);
+            return Ok(self.config.output_dir.clone());
+        }
         
         // Process fonts in batches to prevent memory exhaustion
         // This maintains the same behavior but reduces peak memory usage
         const BATCH_SIZE: usize = 128; // Process 128 tasks at a time
 
-        // Create all task combinations
-        let mut all_task_params = Vec::new();
-        for family_name in font_families {
-            for &weight in &self.weights {
-                all_task_params.push((family_name.clone(), weight));
-            }
-        }
+        // Process validated pairs in batches
+        let total_batches = (total_tasks + BATCH_SIZE - 1) / BATCH_SIZE;
+        println!("🚀 Processing {} pre-validated font-weight pairs in {} batches", 
+                total_tasks, total_batches);
         
-        // Process in batches with the same logic as before
-        for batch in all_task_params.chunks(BATCH_SIZE) {
-            let batch_tasks = batch.iter()
-                .map(|(family_name, weight)| {
+        // Process pairs in chunks
+        for (batch_idx, pair_chunk) in font_weight_pairs.chunks(BATCH_SIZE).enumerate() {
+            let batch_tasks: Vec<_> = pair_chunk.iter()
+                .map(|pair| {
                     let config_clone = self.config.clone();
                     let shared_source = Arc::clone(&self.shared_source);
                     let semaphore = Arc::clone(&self.semaphore);
                     let app_handle_clone = app_handle.clone();
-                    let family_name = family_name.clone();
-                    let weight = *weight;
+                    let pair = pair.clone();
                     
                     task::spawn_blocking(move || {
                         // Acquire permit before processing (blocking)
@@ -77,19 +80,20 @@ impl FontImageGenerator {
                         let _permit = rt.block_on(semaphore.acquire()).unwrap();
                         
                         let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
-                        if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                            // Skip silently - renderer handles logging
-                            // Decrement denominator for failed tasks to keep progress accurate
+                        // Use the pre-validated weight - no need for weight checking!
+                        if let Err(_e) = renderer.generate_font_image(&pair.family_name, pair.actual_weight) {
+                            // This should rarely happen since we pre-validated
                             progress_events::decrement_progress_denominator(&app_handle_clone);
                         } else {
-                            println!("Successfully generated image for font: {} weight: {}", family_name, weight);
-                            // Increment progress after successful completion
+                            println!("✅ Generated: {} weight {} (validated)", pair.family_name, pair.actual_weight);
                             progress_events::increment_progress(&app_handle_clone);
                         }
                     })
                 })
-                .collect::<Vec<_>>();
-                
+                .collect();
+            
+            println!("🔄 Processing batch {}/{} ({} tasks)", batch_idx + 1, total_batches, batch_tasks.len());
+            
             // Wait for this batch to complete before starting the next
             join_all(batch_tasks).await;
         }
