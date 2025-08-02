@@ -1,135 +1,183 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Overview
 
-FontCluster is a Tauri-based desktop application for analyzing and clustering fonts based on visual similarity. The application combines a SolidJS frontend with a Rust backend to provide font visualization, clustering, and analysis capabilities.
+FontCluster is a sophisticated Tauri-based desktop application implementing a complete machine learning pipeline for font analysis and clustering. The application combines a **Rust backend** handling computationally intensive ML operations with a **SolidJS frontend** providing interactive visualization of font similarity.
 
 ## Architecture
 
-### Frontend (SolidJS + TypeScript)
-- **Framework**: SolidJS with TypeScript and Vite
-- **UI Components**: Custom UI components in `src/components/ui/` using Kobalte core and Tailwind CSS
-- **State Management**: Reactive state using SolidJS signals in `src/hooks/use-app-state.ts`
-- **Main Components**:
-  - `FontProcessingForm` - Input form for sample text and processing controls
-  - `FontClusterVisualization` - Interactive 2D visualization of font clusters
-  - `FontCompressedVectorList` - List view of fonts sorted by name or similarity
-  - `SessionSelector` - Dialog for managing processing sessions
+### ML Pipeline Architecture (4-Stage Process)
 
-### Backend (Rust + Tauri)
-The backend uses a modular architecture organized into several core modules:
+The core backend implements a sequential ML pipeline in `src-tauri/src/core/`:
 
-- **Core Modules** (`src-tauri/src/core/`):
-  - `font_service.rs` - Font discovery and management using font-kit
-  - `image_generator.rs` - Font rendering to images using pathfinder_geometry
-  - `vectorizer.rs` - Image-to-vector conversion for analysis
-  - `compressor.rs` - Dimensionality reduction using PaCMAP and PCA
-  - `clusterer.rs` - Font clustering using Gaussian Mixture Model (linfa-clustering)
-  - `session.rs` - Session management with UUIDv7 for persistence
+1. **Font Discovery** (`font_service.rs`) - System font enumeration with intelligent filtering
+2. **Image Generation** (`image_generator.rs`) - Concurrent font rendering using pathfinder_geometry  
+3. **Feature Extraction** (`vectorizer.rs`) - HOG feature extraction from rendered font images
+4. **Dimensionality Reduction + Clustering** (`compressor.rs` + `clusterer.rs`) - PaCMAP projection + Gaussian Mixture clustering
 
-- **Commands** (`src-tauri/src/commands/`):
-  - Tauri command handlers exposing backend functionality to frontend
-  - Organized by feature: font_commands, job_commands, session_commands, vector_commands
+**Key Pipeline Flow:**
+```
+Text Input → Session Creation → Font Discovery → Batch Image Rendering → 
+HOG Vectorization → PaCMAP Compression → GMM Clustering → 2D Visualization
+```
 
-- **Configuration** (`src-tauri/src/config/`):
-  - Font processing parameters and session configuration
-  - Constants for image generation and clustering parameters
+### Session Management System
+
+- **UUIDv7 identifiers** for temporal session ordering
+- **OS-specific data directories** using `dirs` crate  
+- **Hierarchical storage**: `{session_id}/{font_name}/[config.json, sample.png, vector.csv, compressed-vector.csv]`
+- **Automatic restoration** with latest session fallback
+- **JSON serialization** for all configuration persistence
+
+### Frontend-Backend Communication
+
+- **Single orchestration command** (`run_jobs`) triggers entire ML pipeline
+- **Event-driven progress tracking** with real-time numerator/denominator updates
+- **Resource-based data loading** for session restoration and vector access
+- **Session lifecycle management** through dedicated Tauri commands
+
+### Concurrency & Performance Model
+
+- **Semaphore-controlled parallelism** (16 concurrent font rendering tasks)
+- **Batch processing** (128 tasks per batch, 50 images per vectorization batch)
+- **Memory-bounded allocation** with safety checks in image processing
+- **Optimized Cargo profiles** with thin LTO and dependency-specific optimization levels
 
 ## Development Commands
 
-### Frontend Development
+### Primary Development Workflow
 ```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Build frontend
-pnpm build
-
-# Preview production build
-pnpm serve
-
-# Code quality checks
-pnpm lint          # ESLint
-pnpm lint:fix      # Auto-fix ESLint issues
-pnpm format        # Format with Prettier
-pnpm format:check  # Check formatting
-pnpm typecheck     # TypeScript type checking
-pnpm check         # Run all checks (typecheck + lint + format:check)
-```
-
-### Tauri Development
-```bash
-# Run in development mode (builds Rust backend + starts frontend)
+# Full development environment (builds Rust backend + starts frontend)
 pnpm tauri dev
 
-# Build production application
-pnpm tauri build
+# Complete code quality pipeline (typecheck + lint + format check)
+pnpm check
 
-# Generate Tauri icons (after updating icon.png)
-pnpm tauri icon
+# Quick backend syntax validation
+cargo check
+```
 
-# Access Tauri CLI directly
-pnpm tauri [command]
+### Frontend Development
+```bash
+pnpm install           # Install dependencies
+pnpm dev              # Start Vite dev server only
+pnpm build            # Build frontend
+pnpm serve            # Preview production build
+
+# Individual quality checks
+pnpm typecheck        # TypeScript validation
+pnpm lint             # ESLint
+pnpm lint:fix         # Auto-fix ESLint issues  
+pnpm format           # Format with Prettier
+pnpm format:check     # Check formatting only
+```
+
+### Tauri Operations
+```bash
+pnpm tauri build      # Production application build
+pnpm tauri icon       # Regenerate icons (edit root icon.png only)
+pnpm tauri [command]  # Direct Tauri CLI access
 ```
 
 ### Rust Backend
 ```bash
 # From src-tauri directory:
-cargo build        # Development build
-cargo build --release  # Production build
-cargo test          # Run tests
-cargo check         # Quick syntax check
+cargo build --release  # Optimized production build
+cargo test             # Run unit tests (currently minimal)
 ```
 
-## Key Technologies
+## Key Technologies & Dependencies
 
-### Machine Learning & Analysis
-- **Gaussian Mixture Model**: Font clustering using linfa-clustering (replaced HDBSCAN)
-- **PaCMAP**: Pairwise Controlled Manifold Approximation for dimensionality reduction
-- **PCA**: Principal Component Analysis as fallback for dimensionality reduction
-- **Vector Search**: Similarity search using compressed font vectors
+### Machine Learning Stack
+- **linfa-clustering@0.7.1**: Gaussian Mixture Model implementation (replaced HDBSCAN)
+- **pacmap@0.2**: Pairwise Controlled Manifold Approximation for dimensionality reduction
+- **nalgebra@0.33**: Linear algebra operations for PCA fallback
+- **imageproc@0.24**: HOG feature extraction from rendered font images
 
 ### Font Processing
-- **font-kit**: Cross-platform font discovery and loading
-- **pathfinder-geometry**: Font glyph rendering and rasterization
-- **image/imageproc**: Image processing and manipulation
+- **font-kit@0.14**: Cross-platform system font discovery and loading
+- **pathfinder_geometry@0.5**: Font glyph rendering and rasterization to canvas
 
-### Session Management
-- Sessions use UUIDv7 for temporal ordering
-- Each session stores fonts, vectors, and clustering results
-- Automatic cleanup of old sessions
-- Session restoration through menu or dialog
+### Dual ndarray Version Management
+- **ndarray@0.16**: Primary version for pacmap compatibility
+- **ndarray_015**: Aliased version 0.15 for linfa-clustering compatibility
+- Both versions coexist using Cargo package aliases
 
-## Testing
+### UI Framework
+- **SolidJS@1.9.3**: Reactive frontend framework with signals-based state management
+- **Kobalte Core@0.13.10**: Accessible UI component primitives
+- **Tailwind CSS**: Utility-first styling with @corvu/resizable for split-pane layouts
 
-Currently no automated tests are configured. When adding tests:
-- Frontend: Consider Vitest for unit tests
-- Backend: Use `cargo test` for Rust unit tests
-- Integration: Test Tauri commands through the frontend
+## Critical Implementation Details
 
-## Important Notes
+### ML Algorithm Parameters (Tuned for Font Similarity)
 
-- All font processing is CPU-intensive and runs asynchronously
-- Sessions are stored in OS-specific directories using the `dirs` crate
-- The application supports system font discovery across platforms
-- Icon files are automatically generated - only edit the root `icon.png` file
+**PaCMAP Configuration:**
+- `learning_rate: 0.08` - Optimized for stable font positioning
+- `far_pair_ratio: 8.0` - Prevents outlier separation while preserving structure
+- `mid_near_ratio: 1.0` - Balanced mid-range relationship emphasis
 
-## Recent Technical Changes
+**Gaussian Mixture Model:**
+- `epsilon: 0.5` - Convergence tolerance for clustering
+- **Dynamic component estimation**: `min(8, max(2, samples * 0.1))`
+- Soft clustering with probability distributions
 
-### Clustering Algorithm
-- **Replaced HDBSCAN with Gaussian Mixture Model** using linfa-clustering@0.7.1
-- **Epsilon tolerance**: Set to 0.5 for clustering convergence
-- **Dependency management**: Uses `ndarray_015` alias to resolve version conflicts with pacmap
+**HOG Features:**
+- **9 orientations**, **8-pixel cells**, **2x2 blocks**
+- Standardized **512x96 canvas** with aspect ratio preservation
+- **~2000-4000 features** per font depending on complexity
 
-### PaCMAP Parameter Optimization
-Recent adjustments to improve outlier positioning and prevent extreme separation:
-- **learning_rate**: 0.1 (lower for stable positioning)
-- **far_pair_ratio**: 10.0 (higher to prevent outlier separation)
-- **mid_near_ratio**: 1.0 (balanced mid-range emphasis)
-- **num_iters**: (100, 400, 200) for better local structure preservation
+### Error Handling Strategy
 
-### Development Dependencies
-- **linfa**: 0.7 (machine learning framework)
-- **linfa-clustering**: 0.7.1 (Gaussian Mixture implementation)
-- **ndarray**: Dual versions (0.15 for linfa, 0.16 for pacmap) using package aliases
+- **Comprehensive FontError enum** covering all pipeline failure modes
+- **Graceful degradation** with progress tracking adjustment for failed fonts
+- **Silent font skipping** for non-renderable fonts (symbols, corrupted files)
+- **Resource exhaustion protection** with memory allocation limits
+
+### Data Persistence Format
+
+**Session Structure:**
+```
+OS Data Dir/FontCluster/Generated/{session_id}/
+├── config.json (session metadata)
+└── {safe_font_name}/
+    ├── config.json (font metadata: display_name, family, weight)
+    ├── sample.png (96pt rendered sample text)
+    ├── vector.csv (raw HOG feature vector)
+    └── compressed-vector.csv (x,y,cluster_id)
+```
+
+## Important Development Notes
+
+### Performance Considerations
+- **All font processing is CPU-intensive** and uses async spawn_blocking
+- **Memory usage scales with font count** - monitor for large font collections  
+- **Concurrent processing limits** prevent resource exhaustion (tuned for 16 cores)
+- **Image generation is the primary bottleneck** - focus optimization efforts here
+
+### Platform Compatibility
+- **Cross-platform font discovery** handled by font-kit SystemSource
+- **OS-specific session storage** using dirs crate standard locations
+- **Icon generation** automated - only edit root `icon.png` file
+
+### Architecture Patterns
+- **Functional programming style** in clustering module with pure functions
+- **Event-driven UI updates** using Tauri's event system
+- **Resource-based data loading** with automatic caching and invalidation
+- **Pipeline composition** with clear stage boundaries and error isolation
+
+### Current Limitations
+- **No automated testing** - test infrastructure needs implementation
+- **Limited error recovery** - pipeline restart requires manual intervention  
+- **No runtime parameter tuning** - ML parameters hardcoded for optimal defaults
+- **Single session processing** - no concurrent session support
+
+## Testing Strategy (Future Implementation)
+
+When implementing tests:
+- **Frontend**: Use Vitest for component and integration testing
+- **Backend**: Expand `cargo test` coverage for ML pipeline stages
+- **E2E**: Test complete pipeline with known font sets for reproducible results
+- **Performance**: Benchmark font processing throughput for regression detection
