@@ -296,28 +296,37 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                         r={
                           props.nearestFontConfig?.font_name ===
                           config.font_name
-                            ? 5
+                            ? 6
                             : 2
                         }
                         class='pointer-events-none fill-current'
                       />
-                      {props.nearestFontConfig?.font_name ===
-                        config.font_name && (
-                        <circle
-                          cx={0}
-                          cy={0}
-                          r='2.5'
-                          class='pointer-events-none fill-background'
-                        />
-                      )}
                       <circle
                         cx={0}
                         cy={0}
-                        r={40}
-                        fill='transparent'
-                        stroke-width={1.5}
-                        class={`mix-blend-screen transition-all ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'stroke-current duration-0' : 'stroke-transparent duration-1000'}`}
+                        r={
+                          props.nearestFontConfig?.font_name ===
+                          config.font_name
+                            ? 4
+                            : 0
+                        }
+                        class='pointer-events-none fill-background'
                       />
+                      <Show
+                        when={
+                          props.nearestFontConfig?.font_name ===
+                          config.font_name
+                        }
+                      >
+                        <circle
+                          cx={0}
+                          cy={0}
+                          r={40}
+                          fill='transparent'
+                          stroke-width={1.5}
+                          class={`transition-all ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'stroke-current duration-0' : 'stroke-transparent duration-1000'}`}
+                        />
+                      </Show>
                       {/* <circle
                         cx={0}
                         cy={0}
