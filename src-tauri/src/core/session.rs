@@ -20,7 +20,7 @@ static SESSION_MANAGER: RwLock<Option<SessionManager>> = RwLock::new(None);
 
 impl SessionManager {
     /// Create a new session with a UUIDv7 identifier
-    pub fn new() -> FontResult<Self> {
+    fn new() -> FontResult<Self> {
         Self::with_id(Uuid::now_v7().to_string())
     }
     
@@ -33,11 +33,6 @@ impl SessionManager {
     pub fn get_session_dir_for_id(session_id: &str) -> FontResult<PathBuf> {
         let temp_session = Self::with_id(session_id.to_string())?;
         Ok(temp_session.get_session_dir())
-    }
-    
-    /// Create a default session (fallback)
-    pub fn default() -> FontResult<Self> {
-        Self::with_id("default".to_string())
     }
     
     /// Create session with specific ID
@@ -77,8 +72,8 @@ impl SessionManager {
                 }
             }
             
-            // Fallback to default session if no valid sessions exist
-            Self::default().expect("Failed to create default session")
+            // Fallback to new session if no valid sessions exist
+            Self::new().expect("Failed to create new session")
         }
     }
     
@@ -305,16 +300,6 @@ impl SessionManager {
         Ok(sessions)
     }
     
-    /// Get current session info
-    pub fn get_current_session_info(&self) -> FontResult<Option<SessionConfig>> {
-        let session_dir = self.get_session_dir();
-        if session_dir.join("config.json").exists() {
-            Ok(Some(SessionConfig::from_session_dir(&session_dir)?))
-        } else {
-            Ok(None)
-        }
-    }
-
     /// Get session info by session ID
     pub fn get_session_info_by_id(session_id: &str) -> FontResult<Option<SessionConfig>> {
         let session_dir = Self::get_session_dir_for_id(session_id)?;

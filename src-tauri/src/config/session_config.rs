@@ -85,18 +85,6 @@ impl SessionData {
         Ok(config)
     }
 
-    /// Updates the progress flags and saves the config
-    pub fn update_progress(&mut self, session_dir: &Path, images: Option<bool>, vectors: Option<bool>, compressed: Option<bool>, clusters: Option<bool>,  clusters_amount: Option<usize>, samples_amount: Option<usize>) -> FontResult<()> {
-        if let Some(val) = images { self.has_images = val; }
-        if let Some(val) = vectors { self.has_vectors = val; }
-        if let Some(val) = compressed { self.has_compressed = val; }
-        if let Some(val) = clusters { self.has_clusters = val; }
-        if let Some(val) = clusters_amount { self.clusters_amount = val; }
-        if let Some(val) = samples_amount { self.samples_amount = val; }
-
-        self.save_to_dir(session_dir)
-    }
-
     /// Marks images as completed
     pub fn mark_images_completed(&mut self, session_dir: &Path) -> FontResult<()> {
         self.has_images = true;

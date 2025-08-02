@@ -95,10 +95,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet, 
             get_system_fonts, 
-            generate_font_images, 
-            vectorize_font_images, 
-            compress_vectors_to_2d,
-            cluster_compressed_vectors,
             get_compressed_vectors,
             get_fonts_config,
             get_font_config,
@@ -111,11 +107,7 @@ pub fn run() {
             get_session_info,
             cleanup_old_sessions,
             get_session_fonts,
-            run_jobs,
-            reset_progress,
-            increment_progress,
-            set_progress_denominator,
-            decrement_progress_denominator
+            run_jobs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
