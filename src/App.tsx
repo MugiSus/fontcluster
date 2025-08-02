@@ -25,7 +25,7 @@ function App() {
       <Resizable class='min-h-0 overflow-hidden border-t'>
         <ResizablePanel
           class='flex min-h-0 min-w-0 flex-col gap-3 p-4 pt-2'
-          initialSize={0.25}
+          initialSize={0.3}
           minSize={0.25}
           maxSize={0.75}
         >

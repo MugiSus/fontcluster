@@ -318,6 +318,13 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                         stroke-width={1.5}
                         class={`transition-all ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'stroke-current duration-0' : 'stroke-transparent duration-1000'}`}
                       />
+                      {/* <circle
+                        cx={0}
+                        cy={0}
+                        r={32}
+                        fill='currentColor'
+                        opacity={0.01}
+                      /> */}
                       <circle
                         cx={0}
                         cy={0}
