@@ -10,7 +10,7 @@ use tauri::{AppHandle, Emitter};
 #[tauri::command]
 pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handle: AppHandle) -> Result<String, String> {
     async {
-        let processing_text = with_text_or_default("A quick brown fox jumps over the lazy dog")(text);
+        let processing_text = with_text_or_default("Hamburgevons")(text);
         let font_weights = weights.unwrap_or_else(|| vec![400]);
         println!("🚀 Starting complete font processing pipeline with text: '{}' and weights: {:?}", processing_text, font_weights);
 

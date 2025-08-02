@@ -84,7 +84,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       .map(Number) as FontWeight[];
 
     props.onSubmit(
-      text || 'A quick brown fox jumps over the lazy dog',
+      text || 'Hamburgevons',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
     );
 
@@ -105,7 +105,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           name='preview-text'
           id='preview-text'
           value={props.sampleText}
-          placeholder='A quick brown fox jumps over the lazy dog'
+          placeholder='Hamburgevons'
         />
       </TextField>
       <div class='flex w-full flex-col gap-2'>

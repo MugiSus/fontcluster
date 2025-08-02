@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 // Constants
-pub const PREVIEW_TEXT: &str = "A quick brown fox jumps over the lazy dog";
+pub const PREVIEW_TEXT: &str = "Hamburgevons";
 pub const FONT_SIZE: f32 = 96.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
