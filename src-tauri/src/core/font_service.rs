@@ -60,13 +60,6 @@ impl FontService {
         Ok(SessionManager::global().get_session_dir())
     }
     
-    
-    pub fn read_compressed_vectors() -> FontResult<String> {
-        let session_manager = SessionManager::global();
-        let session_dir = session_manager.get_session_dir();
-        Self::read_compressed_vectors_for_session(session_dir)
-    }
-    
     fn load_font_config_from_path(config_path: &PathBuf) -> FontResult<Option<crate::config::FontConfig>> {
         use std::fs;
         use serde_json;

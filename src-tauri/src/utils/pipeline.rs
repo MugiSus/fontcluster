@@ -1,11 +1,7 @@
 //! Pipeline composition utilities for chaining operations
 
 use crate::error::FontResult;
-use tauri::AppHandle;
 use std::path::PathBuf;
-
-/// Represents a processing step in a pipeline
-pub type ProcessingStep<T, U> = Box<dyn FnOnce(T) -> FontResult<U>>;
 
 /// Pipeline builder for chaining operations
 pub struct Pipeline<T> {
@@ -18,11 +14,6 @@ impl<T> Pipeline<T> {
         Self { 
             value: Ok(value) 
         }
-    }
-    
-    /// Creates a pipeline from a Result
-    pub fn from_result(result: FontResult<T>) -> Self {
-        Self { value: result }
     }
     
     /// Chains an operation that can fail
@@ -45,13 +36,6 @@ impl<T> Pipeline<T> {
         Pipeline { value: result }
     }
     
-    /// Maps a pure function over the pipeline value
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Pipeline<U> {
-        Pipeline {
-            value: self.value.map(f)
-        }
-    }
-    
     /// Executes a side effect without changing the value
     pub fn inspect(self, f: impl FnOnce(&T)) -> Pipeline<T> {
         if let Ok(ref value) = self.value {
@@ -63,39 +47,6 @@ impl<T> Pipeline<T> {
     /// Consumes the pipeline and returns the final result
     pub fn execute(self) -> FontResult<T> {
         self.value
-    }
-}
-
-/// Helper for creating font processing pipelines with events
-pub struct FontPipeline {
-    app_handle: AppHandle,
-}
-
-impl FontPipeline {
-    pub fn new(app_handle: AppHandle) -> Self {
-        Self { app_handle }
-    }
-    
-    /// Creates a processing step with automatic event emission
-    pub fn step<T, U>(
-        &self,
-        step_name: &str,
-        event_name: &str,
-        operation: impl FnOnce(T) -> FontResult<U>,
-    ) -> impl FnOnce(T) -> FontResult<U> {
-        let app_handle = self.app_handle.clone();
-        let step_name = step_name.to_string();
-        let event_name = event_name.to_string();
-        
-        move |input| {
-            println!("🔄 Executing step: {}", step_name);
-            let result = operation(input)?;
-            
-            crate::utils::emit_completion(&app_handle, &event_name)?;
-            println!("✅ Completed step: {}", step_name);
-            
-            Ok(result)
-        }
     }
 }
 

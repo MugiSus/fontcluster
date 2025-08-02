@@ -18,13 +18,6 @@ pub struct FontRenderer<'a> {
 }
 
 impl<'a> FontRenderer<'a> {
-    pub fn new(config: &'a FontImageConfig) -> Self {
-        Self {
-            config,
-            source: Arc::new(SystemSource::new()),
-        }
-    }
-    
     pub fn with_shared_source(config: &'a FontImageConfig, source: Arc<SystemSource>) -> Self {
         Self {
             config,
