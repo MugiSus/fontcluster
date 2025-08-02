@@ -316,7 +316,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                         r={40}
                         fill='transparent'
                         stroke-width={1.5}
-                        class={`transition-all ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'stroke-current duration-0' : 'stroke-transparent duration-1000'}`}
+                        class={`mix-blend-screen transition-all ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'stroke-current duration-0' : 'stroke-transparent duration-1000'}`}
                       />
                       {/* <circle
                         cx={0}
