@@ -68,9 +68,15 @@ impl<'a> FontRenderer<'a> {
         let scale = self.config.font_size / metrics.units_per_em as f32;
         
         // Pre-collect character glyph IDs to reduce repeated font calls
-        let char_glyphs: Vec<_> = self.config.text.chars()
-            .filter_map(|ch| font.glyph_for_char(ch).map(|glyph_id| (ch, glyph_id)))
-            .collect();
+        // Fail immediately if any character doesn't have a glyph
+        let mut char_glyphs = Vec::new();
+        for ch in self.config.text.chars() {
+            if let Some(glyph_id) = font.glyph_for_char(ch) {
+                char_glyphs.push((ch, glyph_id));
+            } else {
+                return Err(FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)));
+            }
+        }
 
         if char_glyphs.is_empty() {
             return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
