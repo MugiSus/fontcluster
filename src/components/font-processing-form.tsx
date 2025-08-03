@@ -124,7 +124,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       >
         {processingStatus() === 'generating' ? (
           <>
-            Generating fonts image... (
+            Generating images... (
             {Math.trunc(
               (progressLabelNumerator() / progressLabelDenominator()) * 100,
             ) || 0}
@@ -133,7 +133,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : processingStatus() === 'vectorizing' ? (
           <>
-            Vectorizing Images... (
+            Vectorizing images... (
             {Math.trunc(
               (progressLabelNumerator() / progressLabelDenominator()) * 100,
             ) || 0}
@@ -142,7 +142,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : processingStatus() === 'compressing' ? (
           <>
-            Compressing Vectors...
+            Compressing vectors...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : processingStatus() === 'clustering' ? (
