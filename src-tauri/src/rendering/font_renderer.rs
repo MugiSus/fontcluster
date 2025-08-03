@@ -67,24 +67,14 @@ impl<'a> FontRenderer<'a> {
         let metrics = font.metrics();
         let scale = self.config.font_size / metrics.units_per_em as f32;
         
-        // Pre-collect character glyph IDs to reduce repeated font calls
-        // Fail immediately if any character doesn't have a glyph
-        let mut char_glyphs = Vec::new();
-        for ch in self.config.text.chars() {
-            if let Some(glyph_id) = font.glyph_for_char(ch) {
-                char_glyphs.push((ch, glyph_id));
-            } else {
-                return Err(FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)));
-            }
-        }
-
-        if char_glyphs.is_empty() {
-            return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
-        }
-
-        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = char_glyphs
-            .into_iter()
-            .map(|(_ch, glyph_id)| {
+        // Single-pass character processing: glyph lookup + metrics calculation in one iteration
+        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = self.config.text.chars()
+            .map(|ch| {
+                // Get glyph ID or fail immediately
+                let glyph_id = font.glyph_for_char(ch)
+                    .ok_or_else(|| FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)))?;
+                
+                // Calculate metrics immediately
                 let advance = font.advance(glyph_id)
                     .map_err(|_| FontError::GlyphProcessing("Failed to get glyph advance".to_string()))?;
                 
@@ -105,6 +95,10 @@ impl<'a> FontRenderer<'a> {
             .collect();
         
         let glyph_data = glyph_results?;
+        
+        if glyph_data.is_empty() {
+            return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
+        }
         
         let (min_y, max_y) = glyph_data.iter()
             .fold((f32::MAX, f32::MIN), |(min, max), (_, min_y, max_y)| {
