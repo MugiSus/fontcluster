@@ -78,8 +78,7 @@ impl FontImageGenerator {
                         
                         let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
                         if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                            // Skip silently - renderer handles logging
-                            // Decrement denominator for failed tasks to keep progress accurate
+                            // Decrement denominator for failed tasks
                             progress_events::decrement_progress_denominator(&app_handle_clone);
                         } else {
                             println!("Successfully generated image for font: {} weight: {}", family_name, weight);
