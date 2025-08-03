@@ -119,7 +119,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       <Button
         type='submit'
         disabled={isProcessing()}
-        variant='outline'
+        variant='default'
         class='relative mt-1 flex items-center gap-2 pb-1.5'
       >
         {processingStatus() === 'generating' ? (
