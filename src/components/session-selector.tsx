@@ -192,10 +192,10 @@ interface SessionItemProps {
 
 function SessionItem(props: SessionItemProps) {
   return (
-    <div class='p-4 transition-colors hover:bg-muted/50'>
+    <div class='border-b p-4 transition-colors hover:bg-muted/50'>
       <div class='flex items-center justify-between gap-2'>
         <div class='flex flex-col'>
-          <div class='mb-2 flex items-center gap-2'>
+          <div class='mb-1.5 flex items-center gap-2'>
             <Badge variant={props.badge.variant} round>
               {props.badge.text}
             </Badge>
