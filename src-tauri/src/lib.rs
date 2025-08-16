@@ -105,7 +105,7 @@ pub fn run() {
             get_available_sessions,
             get_latest_session_id,
             get_session_info,
-            cleanup_old_sessions,
+            cleanup_old_sessions_by_count,
             get_session_fonts,
             delete_session,
             run_jobs

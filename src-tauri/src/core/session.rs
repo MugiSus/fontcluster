@@ -219,44 +219,67 @@ impl SessionManager {
             .collect())
     }
     
-    /// Clean up old sessions (optional utility method)
-    pub fn cleanup_old_sessions(&self, max_age_days: u64) -> FontResult<()> {
+    /// Clean up old sessions keeping only the specified number of most recent sessions
+    pub fn cleanup_old_sessions(&self, keep_count: usize) -> FontResult<Vec<String>> {
         let generated_dir = self.base_dir.join("Generated");
         
         if !generated_dir.exists() {
-            return Ok(());
+            return Ok(Vec::new());
         }
         
-        let cutoff_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() - (max_age_days * 24 * 60 * 60);
+        let mut session_ids = Vec::new();
         
+        // Collect all valid session IDs
         for entry in fs::read_dir(&generated_dir)? {
             let entry = entry?;
             let path = entry.path();
             
             if path.is_dir() {
                 if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                    // Skip default directory from cleanup
-                    if dir_name == "default" {
-                        continue;
-                    }
-                    
-                    if let Ok(uuid) = Uuid::parse_str(dir_name) {
-                        // Extract timestamp from UUIDv7
-                        let timestamp = uuid.get_timestamp().unwrap().to_unix();
-                        
-                        if timestamp.0 < cutoff_time {
-                            println!("Cleaning up old session: {}", dir_name);
-                            fs::remove_dir_all(&path)?;
+                    // Skip default directory and only consider valid UUIDs with config.json
+                    if dir_name != "default" && Uuid::parse_str(dir_name).is_ok() {
+                        if path.join("config.json").exists() {
+                            session_ids.push(dir_name.to_string());
                         }
                     }
                 }
             }
         }
         
-        Ok(())
+        // Sort by UUIDv7 timestamp (newest first)
+        session_ids.sort_by(|a, b| {
+            let uuid_a = Uuid::parse_str(a).unwrap();
+            let uuid_b = Uuid::parse_str(b).unwrap();
+            uuid_b.cmp(&uuid_a) // Reverse order for newest first
+        });
+        
+        // If we have fewer sessions than keep_count, nothing to delete
+        if session_ids.len() <= keep_count {
+            return Ok(Vec::new());
+        }
+        
+        // Get sessions to delete (everything after keep_count)
+        let sessions_to_delete = session_ids.split_off(keep_count);
+        let mut deleted_sessions = Vec::new();
+        
+        // Delete old sessions
+        for session_id in &sessions_to_delete {
+            let session_dir = generated_dir.join(session_id);
+            
+            // Check if this is the current active session
+            let current_session = Self::global();
+            if current_session.get_session_id() == session_id {
+                // Clear the global session if deleting the current one
+                let mut session_guard = SESSION_MANAGER.write().unwrap();
+                *session_guard = None;
+            }
+            
+            fs::remove_dir_all(&session_dir)?;
+            println!("Cleaned up old session: {}", session_id);
+            deleted_sessions.push(session_id.clone());
+        }
+        
+        Ok(deleted_sessions)
     }
     
     /// Get all available sessions sorted by date (newest first)

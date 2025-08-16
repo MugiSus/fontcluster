@@ -42,15 +42,27 @@ pub fn create_new_session() -> Result<String, String> {
     .map_err(|e| format!("Failed to create new session: {}", e))
 }
 
-/// Clean up old sessions
+/// Clean up old sessions by count
 /// 
-/// Removes session directories older than the specified number of days.
-/// This helps manage disk space by removing stale session data.
+/// Keeps only the specified number of most recent sessions and deletes the rest.
+/// Returns a list of deleted session IDs.
 #[tauri::command]
-pub fn cleanup_old_sessions(max_age_days: u64) -> Result<String, String> {
+pub fn cleanup_old_sessions_by_count(keep_count: usize) -> Result<String, String> {
     || -> FontResult<String> {
-        SessionManager::global().cleanup_old_sessions(max_age_days)?;
-        Ok(format!("Successfully cleaned up sessions older than {} days", max_age_days))
+        let deleted_sessions = SessionManager::global().cleanup_old_sessions(keep_count)?;
+        let result = if deleted_sessions.is_empty() {
+            format!("No sessions to clean up (total sessions <= {})", keep_count)
+        } else {
+            format!("Successfully deleted {} old sessions", deleted_sessions.len())
+        };
+        
+        serde_json::to_string(&serde_json::json!({
+            "message": result,
+            "deleted_sessions": deleted_sessions
+        })).map_err(|e| crate::error::FontError::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("Failed to serialize cleanup result: {}", e)
+        )))
     }()
     .map_err(|e| format!("Failed to clean up old sessions: {}", e))
 }
