@@ -207,41 +207,38 @@ export function SessionSelector(props: SessionSelectorProps) {
                         </div>
                         <div class='flex gap-2'>
                           <Button
-                            size='sm'
+                            size={
+                              confirmDeleteSession() === session.session_id
+                                ? 'default'
+                                : 'icon'
+                            }
                             variant='outline'
                             onClick={() =>
                               handleDeleteClick(session.session_id)
                             }
                             disabled={deletingSession() === session.session_id}
                           >
-                            <Show
-                              when={
-                                confirmDeleteSession() === session.session_id
-                              }
-                              fallback={<Trash2Icon class='size-4' />}
-                            >
-                              Confirm?
-                            </Show>
+                            {confirmDeleteSession() === session.session_id ? (
+                              'Delete?'
+                            ) : (
+                              <Trash2Icon class='size-4' />
+                            )}
                           </Button>
-                          <Show
-                            when={session.session_id === props.currentSessionId}
-                            fallback={
-                              <Button
-                                size='sm'
-                                onClick={() =>
-                                  selectSession(session.session_id)
-                                }
-                                disabled={isRestoring()}
-                              >
-                                Restore
-                                <ArchiveRestoreIcon class='size-4' />
-                              </Button>
+                          <Button
+                            size='icon'
+                            onClick={() => selectSession(session.session_id)}
+                            disabled={
+                              session.session_id === props.currentSessionId ||
+                              isRestoring()
+                            }
+                            variant={
+                              session.session_id === props.currentSessionId
+                                ? 'outline'
+                                : 'default'
                             }
                           >
-                            <Button size='sm' disabled variant='outline'>
-                              Current
-                            </Button>
-                          </Show>
+                            <ArchiveRestoreIcon class='size-4' />
+                          </Button>
                         </div>
                       </div>
                     </div>
