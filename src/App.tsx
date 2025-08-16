@@ -71,7 +71,8 @@ function App() {
                 ).sort(
                   (a, b) =>
                     (a.k < 0 ? Infinity : a.k) - (b.k < 0 ? Infinity : b.k) ||
-                    a.config.font_name.localeCompare(b.config.font_name),
+                    a.config.family_name.localeCompare(b.config.family_name) ||
+                    a.config.weight - b.config.weight,
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
                 nearestFontConfig={appSignal.nearestFontConfig()}
