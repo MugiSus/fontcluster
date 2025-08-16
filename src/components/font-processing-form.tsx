@@ -95,10 +95,12 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex w-full flex-col items-stretch gap-2'
+      class='flex w-full flex-col items-stretch gap-1.5'
     >
-      <TextField class='grid w-full items-center gap-2 pt-1'>
-        <TextFieldLabel for='preview-text'>Preview Text</TextFieldLabel>
+      <TextField class='grid w-full items-center gap-1 pt-1'>
+        <TextFieldLabel for='preview-text' class='text-xs'>
+          Preview Text
+        </TextFieldLabel>
         <TextFieldInput
           type='text'
           name='preview-text'

@@ -23,9 +23,9 @@ function App() {
         currentSessionId={appSignal.currentSessionId() || ''}
         onSessionSelect={appSignal.setCurrentSessionId}
       />
-      <Resizable class='min-h-0 overflow-hidden border-t'>
+      <Resizable class='min-h-0 overflow-hidden p-3 pt-0'>
         <ResizablePanel
-          class='flex min-h-0 min-w-0 flex-col gap-3 p-4 pt-2'
+          class='flex min-h-0 min-w-0 flex-col gap-3'
           initialSize={0.3}
           minSize={0.25}
           maxSize={0.75}
@@ -82,10 +82,10 @@ function App() {
           </Tabs>
         </ResizablePanel>
 
-        <ResizableHandle withHandle />
+        <ResizableHandle withHandle class='bg-transparent px-1.5' />
 
         <ResizablePanel
-          class='flex min-h-0 min-w-0 overflow-hidden p-4'
+          class='flex min-h-0 min-w-0 overflow-hidden'
           initialSize={0.75}
         >
           <FontClusterVisualization
