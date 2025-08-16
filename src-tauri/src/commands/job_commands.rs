@@ -1,6 +1,6 @@
 use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer, SessionManager};
 use crate::config::{FONT_SIZE, SessionData};
-use crate::utils::{Pipeline, with_text_or_default, with_progress_events_async};
+use crate::utils::{Pipeline, with_progress_events_async};
 use tauri::{AppHandle, Emitter};
 
 /// Single command to run all font processing jobs sequentially
@@ -10,7 +10,7 @@ use tauri::{AppHandle, Emitter};
 #[tauri::command]
 pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handle: AppHandle) -> Result<String, String> {
     async {
-        let processing_text = with_text_or_default("Hamburgevons")(text);
+        let processing_text = text.unwrap_or_else(|| "Hamburgevons".to_string());
         let font_weights = weights.unwrap_or_else(|| vec![400]);
         println!("🚀 Starting complete font processing pipeline with text: '{}' and weights: {:?}", processing_text, font_weights);
 

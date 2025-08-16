@@ -50,12 +50,3 @@ impl<T> Pipeline<T> {
     }
 }
 
-/// Creates a text processing function that uses provided text or default
-pub fn with_text_or_default(default_text: &str) -> impl Fn(Option<String>) -> String + '_ {
-    move |text| text.unwrap_or_else(|| default_text.to_string())
-}
-
-/// Creates a path formatter function
-pub fn format_completion_message(operation_name: &str) -> impl Fn(PathBuf) -> String + '_ {
-    move |path| format!("{} completed in: {}", operation_name, path.display())
-}
