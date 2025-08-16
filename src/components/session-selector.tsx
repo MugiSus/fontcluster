@@ -132,7 +132,7 @@ export function SessionSelector(props: SessionSelectorProps) {
 
   return (
     <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='h-[80vh] max-w-3xl'>
+      <DialogContent class='h-[80vh] max-w-3xl py-5'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
@@ -255,22 +255,20 @@ interface SessionActionsProps {
 function SessionActions(props: SessionActionsProps) {
   return (
     <div class='flex gap-2'>
-      {!props.isCurrentSession && (
-        <Button
-          class='text-destructive hover:bg-destructive/10 hover:text-destructive'
-          size={props.isConfirmingDelete ? 'default' : 'icon'}
-          variant='ghost'
-          onClick={props.onDeleteClick}
-          disabled={props.isDeletingSession}
-        >
-          {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
-        </Button>
-      )}
+      <Button
+        class='text-destructive hover:bg-destructive/10 hover:text-destructive'
+        size={props.isConfirmingDelete ? 'default' : 'icon'}
+        variant='ghost'
+        onClick={props.onDeleteClick}
+        disabled={props.isDeletingSession}
+      >
+        {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
+      </Button>
       <Button
         size='icon'
         onClick={props.onSelectSession}
         disabled={props.isCurrentSession || props.isRestoring}
-        variant='default'
+        variant='outline'
       >
         <ArchiveRestoreIcon class='size-4' />
       </Button>
