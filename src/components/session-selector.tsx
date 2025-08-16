@@ -207,8 +207,8 @@ function SessionItem(props: SessionItemProps) {
               {props.session.samples_amount}
             </div>
           </div>
-          <div class='mb-1 truncate text-sm font-medium'>
-            "{props.session.preview_text}"
+          <div class='mb-1 truncate font-medium'>
+            {props.session.preview_text}
           </div>
           <div class='font-mono text-xs text-muted-foreground'>
             {props.session.session_id}
@@ -254,7 +254,7 @@ interface SessionActionsProps {
 
 function SessionActions(props: SessionActionsProps) {
   return (
-    <div class='flex gap-2'>
+    <div class='flex gap-1'>
       <Button
         class='text-destructive hover:bg-destructive/10 hover:text-destructive'
         size={props.isConfirmingDelete ? 'default' : 'icon'}
