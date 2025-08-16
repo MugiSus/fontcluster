@@ -52,7 +52,7 @@ function App() {
                   appSignal.compressedVectors() || {},
                 ).sort(
                   (a, b) =>
-                    a.config.font_name.localeCompare(b.config.font_name) ||
+                    a.config.family_name.localeCompare(b.config.family_name) ||
                     a.config.weight - b.config.weight,
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}

@@ -344,13 +344,16 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                         data-font-config={JSON.stringify(config)}
                         data-font-select-area
                       />
-                      <Show when={zoomFactor < 0.4}>
+                      <Show when={zoomFactor < 0.25}>
                         <text
                           x={0}
                           y={-8}
                           opacity={
                             1 -
-                            Math.min(Math.max((zoomFactor - 0.2) / 0.2, 0), 1)
+                            Math.min(
+                              Math.max((zoomFactor - 0.125) / 0.125, 0),
+                              1,
+                            )
                           }
                           class={`pointer-events-none select-none fill-foreground text-xs ${
                             props.nearestFontConfig?.font_name ===
