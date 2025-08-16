@@ -294,10 +294,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                         cx={0}
                         cy={0}
                         r={
-                          props.nearestFontConfig?.font_name ===
-                          config.font_name
-                            ? 6
-                            : 2
+                          props.nearestFontConfig?.family_name ===
+                          config.family_name
+                            ? 4
+                            : 1.5
                         }
                         class='pointer-events-none fill-current'
                       />
@@ -305,9 +305,11 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                         cx={0}
                         cy={0}
                         r={
-                          props.nearestFontConfig?.font_name ===
-                          config.font_name
-                            ? 4
+                          props.nearestFontConfig?.family_name ===
+                            config.family_name &&
+                          props.nearestFontConfig?.font_name !==
+                            config.font_name
+                            ? 0
                             : 0
                         }
                         class='pointer-events-none fill-background'

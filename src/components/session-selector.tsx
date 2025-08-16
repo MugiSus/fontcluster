@@ -1,4 +1,4 @@
-import { createSignal, createResource, For, Show, onMount } from 'solid-js';
+import { createSignal, createResource, For, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
@@ -10,13 +10,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { ArchiveRestoreIcon, RefreshCwIcon, Trash2Icon } from 'lucide-solid';
+import { ArchiveRestoreIcon, Trash2Icon } from 'lucide-solid';
 import { type SessionConfig } from '../types/font';
+
+// Constants
+const CLUSTER_COLORS = [
+  'bg-blue-500',
+  'bg-red-500',
+  'bg-yellow-500',
+  'bg-green-500',
+  'bg-purple-500',
+  'bg-orange-500',
+  'bg-teal-500',
+  'bg-indigo-500',
+  'bg-cyan-500',
+  'bg-fuchsia-500',
+] as const;
+
+const CONFIRMATION_TIMEOUT = 3000;
+const MAX_DISPLAYED_CLUSTERS = 10;
 
 interface SessionSelectorProps {
   currentSessionId: string;
   onSessionSelect: (sessionId: string) => void;
 }
+
+type CompletionBadge = {
+  text: 'Complete' | 'Compressed' | 'Vectorized' | 'Rasterized' | 'Empty';
+  variant: 'default' | 'outline' | 'error';
+};
 
 export function SessionSelector(props: SessionSelectorProps) {
   const [open, setOpen] = createSignal(false);
@@ -50,10 +72,22 @@ export function SessionSelector(props: SessionSelectorProps) {
     },
   );
 
+  // Helper functions
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleString();
+
+  const getCompletionBadge = (session: SessionConfig): CompletionBadge => {
+    if (session.has_clusters) return { text: 'Complete', variant: 'default' };
+    if (session.has_compressed)
+      return { text: 'Compressed', variant: 'outline' };
+    if (session.has_vectors) return { text: 'Vectorized', variant: 'outline' };
+    if (session.has_images) return { text: 'Rasterized', variant: 'outline' };
+    return { text: 'Empty', variant: 'error' };
+  };
+
+  // Event handlers
   const selectSession = (sessionId: string) => {
     setIsRestoring(true);
     try {
-      // Simply update the current session ID in the frontend
       props.onSessionSelect(sessionId);
       setOpen(false);
     } catch (error) {
@@ -70,9 +104,7 @@ export function SessionSelector(props: SessionSelectorProps) {
         sessionUuid: sessionId,
       });
       if (result) {
-        // Refresh the sessions list after successful deletion
         refetch();
-        // Clear confirmation state
         setConfirmDeleteSession(null);
         console.log('Session deleted successfully:', sessionId);
       } else {
@@ -87,182 +119,161 @@ export function SessionSelector(props: SessionSelectorProps) {
 
   const handleDeleteClick = (sessionId: string) => {
     if (confirmDeleteSession() === sessionId) {
-      // If already confirmed, proceed with deletion
       deleteSession(sessionId);
     } else {
-      // Set confirmation state
       setConfirmDeleteSession(sessionId);
-      // Auto-clear confirmation after 3 seconds
       setTimeout(() => {
         if (confirmDeleteSession() === sessionId) {
           setConfirmDeleteSession(null);
         }
-      }, 3000);
+      }, CONFIRMATION_TIMEOUT);
     }
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
-  };
-
-  const getCompletionBadge = (session: SessionConfig) => {
-    if (session.has_clusters)
-      return { text: 'Complete', variant: 'default' as const };
-    if (session.has_compressed)
-      return { text: 'Compressed', variant: 'outline' as const };
-    if (session.has_vectors)
-      return { text: 'Vectorized', variant: 'outline' as const };
-    if (session.has_images)
-      return { text: 'Rasterized', variant: 'outline' as const };
-    return { text: 'Empty', variant: 'error' as const };
   };
 
   return (
     <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='h-[75vh] max-w-2xl'>
+      <DialogContent class='h-[80vh] max-w-3xl'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
-            Select a previous session to restore.
+            Select a previous session to restore. You can continue processing
+            from where you left off.
           </DialogDescription>
         </DialogHeader>
 
-        <div class='flex max-h-[50vh] flex-col gap-2 overflow-y-auto'>
-          <Show
-            when={!availableSessions.loading && availableSessions()}
-            fallback={
-              <div class='flex justify-center py-8'>
-                <div class='text-sm text-muted-foreground'>
-                  Loading sessions...
-                </div>
-              </div>
-            }
-          >
-            <Show
-              when={availableSessions()}
-              fallback={
-                <div class='py-8 text-center'>
-                  <div class='text-sm text-muted-foreground'>
-                    No previous sessions found
-                  </div>
-                </div>
-              }
-            >
-              <For each={availableSessions()}>
-                {(session) => {
-                  const badge = getCompletionBadge(session);
-                  return (
-                    <div class='rounded-lg border p-4 transition-colors hover:bg-muted/50'>
-                      <div class='flex items-start justify-between gap-2'>
-                        <div class='min-w-0 flex-1'>
-                          <div class='mb-2 flex items-center gap-2'>
-                            <Badge
-                              variant={badge.variant}
-                              round
-                              class='px-2 py-0'
-                            >
-                              {badge.text}
-                            </Badge>
-                            <time class='text-xs tabular-nums text-muted-foreground'>
-                              {formatDate(session.date)}
-                            </time>
-                            <div class='flex gap-1.5'>
-                              <For
-                                each={new Array(
-                                  Math.min(session.clusters_amount, 10),
-                                )
-                                  .fill(0)
-                                  .map((_, i) => i)}
-                              >
-                                {(i) => (
-                                  <div
-                                    class={`size-2 rounded-full ${
-                                      [
-                                        'bg-blue-500',
-                                        'bg-red-500',
-                                        'bg-yellow-500',
-                                        'bg-green-500',
-                                        'bg-purple-500',
-                                        'bg-orange-500',
-                                        'bg-teal-500',
-                                        'bg-indigo-500',
-                                        'bg-cyan-500',
-                                        'bg-fuchsia-500',
-                                      ][i]
-                                    }`}
-                                  />
-                                )}
-                              </For>
-                            </div>
-                            <div class='text-xs text-muted-foreground'>
-                              {session.samples_amount}
-                            </div>
-                          </div>
-                          <div class='mb-1 truncate text-sm font-medium'>
-                            "{session.preview_text}"
-                          </div>
-                          <div class='font-mono text-xs text-muted-foreground'>
-                            {session.session_id}
-                          </div>
-                        </div>
-                        <div class='flex gap-2'>
-                          <Button
-                            size={
-                              confirmDeleteSession() === session.session_id
-                                ? 'default'
-                                : 'icon'
-                            }
-                            variant='outline'
-                            onClick={() =>
-                              handleDeleteClick(session.session_id)
-                            }
-                            disabled={deletingSession() === session.session_id}
-                          >
-                            {confirmDeleteSession() === session.session_id ? (
-                              'Delete?'
-                            ) : (
-                              <Trash2Icon class='size-4' />
-                            )}
-                          </Button>
-                          <Button
-                            size='icon'
-                            onClick={() => selectSession(session.session_id)}
-                            disabled={
-                              session.session_id === props.currentSessionId ||
-                              isRestoring()
-                            }
-                            variant={
-                              session.session_id === props.currentSessionId
-                                ? 'outline'
-                                : 'default'
-                            }
-                          >
-                            <ArchiveRestoreIcon class='size-4' />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }}
-              </For>
-            </Show>
-          </Show>
-        </div>
+        <div class='flex flex-col overflow-y-auto rounded border'>
+          <For each={availableSessions()}>
+            {(session) => {
+              const badge = getCompletionBadge(session);
+              const clusterCount = Math.min(
+                session.clusters_amount,
+                MAX_DISPLAYED_CLUSTERS,
+              );
 
-        <div class='flex justify-end gap-2'>
-          <Button variant='outline' onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant='outline'
-            onClick={() => refetch()}
-            disabled={availableSessions.loading}
-          >
-            Refresh
-            <RefreshCwIcon class='size-4' />
-          </Button>
+              return (
+                <SessionItem
+                  session={session}
+                  badge={badge}
+                  clusterCount={clusterCount}
+                  formatDate={formatDate}
+                  isCurrentSession={
+                    session.session_id === props.currentSessionId
+                  }
+                  isConfirmingDelete={
+                    confirmDeleteSession() === session.session_id
+                  }
+                  isDeletingSession={deletingSession() === session.session_id}
+                  isRestoring={isRestoring()}
+                  onDeleteClick={() => handleDeleteClick(session.session_id)}
+                  onSelectSession={() => selectSession(session.session_id)}
+                />
+              );
+            }}
+          </For>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Extracted SessionItem component
+interface SessionItemProps {
+  session: SessionConfig;
+  badge: CompletionBadge;
+  clusterCount: number;
+  formatDate: (dateStr: string) => string;
+  isCurrentSession: boolean;
+  isConfirmingDelete: boolean;
+  isDeletingSession: boolean;
+  isRestoring: boolean;
+  onDeleteClick: () => void;
+  onSelectSession: () => void;
+}
+
+function SessionItem(props: SessionItemProps) {
+  return (
+    <div class='p-4 transition-colors hover:bg-muted/50'>
+      <div class='flex items-center justify-between gap-2'>
+        <div class='flex flex-col'>
+          <div class='mb-2 flex items-center gap-2'>
+            <Badge variant={props.badge.variant} round>
+              {props.badge.text}
+            </Badge>
+            <time class='text-xs tabular-nums text-muted-foreground'>
+              {props.formatDate(props.session.date)}
+            </time>
+            <ClusterIndicators count={props.clusterCount} />
+            <div class='text-xs text-muted-foreground'>
+              {props.session.samples_amount}
+            </div>
+          </div>
+          <div class='mb-1 truncate text-sm font-medium'>
+            "{props.session.preview_text}"
+          </div>
+          <div class='font-mono text-xs text-muted-foreground'>
+            {props.session.session_id}
+          </div>
+        </div>
+        <SessionActions
+          isCurrentSession={props.isCurrentSession}
+          isConfirmingDelete={props.isConfirmingDelete}
+          isDeletingSession={props.isDeletingSession}
+          isRestoring={props.isRestoring}
+          onDeleteClick={props.onDeleteClick}
+          onSelectSession={props.onSelectSession}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Cluster color indicators component
+interface ClusterIndicatorsProps {
+  count: number;
+}
+
+function ClusterIndicators(props: ClusterIndicatorsProps) {
+  return (
+    <div class='flex gap-1.5'>
+      <For each={Array.from({ length: props.count }, (_, i) => i)}>
+        {(i) => <div class={`size-2 rounded-full ${CLUSTER_COLORS[i]}`} />}
+      </For>
+    </div>
+  );
+}
+
+// Session action buttons component
+interface SessionActionsProps {
+  isCurrentSession: boolean;
+  isConfirmingDelete: boolean;
+  isDeletingSession: boolean;
+  isRestoring: boolean;
+  onDeleteClick: () => void;
+  onSelectSession: () => void;
+}
+
+function SessionActions(props: SessionActionsProps) {
+  return (
+    <div class='flex gap-2'>
+      {!props.isCurrentSession && (
+        <Button
+          class='text-destructive hover:bg-destructive/10 hover:text-destructive'
+          size={props.isConfirmingDelete ? 'default' : 'icon'}
+          variant='ghost'
+          onClick={props.onDeleteClick}
+          disabled={props.isDeletingSession}
+        >
+          {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
+        </Button>
+      )}
+      <Button
+        size='icon'
+        onClick={props.onSelectSession}
+        disabled={props.isCurrentSession || props.isRestoring}
+        variant='default'
+      >
+        <ArchiveRestoreIcon class='size-4' />
+      </Button>
+    </div>
   );
 }
