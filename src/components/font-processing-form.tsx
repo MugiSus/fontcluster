@@ -5,7 +5,6 @@ import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import { type FontWeight } from '../types/font';
-import { Label } from './ui/label';
 
 export type ProcessingStatus =
   | 'idle'
@@ -108,19 +107,16 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           placeholder='Hamburgevons'
         />
       </TextField>
-      <div class='flex w-full flex-col gap-2'>
-        <Label class='text-sm font-medium'>Weights</Label>
-        <WeightSelector
-          weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-          selectedWeights={props.selectedWeights}
-          onWeightChange={props.onSelectedWeightsChange}
-        />
-      </div>
+      <WeightSelector
+        weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
+        selectedWeights={props.selectedWeights}
+        onWeightChange={props.onSelectedWeightsChange}
+      />
       <Button
         type='submit'
         disabled={isProcessing()}
         variant='default'
-        class='relative mt-1 flex items-center gap-2 pb-1.5'
+        class='relative flex items-center gap-2 pb-1.5'
       >
         {processingStatus() === 'generating' ? (
           <>

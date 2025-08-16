@@ -11,6 +11,7 @@ import {
   ResizableHandle,
   ResizablePanel,
 } from './components/ui/resizable';
+import { Separator } from './components/ui/separator';
 
 function App() {
   const appSignal = useAppSignal();
@@ -35,6 +36,7 @@ function App() {
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
           />
+          <Separator />
           <Tabs value='name' class='flex min-h-0 flex-1 flex-col'>
             <TabsList class='grid w-full shrink-0 grid-cols-2'>
               <TabsTrigger value='name'>Name (A-Z)</TabsTrigger>
@@ -48,8 +50,10 @@ function App() {
               <FontCompressedVectorList
                 compressedVectors={Object.values(
                   appSignal.compressedVectors() || {},
-                ).sort((a, b) =>
-                  a.config.font_name.localeCompare(b.config.font_name),
+                ).sort(
+                  (a, b) =>
+                    a.config.font_name.localeCompare(b.config.font_name) ||
+                    a.config.weight - b.config.weight,
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
                 nearestFontConfig={appSignal.nearestFontConfig()}
