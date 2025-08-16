@@ -107,6 +107,7 @@ pub fn run() {
             get_session_info,
             cleanup_old_sessions,
             get_session_fonts,
+            delete_session,
             run_jobs
         ])
         .run(tauri::generate_context!())

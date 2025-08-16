@@ -351,4 +351,41 @@ impl SessionManager {
         
         Ok(Some(session_ids[0].clone()))
     }
+    
+    /// Delete a session by UUID if it exists
+    pub fn delete_session_by_uuid(session_uuid: &str) -> FontResult<bool> {
+        // Validate UUID format
+        if Uuid::parse_str(session_uuid).is_err() {
+            return Err(FontError::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("Invalid UUID format: {}", session_uuid)
+            )));
+        }
+        
+        let base_dir = Self::get_base_data_dir()?;
+        let session_dir = base_dir.join("Generated").join(session_uuid);
+        
+        if !session_dir.exists() {
+            return Ok(false);
+        }
+        
+        // Verify it's actually a session directory (has config.json)
+        if !session_dir.join("config.json").exists() {
+            return Ok(false);
+        }
+        
+        // Check if this is the current active session
+        let current_session = Self::global();
+        if current_session.get_session_id() == session_uuid {
+            // Clear the global session if deleting the current one
+            let mut session_guard = SESSION_MANAGER.write().unwrap();
+            *session_guard = None;
+        }
+        
+        // Remove the session directory
+        fs::remove_dir_all(&session_dir)?;
+        println!("Deleted session: {}", session_uuid);
+        
+        Ok(true)
+    }
 }

@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { ArchiveRestoreIcon, RefreshCwIcon } from 'lucide-solid';
+import { ArchiveRestoreIcon, RefreshCwIcon, Trash2Icon } from 'lucide-solid';
 import { type SessionConfig } from '../types/font';
 
 interface SessionSelectorProps {
@@ -21,6 +21,12 @@ interface SessionSelectorProps {
 export function SessionSelector(props: SessionSelectorProps) {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
+  const [deletingSession, setDeletingSession] = createSignal<string | null>(
+    null,
+  );
+  const [confirmDeleteSession, setConfirmDeleteSession] = createSignal<
+    string | null
+  >(null);
 
   // Listen for show_session_selection event
   onMount(() => {
@@ -54,6 +60,44 @@ export function SessionSelector(props: SessionSelectorProps) {
       console.error('Failed to select session:', error);
     } finally {
       setIsRestoring(false);
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    setDeletingSession(sessionId);
+    try {
+      const result = await invoke<boolean>('delete_session', {
+        sessionUuid: sessionId,
+      });
+      if (result) {
+        // Refresh the sessions list after successful deletion
+        refetch();
+        // Clear confirmation state
+        setConfirmDeleteSession(null);
+        console.log('Session deleted successfully:', sessionId);
+      } else {
+        console.error('Session deletion failed - session not found');
+      }
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+    } finally {
+      setDeletingSession(null);
+    }
+  };
+
+  const handleDeleteClick = (sessionId: string) => {
+    if (confirmDeleteSession() === sessionId) {
+      // If already confirmed, proceed with deletion
+      deleteSession(sessionId);
+    } else {
+      // Set confirmation state
+      setConfirmDeleteSession(sessionId);
+      // Auto-clear confirmation after 3 seconds
+      setTimeout(() => {
+        if (confirmDeleteSession() === sessionId) {
+          setConfirmDeleteSession(null);
+        }
+      }, 3000);
     }
   };
 
@@ -161,23 +205,44 @@ export function SessionSelector(props: SessionSelectorProps) {
                             {session.session_id}
                           </div>
                         </div>
-                        <Show
-                          when={session.session_id === props.currentSessionId}
-                          fallback={
-                            <Button
-                              size='sm'
-                              onClick={() => selectSession(session.session_id)}
-                              disabled={isRestoring()}
+                        <div class='flex gap-2'>
+                          <Button
+                            size='sm'
+                            variant='outline'
+                            onClick={() =>
+                              handleDeleteClick(session.session_id)
+                            }
+                            disabled={deletingSession() === session.session_id}
+                          >
+                            <Show
+                              when={
+                                confirmDeleteSession() === session.session_id
+                              }
+                              fallback={<Trash2Icon class='size-4' />}
                             >
-                              Restore
-                              <ArchiveRestoreIcon class='size-4' />
-                            </Button>
-                          }
-                        >
-                          <Button size='sm' disabled variant='outline'>
-                            Current
+                              Confirm?
+                            </Show>
                           </Button>
-                        </Show>
+                          <Show
+                            when={session.session_id === props.currentSessionId}
+                            fallback={
+                              <Button
+                                size='sm'
+                                onClick={() =>
+                                  selectSession(session.session_id)
+                                }
+                                disabled={isRestoring()}
+                              >
+                                Restore
+                                <ArchiveRestoreIcon class='size-4' />
+                              </Button>
+                            }
+                          >
+                            <Button size='sm' disabled variant='outline'>
+                              Current
+                            </Button>
+                          </Show>
+                        </div>
                       </div>
                     </div>
                   );

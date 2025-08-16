@@ -120,3 +120,13 @@ pub fn get_session_info(session_id: String) -> Result<Option<String>, String> {
     }()
     .map_err(|e| format!("Failed to get session info: {}", e))
 }
+
+/// Delete a session by UUID
+/// 
+/// Removes the session directory and all its contents if the session exists.
+/// Returns true if a session was deleted, false if the session didn't exist.
+#[tauri::command]
+pub fn delete_session(session_uuid: String) -> Result<bool, String> {
+    SessionManager::delete_session_by_uuid(&session_uuid)
+        .map_err(|e| format!("Failed to delete session: {}", e))
+}

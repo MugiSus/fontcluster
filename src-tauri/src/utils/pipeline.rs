@@ -1,7 +1,6 @@
 //! Pipeline composition utilities for chaining operations
 
 use crate::error::FontResult;
-use std::path::PathBuf;
 
 /// Pipeline builder for chaining operations
 pub struct Pipeline<T> {
