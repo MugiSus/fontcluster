@@ -15,7 +15,7 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
         println!("🚀 Starting complete font processing pipeline with text: '{}' and weights: {:?}", processing_text, font_weights);
 
         // Clean up old sessions before creating a new one (keep only 20 most recent)
-        if let Err(e) = SessionManager::global().cleanup_old_sessions(20) {
+        if let Err(e) = SessionManager::global().cleanup_old_sessions(19) {
             println!("Warning: Failed to cleanup old sessions: {}", e);
         } else {
             println!("🧹 Cleaned up old sessions (keeping 20 most recent)");
