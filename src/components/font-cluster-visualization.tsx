@@ -1,4 +1,4 @@
-import { For, Show, createSignal, createEffect } from 'solid-js';
+import { For, createSignal, createEffect, createMemo } from 'solid-js';
 import {
   CompressedFontVectorMap,
   FontVectorData,
@@ -6,7 +6,7 @@ import {
   type FontWeight,
 } from '../types/font';
 import { WeightSelector } from './weight-selector';
-import { getClusterTextColor } from '../lib/cluster-colors';
+import { FontVectorPoint } from './font-vector-point';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -169,6 +169,27 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
   };
 
+  const vectors = createMemo(() =>
+    Object.values(props.compressedVectors || {}),
+  );
+  const zoomFactor = createMemo(() => viewBox().width / 700);
+
+  const bounds = createMemo(() => {
+    const vecs = vectors();
+    if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
+    const [minX, maxX] = vecs.reduce(
+      ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
+      [Infinity, -Infinity],
+    );
+    const [minY, maxY] = vecs.reduce(
+      ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
+      [Infinity, -Infinity],
+    );
+
+    return { minX, maxX, minY, maxY };
+  });
+
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-muted/20'>
       <div class='absolute bottom-0 right-0 z-10 m-4 flex items-center justify-between'>
@@ -229,134 +250,18 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             class='pointer-events-none stroke-muted'
           />
         </g>
-        {(() => {
-          const vectorsMap = props.compressedVectors || {};
-          const zoomFactor = viewBox().width / 700;
-
-          // Convert map to array for processing
-          const vectors = Object.values(vectorsMap);
-
-          const [minX, maxX] = vectors.reduce(
-            ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
-            [Infinity, -Infinity],
-          );
-
-          const [minY, maxY] = vectors.reduce(
-            ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
-            [Infinity, -Infinity],
-          );
-
-          return (
-            <For each={vectors}>
-              {(vectorData: FontVectorData) => {
-                const { x, y, k, config } = vectorData;
-                const scaledX = ((x - minX) / (maxX - minX)) * 600;
-                const scaledY = ((y - minY) / (maxY - minY)) * 600;
-
-                return (
-                  <Show
-                    when={
-                      visualizerWeights().includes(
-                        config.weight as FontWeight,
-                      ) &&
-                      scaledX > viewBox().x - 150 &&
-                      scaledX < viewBox().x + viewBox().width + 150 &&
-                      scaledY > viewBox().y - 50 &&
-                      scaledY < viewBox().y + viewBox().height + 50
-                    }
-                  >
-                    <g
-                      transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
-                      class={getClusterTextColor(k)}
-                    >
-                      <circle
-                        cx={0}
-                        cy={0}
-                        r={
-                          props.nearestFontConfig?.family_name ===
-                          config.family_name
-                            ? 4
-                            : 1.5
-                        }
-                        class='pointer-events-none fill-current'
-                      />
-                      <circle
-                        cx={0}
-                        cy={0}
-                        r={
-                          props.nearestFontConfig?.family_name ===
-                            config.family_name &&
-                          props.nearestFontConfig?.font_name !==
-                            config.font_name
-                            ? 0
-                            : 0
-                        }
-                        class='pointer-events-none fill-background'
-                      />
-                      <Show
-                        when={
-                          props.nearestFontConfig?.font_name ===
-                            config.font_name ||
-                          props.nearestFontConfig?.family_name ===
-                            config.family_name
-                        }
-                      >
-                        <circle
-                          cx={0}
-                          cy={0}
-                          r={
-                            props.nearestFontConfig?.font_name ===
-                            config.font_name
-                              ? 40
-                              : 20
-                          }
-                          fill='transparent'
-                          stroke-width={1.5}
-                          stroke='currentColor'
-                        />
-                      </Show>
-                      <circle
-                        cx={0}
-                        cy={0}
-                        r={40}
-                        fill='transparent'
-                        data-font-config={JSON.stringify(config)}
-                        data-font-select-area
-                      />
-                      <Show when={zoomFactor < 0.25}>
-                        <text
-                          x={0}
-                          y={-8}
-                          opacity={
-                            1 -
-                            Math.min(
-                              Math.max((zoomFactor - 0.125) / 0.125, 0),
-                              1,
-                            )
-                          }
-                          class={`pointer-events-none select-none fill-foreground text-xs ${
-                            props.nearestFontConfig?.font_name ===
-                            config.font_name
-                              ? 'font-bold'
-                              : ''
-                          }`}
-                          text-anchor='middle'
-                        >
-                          {props.nearestFontConfig?.font_name ===
-                          config.font_name
-                            ? config.font_name
-                            : config.font_name.length > 12
-                              ? config.font_name.substring(0, 12) + '…'
-                              : config.font_name}
-                        </text>
-                      </Show>
-                    </g>
-                  </Show>
-                );
-              }}
-            </For>
-          );
-        })()}
+        <For each={vectors()}>
+          {(vectorData: FontVectorData) => (
+            <FontVectorPoint
+              fontVectorData={vectorData}
+              nearestFontConfig={props.nearestFontConfig}
+              bounds={bounds()}
+              visualizerWeights={visualizerWeights}
+              viewBox={viewBox}
+              zoomFactor={zoomFactor}
+            />
+          )}
+        </For>
       </svg>
     </div>
   );
