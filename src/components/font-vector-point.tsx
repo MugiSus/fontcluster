@@ -96,7 +96,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         <circle
           cx={0}
           cy={0}
-          r={40}
+          r={48}
           fill='transparent'
           data-font-config={JSON.stringify(vector().config)}
           data-font-select-area
