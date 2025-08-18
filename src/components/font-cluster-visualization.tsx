@@ -236,8 +236,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           // Convert map to array for processing
           const vectors = Object.values(vectorsMap);
 
-          // Filter vectors by selected visualizer weights
-
           const [minX, maxX] = vectors.reduce(
             ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
             [Infinity, -Infinity],
