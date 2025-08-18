@@ -317,25 +317,25 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                       <Show
                         when={
                           props.nearestFontConfig?.font_name ===
-                          config.font_name
+                            config.font_name ||
+                          props.nearestFontConfig?.family_name ===
+                            config.family_name
                         }
                       >
                         <circle
                           cx={0}
                           cy={0}
-                          r={40}
+                          r={
+                            props.nearestFontConfig?.font_name ===
+                            config.font_name
+                              ? 40
+                              : 20
+                          }
                           fill='transparent'
                           stroke-width={1.5}
-                          class={`transition-all ease-in-out ${props.nearestFontConfig?.font_name === config.font_name ? 'stroke-current duration-0' : 'stroke-transparent duration-1000'}`}
+                          stroke='currentColor'
                         />
                       </Show>
-                      {/* <circle
-                        cx={0}
-                        cy={0}
-                        r={32}
-                        fill='currentColor'
-                        opacity={0.01}
-                      /> */}
                       <circle
                         cx={0}
                         cy={0}
