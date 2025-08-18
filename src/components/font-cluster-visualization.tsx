@@ -6,6 +6,7 @@ import {
   type FontWeight,
 } from '../types/font';
 import { WeightSelector } from './weight-selector';
+import { getClusterTextColor } from '../lib/cluster-colors';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -254,26 +255,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                 const scaledX = ((x - minX) / (maxX - minX)) * 600;
                 const scaledY = ((y - minY) / (maxY - minY)) * 600;
 
-                // Define cluster colors
-                const clusterColors = [
-                  'text-blue-500',
-                  'text-red-500',
-                  'text-yellow-500',
-                  'text-green-500',
-                  'text-purple-500',
-                  'text-orange-500',
-                  'text-teal-500',
-                  'text-indigo-500',
-                  'text-cyan-500',
-                  'text-fuchsia-500',
-                ];
-
-                // Handle noise cluster (-1) with gray-400
-                const clusterColor =
-                  k === -1
-                    ? 'text-gray-400'
-                    : clusterColors[k % clusterColors.length];
-
                 return (
                   <Show
                     when={
@@ -288,7 +269,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                   >
                     <g
                       transform={`translate(${scaledX}, ${scaledY}) scale(${zoomFactor})`}
-                      class={clusterColor}
+                      class={getClusterTextColor(k)}
                     >
                       <circle
                         cx={0}
