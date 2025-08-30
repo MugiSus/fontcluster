@@ -9,7 +9,10 @@ use font_kit::properties::{Properties, Weight};
 use std::sync::Arc;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
-use image::{ImageBuffer, Rgba};
+use image::GrayImage;
+use imageproc::hog::*;
+use std::fs;
+use std::io::Write;
 
 // Font rendering engine
 pub struct FontRenderer<'a> {
@@ -32,9 +35,10 @@ impl<'a> FontRenderer<'a> {
         let full_name = font.full_name();
         let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, weight)?;
         let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
-        let img_buffer = self.convert_canvas_to_image(canvas, canvas_size)?;
         
-        self.save_image(img_buffer, family_name, &full_name, weight_value)?;
+        // Extract HOG features directly from canvas and save vector only
+        let hog_features = self.extract_hog_features_from_canvas(&canvas, canvas_size)?;
+        self.save_vector_to_file(&hog_features, family_name, &full_name, weight_value)?;
         
         Ok(())
     }
@@ -155,78 +159,95 @@ impl<'a> FontRenderer<'a> {
         Ok(canvas)
     }
 
-    fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> FontResult<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+
+    fn extract_hog_features_from_canvas(&self, canvas: &Canvas, canvas_size: Vector2I) -> FontResult<Vec<f32>> {
         let width = canvas_size.x() as u32;
         let height = canvas_size.y() as u32;
-        let total_pixels = (width * height) as usize;
         
-        // Memory safety: Check for reasonable size limits before allocation
-        const MAX_PIXELS: usize = 50_000_000; // 50M pixels (~200MB for RGBA)
-        if total_pixels > MAX_PIXELS {
-            return Err(FontError::ImageGeneration(format!(
-                "Image too large: {}x{} = {} pixels (max: {})", 
-                width, height, total_pixels, MAX_PIXELS
-            )));
+        // Convert Canvas (A8) directly to GrayImage
+        let gray_image = GrayImage::from_raw(width, height, canvas.pixels.clone())
+            .ok_or_else(|| FontError::Vectorization("Failed to create GrayImage from Canvas".to_string()))?;
+        
+        // Resize to standard canvas size with padding
+        let padded_image = self.resize_with_padding(&gray_image, 512, 96)?;
+        
+        // Configure HOG parameters (same as vectorizer.rs)
+        let hog_options = HogOptions {
+            orientations: 9,
+            cell_side: 8,
+            block_side: 2,
+            block_stride: 1,
+            signed: false,
+        };
+        
+        // Extract HOG features
+        let features = hog(&padded_image, hog_options)
+            .map_err(|e| FontError::Vectorization(format!("HOG extraction failed: {}", e)))?;
+        
+        if features.is_empty() {
+            return Err(FontError::Vectorization("HOG feature extraction failed: no features generated".to_string()));
         }
         
-        // Use Result-based allocation to handle OOM gracefully
-        let mut buffer = Vec::new();
-        if let Err(_) = buffer.try_reserve_exact(total_pixels * 4) {
-            return Err(FontError::ImageGeneration(format!(
-                "Failed to allocate {} bytes for image buffer", total_pixels * 4
-            )));
-        }
-        buffer.reserve_exact(total_pixels * 4);
-        
-        // Process pixels with bounds checking
-        let available_pixels = canvas.pixels.len().min(total_pixels);
-        for pixel in canvas.pixels.iter().take(available_pixels) {
-            let alpha = if *pixel > 0 { 255 } else { 0 };
-            buffer.extend_from_slice(&[*pixel, *pixel, *pixel, alpha]);
-        }
-        
-        // Fill remaining pixels safely with bounds check
-        let remaining_pixels = total_pixels.saturating_sub(available_pixels);
-        for _ in 0..remaining_pixels {
-            buffer.extend_from_slice(&[0, 0, 0, 0]);
-        }
-        
-        // Safe conversion with proper error handling
-        ImageBuffer::from_raw(width, height, buffer)
-            .ok_or_else(|| FontError::ImageGeneration(
-                "Failed to create ImageBuffer from raw data - buffer size mismatch".to_string()
-            ))
-    }
-
-    fn save_image(
-        &self,
-        img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
-        family_name: &str,
-        full_name: &str,
-        weight_value: i32,
-    ) -> FontResult<()> {
-        // Check if image is empty or fully transparent
-        if self.is_image_empty(&img_buffer) {
-            println!("Skipping font '{}' weight {} - image is empty or fully transparent", full_name, weight_value);
-            return Ok(());
-        }
-        
-        let safe_name = format!("{}_{}", weight_value, family_name.replace(" ", "_").replace("/", "_"));
-        let display_name = full_name.to_string();
-
-        let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, family_name, weight_value)?;
-        let output_path = font_dir.join("sample.png");
-        
-        img_buffer
-            .save(&output_path)
-            .map_err(|e| FontError::ImageGeneration(format!("Failed to save image: {}", e)))?;
-        
-        println!("Saved font image: {} weight {} -> {}", full_name, weight_value, output_path.display());
-        Ok(())
+        Ok(features)
     }
     
-    fn is_image_empty(&self, img_buffer: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> bool {
-        img_buffer.pixels().all(|pixel| pixel[3] == 0)
+    fn resize_with_padding(&self, img: &GrayImage, target_width: u32, target_height: u32) -> FontResult<GrayImage> {
+        let original_width = img.width();
+        let original_height = img.height();
+        
+        // Calculate scaling factor to fit within target while preserving aspect ratio
+        let scale_x = target_width as f32 / original_width as f32;
+        let scale_y = target_height as f32 / original_height as f32;
+        let scale = scale_x.min(scale_y);
+        
+        let new_width = (original_width as f32 * scale) as u32;
+        let new_height = (original_height as f32 * scale) as u32;
+        
+        // Resize the image while preserving aspect ratio
+        let resized_img = image::imageops::resize(
+            img,
+            new_width,
+            new_height,
+            image::imageops::FilterType::Lanczos3
+        );
+        
+        // Create black canvas (0 for grayscale since Canvas A8 uses 0 for background)
+        let mut canvas = image::GrayImage::new(target_width, target_height);
+        for pixel in canvas.pixels_mut() {
+            *pixel = image::Luma([0u8]); // Black background to match Canvas A8
+        }
+        
+        // Calculate position to center the resized image
+        let offset_x = (target_width - new_width) / 2;
+        let offset_y = (target_height - new_height) / 2;
+        
+        // Copy resized image onto canvas
+        image::imageops::overlay(&mut canvas, &resized_img, offset_x as i64, offset_y as i64);
+        
+        Ok(canvas)
+    }
+    
+    fn save_vector_to_file(&self, vector: &Vec<f32>, family_name: &str, full_name: &str, weight_value: i32) -> FontResult<()> {
+        let safe_name = format!("{}_{}", weight_value, family_name.replace(" ", "_").replace("/", "_"));
+        let display_name = full_name.to_string();
+        
+        let session_manager = SessionManager::global();
+        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, family_name, weight_value)?;
+        let vector_path = font_dir.join("vector.csv");
+        
+        let mut file = fs::File::create(&vector_path)
+            .map_err(|e| FontError::Vectorization(format!("Failed to create vector file {}: {}", vector_path.display(), e)))?;
+        
+        // Write vector data as CSV format (comma-separated values in one line)
+        let csv_line = vector.iter()
+            .map(|v| v.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+        
+        writeln!(file, "{}", csv_line)
+            .map_err(|e| FontError::Vectorization(format!("Failed to write vector data: {}", e)))?;
+        
+        println!("Saved HOG vector: {} -> {}", full_name, vector_path.display());
+        Ok(())
     }
 }

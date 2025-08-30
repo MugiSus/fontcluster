@@ -1,4 +1,4 @@
-use crate::core::{FontImageGenerator, FontImageVectorizer, VectorCompressor, VectorClusterer, SessionManager};
+use crate::core::{FontImageGenerator, VectorCompressor, VectorClusterer, SessionManager};
 use crate::config::{FONT_SIZE, SessionData};
 use crate::utils::{Pipeline, with_progress_events_async};
 use tauri::{AppHandle, Emitter};
@@ -54,26 +54,18 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
                 })
             }).await
             
-            .inspect(|_| println!("🔢 Step 2/4: Vectorizing font images..."))
+            .inspect(|_| println!("🔢 Step 2/4: Skipping vectorization (vectors already generated in font rendering)..."))
             .then_async(|text| async {
-                let vectorizer = FontImageVectorizer::new()?;
-                with_progress_events_async(
-                    app_handle.clone(),
-                    "vectorization_start",
-                    "vectorization_complete", 
-                    || vectorizer.vectorize_all(&app_handle)
-                ).await
-                .and_then(|path| {
-                    println!("✅ Font images vectorized in: {}", path.display());
-                    
-                    // Update session config to mark vectors as completed
-                    let session_manager = SessionManager::global();
-                    let session_dir = session_manager.get_session_dir();
-                    let mut config = SessionData::load_from_dir(&session_dir)?;
-                    config.mark_vectors_completed(&session_dir)?;
-                    
-                    Ok(text)
-                })
+                // Skip vectorization since vectors are now generated directly in font_renderer
+                println!("✅ Font vectors already generated during rendering");
+                
+                // Update session config to mark vectors as completed
+                let session_manager = SessionManager::global();
+                let session_dir = session_manager.get_session_dir();
+                let mut config = SessionData::load_from_dir(&session_dir)?;
+                config.mark_vectors_completed(&session_dir)?;
+                
+                Ok(text)
             }).await
             
             .inspect(|_| println!("📐 Step 3/4: Compressing vectors to 2D..."))
