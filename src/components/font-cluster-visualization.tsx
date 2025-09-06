@@ -15,7 +15,7 @@ const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
   fontConfigRecord: FontConfigRecord | undefined;
-  nearestFontSafeName: string;
+  nearestFontConfig: FontConfig | null;
   sessionWeights: FontWeight[];
   onFontSelect: (safeName: string) => void;
 }
@@ -23,11 +23,6 @@ interface FontClusterVisualizationProps {
 export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
-
-  const nearestFontConfig = createMemo(() => {
-    console.log(props.fontConfigRecord);
-    return props.fontConfigRecord?.[props.nearestFontSafeName] ?? null;
-  });
 
   const vectors = createMemo(() => Object.values(props.fontConfigRecord || {}));
   const zoomFactor = createMemo(() => viewBox().width / 700);
@@ -259,7 +254,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           {(fontConfig: FontConfig) => (
             <FontVectorPoint
               fontConfig={fontConfig}
-              nearestFontConfig={nearestFontConfig()}
+              nearestFontConfig={props.nearestFontConfig}
               bounds={bounds()}
               visualizerWeights={visualizerWeights}
               viewBox={viewBox}
