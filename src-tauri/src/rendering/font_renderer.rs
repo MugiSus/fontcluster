@@ -9,7 +9,7 @@ use font_kit::properties::{Properties, Weight};
 use std::sync::Arc;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
-use image::{ImageBuffer, Rgba};
+use image::GrayImage;
 
 // Font rendering engine
 pub struct FontRenderer<'a> {
@@ -155,13 +155,13 @@ impl<'a> FontRenderer<'a> {
         Ok(canvas)
     }
 
-    fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> FontResult<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+    fn convert_canvas_to_image(&self, canvas: Canvas, canvas_size: Vector2I) -> FontResult<GrayImage> {
         let width = canvas_size.x() as u32;
         let height = canvas_size.y() as u32;
         let total_pixels = (width * height) as usize;
         
         // Memory safety: Check for reasonable size limits before allocation
-        const MAX_PIXELS: usize = 50_000_000; // 50M pixels (~200MB for RGBA)
+        const MAX_PIXELS: usize = 50_000_000; // 50M pixels (~50MB for Grayscale, was 200MB for RGBA)
         if total_pixels > MAX_PIXELS {
             return Err(FontError::ImageGeneration(format!(
                 "Image too large: {}x{} = {} pixels (max: {})", 
@@ -169,38 +169,37 @@ impl<'a> FontRenderer<'a> {
             )));
         }
         
-        // Use Result-based allocation to handle OOM gracefully
+        // Use Result-based allocation to handle OOM gracefully (75% memory reduction: 1 byte vs 4 bytes per pixel)
         let mut buffer = Vec::new();
-        if let Err(_) = buffer.try_reserve_exact(total_pixels * 4) {
+        if let Err(_) = buffer.try_reserve_exact(total_pixels) {
             return Err(FontError::ImageGeneration(format!(
-                "Failed to allocate {} bytes for image buffer", total_pixels * 4
+                "Failed to allocate {} bytes for image buffer", total_pixels
             )));
         }
-        buffer.reserve_exact(total_pixels * 4);
+        buffer.reserve_exact(total_pixels);
         
-        // Process pixels with bounds checking
+        // Process pixels with bounds checking - direct grayscale conversion (no RGBA expansion)
         let available_pixels = canvas.pixels.len().min(total_pixels);
         for pixel in canvas.pixels.iter().take(available_pixels) {
-            let alpha = if *pixel > 0 { 255 } else { 0 };
-            buffer.extend_from_slice(&[*pixel, *pixel, *pixel, alpha]);
+            buffer.push(*pixel); // Direct grayscale value (Canvas A8 -> Luma)
         }
         
         // Fill remaining pixels safely with bounds check
         let remaining_pixels = total_pixels.saturating_sub(available_pixels);
         for _ in 0..remaining_pixels {
-            buffer.extend_from_slice(&[0, 0, 0, 0]);
+            buffer.push(0); // Single grayscale value instead of RGBA
         }
         
         // Safe conversion with proper error handling
-        ImageBuffer::from_raw(width, height, buffer)
+        GrayImage::from_raw(width, height, buffer)
             .ok_or_else(|| FontError::ImageGeneration(
-                "Failed to create ImageBuffer from raw data - buffer size mismatch".to_string()
+                "Failed to create GrayImage from raw data - buffer size mismatch".to_string()
             ))
     }
 
     fn save_image(
         &self,
-        img_buffer: ImageBuffer<Rgba<u8>, Vec<u8>>,
+        img_buffer: GrayImage,
         family_name: &str,
         full_name: &str,
         weight_value: i32,
@@ -226,7 +225,7 @@ impl<'a> FontRenderer<'a> {
         Ok(())
     }
     
-    fn is_image_empty(&self, img_buffer: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> bool {
-        img_buffer.pixels().all(|pixel| pixel[3] == 0)
+    fn is_image_empty(&self, img_buffer: &GrayImage) -> bool {
+        img_buffer.pixels().all(|pixel| pixel[0] == 0)
     }
 }
