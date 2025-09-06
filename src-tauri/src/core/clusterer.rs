@@ -1,10 +1,10 @@
 use crate::core::SessionManager;
+use crate::config::{FontConfig, ComputedData};
 use crate::error::{FontResult, FontError};
 use std::path::PathBuf;
 use std::fs;
 use tokio::task;
 use futures::future::join_all;
-use std::io::Write;
 use linfa::prelude::*;
 use linfa_clustering::GaussianMixtureModel;
 use ndarray_015::{Array1, Array2};
@@ -34,43 +34,35 @@ impl VectorClusterer {
     }
     
     // Pure function: file discovery
-    fn get_compressed_vector_files(&self) -> FontResult<Vec<PathBuf>> {
+    fn get_font_config_files(&self) -> FontResult<Vec<PathBuf>> {
         let session_dir = SessionManager::global().get_session_dir();
         
         fs::read_dir(&session_dir)?
             .filter_map(Result::ok)
             .filter(|entry| entry.path().is_dir())
-            .map(|entry| entry.path().join("compressed-vector.csv"))
+            .map(|entry| entry.path().join("config.json"))
             .filter(|path| path.exists())
             .collect::<Vec<_>>()
             .pipe(Ok)
     }
     
-    // Pure function: parse coordinate pair
-    fn parse_coordinates(content: &str) -> FontResult<(f32, f32)> {
-        let coordinates: Result<Vec<f32>, _> = content
-            .trim()
-            .split(',')
-            .take(2)
-            .map(str::parse)
-            .collect();
-            
-        coordinates
-            .map_err(|e| FontError::Vectorization(format!("Failed to parse coordinates: {}", e)))
-            .and_then(|coords| {
-                if coords.len() >= 2 {
-                    Ok((coords[0], coords[1]))
-                } else {
-                    Err(FontError::Vectorization("Insufficient coordinates".to_string()))
-                }
-            })
-    }
     
-    // Pure function: read single vector file
-    fn read_compressed_vector_file_static(path: &PathBuf) -> FontResult<(f32, f32)> {
-        fs::read_to_string(path)
-            .map_err(|e| FontError::Vectorization(format!("Failed to read file: {}", e)))
-            .and_then(|content| Self::parse_coordinates(&content))
+    // Pure function: read vector from config.json
+    fn read_config_vector_static(config_path: &PathBuf) -> FontResult<(f32, f32)> {
+        let config_str = fs::read_to_string(config_path)
+            .map_err(|e| FontError::Vectorization(format!("Failed to read config file: {}", e)))?;
+        
+        let font_config: FontConfig = serde_json::from_str(&config_str)
+            .map_err(|e| FontError::Vectorization(format!("Failed to parse config JSON: {}", e)))?;
+        
+        let computed = font_config.computed
+            .ok_or_else(|| FontError::Vectorization("No computed data found in config".to_string()))?;
+        
+        if computed.vector.len() >= 2 {
+            Ok((computed.vector[0], computed.vector[1]))
+        } else {
+            Err(FontError::Vectorization("Invalid vector data in config".to_string()))
+        }
     }
     
     // Higher-order function: extract font name from path
@@ -81,22 +73,22 @@ impl VectorClusterer {
             .map(String::from)
     }
     
-    // Async composition: load all vectors
+    // Async composition: load all vectors from config.json files
     async fn load_compressed_vectors(&self) -> FontResult<Vec<VectorData>> {
-        let compressed_vectors = self.get_compressed_vector_files()?;
-        println!("Found {} compressed vector files to cluster", compressed_vectors.len());
+        let config_files = self.get_font_config_files()?;
+        println!("Found {} config files to load compressed vectors from", config_files.len());
         
-        if compressed_vectors.is_empty() {
-            return Err(FontError::Vectorization("No compressed vector files found".to_string()));
+        if config_files.is_empty() {
+            return Err(FontError::Vectorization("No config files found".to_string()));
         }
         
-        let vector_tasks = compressed_vectors
+        let vector_tasks = config_files
             .into_iter()
-            .filter_map(|path| {
-                Self::extract_font_name(&path).map(|font_name| {
-                    let path_clone = path.clone();
+            .filter_map(|config_path| {
+                Self::extract_font_name(&config_path).map(|font_name| {
+                    let path_clone = config_path.clone();
                     task::spawn_blocking(move || {
-                        Self::read_compressed_vector_file_static(&path_clone)
+                        Self::read_config_vector_static(&path_clone)
                             .map(|(x, y)| {
                                 println!("✓ Loaded vector '{}': ({:.3}, {:.3})", font_name, x, y);
                                 (font_name, x, y)
@@ -193,7 +185,7 @@ impl VectorClusterer {
         });
     }
     
-    // Higher-order function: create save task
+    // Higher-order function: create save task for config.json
     fn create_save_task(
         font_name: String, 
         x: f32, 
@@ -203,13 +195,32 @@ impl VectorClusterer {
         task::spawn_blocking(move || {
             let session_manager = SessionManager::global();
             let font_dir = session_manager.get_font_directory(&font_name);
-            let file_path = font_dir.join("compressed-vector.csv");
+            let config_path = font_dir.join("config.json");
             
-            let mut file = fs::File::create(&file_path)
-                .map_err(|e| FontError::Vectorization(format!("Failed to create file: {}", e)))?;
+            // Load existing font config
+            let config_str = fs::read_to_string(&config_path)
+                .map_err(|e| FontError::Vectorization(format!("Failed to read config file: {}", e)))?;
             
-            writeln!(file, "{},{},{}", x, y, cluster)
-                .map_err(|e| FontError::Vectorization(format!("Failed to write: {}", e)))?;
+            let mut font_config: FontConfig = serde_json::from_str(&config_str)
+                .map_err(|e| FontError::Vectorization(format!("Failed to parse config JSON: {}", e)))?;
+            
+            // Update cluster assignment in computed data
+            if let Some(ref mut computed) = font_config.computed {
+                computed.k = cluster;
+            } else {
+                // This shouldn't happen if compression ran first, but handle gracefully
+                font_config.computed = Some(ComputedData {
+                    vector: vec![x, y],
+                    k: cluster,
+                });
+            }
+            
+            // Save updated config
+            let config_json = serde_json::to_string_pretty(&font_config)
+                .map_err(|e| FontError::Vectorization(format!("Failed to serialize config: {}", e)))?;
+            
+            fs::write(&config_path, config_json)
+                .map_err(|e| FontError::Vectorization(format!("Failed to write config: {}", e)))?;
             
             println!("✓ Updated vector '{}': ({:.3}, {:.3}, cluster={})", font_name, x, y, cluster);
             Ok(())

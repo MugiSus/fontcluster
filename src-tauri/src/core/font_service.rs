@@ -78,7 +78,7 @@ impl FontService {
         Ok(Some(config))
     }
     
-    pub fn read_compressed_vectors_for_session(session_dir: PathBuf) -> FontResult<String> {
+    pub fn read_font_configs_for_session(session_dir: PathBuf) -> FontResult<String> {
         
         let mut result = serde_json::Map::new();
         
@@ -102,30 +102,12 @@ impl FontService {
                 Err(_) => continue,
             };
             
-            // Load compressed vector
-            let compressed_vector_path = font_dir.join("compressed-vector.csv");
-            if !compressed_vector_path.exists() {
-                continue;
-            }
-            
-            let content = match fs::read_to_string(&compressed_vector_path) {
-                Ok(content) => content,
-                Err(e) => {
-                    eprintln!("Failed to read file {}: {}", compressed_vector_path.display(), e);
-                    continue;
-                }
-            };
-            
-            if let Some((x, y, k)) = Self::parse_compressed_vector_line(&content) {
-                // Use font_name as key, store vector coordinates and config
+            // Load computed data from config.json
+            if config.computed.is_some() {
+                // Use font_name as key, store FontConfig with computed data
                 result.insert(
                     config.font_name.clone(),
-                    serde_json::json!({
-                        "x": x,
-                        "y": y,
-                        "k": k,
-                        "config": config
-                    })
+                    serde_json::to_value(&config).unwrap_or(serde_json::Value::Null)
                 );
             }
         }
@@ -133,15 +115,8 @@ impl FontService {
         serde_json::to_string(&result)
             .map_err(|e| crate::error::FontError::Io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Failed to serialize compressed vectors: {}", e)
+                format!("Failed to serialize font configs: {}", e)
             )))
     }
     
-    fn parse_compressed_vector_line(content: &str) -> Option<(f64, f64, i32)> {
-        let mut values = content.trim().split(',');
-        let x = values.next()?.parse().ok()?;
-        let y = values.next()?.parse().ok()?;
-        let k = values.next()?.parse().ok()?;
-        Some((x, y, k))
-    }
 }

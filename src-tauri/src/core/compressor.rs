@@ -1,4 +1,5 @@
 use crate::core::SessionManager;
+use crate::config::{FontConfig, ComputedData};
 use crate::error::{FontResult, FontError};
 use std::path::PathBuf;
 use std::fs;
@@ -6,7 +7,6 @@ use tokio::task;
 use futures::future::join_all;
 use ndarray::Array2;
 use pacmap::{Configuration, fit_transform};
-use std::io::Write;
 use bytemuck;
 
 // Vector compression service
@@ -152,7 +152,7 @@ impl VectorCompressor {
         
         println!("PaCMAP completed, saving compressed vectors...");
         
-        // Save compressed vectors in parallel (format: X,Y)
+        // Save compressed vectors to config.json
         println!("Creating {} parallel save tasks...", font_names.len());
         let save_tasks: Vec<_> = font_names.iter().enumerate().map(|(i, font_name)| {
             let x = embedding[[i, 0]];
@@ -161,16 +161,32 @@ impl VectorCompressor {
             task::spawn_blocking(move || {
                 let session_manager = SessionManager::global();
                 let font_dir = session_manager.get_font_directory(&font_name);
-                let file_path = font_dir.join("compressed-vector.csv");
+                let config_path = font_dir.join("config.json");
                 
-                let mut file = fs::File::create(&file_path)
-                    .map_err(|e| FontError::Vectorization(format!("Failed to create compressed vector file: {}", e)))?;
+                // Load existing font config
+                let mut font_config: FontConfig = if config_path.exists() {
+                    let config_str = fs::read_to_string(&config_path)
+                        .map_err(|e| FontError::Vectorization(format!("Failed to read font config: {}", e)))?;
+                    serde_json::from_str(&config_str)
+                        .map_err(|e| FontError::Vectorization(format!("Failed to parse font config: {}", e)))?
+                } else {
+                    return Err(FontError::Vectorization(format!("Font config not found for: {}", font_name)));
+                };
                 
-                // Write in format: X,Y (clustering will be done separately)
-                writeln!(file, "{},{}", x, y)
-                    .map_err(|e| FontError::Vectorization(format!("Failed to write compressed vector: {}", e)))?;
+                // Update computed data (k will be set later by clustering)
+                font_config.computed = Some(ComputedData {
+                    vector: vec![x, y],
+                    k: -1, // Placeholder, will be updated by clustering
+                });
                 
-                println!("✓ Compressed vector for '{}' saved: ({:.3}, {:.3})", font_name, x, y);
+                // Save updated config
+                let config_json = serde_json::to_string_pretty(&font_config)
+                    .map_err(|e| FontError::Vectorization(format!("Failed to serialize font config: {}", e)))?;
+                
+                fs::write(&config_path, config_json)
+                    .map_err(|e| FontError::Vectorization(format!("Failed to write font config: {}", e)))?;
+                
+                println!("✓ Compressed vector for '{}' saved to config.json: ({:.3}, {:.3})", font_name, x, y);
                 Ok(())
             })
         }).collect();

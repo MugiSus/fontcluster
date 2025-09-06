@@ -20,18 +20,18 @@ pub fn get_system_fonts() -> Vec<String> {
     FontService::get_system_fonts()
 }
 
-/// Retrieves compressed 2D vectors for font visualization
+/// Retrieves font configs with computed data for visualization
 /// 
-/// Returns a JSON string containing a Map where font names are keys and values contain coordinates.
-/// Format: { "font_name": { x: number, y: number, k: number, config: FontConfig } }
+/// Returns a JSON string containing FontConfigRecord where font names are keys and values are FontConfig objects.
+/// Format: { "font_name": FontConfig } where FontConfig includes optional computed field
 #[tauri::command]
 pub fn get_compressed_vectors(session_id: String) -> Result<String, String> {
     // Get session directory without changing global state
     let session_dir = SessionManager::get_session_dir_for_id(&session_id)
         .map_err(|e| format!("Failed to get session directory: {}", e))?;
         
-    FontService::read_compressed_vectors_for_session(session_dir)
-        .map_err(|e| format!("Failed to read compressed vectors: {}", e))
+    FontService::read_font_configs_for_session(session_dir)
+        .map_err(|e| format!("Failed to read font configs: {}", e))
 }
 
 /// Get all fonts configurations from individual config.json files

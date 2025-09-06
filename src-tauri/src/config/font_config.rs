@@ -1,5 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+/// Computed data after processing (2D coordinates and cluster assignment)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputedData {
+    /// 2D coordinates from PaCMAP compression [x, y]
+    pub vector: Vec<f32>,
+    /// Cluster assignment from GMM clustering
+    pub k: i32,
+}
+
 /// Font configuration for a single font
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontConfig {
@@ -13,6 +22,8 @@ pub struct FontConfig {
     pub weight: i32,
     /// Available weights for this font family (empty if not detected)
     pub weights: Vec<String>,
+    /// Computed data after processing (None until compression and clustering complete)
+    pub computed: Option<ComputedData>,
 }
 
 impl FontConfig {
@@ -24,6 +35,7 @@ impl FontConfig {
             family_name,
             weight,
             weights: Vec::new(), // Start with empty weights array
+            computed: None, // Start without computed data
         }
     }
 }

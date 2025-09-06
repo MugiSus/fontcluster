@@ -13,25 +13,19 @@ export interface SessionConfig {
   weights: number[];
 }
 
+export interface ComputedData {
+  vector: number[]; // [x, y] 2D coordinates from PaCMAP
+  k: number; // Cluster assignment from GMM
+}
+
 export interface FontConfig {
   safe_name: string;
   font_name: string;
   family_name: string;
   weight: number;
   weights: string[];
+  computed?: ComputedData; // Optional, present after compression and clustering
 }
 
-export interface FontVectorData {
-  x: number;
-  y: number;
-  k: number;
-  config: FontConfig;
-}
-
-export type CompressedFontVectorMap = Record<string, FontVectorData>;
-
-// Legacy interface for backward compatibility
-export interface CompressedFontVector {
-  config: FontConfig;
-  vector: [number, number, number]; // [x, y, k] where k is cluster number
-}
+// Unified type using FontConfig with computed data
+export type FontConfigRecord = Record<string, FontConfig>;
