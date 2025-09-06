@@ -7,6 +7,7 @@ use futures::future::join_all;
 use ndarray::Array2;
 use pacmap::{Configuration, fit_transform};
 use std::io::Write;
+use bytemuck;
 
 // Vector compression service
 pub struct VectorCompressor;
@@ -28,7 +29,7 @@ impl VectorCompressor {
         println!("Starting parallel vector file reading for {} files...", vector_files.len());
         let vector_tasks: Vec<_> = vector_files.into_iter()
             .filter_map(|vector_path| {
-                // Extract font name from path: Generated/session_id/font_name/vector.csv
+                // Extract font name from path: Generated/session_id/font_name/vector.bin
                 vector_path.parent()
                     .and_then(|parent| parent.file_name())
                     .and_then(|name| name.to_str())
@@ -88,7 +89,7 @@ impl VectorCompressor {
             .filter(|entry| entry.path().is_dir())
             .filter_map(|entry| {
                 let font_dir = entry.path();
-                let vector_path = font_dir.join("vector.csv");
+                let vector_path = font_dir.join("vector.bin");
                 if vector_path.exists() {
                     Some(vector_path)
                 } else {
@@ -99,14 +100,12 @@ impl VectorCompressor {
     }
     
     fn read_vector_file_static(path: &PathBuf) -> FontResult<Vec<f32>> {
-        let content = fs::read_to_string(path)
+        let bytes = fs::read(path)
             .map_err(|e| FontError::Vectorization(format!("Failed to read vector file: {}", e)))?;
         
-        content.trim()
-            .split(',')
-            .map(|s| s.parse::<f32>())
-            .collect::<Result<Vec<f32>, _>>()
-            .map_err(|e| FontError::Vectorization(format!("Failed to parse vector values: {}", e)))
+        // Convert bytes back to f32 slice using bytemuck
+        let floats = bytemuck::cast_slice(&bytes).to_vec();
+        Ok(floats)
     }
 
     async fn compress_vectors_to_2d(vectors: &[Vec<f32>], font_names: &[String]) -> FontResult<()> {
