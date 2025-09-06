@@ -203,19 +203,20 @@ impl<'a> FontRenderer<'a> {
         let new_width = (original_width as f32 * scale) as u32;
         let new_height = (original_height as f32 * scale) as u32;
         
-        // Resize the image while preserving aspect ratio
+        // Resize the image while preserving aspect ratio (Triangle filter for speed)
         let resized_img = image::imageops::resize(
             img,
             new_width,
             new_height,
-            image::imageops::FilterType::Lanczos3
+            image::imageops::FilterType::Triangle
         );
         
         // Create black canvas (0 for grayscale since Canvas A8 uses 0 for background)
-        let mut canvas = image::GrayImage::new(target_width, target_height);
-        for pixel in canvas.pixels_mut() {
-            *pixel = image::Luma([0u8]); // Black background to match Canvas A8
-        }
+        let mut canvas = image::GrayImage::from_raw(
+            target_width,
+            target_height,
+            vec![0u8; (target_width * target_height) as usize]
+        ).ok_or_else(|| FontError::Vectorization("Failed to create canvas with zero initialization".to_string()))?;
         
         // Calculate position to center the resized image
         let offset_x = (target_width - new_width) / 2;
