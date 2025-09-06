@@ -52,8 +52,8 @@ function App() {
                   appSignal.compressedVectors() || {},
                 ).sort(
                   (a, b) =>
-                    a.config.family_name.localeCompare(b.config.family_name) ||
-                    a.config.weight - b.config.weight,
+                    a.family_name.localeCompare(b.family_name) ||
+                    a.weight - b.weight,
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
                 nearestFontConfig={appSignal.nearestFontConfig()}
@@ -68,12 +68,15 @@ function App() {
               <FontCompressedVectorList
                 compressedVectors={Object.values(
                   appSignal.compressedVectors() || {},
-                ).sort(
-                  (a, b) =>
-                    (a.k < 0 ? Infinity : a.k) - (b.k < 0 ? Infinity : b.k) ||
-                    a.config.family_name.localeCompare(b.config.family_name) ||
-                    a.config.weight - b.config.weight,
-                )}
+                ).sort((a, b) => {
+                  const aK = a.computed?.k ?? -1;
+                  const bK = b.computed?.k ?? -1;
+                  return (
+                    (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
+                    a.family_name.localeCompare(b.family_name) ||
+                    a.weight - b.weight
+                  );
+                })}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
                 nearestFontConfig={appSignal.nearestFontConfig()}
                 onFontClick={appSignal.setNearestFontConfig}

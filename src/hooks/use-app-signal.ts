@@ -1,7 +1,7 @@
 import { createSignal, createResource, createEffect } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  CompressedFontVectorMap,
+  FontConfigRecord,
   FontConfig,
   type FontWeight,
   type SessionConfig,
@@ -51,7 +51,7 @@ export function useAppSignal() {
 
   const [compressedVectors] = createResource(
     () => currentSessionId(),
-    async (sessionId): Promise<CompressedFontVectorMap> => {
+    async (sessionId): Promise<FontConfigRecord> => {
       if (!sessionId) return {};
       try {
         const response = await invoke<string>('get_compressed_vectors', {
@@ -60,7 +60,7 @@ export function useAppSignal() {
         if (!response) {
           return {};
         }
-        return JSON.parse(response) as CompressedFontVectorMap;
+        return JSON.parse(response) as FontConfigRecord;
       } catch (error) {
         console.error('Failed to parse compressed vectors:', error);
         return {};

@@ -1,10 +1,5 @@
 import { For, createSignal, createEffect, createMemo } from 'solid-js';
-import {
-  CompressedFontVectorMap,
-  FontVectorData,
-  FontConfig,
-  type FontWeight,
-} from '../types/font';
+import { FontConfigRecord, FontConfig, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 
@@ -19,7 +14,7 @@ const INITIAL_VIEWBOX = {
 const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
-  compressedVectors: CompressedFontVectorMap | undefined;
+  compressedVectors: FontConfigRecord | undefined;
   nearestFontConfig: FontConfig | null;
   sessionWeights: FontWeight[];
   onFontSelect: (fontConfig: FontConfig) => void;
@@ -179,11 +174,17 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
     const [minX, maxX] = vecs.reduce(
-      ([min, max], v) => [Math.min(min, v.x), Math.max(max, v.x)],
+      ([min, max], v) => {
+        const x = v.computed?.vector[0] ?? 0;
+        return [Math.min(min, x), Math.max(max, x)];
+      },
       [Infinity, -Infinity],
     );
     const [minY, maxY] = vecs.reduce(
-      ([min, max], v) => [Math.min(min, v.y), Math.max(max, v.y)],
+      ([min, max], v) => {
+        const y = v.computed?.vector[1] ?? 0;
+        return [Math.min(min, y), Math.max(max, y)];
+      },
       [Infinity, -Infinity],
     );
 
@@ -251,9 +252,9 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           />
         </g>
         <For each={vectors()}>
-          {(vectorData: FontVectorData) => (
+          {(fontConfig: FontConfig) => (
             <FontVectorPoint
-              fontVectorData={vectorData}
+              fontConfig={fontConfig}
               nearestFontConfig={props.nearestFontConfig}
               bounds={bounds()}
               visualizerWeights={visualizerWeights}

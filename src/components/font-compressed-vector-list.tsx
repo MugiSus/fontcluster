@@ -1,10 +1,10 @@
 import { For } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { FontVectorData, FontConfig } from '../types/font';
+import { FontConfig } from '../types/font';
 import { getClusterBgColor } from '../lib/cluster-colors';
 
 interface FontCompressedVectorListProps {
-  compressedVectors: FontVectorData[];
+  compressedVectors: FontConfig[];
   sessionDirectory: string;
   nearestFontConfig: FontConfig | null;
   onFontClick: (fontConfig: FontConfig) => void;
@@ -14,40 +14,39 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
   return (
     <ul class='flex flex-col items-start gap-0 bg-muted/20'>
       <For each={props.compressedVectors}>
-        {(vectorData: FontVectorData) => (
+        {(fontConfig: FontConfig) => (
           <li
             class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-              props.nearestFontConfig?.safe_name ===
-                vectorData.config.safe_name && 'bg-border'
+              props.nearestFontConfig?.safe_name === fontConfig.safe_name &&
+              'bg-border'
             }`}
-            data-font-name={vectorData.config.safe_name}
-            onClick={() => props.onFontClick(vectorData.config)}
+            data-font-name={fontConfig.safe_name}
+            onClick={() => props.onFontClick(fontConfig)}
           >
             <div class='flex items-center gap-2 px-4'>
               <div
-                class={`mb-0.5 h-3 w-1 rounded-full ${getClusterBgColor(vectorData.k)}`}
+                class={`mb-0.5 h-3 w-1 rounded-full ${getClusterBgColor(fontConfig.computed?.k ?? -1)}`}
               />
               <div class='text-sm font-light text-foreground'>
                 {
                   ['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'][
-                    Math.trunc(vectorData.config.weight / 100) - 1
+                    Math.trunc(fontConfig.weight / 100) - 1
                   ]
                 }
               </div>
               <div class='text-nowrap text-sm font-light text-muted-foreground'>
-                {vectorData.config.font_name}
+                {fontConfig.font_name}
               </div>
             </div>
             <img
               class={`block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0 ${
-                props.nearestFontConfig?.safe_name ===
-                  vectorData.config.safe_name &&
+                props.nearestFontConfig?.safe_name === fontConfig.safe_name &&
                 'mix-blend-darken dark:mix-blend-lighten'
               }`}
               src={convertFileSrc(
-                `${props.sessionDirectory}/${vectorData.config.safe_name}/sample.png`,
+                `${props.sessionDirectory}/${fontConfig.safe_name}/sample.png`,
               )}
-              alt={`Font preview for ${vectorData.config.font_name}`}
+              alt={`Font preview for ${fontConfig.font_name}`}
             />
           </li>
         )}

@@ -1,9 +1,9 @@
 import { Show, createMemo } from 'solid-js';
-import { FontVectorData, FontConfig, type FontWeight } from '../types/font';
+import { FontConfig, type FontWeight } from '../types/font';
 import { getClusterTextColor } from '../lib/cluster-colors';
 
 interface FontVectorPointProps {
-  fontVectorData: FontVectorData;
+  fontConfig: FontConfig;
   nearestFontConfig: FontConfig | null;
   bounds: { minX: number; maxX: number; minY: number; maxY: number };
   visualizerWeights: () => FontWeight[];
@@ -12,11 +12,13 @@ interface FontVectorPointProps {
 }
 
 export function FontVectorPoint(props: FontVectorPointProps) {
-  const vector = createMemo(() => props.fontVectorData);
+  const fontConfig = createMemo(() => props.fontConfig);
   const bounds = createMemo(() => props.bounds);
 
   const position = createMemo(() => {
-    const { x, y } = vector();
+    const config = fontConfig();
+    const x = config.computed?.vector[0] ?? 0;
+    const y = config.computed?.vector[1] ?? 0;
     const { minX, maxX, minY, maxY } = bounds();
     return {
       x: ((x - minX) / (maxX - minX)) * 600,
@@ -27,9 +29,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
   return (
     <Show
       when={
-        props
-          .visualizerWeights()
-          .includes(vector().config.weight as FontWeight) &&
+        props.visualizerWeights().includes(fontConfig().weight as FontWeight) &&
         position().x > props.viewBox().x - 150 &&
         position().x < props.viewBox().x + props.viewBox().width + 150 &&
         position().y > props.viewBox().y - 50 &&
@@ -38,16 +38,16 @@ export function FontVectorPoint(props: FontVectorPointProps) {
     >
       <g
         transform={`translate(${position().x}, ${position().y}) scale(${props.zoomFactor()})`}
-        class={getClusterTextColor(vector().k)}
+        class={getClusterTextColor(fontConfig().computed?.k ?? -1)}
       >
         <circle
           cx={0}
           cy={0}
           r={
-            props.nearestFontConfig?.font_name === vector().config.font_name
+            props.nearestFontConfig?.font_name === fontConfig().font_name
               ? 6
               : props.nearestFontConfig?.family_name ===
-                  vector().config.family_name
+                  fontConfig().family_name
                 ? 4
                 : 1.2
           }
@@ -56,15 +56,15 @@ export function FontVectorPoint(props: FontVectorPointProps) {
 
         <Show
           when={
-            props.nearestFontConfig?.font_name === vector().config.font_name ||
-            props.nearestFontConfig?.family_name === vector().config.family_name
+            props.nearestFontConfig?.font_name === fontConfig().font_name ||
+            props.nearestFontConfig?.family_name === fontConfig().family_name
           }
         >
           <circle
             cx={0}
             cy={0}
             r={
-              props.nearestFontConfig?.font_name === vector().config.font_name
+              props.nearestFontConfig?.font_name === fontConfig().font_name
                 ? 40
                 : 20
             }
@@ -82,17 +82,17 @@ export function FontVectorPoint(props: FontVectorPointProps) {
               1 - Math.min(Math.max((props.zoomFactor() - 0.125) / 0.125, 0), 1)
             }
             class={`pointer-events-none select-none fill-foreground text-xs ${
-              props.nearestFontConfig?.font_name === vector().config.font_name
+              props.nearestFontConfig?.font_name === fontConfig().font_name
                 ? 'font-bold'
                 : ''
             }`}
             text-anchor='middle'
           >
-            {props.nearestFontConfig?.font_name === vector().config.font_name
-              ? vector().config.font_name
-              : vector().config.font_name.length > 12
-                ? vector().config.font_name.substring(0, 12) + '…'
-                : vector().config.font_name}
+            {props.nearestFontConfig?.font_name === fontConfig().font_name
+              ? fontConfig().font_name
+              : fontConfig().font_name.length > 12
+                ? fontConfig().font_name.substring(0, 12) + '…'
+                : fontConfig().font_name}
           </text>
         </Show>
 
@@ -101,7 +101,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           cy={0}
           r={48}
           fill='transparent'
-          data-font-config={JSON.stringify(vector().config)}
+          data-font-config={JSON.stringify(fontConfig())}
           data-font-select-area
         />
       </g>
