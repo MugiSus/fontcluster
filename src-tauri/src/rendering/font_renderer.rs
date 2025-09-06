@@ -34,10 +34,10 @@ impl<'a> FontRenderer<'a> {
         let font = self.load_font_with_weight(family_name, weight)?;
         let full_name = font.full_name();
         let (font, glyph_data, canvas_size) = self.prepare_glyph_data(font, weight)?;
-        let canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
+        let mut canvas = self.render_glyphs_to_canvas(font, glyph_data, canvas_size)?;
         
         // Extract HOG features directly from canvas and save vector only
-        let hog_features = self.extract_hog_features_from_canvas(&canvas, canvas_size)?;
+        let hog_features = self.extract_hog_features_from_canvas(&mut canvas, canvas_size)?;
         self.save_vector_to_file(&hog_features, family_name, &full_name, weight_value)?;
         
         Ok(())
@@ -71,56 +71,55 @@ impl<'a> FontRenderer<'a> {
         let metrics = font.metrics();
         let scale = self.config.font_size / metrics.units_per_em as f32;
         
-        // Single-pass character processing: glyph lookup + metrics calculation in one iteration
-        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = self.config.text.chars()
-            .map(|ch| {
-                // Get glyph ID or fail immediately
-                let glyph_id = font.glyph_for_char(ch)
-                    .ok_or_else(|| FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)))?;
-                
-                // Calculate metrics immediately
-                let advance = font.advance(glyph_id)
-                    .map_err(|_| FontError::GlyphProcessing("Failed to get glyph advance".to_string()))?;
-                
-                let bounds = font.typographic_bounds(glyph_id)
-                    .map_err(|_| FontError::GlyphProcessing("Failed to get glyph bounds".to_string()))?;
-                
-                let glyph_width = (advance.x() * scale) as i32;
-                let scaled_min_y = bounds.min_y() * scale;
-                let scaled_max_y = bounds.max_y() * scale;
-                
-                Ok((GlyphMetrics {
-                    glyph_id,
-                    width: glyph_width,
-                    height: 0, // Will be calculated later
-                    max_y: scaled_max_y,
-                }, scaled_min_y, scaled_max_y))
-            })
-            .collect();
+        // Pre-allocate vectors to avoid reallocations
+        let char_count = self.config.text.chars().count();
+        let mut glyph_data = Vec::with_capacity(char_count);
+        let mut min_y = f32::MAX;
+        let mut max_y = f32::MIN;
         
-        let glyph_data = glyph_results?;
+        // Single-pass character processing: glyph lookup + metrics calculation in one iteration
+        for ch in self.config.text.chars() {
+            // Get glyph ID or fail immediately
+            let glyph_id = font.glyph_for_char(ch)
+                .ok_or_else(|| FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)))?;
+            
+            // Calculate metrics immediately
+            let advance = font.advance(glyph_id)
+                .map_err(|_| FontError::GlyphProcessing("Failed to get glyph advance".to_string()))?;
+            
+            let bounds = font.typographic_bounds(glyph_id)
+                .map_err(|_| FontError::GlyphProcessing("Failed to get glyph bounds".to_string()))?;
+            
+            let glyph_width = (advance.x() * scale) as i32;
+            let scaled_min_y = bounds.min_y() * scale;
+            let scaled_max_y = bounds.max_y() * scale;
+            
+            // Update min/max bounds in the same loop
+            min_y = min_y.min(scaled_min_y);
+            max_y = max_y.max(scaled_max_y);
+            
+            glyph_data.push(GlyphMetrics {
+                glyph_id,
+                width: glyph_width,
+                height: 0, // Will be calculated after loop
+                max_y: scaled_max_y,
+            });
+        }
         
         if glyph_data.is_empty() {
             return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
         }
         
-        let (min_y, max_y) = glyph_data.iter()
-            .fold((f32::MAX, f32::MIN), |(min, max), (_, min_y, max_y)| {
-                (min.min(*min_y), max.max(*max_y))
-            });
-        
         let actual_height = (max_y - min_y + 2.0 * GLYPH_PADDING) as i32;
-        let total_width: i32 = glyph_data.iter().map(|(glyph, _, _)| glyph.width).sum();
+        let total_width: i32 = glyph_data.iter().map(|glyph| glyph.width).sum();
         
-        let glyph_metrics: Vec<GlyphMetrics> = glyph_data.into_iter()
-            .map(|(mut glyph, _, _)| {
-                glyph.height = actual_height;
-                glyph
-            })
-            .collect();
+        // Update heights in-place to avoid another allocation
+        for glyph in &mut glyph_data {
+            glyph.height = actual_height;
+        }
         
         let canvas_size = Vector2I::new(total_width, actual_height);
-        Ok((font, glyph_metrics, canvas_size))
+        Ok((font, glyph_data, canvas_size))
     }
 
     fn render_glyphs_to_canvas(
@@ -160,12 +159,13 @@ impl<'a> FontRenderer<'a> {
     }
 
 
-    fn extract_hog_features_from_canvas(&self, canvas: &Canvas, canvas_size: Vector2I) -> FontResult<Vec<f32>> {
+    fn extract_hog_features_from_canvas(&self, canvas: &mut Canvas, canvas_size: Vector2I) -> FontResult<Vec<f32>> {
         let width = canvas_size.x() as u32;
         let height = canvas_size.y() as u32;
         
-        // Convert Canvas (A8) directly to GrayImage
-        let gray_image = GrayImage::from_raw(width, height, canvas.pixels.clone())
+        // Convert Canvas (A8) to GrayImage by taking ownership of pixels
+        let pixels = std::mem::take(&mut canvas.pixels);
+        let gray_image = GrayImage::from_vec(width, height, pixels)
             .ok_or_else(|| FontError::Vectorization("Failed to create GrayImage from Canvas".to_string()))?;
         
         // Resize to standard canvas size with padding
@@ -227,27 +227,27 @@ impl<'a> FontRenderer<'a> {
         Ok(canvas)
     }
     
-    fn save_vector_to_file(&self, vector: &Vec<f32>, family_name: &str, full_name: &str, weight_value: i32) -> FontResult<()> {
-        let safe_name = format!("{}_{}", weight_value, family_name.replace(" ", "_").replace("/", "_"));
-        let display_name = full_name.to_string();
+    fn save_vector_to_file(&self, vector: &[f32], family_name: &str, full_name: &str, weight_value: i32) -> FontResult<()> {
+        let safe_name = format!("{}_{}", weight_value, family_name.replace(' ', "_").replace('/', "_"));
         
         let session_manager = SessionManager::global();
-        let font_dir = session_manager.create_font_directory(&safe_name, &display_name, family_name, weight_value)?;
+        let font_dir = session_manager.create_font_directory(&safe_name, full_name, family_name, weight_value)?;
         let vector_path = font_dir.join("vector.csv");
         
         let mut file = fs::File::create(&vector_path)
             .map_err(|e| FontError::Vectorization(format!("Failed to create vector file {}: {}", vector_path.display(), e)))?;
         
-        // Write vector data as CSV format (comma-separated values in one line)
-        let csv_line = vector.iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
+        // Write vector data as CSV format using iterator chain to avoid intermediate allocations
+        let mut first = true;
+        for value in vector {
+            if !first {
+                write!(file, ",").map_err(|e| FontError::Vectorization(format!("Failed to write comma: {}", e)))?;
+            }
+            write!(file, "{}", value).map_err(|e| FontError::Vectorization(format!("Failed to write value: {}", e)))?;
+            first = false;
+        }
+        writeln!(file).map_err(|e| FontError::Vectorization(format!("Failed to write newline: {}", e)))?;
         
-        writeln!(file, "{}", csv_line)
-            .map_err(|e| FontError::Vectorization(format!("Failed to write vector data: {}", e)))?;
-        
-        println!("Saved HOG vector: {} -> {}", full_name, vector_path.display());
         Ok(())
     }
 }

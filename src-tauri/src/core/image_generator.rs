@@ -71,21 +71,27 @@ impl FontImageGenerator {
                     let family_name = family_name.clone();
                     let weight = *weight;
                     
-                    task::spawn_blocking(move || {
-                        // Acquire permit before processing (blocking)
-                        let rt = tokio::runtime::Handle::current();
-                        let _permit = rt.block_on(semaphore.acquire()).unwrap();
+                    async move {
+                        // Acquire permit asynchronously before processing
+                        let _permit = semaphore.acquire().await.unwrap();
                         
-                        let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
-                        if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                            // Decrement denominator for failed tasks
-                            progress_events::decrement_progress_denominator(&app_handle_clone);
-                        } else {
-                            println!("Successfully generated image for font: {} weight: {}", family_name, weight);
-                            // Increment progress after successful completion
-                            progress_events::increment_progress(&app_handle_clone);
-                        }
-                    })
+                        let config_clone = config_clone;
+                        let shared_source = shared_source;
+                        let app_handle_clone = app_handle_clone;
+                        let family_name = family_name;
+                        let weight = weight;
+                        
+                        task::spawn_blocking(move || {
+                            let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
+                            if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
+                                // Decrement denominator for failed tasks
+                                progress_events::decrement_progress_denominator(&app_handle_clone);
+                            } else {
+                                // Increment progress after successful completion
+                                progress_events::increment_progress(&app_handle_clone);
+                            }
+                        }).await.unwrap()
+                    }
                 })
                 .collect::<Vec<_>>();
                 
