@@ -14,7 +14,7 @@ const INITIAL_VIEWBOX = {
 const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
-  compressedVectors: FontConfigRecord | undefined;
+  fontConfigs: FontConfigRecord | undefined;
   nearestFontConfig: FontConfig | null;
   sessionWeights: FontWeight[];
   onFontSelect: (fontConfig: FontConfig) => void;
@@ -164,9 +164,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
   };
 
-  const vectors = createMemo(() =>
-    Object.values(props.compressedVectors || {}),
-  );
+  const vectors = createMemo(() => Object.values(props.fontConfigs || {}));
   const zoomFactor = createMemo(() => viewBox().width / 700);
 
   const bounds = createMemo(() => {

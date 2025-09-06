@@ -3,17 +3,17 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { FontConfig } from '../types/font';
 import { getClusterBgColor } from '../lib/cluster-colors';
 
-interface FontCompressedVectorListProps {
-  compressedVectors: FontConfig[];
+interface FontConfigListProps {
+  fontConfigs: FontConfig[];
   sessionDirectory: string;
   nearestFontConfig: FontConfig | null;
   onFontClick: (fontConfig: FontConfig) => void;
 }
 
-export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
+export function FontConfigList(props: FontConfigListProps) {
   return (
     <ul class='flex flex-col items-start gap-0 bg-muted/20'>
-      <For each={props.compressedVectors}>
+      <For each={props.fontConfigs}>
         {(fontConfig: FontConfig) => (
           <li
             class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${

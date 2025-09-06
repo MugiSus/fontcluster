@@ -49,7 +49,7 @@ export function useAppSignal() {
     },
   );
 
-  const [compressedVectors] = createResource(
+  const [fontConfigs] = createResource(
     () => currentSessionId(),
     async (sessionId): Promise<FontConfigRecord> => {
       if (!sessionId) return {};
@@ -62,7 +62,7 @@ export function useAppSignal() {
         }
         return JSON.parse(response) as FontConfigRecord;
       } catch (error) {
-        console.error('Failed to parse compressed vectors:', error);
+        console.error('Failed to parse font configs:', error);
         return {};
       }
     },
@@ -100,7 +100,7 @@ export function useAppSignal() {
     // Resources
     sessionConfig,
     sessionDirectory,
-    compressedVectors,
+    fontConfigs,
 
     // Actions
     setSelectedWeights,
