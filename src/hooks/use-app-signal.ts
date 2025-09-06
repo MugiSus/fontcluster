@@ -12,8 +12,8 @@ export function useAppSignal() {
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
-  const [nearestFontConfig, setNearestFontConfig] =
-    createSignal<FontConfig | null>(null);
+  const [nearestFontSafeName, setNearestFontSafeName] =
+    createSignal<string>('');
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
   // Resources
@@ -94,7 +94,7 @@ export function useAppSignal() {
   return {
     // Signals
     selectedWeights,
-    nearestFontConfig,
+    nearestFontSafeName,
     currentSessionId,
 
     // Resources
@@ -104,7 +104,7 @@ export function useAppSignal() {
 
     // Actions
     setSelectedWeights,
-    setNearestFontConfig,
+    setNearestFontSafeName,
     setCurrentSessionId,
     generateFontImages,
   };

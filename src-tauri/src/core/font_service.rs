@@ -89,10 +89,6 @@ impl FontService {
             }
             
             let font_dir = entry.path();
-            let _safe_font_name = match font_dir.file_name().and_then(|n| n.to_str()) {
-                Some(name) => name,
-                None => continue,
-            };
             
             // Load font config directly from the font directory
             let config_path = font_dir.join("config.json");
@@ -104,9 +100,9 @@ impl FontService {
             
             // Load computed data from config.json
             if config.computed.is_some() {
-                // Use font_name as key, store FontConfig with computed data
+                // Use safe_name as key, store FontConfig with computed data
                 result.insert(
-                    config.font_name.clone(),
+                    config.safe_name.clone(),
                     serde_json::to_value(&config).unwrap_or(serde_json::Value::Null)
                 );
             }

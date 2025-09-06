@@ -54,8 +54,10 @@ function App() {
                     a.weight - b.weight,
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
-                nearestFontConfig={appSignal.nearestFontConfig()}
-                onFontClick={appSignal.setNearestFontConfig}
+                nearestFontSafeName={appSignal.nearestFontSafeName()}
+                onFontClick={(fontConfig) =>
+                  appSignal.setNearestFontSafeName(fontConfig.safe_name)
+                }
               />
             </TabsContent>
 
@@ -76,8 +78,10 @@ function App() {
                   },
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
-                nearestFontConfig={appSignal.nearestFontConfig()}
-                onFontClick={appSignal.setNearestFontConfig}
+                nearestFontSafeName={appSignal.nearestFontSafeName()}
+                onFontClick={(fontConfig) =>
+                  appSignal.setNearestFontSafeName(fontConfig.safe_name)
+                }
               />
             </TabsContent>
           </Tabs>
@@ -90,12 +94,12 @@ function App() {
           initialSize={0.75}
         >
           <FontClusterVisualization
-            fontConfigs={appSignal.fontConfigs()}
-            nearestFontConfig={appSignal.nearestFontConfig()}
+            fontConfigRecord={appSignal.fontConfigs()}
+            nearestFontSafeName={appSignal.nearestFontSafeName()}
             sessionWeights={
               (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
             }
-            onFontSelect={appSignal.setNearestFontConfig}
+            onFontSelect={appSignal.setNearestFontSafeName}
           />
         </ResizablePanel>
       </Resizable>

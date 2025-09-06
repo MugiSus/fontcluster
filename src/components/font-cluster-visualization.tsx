@@ -14,15 +14,24 @@ const INITIAL_VIEWBOX = {
 const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
-  fontConfigs: FontConfigRecord | undefined;
-  nearestFontConfig: FontConfig | null;
+  fontConfigRecord: FontConfigRecord | undefined;
+  nearestFontSafeName: string;
   sessionWeights: FontWeight[];
-  onFontSelect: (fontConfig: FontConfig) => void;
+  onFontSelect: (safeName: string) => void;
 }
 
 export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
+
+  const nearestFontConfig = createMemo(() => {
+    console.log(props.fontConfigRecord);
+    return props.fontConfigRecord?.[props.nearestFontSafeName] ?? null;
+  });
+
+  const vectors = createMemo(() => Object.values(props.fontConfigRecord || {}));
+  const zoomFactor = createMemo(() => viewBox().width / 700);
+
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
 
@@ -74,7 +83,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       ) as FontConfig;
 
       if (nearestFontConfigParse) {
-        props.onFontSelect(nearestFontConfigParse);
+        props.onFontSelect(nearestFontConfigParse.safe_name);
         const elements = document.querySelectorAll(
           `[data-font-name="${nearestFontConfigParse.safe_name}"] > img`,
         );
@@ -164,9 +173,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
   };
 
-  const vectors = createMemo(() => Object.values(props.fontConfigs || {}));
-  const zoomFactor = createMemo(() => viewBox().width / 700);
-
   const bounds = createMemo(() => {
     const vecs = vectors();
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
@@ -253,7 +259,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           {(fontConfig: FontConfig) => (
             <FontVectorPoint
               fontConfig={fontConfig}
-              nearestFontConfig={props.nearestFontConfig}
+              nearestFontConfig={nearestFontConfig()}
               bounds={bounds()}
               visualizerWeights={visualizerWeights}
               viewBox={viewBox}

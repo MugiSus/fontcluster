@@ -6,7 +6,7 @@ import { getClusterBgColor } from '../lib/cluster-colors';
 interface FontConfigListProps {
   fontConfigs: FontConfig[];
   sessionDirectory: string;
-  nearestFontConfig: FontConfig | null;
+  nearestFontSafeName: string;
   onFontClick: (fontConfig: FontConfig) => void;
 }
 
@@ -17,7 +17,7 @@ export function FontConfigList(props: FontConfigListProps) {
         {(fontConfig: FontConfig) => (
           <li
             class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-              props.nearestFontConfig?.safe_name === fontConfig.safe_name &&
+              props.nearestFontSafeName === fontConfig.safe_name &&
               'bg-border'
             }`}
             data-font-name={fontConfig.safe_name}
@@ -40,7 +40,7 @@ export function FontConfigList(props: FontConfigListProps) {
             </div>
             <img
               class={`block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0 ${
-                props.nearestFontConfig?.safe_name === fontConfig.safe_name &&
+                props.nearestFontSafeName === fontConfig.safe_name &&
                 'mix-blend-darken dark:mix-blend-lighten'
               }`}
               src={convertFileSrc(

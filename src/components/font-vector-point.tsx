@@ -13,6 +13,7 @@ interface FontVectorPointProps {
 
 export function FontVectorPoint(props: FontVectorPointProps) {
   const fontConfig = createMemo(() => props.fontConfig);
+  const nearestFontConfig = createMemo(() => props.nearestFontConfig);
   const bounds = createMemo(() => props.bounds);
 
   const position = createMemo(() => {
@@ -44,30 +45,16 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           cx={0}
           cy={0}
           r={
-            props.nearestFontConfig?.font_name === fontConfig().font_name
-              ? 6
-              : props.nearestFontConfig?.family_name ===
-                  fontConfig().family_name
-                ? 4
-                : 1.2
+            nearestFontConfig()?.safe_name === fontConfig().safe_name ? 6 : 1.2
           }
           class='pointer-events-none fill-current'
         />
 
-        <Show
-          when={
-            props.nearestFontConfig?.font_name === fontConfig().font_name ||
-            props.nearestFontConfig?.family_name === fontConfig().family_name
-          }
-        >
+        <Show when={nearestFontConfig()?.safe_name === fontConfig().safe_name}>
           <circle
             cx={0}
             cy={0}
-            r={
-              props.nearestFontConfig?.font_name === fontConfig().font_name
-                ? 40
-                : 20
-            }
+            r={40}
             fill='transparent'
             stroke='currentColor'
             stroke-width={1.5}
@@ -82,13 +69,13 @@ export function FontVectorPoint(props: FontVectorPointProps) {
               1 - Math.min(Math.max((props.zoomFactor() - 0.125) / 0.125, 0), 1)
             }
             class={`pointer-events-none select-none fill-foreground text-xs ${
-              props.nearestFontConfig?.font_name === fontConfig().font_name
+              nearestFontConfig()?.safe_name === fontConfig().safe_name
                 ? 'font-bold'
                 : ''
             }`}
             text-anchor='middle'
           >
-            {props.nearestFontConfig?.font_name === fontConfig().font_name
+            {nearestFontConfig()?.safe_name === fontConfig().safe_name
               ? fontConfig().font_name
               : fontConfig().font_name.length > 12
                 ? fontConfig().font_name.substring(0, 12) + '…'
