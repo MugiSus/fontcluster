@@ -7,7 +7,7 @@ use tokio::task;
 use futures::future::join_all;
 use image::GrayImage;
 use imageproc::hog::*;
-use std::io::Write;
+use bytemuck;
 use tauri::AppHandle;
 
 // Image vectorization service
@@ -209,31 +209,24 @@ impl ImageVectorizer {
         Ok(canvas)
     }
     
-    fn save_vector_to_file(&self, vector: &Vec<f32>, png_path: &PathBuf) -> FontResult<()> {
+    fn save_vector_to_file(&self, vector: &[f32], png_path: &PathBuf) -> FontResult<()> {
         let vector_path = self.get_vector_file_path(png_path);
         
-        let mut file = fs::File::create(&vector_path)
-            .map_err(|e| crate::error::FontError::Vectorization(format!("Failed to create vector file {}: {}", vector_path.display(), e)))?;
-        
-        // Write vector data as CSV format (comma-separated values in one line)
-        let csv_line = vector.iter()
-            .map(|v| v.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-        
-        writeln!(file, "{}", csv_line)
-            .map_err(|e| crate::error::FontError::Vectorization(format!("Failed to write vector data: {}", e)))?;
+        // Convert f32 slice to bytes using bytemuck (zero-copy, safe)
+        let bytes = bytemuck::cast_slice(vector);
+        fs::write(&vector_path, bytes)
+            .map_err(|e| crate::error::FontError::Vectorization(format!("Failed to write vector file {}: {}", vector_path.display(), e)))?;
         
         Ok(())
     }
     
     fn get_vector_file_path(&self, png_path: &PathBuf) -> PathBuf {
         // png_path is like: Generated/session_id/font_name/sample.png
-        // We want: Generated/session_id/font_name/vector.csv
+        // We want: Generated/session_id/font_name/vector.bin
         if let Some(parent) = png_path.parent() {
-            parent.join("vector.csv")
+            parent.join("vector.bin")
         } else {
-            PathBuf::from("vector.csv")
+            PathBuf::from("vector.bin")
         }
     }
 }
