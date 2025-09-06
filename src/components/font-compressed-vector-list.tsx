@@ -39,7 +39,11 @@ export function FontCompressedVectorList(props: FontCompressedVectorListProps) {
               </div>
             </div>
             <img
-              class='block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0'
+              class={`block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0 ${
+                props.nearestFontConfig?.safe_name ===
+                  vectorData.config.safe_name &&
+                'mix-blend-darken dark:mix-blend-lighten'
+              }`}
               src={convertFileSrc(
                 `${props.sessionDirectory}/${vectorData.config.safe_name}/sample.png`,
               )}
