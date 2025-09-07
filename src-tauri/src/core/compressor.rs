@@ -6,7 +6,7 @@ use std::fs;
 use tokio::task;
 use futures::future::join_all;
 use ndarray::Array2;
-use pacmap::{Configuration, fit_transform};
+use pacmap::{Configuration, fit_transform, Initialization};
 use bytemuck;
 
 // Vector compression service
@@ -135,11 +135,12 @@ impl VectorCompressor {
         // Configure PaCMAP to preserve outlier positions while maintaining structure
         let config = Configuration::builder()
             .embedding_dimensions(2)
-            .seed(42)
-            .num_iters((100, 400, 200))  // More neighbor pairs for local structure preservation
-            .learning_rate(0.08)          // Lower learning rate for stable positioning
-            .mid_near_ratio(1.0)         // Balanced mid-range emphasis
-            .far_pair_ratio(8.0)         // Higher ratio to prevent extreme outlier separation
+            .initialization(Initialization::Random(Some(42)))
+            .num_iters((100, 100, 250))  // More neighbor pairs for local structure preservation
+            .learning_rate(1.0)          // Lower learning rate for stable positioning
+            .mid_near_ratio(0.8)         // Balanced mid-range emphasis
+            .far_pair_ratio(1.0)    
+            .override_neighbors(40)     // Higher ratio to prevent extreme outlier separation
             .build();
         
         println!("Data prepared, running PaCMAP dimensionality reduction...");
