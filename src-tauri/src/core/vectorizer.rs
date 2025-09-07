@@ -128,7 +128,7 @@ impl ImageVectorizer {
         let feature_vector = self.extract_hog_features(&gray_img)?;
 
         // Compress variable-length HOG to fixed 2048 dims via feature hashing
-        const HASHED_DIM: usize = 2048;
+        const HASHED_DIM: usize = 4096;
         let mut hashed = Self::hash_features_signed(&feature_vector, HASHED_DIM);
         // Signed square-root (power) normalization to suppress burstiness
         Self::power_normalize_signed_in_place(&mut hashed, 0.5);
