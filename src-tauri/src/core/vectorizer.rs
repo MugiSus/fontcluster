@@ -124,23 +124,26 @@ impl ImageVectorizer {
         // Convert to grayscale
         let gray_img = img.to_luma8();
         
-        // Extract HOG features using imageproc
+        // Extract HOG features from the original image (no resizing)
         let feature_vector = self.extract_hog_features(&gray_img)?;
+
+        // Compress variable-length HOG to fixed 2048 dims via feature hashing
+        const HASHED_DIM: usize = 2048;
+        let mut hashed = Self::hash_features_signed(&feature_vector, HASHED_DIM);
+        // Signed square-root (power) normalization to suppress burstiness
+        Self::power_normalize_signed_in_place(&mut hashed, 0.5);
+        // Final L2 normalization
+        Self::l2_normalize_in_place(&mut hashed);
         
         // Save vector to Vector directory
-        self.save_vector_to_file(&feature_vector, png_path)?;
+        self.save_vector_to_file(&hashed, png_path)?;
         
         // Detailed logging moved to spawn_vectorization_tasks for progress tracking
         
-        Ok(feature_vector)
+        Ok(hashed)
     }
     
     fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
-        // Create padded image with fixed canvas size while preserving aspect ratio
-        let canvas_width = 512;
-        let canvas_height = 96;
-        let padded_img = self.resize_with_padding(img, canvas_width, canvas_height)?;
-        
         // Configure HOG parameters
         let hog_options = HogOptions {
             orientations: 9,
@@ -150,8 +153,11 @@ impl ImageVectorizer {
             signed: false,
         };
         
-        // Extract HOG features from padded image
-        let hog_result = hog(&padded_img, hog_options);
+        // Ensure dimensions align to HOG cell grid without resizing (pad only)
+        let padded = Self::pad_to_hog_grid(img, hog_options.cell_side as u32, hog_options.block_side as u32);
+        
+        // Extract HOG features on padded image
+        let hog_result = hog(&padded, hog_options);
         
         let features = match hog_result {
             Ok(features) => features,
@@ -163,6 +169,57 @@ impl ImageVectorizer {
         }
         
         Ok(features)
+    }
+
+    /// Feature hashing (hashing trick) with signed buckets
+    /// - Deterministic FNV-1a 64-bit hash on index
+    /// - Bucket = h1 % dim, Sign = (-1)^{h2 & 1}
+    fn hash_features_signed(values: &[f32], dim: usize) -> Vec<f32> {
+        fn fnv1a64(x: u64) -> u64 {
+            let mut h: u64 = 0xcbf29ce484222325;
+            for b in x.to_le_bytes() {
+                h ^= b as u64;
+                h = h.wrapping_mul(0x100000001b3);
+            }
+            h
+        }
+
+        let mut out = vec![0f32; dim.max(1)];
+        if dim == 0 || values.is_empty() {
+            return out;
+        }
+
+        for (i, &v) in values.iter().enumerate() {
+            let i64 = i as u64;
+            let h1 = fnv1a64(i64);
+            let h2 = fnv1a64(h1 ^ 0x9e3779b97f4a7c15);
+            let bucket = (h1 % (dim as u64)) as usize;
+            let sign = if (h2 & 1) == 0 { 1.0f32 } else { -1.0f32 };
+            out[bucket] += sign * v;
+        }
+        out
+    }
+
+    /// In-place L2 normalization with zero-safe guard
+    fn l2_normalize_in_place(vec: &mut [f32]) {
+        let sum_sq: f32 = vec.iter().map(|x| (*x) * (*x)).sum();
+        let norm = sum_sq.sqrt();
+        if norm > 0.0 {
+            let inv = 1.0 / norm.max(1e-12);
+            for x in vec.iter_mut() {
+                *x *= inv;
+            }
+        }
+    }
+
+    /// In-place signed power normalization: x <- sign(x) * |x|^alpha
+    fn power_normalize_signed_in_place(vec: &mut [f32], alpha: f32) {
+        let a = if alpha > 0.0 { alpha } else { 0.5 };
+        for x in vec.iter_mut() {
+            let s = if *x >= 0.0 { 1.0 } else { -1.0 };
+            let mag = x.abs().powf(a);
+            *x = s * mag;
+        }
     }
     
     fn resize_with_padding(&self, img: &GrayImage, target_width: u32, target_height: u32) -> FontResult<GrayImage> {
@@ -228,5 +285,34 @@ impl ImageVectorizer {
         } else {
             PathBuf::from("vector.bin")
         }
+    }
+
+    /// Pad image to the nearest multiples of cell size and ensure at least block_side cells
+    /// No resampling is performed; content is centered on a black background.
+    fn pad_to_hog_grid(img: &GrayImage, cell_side: u32, block_side: u32) -> GrayImage {
+        let (w, h) = (img.width(), img.height());
+        let mut cells_x = (w + cell_side - 1) / cell_side; // ceil(w / cell_side)
+        let mut cells_y = (h + cell_side - 1) / cell_side; // ceil(h / cell_side)
+        // Ensure enough cells for at least one block
+        cells_x = cells_x.max(block_side);
+        cells_y = cells_y.max(block_side);
+        let new_w = cells_x * cell_side;
+        let new_h = cells_y * cell_side;
+
+        if new_w == w && new_h == h {
+            return img.clone();
+        }
+
+        let mut canvas = image::GrayImage::new(new_w, new_h);
+        // Fill with black (0) to match renderer's background
+        for p in canvas.pixels_mut() {
+            *p = image::Luma([0u8]);
+        }
+
+        // Center original image on the canvas
+        let off_x = ((new_w - w) / 2) as i64;
+        let off_y = ((new_h - h) / 2) as i64;
+        image::imageops::overlay(&mut canvas, img, off_x, off_y);
+        canvas
     }
 }
