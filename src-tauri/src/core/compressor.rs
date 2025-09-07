@@ -76,6 +76,9 @@ impl VectorCompressor {
         // Perform PaCMAP compression (now includes parallel file saving)
         Self::compress_vectors_to_2d(&vectors, &font_names).await?;
         
+        // Delete vector.bin files after successful compression
+        Self::cleanup_vector_files().await?;
+        
         println!("PaCMAP compression completed successfully!");
         Ok(SessionManager::global().get_session_dir())
     }
@@ -206,6 +209,61 @@ impl VectorCompressor {
             })?;
         
         println!("Compressed {} vectors to 2D using PaCMAP", font_names.len());
+        Ok(())
+    }
+
+    async fn cleanup_vector_files() -> FontResult<()> {
+        let session_manager = SessionManager::global();
+        let session_dir = session_manager.get_session_dir();
+        
+        let vector_files: Vec<PathBuf> = fs::read_dir(&session_dir)?
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.path().is_dir())
+            .filter_map(|entry| {
+                let font_dir = entry.path();
+                let vector_path = font_dir.join("vector.bin");
+                if vector_path.exists() {
+                    Some(vector_path)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if vector_files.is_empty() {
+            return Ok(());
+        }
+
+        println!("Cleaning up {} vector.bin files after compression...", vector_files.len());
+        
+        // Delete vector.bin files in parallel
+        let cleanup_tasks: Vec<_> = vector_files.into_iter().map(|vector_path| {
+            task::spawn_blocking(move || {
+                match fs::remove_file(&vector_path) {
+                    Ok(_) => {
+                        println!("✓ Deleted vector.bin: {}", vector_path.display());
+                        Ok(())
+                    },
+                    Err(e) => {
+                        eprintln!("Failed to delete vector.bin {}: {}", vector_path.display(), e);
+                        Err(FontError::Io(e))
+                    }
+                }
+            })
+        }).collect();
+
+        let cleanup_results = join_all(cleanup_tasks).await;
+        
+        // Check for any errors in cleanup
+        cleanup_results
+            .into_iter()
+            .try_for_each(|result| match result {
+                Ok(Ok(())) => Ok(()),
+                Ok(Err(e)) => Err(e),
+                Err(e) => Err(FontError::Vectorization(format!("Cleanup task failed: {}", e))),
+            })?;
+
+        println!("Successfully cleaned up all vector.bin files");
         Ok(())
     }
 }
