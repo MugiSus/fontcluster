@@ -17,7 +17,7 @@ interface FontClusterVisualizationProps {
   fontConfigRecord: FontConfigRecord | undefined;
   nearestFontConfig: FontConfig | null;
   sessionWeights: FontWeight[];
-  onFontSelect: (safeName: string) => void;
+  onFontSelect: (safeName: FontConfig) => void;
 }
 
 export function FontClusterVisualization(props: FontClusterVisualizationProps) {
@@ -78,7 +78,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       ) as FontConfig;
 
       if (nearestFontConfigParse) {
-        props.onFontSelect(nearestFontConfigParse.safe_name);
+        props.onFontSelect(nearestFontConfigParse);
         const elements = document.querySelectorAll(
           `[data-font-name="${nearestFontConfigParse.safe_name}"] > img`,
         );
