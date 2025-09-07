@@ -222,50 +222,6 @@ impl ImageVectorizer {
         }
     }
     
-    fn resize_with_padding(&self, img: &GrayImage, target_width: u32, target_height: u32) -> FontResult<GrayImage> {
-        let original_width = img.width();
-        let original_height = img.height();
-        
-        println!("Original size: {}x{}, target canvas: {}x{}", 
-                original_width, original_height, target_width, target_height);
-        
-        // Calculate scaling factor to fit within target while preserving aspect ratio
-        let scale_x = target_width as f32 / original_width as f32;
-        let scale_y = target_height as f32 / original_height as f32;
-        let scale = scale_x.min(scale_y); // Use smaller scale to fit within bounds
-        
-        let new_width = (original_width as f32 * scale) as u32;
-        let new_height = (original_height as f32 * scale) as u32;
-        
-        println!("Scaled size: {}x{} (scale: {:.3})", new_width, new_height, scale);
-        
-        // Resize the image while preserving aspect ratio
-        let resized_img = image::imageops::resize(
-            img,
-            new_width,
-            new_height,
-            image::imageops::FilterType::Lanczos3
-        );
-        
-        // Create white canvas
-        let mut canvas = image::GrayImage::new(target_width, target_height);
-        // Fill with white (255)
-        for pixel in canvas.pixels_mut() {
-            *pixel = image::Luma([255u8]);
-        }
-        
-        // Calculate position to center the resized image
-        let offset_x = (target_width - new_width) / 2;
-        let offset_y = (target_height - new_height) / 2;
-        
-        println!("Padding offset: ({}, {})", offset_x, offset_y);
-        
-        // Copy resized image onto canvas
-        image::imageops::overlay(&mut canvas, &resized_img, offset_x as i64, offset_y as i64);
-        
-        Ok(canvas)
-    }
-    
     fn save_vector_to_file(&self, vector: &[f32], png_path: &PathBuf) -> FontResult<()> {
         let vector_path = self.get_vector_file_path(png_path);
         
