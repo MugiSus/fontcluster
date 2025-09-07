@@ -107,6 +107,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           id='preview-text'
           value={props.sampleText}
           placeholder='Hamburgevons'
+          spellcheck='false'
         />
       </TextField>
       <WeightSelector
