@@ -14,11 +14,11 @@ pub async fn run_jobs(text: Option<String>, weights: Option<Vec<i32>>, app_handl
         let font_weights = weights.unwrap_or_else(|| vec![400]);
         println!("🚀 Starting complete font processing pipeline with text: '{}' and weights: {:?}", processing_text, font_weights);
 
-        // Clean up old sessions before creating a new one (keep only 20 most recent)
-        if let Err(e) = SessionManager::global().cleanup_old_sessions(19) {
+        // Clean up old sessions before creating a new one (keep only 40 most recent)
+        if let Err(e) = SessionManager::global().cleanup_old_sessions(40) {
             println!("Warning: Failed to cleanup old sessions: {}", e);
         } else {
-            println!("🧹 Cleaned up old sessions (keeping 20 most recent)");
+            println!("🧹 Cleaned up old sessions (keeping 40 most recent)");
         }
 
         // Create functional pipeline
