@@ -22,7 +22,24 @@ impl FontImageVectorizer {
         let png_files = self.get_png_files()?;
         let total_files = png_files.len();
         println!("🔢 Found {} PNG files to vectorize", total_files);
-        
+
+        // Decide canvas size based on median dimensions of input images (rounded to multiple of 8)
+        let (canvas_width, canvas_height) = if total_files > 0 {
+            match self.compute_canvas_size(&png_files) {
+                Ok((w, h)) => {
+                    println!("🖼️ Using computed canvas size: {}x{} (median, 8-aligned)", w, h);
+                    (w, h)
+                }
+                Err(e) => {
+                    println!("⚠️ Failed to compute canvas size ({}). Falling back to 512x96.", e);
+                    (512, 96)
+                }
+            }
+        } else {
+            println!("ℹ️ No images found; using default canvas 512x96.");
+            (512, 96)
+        };
+
         // Initialize progress tracking
         progress_events::reset_progress(app_handle);
         progress_events::set_progress_denominator(app_handle, total_files as i32);
@@ -38,7 +55,7 @@ impl FontImageVectorizer {
                 batch.len()
             );
             
-            let tasks = self.spawn_vectorization_tasks(batch.to_vec(), app_handle);
+            let tasks = self.spawn_vectorization_tasks(batch.to_vec(), app_handle, canvas_width, canvas_height);
             let results = join_all(tasks).await;
             
             // Count successful vectorizations in this batch
@@ -74,13 +91,15 @@ impl FontImageVectorizer {
             .collect())
     }
     
-    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>, app_handle: &AppHandle) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {
+    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>, app_handle: &AppHandle, target_width: u32, target_height: u32) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {
         png_files
             .into_iter()
             .map(|png_path| {
                 let app_handle_clone = app_handle.clone();
+                let tw = target_width;
+                let th = target_height;
                 task::spawn_blocking(move || {
-                    let vectorizer = ImageVectorizer::new();
+                    let vectorizer = ImageVectorizer::new(tw, th);
                     let result = vectorizer.vectorize_image(&png_path);
                     
                     // Update progress regardless of success/failure
@@ -106,14 +125,67 @@ impl FontImageVectorizer {
             })
             .collect()
     }
+
+    fn compute_canvas_size(&self, png_files: &[PathBuf]) -> FontResult<(u32, u32)> {
+        // Gather dimensions using lightweight header read
+        let mut widths: Vec<u32> = Vec::with_capacity(png_files.len());
+        let mut heights: Vec<u32> = Vec::with_capacity(png_files.len());
+        for path in png_files {
+            match image::image_dimensions(path) {
+                Ok((w, h)) => {
+                    widths.push(w);
+                    heights.push(h);
+                }
+                Err(e) => {
+                    println!("⚠️ Skipping {} due to dimension read error: {}", path.display(), e);
+                }
+            }
+        }
+
+        if widths.is_empty() || heights.is_empty() {
+            return Err(crate::error::FontError::Vectorization("No valid image dimensions to compute median".into()));
+        }
+
+        widths.sort_unstable();
+        heights.sort_unstable();
+
+        let mw = median_u32(&widths);
+        let mh = median_u32(&heights);
+
+        let mw_aligned = round_to_multiple_of_8_nearest(mw.max(8));
+        let mh_aligned = round_to_multiple_of_8_nearest(mh.max(8));
+
+        Ok((mw_aligned, mh_aligned))
+    }
+}
+
+fn median_u32(sorted_vals: &[u32]) -> u32 {
+    let n = sorted_vals.len();
+    if n == 0 {
+        return 0;
+    }
+    if n % 2 == 1 {
+        sorted_vals[n / 2]
+    } else {
+        let a = sorted_vals[n / 2 - 1] as f32;
+        let b = sorted_vals[n / 2] as f32;
+        ((a + b) / 2.0).round() as u32
+    }
+}
+
+fn round_to_multiple_of_8_nearest(v: u32) -> u32 {
+    ((v + 4) / 8) * 8
 }
 
 // Individual image vectorization processor
-pub struct ImageVectorizer;
+pub struct ImageVectorizer {
+    target_width: u32,
+    target_height: u32,
+}
 
 impl ImageVectorizer {
-    pub fn new() -> Self {
-        Self
+    pub fn new(target_width: u32, target_height: u32) -> Self {
+        Self { target_width, target_height }
     }
     
     pub fn vectorize_image(&self, png_path: &PathBuf) -> FontResult<Vec<f32>> {
@@ -136,10 +208,8 @@ impl ImageVectorizer {
     }
     
     fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
-        // Create padded image with fixed canvas size while preserving aspect ratio
-        let canvas_width = 512;
-        let canvas_height = 96;
-        let padded_img = self.resize_with_padding(img, canvas_width, canvas_height)?;
+        // Create padded image with computed canvas size while preserving aspect ratio
+        let padded_img = self.resize_with_padding(img, self.target_width, self.target_height)?;
         
         // Configure HOG parameters
         let hog_options = HogOptions {
