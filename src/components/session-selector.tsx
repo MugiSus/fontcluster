@@ -1,8 +1,6 @@
 import { createSignal, createResource, For, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -10,23 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { ArchiveRestoreIcon, Trash2Icon } from 'lucide-solid';
+import { SessionItem, type CompletionBadge } from './session-item';
 import { type SessionConfig } from '../types/font';
 
 // Constants
-const CLUSTER_COLORS = [
-  'bg-blue-500',
-  'bg-red-500',
-  'bg-yellow-500',
-  'bg-green-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-teal-500',
-  'bg-indigo-500',
-  'bg-cyan-500',
-  'bg-fuchsia-500',
-] as const;
-
 const CONFIRMATION_TIMEOUT = 3000;
 const MAX_DISPLAYED_CLUSTERS = 10;
 
@@ -35,10 +20,7 @@ interface SessionSelectorProps {
   onSessionSelect: (sessionId: string) => void;
 }
 
-type CompletionBadge = {
-  text: 'Complete' | 'Compressed' | 'Vectorized' | 'Rasterized' | 'Empty';
-  variant: 'default' | 'outline' | 'error';
-};
+// CompletionBadge type is re-exported from SessionItem for reuse
 
 export function SessionSelector(props: SessionSelectorProps) {
   const [open, setOpen] = createSignal(false);
@@ -173,105 +155,5 @@ export function SessionSelector(props: SessionSelectorProps) {
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// Extracted SessionItem component
-interface SessionItemProps {
-  session: SessionConfig;
-  badge: CompletionBadge;
-  clusterCount: number;
-  formatDate: (dateStr: string) => string;
-  isCurrentSession: boolean;
-  isConfirmingDelete: boolean;
-  isDeletingSession: boolean;
-  isRestoring: boolean;
-  onDeleteClick: () => void;
-  onSelectSession: () => void;
-}
-
-function SessionItem(props: SessionItemProps) {
-  return (
-    <div class='border-b p-4 transition-colors hover:bg-muted/50'>
-      <div class='flex items-center justify-between gap-2'>
-        <div class='flex flex-col'>
-          <div class='mb-1.5 flex items-center gap-2'>
-            <Badge variant={props.badge.variant} round>
-              {props.badge.text}
-            </Badge>
-            <time class='text-xs tabular-nums text-muted-foreground'>
-              {props.formatDate(props.session.date)}
-            </time>
-            <ClusterIndicators count={props.clusterCount} />
-            <div class='text-xs text-muted-foreground'>
-              {props.session.samples_amount}
-            </div>
-          </div>
-          <div class='mb-1 truncate font-medium'>
-            {props.session.preview_text}
-          </div>
-          <div class='font-mono text-xs text-muted-foreground'>
-            {props.session.session_id}
-          </div>
-        </div>
-        <SessionActions
-          isCurrentSession={props.isCurrentSession}
-          isConfirmingDelete={props.isConfirmingDelete}
-          isDeletingSession={props.isDeletingSession}
-          isRestoring={props.isRestoring}
-          onDeleteClick={props.onDeleteClick}
-          onSelectSession={props.onSelectSession}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Cluster color indicators component
-interface ClusterIndicatorsProps {
-  count: number;
-}
-
-function ClusterIndicators(props: ClusterIndicatorsProps) {
-  return (
-    <div class='flex gap-1.5'>
-      <For each={Array.from({ length: props.count }, (_, i) => i)}>
-        {(i) => <div class={`size-2 rounded-full ${CLUSTER_COLORS[i]}`} />}
-      </For>
-    </div>
-  );
-}
-
-// Session action buttons component
-interface SessionActionsProps {
-  isCurrentSession: boolean;
-  isConfirmingDelete: boolean;
-  isDeletingSession: boolean;
-  isRestoring: boolean;
-  onDeleteClick: () => void;
-  onSelectSession: () => void;
-}
-
-function SessionActions(props: SessionActionsProps) {
-  return (
-    <div class='flex gap-1'>
-      <Button
-        class='text-destructive hover:bg-destructive/10 hover:text-destructive'
-        size={props.isConfirmingDelete ? 'default' : 'icon'}
-        variant='ghost'
-        onClick={props.onDeleteClick}
-        disabled={props.isDeletingSession}
-      >
-        {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
-      </Button>
-      <Button
-        size='icon'
-        onClick={props.onSelectSession}
-        disabled={props.isCurrentSession || props.isRestoring}
-        variant='outline'
-      >
-        <ArchiveRestoreIcon class='size-4' />
-      </Button>
-    </div>
   );
 }
