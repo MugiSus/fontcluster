@@ -6,16 +6,16 @@ import { FontWeight, type SessionConfig } from '../types/font';
 
 // Constants (local to SessionItem rendering)
 const CLUSTER_COLORS = [
-  'bg-blue-500',
-  'bg-red-500',
-  'bg-yellow-500',
-  'bg-green-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-teal-500',
-  'bg-indigo-500',
-  'bg-cyan-500',
-  'bg-fuchsia-500',
+  'bg-blue-400',
+  'bg-red-400',
+  'bg-yellow-400',
+  'bg-green-400',
+  'bg-purple-400',
+  'bg-orange-400',
+  'bg-teal-400',
+  'bg-indigo-400',
+  'bg-cyan-400',
+  'bg-fuchsia-400',
 ] as const;
 
 export type CompletionBadge = {
