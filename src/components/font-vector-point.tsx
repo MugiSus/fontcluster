@@ -49,7 +49,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
               : props.nearestFontConfig?.family_name ===
                   fontConfig().family_name
                 ? 4
-                : 1.2
+                : 1.5
           }
           class='pointer-events-none fill-current'
         />
