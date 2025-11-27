@@ -54,9 +54,6 @@ export function SessionSelector(props: SessionSelectorProps) {
     },
   );
 
-  // Helper functions
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleString();
-
   const getCompletionBadge = (session: SessionConfig): CompletionBadge => {
     if (session.has_clusters) return { text: 'Complete', variant: 'default' };
     if (session.has_compressed)
@@ -137,7 +134,6 @@ export function SessionSelector(props: SessionSelectorProps) {
                   session={session}
                   badge={badge}
                   clusterCount={clusterCount}
-                  formatDate={formatDate}
                   isCurrentSession={
                     session.session_id === props.currentSessionId
                   }

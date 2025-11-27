@@ -27,7 +27,6 @@ interface SessionItemProps {
   session: SessionConfig;
   badge: CompletionBadge;
   clusterCount: number;
-  formatDate: (dateStr: string) => string;
   isCurrentSession: boolean;
   isConfirmingDelete: boolean;
   isDeletingSession: boolean;
@@ -46,7 +45,14 @@ export function SessionItem(props: SessionItemProps) {
               {props.badge.text}
             </Badge>
             <time class='text-xs tabular-nums text-muted-foreground'>
-              {props.formatDate(props.session.date)}
+              {new Date(props.session.date).toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })}
             </time>
             <WeightIndicators weights={props.session.weights} />
             <ClusterIndicators count={props.clusterCount} />
