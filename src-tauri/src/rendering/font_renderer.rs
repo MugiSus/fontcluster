@@ -6,7 +6,8 @@ use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::family_name::FamilyName;
 use font_kit::hinting::HintingOptions;
 use font_kit::properties::{Properties, Weight};
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::GrayImage;
@@ -40,6 +41,16 @@ impl<'a> FontRenderer<'a> {
     }
 
     fn load_font_with_weight(&self, family_name: &str, weight: Weight) -> FontResult<font_kit::loaders::default::Font> {
+        static FONT_CACHE: OnceLock<Mutex<HashMap<(String, i32), font_kit::loaders::default::Font>>> = OnceLock::new();
+        let cache = FONT_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+        let key = (family_name.to_string(), weight.0 as i32);
+
+        if let Ok(cache_guard) = cache.lock() {
+            if let Some(cached) = cache_guard.get(&key) {
+                return Ok(cached.clone());
+            }
+        }
+        
         let properties = Properties {
             weight,
             ..Default::default()
@@ -54,10 +65,14 @@ impl<'a> FontRenderer<'a> {
             
         // Verify the loaded font has the requested weight
         let actual_properties = font.properties();
-        println!("Font: {} | Requested weight: {:?} | Actual weight: {:?}", family_name, weight, actual_properties.weight);
         let weight_diff = (actual_properties.weight.0 - weight.0).abs();
         if weight_diff > 50.0 {
             return Err(FontError::FontSelection(format!("Font {} loaded with weight {:?} but requested weight {:?} (difference: {})", family_name, actual_properties.weight, weight, weight_diff)));
+        }
+
+        // Cache the loaded font for reuse across calls
+        if let Ok(mut cache_guard) = cache.lock() {
+            cache_guard.insert(key, font.clone());
         }
         
         Ok(font)
