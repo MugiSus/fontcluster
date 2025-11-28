@@ -81,54 +81,47 @@ impl<'a> FontRenderer<'a> {
     fn prepare_glyph_data(&self, font: font_kit::loaders::default::Font, _weight: Weight) -> FontResult<GlyphData> {
         let metrics = font.metrics();
         let scale = self.config.font_size / metrics.units_per_em as f32;
-        
-        // Single-pass character processing: glyph lookup + metrics calculation in one iteration
-        let glyph_results: Result<Vec<(GlyphMetrics, f32, f32)>, FontError> = self.config.text.chars()
-            .map(|ch| {
-                // Get glyph ID or fail immediately
-                let glyph_id = font.glyph_for_char(ch)
-                    .ok_or_else(|| FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)))?;
-                
-                // Calculate metrics immediately
-                let advance = font.advance(glyph_id)
-                    .map_err(|_| FontError::GlyphProcessing("Failed to get glyph advance".to_string()))?;
-                
-                let bounds = font.typographic_bounds(glyph_id)
-                    .map_err(|_| FontError::GlyphProcessing("Failed to get glyph bounds".to_string()))?;
-                
-                let glyph_width = (advance.x() * scale) as i32;
-                let scaled_min_y = bounds.min_y() * scale;
-                let scaled_max_y = bounds.max_y() * scale;
-                
-                Ok((GlyphMetrics {
-                    glyph_id,
-                    width: glyph_width,
-                    height: 0, // Will be calculated later
-                    max_y: scaled_max_y,
-                }, scaled_min_y, scaled_max_y))
-            })
-            .collect();
-        
-        let glyph_data = glyph_results?;
-        
-        if glyph_data.is_empty() {
+
+        let mut glyph_metrics = Vec::with_capacity(self.config.text.chars().count());
+        let mut min_y = f32::MAX;
+        let mut max_y = f32::MIN;
+        let mut total_width: i32 = 0;
+
+        for ch in self.config.text.chars() {
+            let glyph_id = font.glyph_for_char(ch)
+                .ok_or_else(|| FontError::GlyphProcessing(format!("No glyph found for character '{}'", ch)))?;
+
+            let advance = font.advance(glyph_id)
+                .map_err(|_| FontError::GlyphProcessing("Failed to get glyph advance".to_string()))?;
+
+            let bounds = font.typographic_bounds(glyph_id)
+                .map_err(|_| FontError::GlyphProcessing("Failed to get glyph bounds".to_string()))?;
+
+            let glyph_width = (advance.x() * scale) as i32;
+            let scaled_min_y = bounds.min_y() * scale;
+            let scaled_max_y = bounds.max_y() * scale;
+
+            min_y = min_y.min(scaled_min_y);
+            max_y = max_y.max(scaled_max_y);
+            total_width += glyph_width;
+
+            glyph_metrics.push(GlyphMetrics {
+                glyph_id,
+                width: glyph_width,
+                height: 0, // set later after height is known
+                max_y: scaled_max_y,
+            });
+        }
+
+        if glyph_metrics.is_empty() {
             return Err(FontError::GlyphProcessing("No glyphs found for text".to_string()));
         }
-        
-        let (min_y, max_y) = glyph_data.iter()
-            .fold((f32::MAX, f32::MIN), |(min, max), (_, min_y, max_y)| {
-                (min.min(*min_y), max.max(*max_y))
-            });
-        
+
         let actual_height = (max_y - min_y + 2.0 * GLYPH_PADDING) as i32;
-        let total_width: i32 = glyph_data.iter().map(|(glyph, _, _)| glyph.width).sum();
-        
-        let glyph_metrics: Vec<GlyphMetrics> = glyph_data.into_iter()
-            .map(|(mut glyph, _, _)| {
-                glyph.height = actual_height;
-                glyph
-            })
-            .collect();
+
+        for glyph in &mut glyph_metrics {
+            glyph.height = actual_height;
+        }
         
         let canvas_size = Vector2I::new(total_width, actual_height);
         Ok((font, glyph_metrics, canvas_size))
