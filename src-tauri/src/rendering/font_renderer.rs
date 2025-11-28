@@ -184,29 +184,17 @@ impl<'a> FontRenderer<'a> {
             )));
         }
         
-        // Use Result-based allocation to handle OOM gracefully (75% memory reduction: 1 byte vs 4 bytes per pixel)
-        let mut buffer = Vec::new();
-        if let Err(_) = buffer.try_reserve_exact(total_pixels) {
-            return Err(FontError::ImageGeneration(format!(
-                "Failed to allocate {} bytes for image buffer", total_pixels
-            )));
+        // Reuse canvas buffer directly to avoid extra allocation/copy
+        if canvas.pixels.len() < total_pixels {
+            return Err(FontError::ImageGeneration(
+                "Canvas pixel buffer smaller than expected".to_string(),
+            ));
         }
-        buffer.reserve_exact(total_pixels);
-        
-        // Process pixels with bounds checking - direct grayscale conversion (no RGBA expansion)
-        let available_pixels = canvas.pixels.len().min(total_pixels);
-        for pixel in canvas.pixels.iter().take(available_pixels) {
-            buffer.push(*pixel); // Direct grayscale value (Canvas A8 -> Luma)
-        }
-        
-        // Fill remaining pixels safely with bounds check
-        let remaining_pixels = total_pixels.saturating_sub(available_pixels);
-        for _ in 0..remaining_pixels {
-            buffer.push(0); // Single grayscale value instead of RGBA
-        }
-        
-        // Safe conversion with proper error handling
-        GrayImage::from_raw(width, height, buffer)
+
+        let mut pixels = canvas.pixels;
+        pixels.truncate(total_pixels);
+
+        GrayImage::from_raw(width, height, pixels)
             .ok_or_else(|| FontError::ImageGeneration(
                 "Failed to create GrayImage from raw data - buffer size mismatch".to_string()
             ))
