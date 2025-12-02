@@ -136,22 +136,22 @@ impl ImageVectorizer {
     }
     
     fn extract_hog_features(&self, img: &GrayImage) -> FontResult<Vec<f32>> {
-        // Create padded image with fixed canvas size while preserving aspect ratio
-        let canvas_width = 512;
-        let canvas_height = 96;
-        let padded_img = self.resize_with_padding(img, canvas_width, canvas_height)?;
+        // Resize into fixed canvas, stretching to fill the width/height (no padding, aspect ratio not preserved)
+        const CANVAS_WIDTH: u32 = 512;
+        const CANVAS_HEIGHT: u32 = 128;
+        let resized_img = self.resize_without_padding(img, CANVAS_WIDTH, CANVAS_HEIGHT)?;
         
         // Configure HOG parameters
         let hog_options = HogOptions {
-            orientations: 9,
-            cell_side: 8,
+            orientations: 4,
+            cell_side: 16,
             block_side: 2,
-            block_stride: 1,
+            block_stride: 2,
             signed: false,
         };
         
-        // Extract HOG features from padded image
-        let hog_result = hog(&padded_img, hog_options);
+        // Extract HOG features from resized image
+        let hog_result = hog(&resized_img, hog_options);
         
         let features = match hog_result {
             Ok(features) => features,
@@ -165,48 +165,14 @@ impl ImageVectorizer {
         Ok(features)
     }
     
-    fn resize_with_padding(&self, img: &GrayImage, target_width: u32, target_height: u32) -> FontResult<GrayImage> {
-        let original_width = img.width();
-        let original_height = img.height();
-        
-        println!("Original size: {}x{}, target canvas: {}x{}", 
-                original_width, original_height, target_width, target_height);
-        
-        // Calculate scaling factor to fit within target while preserving aspect ratio
-        let scale_x = target_width as f32 / original_width as f32;
-        let scale_y = target_height as f32 / original_height as f32;
-        let scale = scale_x.min(scale_y); // Use smaller scale to fit within bounds
-        
-        let new_width = (original_width as f32 * scale) as u32;
-        let new_height = (original_height as f32 * scale) as u32;
-        
-        println!("Scaled size: {}x{} (scale: {:.3})", new_width, new_height, scale);
-        
-        // Resize the image while preserving aspect ratio
-        let resized_img = image::imageops::resize(
+    fn resize_without_padding(&self, img: &GrayImage, target_width: u32, target_height: u32) -> FontResult<GrayImage> {
+        // Stretch directly to the target size (aspect ratio changes)
+        Ok(image::imageops::resize(
             img,
-            new_width,
-            new_height,
-            image::imageops::FilterType::Lanczos3
-        );
-        
-        // Create white canvas
-        let mut canvas = image::GrayImage::new(target_width, target_height);
-        // Fill with white (255)
-        for pixel in canvas.pixels_mut() {
-            *pixel = image::Luma([255u8]);
-        }
-        
-        // Calculate position to center the resized image
-        let offset_x = (target_width - new_width) / 2;
-        let offset_y = (target_height - new_height) / 2;
-        
-        println!("Padding offset: ({}, {})", offset_x, offset_y);
-        
-        // Copy resized image onto canvas
-        image::imageops::overlay(&mut canvas, &resized_img, offset_x as i64, offset_y as i64);
-        
-        Ok(canvas)
+            target_width,
+            target_height,
+            image::imageops::FilterType::Lanczos3,
+        ))
     }
     
     fn save_vector_to_file(&self, vector: &[f32], png_path: &PathBuf) -> FontResult<()> {
