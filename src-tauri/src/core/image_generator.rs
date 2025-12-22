@@ -5,7 +5,6 @@ use crate::error::FontResult;
 use crate::commands::progress_commands::progress_events;
 use std::path::PathBuf;
 use tokio::task;
-use futures::future::join_all;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use font_kit::source::SystemSource;
@@ -60,21 +59,23 @@ impl FontImageGenerator {
             }
         }
         
-        // Process in batches with the same logic as before
-        for batch in all_task_params.chunks(BATCH_SIZE) {
-            let batch_tasks = batch.iter()
-                .map(|(family_name, weight)| {
-                    let config_clone = self.config.clone();
-                    let shared_source = Arc::clone(&self.shared_source);
-                    let semaphore = Arc::clone(&self.semaphore);
-                    let app_handle_clone = app_handle.clone();
-                    let family_name = family_name.clone();
-                    let weight = *weight;
+        use futures::StreamExt;
+        
+        // Process fonts concurrently with a limit, without waiting for full batches
+        futures::stream::iter(all_task_params)
+            .map(|(family_name, weight)| {
+                let config_clone = self.config.clone();
+                let shared_source = Arc::clone(&self.shared_source);
+                let semaphore = Arc::clone(&self.semaphore);
+                let app_handle_clone = app_handle.clone();
+                
+                async move {
+                    // Acquire permit before spawning to avoid over-spawning threads
+                    let _permit = semaphore.acquire_owned().await.unwrap();
                     
                     task::spawn_blocking(move || {
-                        // Acquire permit before processing (blocking)
-                        let rt = tokio::runtime::Handle::current();
-                        let _permit = rt.block_on(semaphore.acquire()).unwrap();
+                        // Maintain the permit during execution
+                        let _permit = _permit;
                         
                         let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
                         if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
@@ -85,13 +86,12 @@ impl FontImageGenerator {
                             // Increment progress after successful completion
                             progress_events::increment_progress(&app_handle_clone);
                         }
-                    })
-                })
-                .collect::<Vec<_>>();
-                
-            // Wait for this batch to complete before starting the next
-            join_all(batch_tasks).await;
-        }
+                    }).await
+                }
+            })
+            .buffer_unordered(BATCH_SIZE) // Use BATCH_SIZE as the number of concurrent futures
+            .collect::<Vec<_>>()
+            .await;
         
         Ok(self.config.output_dir.clone())
     }

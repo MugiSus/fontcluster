@@ -4,7 +4,6 @@ use crate::commands::progress_commands::progress_events;
 use std::path::PathBuf;
 use std::fs;
 use tokio::task;
-use futures::future::join_all;
 use image::GrayImage;
 use imageproc::hog::*;
 use bytemuck;
@@ -17,44 +16,7 @@ impl FontImageVectorizer {
     pub fn new() -> FontResult<Self> {
         Ok(Self)
     }
-    
-    pub async fn vectorize_all(&self, app_handle: &AppHandle) -> FontResult<PathBuf> {
-        let png_files = self.get_png_files()?;
-        let total_files = png_files.len();
-        println!("🔢 Found {} PNG files to vectorize", total_files);
-        
-        // Initialize progress tracking
-        progress_events::reset_progress(app_handle);
-        progress_events::set_progress_denominator(app_handle, total_files as i32);
-        
-        // Process in batches to avoid overwhelming the system
-        const BATCH_SIZE: usize = 50; // Process 50 images at a time
-        let mut success_count = 0;
-        
-        for (batch_idx, batch) in png_files.chunks(BATCH_SIZE).enumerate() {
-            println!("🚀 Processing vectorization batch {}/{} ({} files)", 
-                batch_idx + 1,
-                (total_files + BATCH_SIZE - 1) / BATCH_SIZE,
-                batch.len()
-            );
-            
-            let tasks = self.spawn_vectorization_tasks(batch.to_vec(), app_handle);
-            let results = join_all(tasks).await;
-            
-            // Count successful vectorizations in this batch
-            let batch_success = results.into_iter()
-                .filter(|r| matches!(r, Ok(Ok(_))))
-                .count();
-            success_count += batch_success;
-            
-            println!("✅ Batch {} completed: {}/{} successful", batch_idx + 1, batch_success, batch.len());
-        }
-        
-        println!("🎉 Vectorization completed: {}/{} files successfully processed", success_count, total_files);
-        
-        Ok(SessionManager::global().get_session_dir())
-    }
-    
+
     fn get_png_files(&self) -> FontResult<Vec<PathBuf>> {
         let session_manager = SessionManager::global();
         let session_dir = session_manager.get_session_dir();
@@ -74,37 +36,67 @@ impl FontImageVectorizer {
             .collect())
     }
     
-    fn spawn_vectorization_tasks(&self, png_files: Vec<PathBuf>, app_handle: &AppHandle) -> Vec<task::JoinHandle<FontResult<Vec<f32>>>> {
-        png_files
-            .into_iter()
+    pub async fn vectorize_all(&self, app_handle: &AppHandle) -> FontResult<PathBuf> {
+        let png_files = self.get_png_files()?;
+        let total_files = png_files.len();
+        println!("🔢 Found {} PNG files to vectorize", total_files);
+        
+        // Initialize progress tracking
+        progress_events::reset_progress(app_handle);
+        progress_events::set_progress_denominator(app_handle, total_files as i32);
+        
+        // Use a semaphore to limit concurrent vectorization tasks (CPU intensive)
+        use std::sync::Arc;
+        use tokio::sync::Semaphore;
+        use futures::StreamExt;
+        
+        let semaphore = Arc::new(Semaphore::new(16)); // Max 16 concurrent tasks
+        const CONCURRENCY_LIMIT: usize = 32; // Limit active futures
+        
+        println!("🚀 Processing {} files with streaming concurrency...", total_files);
+        
+        futures::stream::iter(png_files)
             .map(|png_path| {
                 let app_handle_clone = app_handle.clone();
-                task::spawn_blocking(move || {
-                    let vectorizer = ImageVectorizer::new();
-                    let result = vectorizer.vectorize_image(&png_path);
+                let semaphore = Arc::clone(&semaphore);
+                
+                async move {
+                    // Acquire permit before spawning
+                    let _permit = semaphore.acquire_owned().await.unwrap();
                     
-                    // Update progress regardless of success/failure
-                    match &result {
-                        Ok(features) => {
-                            let file_name = png_path.file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or("unknown");
-                            println!("✅ Vectorized: {} ({} features)", file_name, features.len());
-                            progress_events::increment_progress(&app_handle_clone);
+                    task::spawn_blocking(move || {
+                        let _permit = _permit; // Keep permit active
+                        let vectorizer = ImageVectorizer::new();
+                        let result = vectorizer.vectorize_image(&png_path);
+                        
+                        // Update progress regardless of success/failure
+                        match &result {
+                            Ok(features) => {
+                                let file_name = png_path.file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("unknown");
+                                println!("✅ Vectorized: {} ({} features)", file_name, features.len());
+                                progress_events::increment_progress(&app_handle_clone);
+                            }
+                            Err(e) => {
+                                let file_name = png_path.file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("unknown");
+                                println!("❌ Failed to vectorize {}: {}", file_name, e);
+                                progress_events::decrement_progress_denominator(&app_handle_clone);
+                            }
                         }
-                        Err(e) => {
-                            let file_name = png_path.file_name()
-                                .and_then(|n| n.to_str())
-                                .unwrap_or("unknown");
-                            println!("❌ Failed to vectorize {}: {}", file_name, e);
-                            progress_events::decrement_progress_denominator(&app_handle_clone);
-                        }
-                    }
-                    
-                    result
-                })
+                        result
+                    }).await
+                }
             })
-            .collect()
+            .buffer_unordered(CONCURRENCY_LIMIT)
+            .collect::<Vec<_>>()
+            .await;
+        
+        println!("🎉 Vectorization completed");
+        
+        Ok(SessionManager::global().get_session_dir())
     }
 }
 
