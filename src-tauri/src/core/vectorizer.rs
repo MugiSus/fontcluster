@@ -50,8 +50,12 @@ impl FontImageVectorizer {
         use tokio::sync::Semaphore;
         use futures::StreamExt;
         
-        let semaphore = Arc::new(Semaphore::new(16)); // Max 16 concurrent tasks
-        const CONCURRENCY_LIMIT: usize = 32; // Limit active futures
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(8);
+        let semaphore = Arc::new(Semaphore::new(threads * 2)); 
+        const CONCURRENCY_LIMIT: usize = 64; // Increased limit for active futures
+        println!("🚀 Initializing FontImageVectorizer with concurrency: {}", threads * 2);
         
         println!("🚀 Processing {} files with streaming concurrency...", total_files);
         

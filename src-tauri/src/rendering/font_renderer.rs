@@ -10,6 +10,7 @@ use std::sync::Arc;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::GrayImage;
+use image::ImageEncoder;
 
 // Font rendering engine
 pub struct FontRenderer<'a> {
@@ -217,9 +218,25 @@ impl<'a> FontRenderer<'a> {
         let font_dir = session_manager.create_font_directory(&safe_name, &display_name, family_name, weight_value)?;
         let output_path = font_dir.join("sample.png");
         
-        img_buffer
-            .save(&output_path)
-            .map_err(|e| FontError::ImageGeneration(format!("Failed to save image: {}", e)))?;
+        // Optimize PNG encoding: Use Fast compression and buffering
+        // Default .save() is slow for batch processing
+        let file = std::fs::File::create(&output_path)
+            .map_err(|e| FontError::ImageGeneration(format!("Failed to create image file: {}", e)))?;
+        let ref mut w = std::io::BufWriter::new(file);
+        
+        let (width, height) = img_buffer.dimensions();
+        let encoder = image::codecs::png::PngEncoder::new_with_quality(
+            w,
+            image::codecs::png::CompressionType::Fast,
+            image::codecs::png::FilterType::NoFilter,
+        );
+        
+        encoder.write_image(
+            img_buffer.as_raw(),
+            width,
+            height,
+            image::ExtendedColorType::L8,
+        ).map_err(|e| FontError::ImageGeneration(format!("Failed to encode and save PNG: {}", e)))?;
         
         println!("Saved font image: {} weight {} -> {}", full_name, weight_value, output_path.display());
         Ok(())

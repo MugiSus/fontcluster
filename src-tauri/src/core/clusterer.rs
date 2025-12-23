@@ -25,7 +25,11 @@ impl VectorClusterer {
         let vector_data = self.load_compressed_vectors().await?;
         let sample_amount = vector_data.len();
         
-        let (cluster_labels, cluster_size) = Self::cluster_vectors(&vector_data)?;
+        let vector_data_clone = vector_data.clone();
+        let (cluster_labels, cluster_size) = task::spawn_blocking(move || {
+            Self::cluster_vectors(&vector_data_clone)
+        }).await
+        .map_err(|e| FontError::Vectorization(format!("Clustering task failed: {}", e)))??;
         
         Self::save_clustered_vectors(&vector_data, &cluster_labels).await?;
         

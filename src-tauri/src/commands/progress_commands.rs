@@ -11,6 +11,10 @@ pub mod progress_events {
         let _ = app_handle.emit("progress_numerator_increment", ());
     }
 
+    pub fn increment_progress_by(app_handle: &AppHandle, amount: i32) {
+        let _ = app_handle.emit("progress_numerator_increment_by", amount);
+    }
+
     pub fn set_progress_denominator(app_handle: &AppHandle, denominator: i32) {
         let _ = app_handle.emit("progress_denominator_set", denominator);
     }

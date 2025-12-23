@@ -28,8 +28,13 @@ impl FontImageGenerator {
         
         // Create shared SystemSource once for all tasks
         let shared_source = Arc::new(SystemSource::new());
-        // Limit concurrent font processing to prevent resource exhaustion (CPU cores * 2)
-        let semaphore = Arc::new(Semaphore::new(16)); // Max 16 concurrent tasks
+        // Limit concurrent font processing to prevent resource exhaustion
+        // Dynamically scale based on CPU cores (available_parallelism * 2)
+        let threads = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(8);
+        let semaphore = Arc::new(Semaphore::new(threads * 2)); 
+        println!("🚀 Initializing FontImageGenerator with concurrency: {}", threads * 2);
         
         Ok(Self { 
             config, 
