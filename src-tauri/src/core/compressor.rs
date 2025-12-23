@@ -136,7 +136,7 @@ impl VectorCompressor {
         let config = Configuration::builder()
             .embedding_dimensions(2)
             .initialization(Initialization::Random(Some(42)))
-            .num_iters((200, 300, 500)) // More neighbor pairs for local structure preservation
+            .num_iters((200, 100, 400)) // More neighbor pairs for local structure preservation
             .learning_rate(1.0) // Lower learning rate for stable positioning
             .mid_near_ratio(0.8) // Balanced mid-range emphasis
             .far_pair_ratio(1.0)
