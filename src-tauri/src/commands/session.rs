@@ -12,6 +12,7 @@ pub async fn create_new_session(text: String, weights: Vec<i32>, state: State<'_
 }
 
 #[command]
+#[allow(non_snake_case)]
 pub async fn get_session_info(sessionId: Option<String>, state: State<'_, AppState>) -> Result<String> {
     if let Some(id) = sessionId {
         state.load_session(&id)?;
@@ -63,11 +64,13 @@ pub async fn get_latest_session_id() -> Result<Option<String>> {
 }
 
 #[command]
+#[allow(non_snake_case)]
 pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
     AppState::get_base_dir().map(|d| d.join("Generated").join(sessionId))
 }
 
 #[command]
+#[allow(non_snake_case)]
 pub async fn delete_session(sessionUuid: String) -> Result<bool> {
     let path = AppState::get_base_dir()?.join("Generated").join(sessionUuid);
     if path.exists() {

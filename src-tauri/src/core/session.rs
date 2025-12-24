@@ -23,9 +23,13 @@ impl AppState {
     }
 
     pub fn get_session_dir(&self) -> Result<PathBuf> {
-        let guard = self.current_session.lock().unwrap();
+        let guard = self.current_session.lock().map_err(|_| crate::error::AppError::Processing("Lock poisoned".into()))?;
         let session = guard.as_ref().ok_or_else(|| crate::error::AppError::Processing("No active session".into()))?;
-        Ok(Self::get_base_dir()?.join("Generated").join(&session.id))
+        let path = Self::get_base_dir()?.join("Generated").join(&session.id);
+        if !path.exists() {
+            std::fs::create_dir_all(&path)?;
+        }
+        Ok(path)
     }
 
     pub fn initialize_session(&self, text: String, weights: Vec<i32>) -> Result<String> {
@@ -38,7 +42,8 @@ impl AppState {
             status: ProcessingStatus::default(),
         };
 
-        let session_dir = Self::get_base_dir()?.join("Generated").join(&id);
+        let base_dir = Self::get_base_dir()?;
+        let session_dir = base_dir.join("Generated").join(&id);
         fs::create_dir_all(&session_dir)?;
         
         let config_path = session_dir.join("config.json");
@@ -46,6 +51,10 @@ impl AppState {
 
         let mut guard = self.current_session.lock().unwrap();
         *guard = Some(session);
+        
+        println!("🚀 New session initialized!");
+        println!("📂 Session ID: {}", id);
+        println!("📍 Absolute Path: {}", session_dir.canonicalize().unwrap_or(session_dir).display());
         
         Ok(id)
     }

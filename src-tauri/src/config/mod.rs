@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 
 pub const PREVIEW_TEXT: &str = "Hamburgevons";
-pub const DEFAULT_FONT_SIZE: f32 = 96.0;
+pub const DEFAULT_FONT_SIZE: f32 = 48.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,13 +30,21 @@ pub struct ProcessingStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComputedData {
+    pub vector: [f32; 2],
+    pub k: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontMetadata {
     pub safe_name: String,
+    #[serde(rename = "font_name")]
     pub display_name: String,
+    #[serde(rename = "family_name")]
     pub family: String,
     pub weight: i32,
-    pub coords: Option<[f32; 2]>,
-    pub cluster: Option<i32>,
+    pub weights: Vec<String>,
+    pub computed: Option<ComputedData>,
 }
 
 #[derive(Debug, Clone)]

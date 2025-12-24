@@ -30,6 +30,12 @@ impl Vectorizer {
             }
         }
 
+        println!("🔍 Vectorizer: Found {} images to process", png_files.len());
+        if png_files.is_empty() {
+            println!("⚠️ Vectorizer: No images found in {}", session_dir.display());
+            return Ok(());
+        }
+
         progress_events::reset_progress(app);
         progress_events::set_progress_denominator(app, png_files.len() as i32);
 
@@ -37,12 +43,22 @@ impl Vectorizer {
             .map(|path| {
                 let sem = Arc::clone(&self.semaphore);
                 let app_handle = app.clone();
+                let path_log = path.clone();
                 async move {
                     let _permit = sem.acquire_owned().await.unwrap();
                     let res = tokio::task::spawn_blocking(move || Self::process_image(path)).await;
                     match res {
-                        Ok(Ok(_)) => progress_events::increment_progress(&app_handle),
-                        _ => progress_events::decrement_progress_denominator(&app_handle),
+                        Ok(Ok(_)) => {
+                            progress_events::increment_progress(&app_handle);
+                        }
+                        Ok(Err(e)) => {
+                            println!("❌ Vectorization failed for {:?}: {}", path_log, e);
+                            progress_events::decrement_progress_denominator(&app_handle);
+                        }
+                        Err(e) => {
+                            println!("❌ Task join error: {}", e);
+                            progress_events::decrement_progress_denominator(&app_handle);
+                        }
                     }
                 }
             })

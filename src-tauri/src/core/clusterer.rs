@@ -18,8 +18,8 @@ impl Clusterer {
             let path = entry?.path();
             if path.is_dir() {
                 if let Ok(meta) = load_font_metadata(&session_dir, path.file_name().unwrap().to_str().unwrap()) {
-                    if let Some([x, y]) = meta.coords {
-                        points.push([x as f64, y as f64]);
+                    if let Some(comp) = meta.computed {
+                        points.push([comp.vector[0] as f64, comp.vector[1] as f64]);
                         ids.push(meta.safe_name);
                     }
                 }
@@ -45,7 +45,9 @@ impl Clusterer {
 
         for (i, id) in ids.iter().enumerate() {
             let mut meta = load_font_metadata(&session_dir, id)?;
-            meta.cluster = Some(labels[i] as i32);
+            if let Some(comp) = meta.computed.as_mut() {
+                comp.k = labels[i] as i32;
+            }
             fs::write(session_dir.join(id).join("meta.json"), serde_json::to_string_pretty(&meta)?)?;
         }
 

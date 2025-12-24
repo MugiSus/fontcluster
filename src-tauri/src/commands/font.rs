@@ -2,9 +2,9 @@ use crate::core::{AppState, session::load_font_metadata};
 use crate::error::Result;
 use tauri::{command, State};
 use std::fs;
-use std::path::PathBuf;
 
 #[command]
+#[allow(non_snake_case)]
 pub async fn get_compressed_vectors(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
     let session_dir = AppState::get_base_dir()?.join("Generated").join(sessionId);
     let mut map = std::collections::HashMap::new();

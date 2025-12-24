@@ -60,8 +60,8 @@ impl FontRenderer {
             display_name: full_name,
             family: family.to_string(),
             weight: weight_val,
-            coords: None,
-            cluster: None,
+            weights: Vec::new(),
+            computed: None,
         })?;
 
         let path = self.config.output_dir.join(safe_name).join("sample.png");
