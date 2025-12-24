@@ -25,10 +25,14 @@ impl ImageGenerator {
 
     pub async fn generate_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
-        let (text, weights) = {
+        let (text, weights, font_size) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            (s.preview_text.clone(), s.weights.clone())
+            let font_size = s.algorithm.as_ref()
+                .and_then(|a| a.image.as_ref())
+                .map(|i| i.font_size)
+                .unwrap_or(DEFAULT_FONT_SIZE);
+            (s.preview_text.clone(), s.weights.clone(), font_size)
         };
 
         let families: Vec<String> = self.source.all_families()
@@ -49,7 +53,7 @@ impl ImageGenerator {
 
         let render_config = Arc::new(RenderConfig {
             text,
-            font_size: DEFAULT_FONT_SIZE,
+            font_size,
             output_dir: session_dir,
         });
 

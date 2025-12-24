@@ -91,6 +91,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       image: {
         width: Number(formData.get('image-width')),
         height: Number(formData.get('image-height')),
+        font_size: Number(formData.get('image-font-size')),
       },
       hog: {
         orientations: Number(formData.get('hog-orientations')),
@@ -165,6 +166,16 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='image-height'
                   value={props.algorithm?.image?.height ?? 128}
                   step='16'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Font Size</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='image-font-size'
+                  value={props.algorithm?.image?.font_size ?? 48}
+                  step='4'
                   class='h-7 text-xs'
                 />
               </TextField>

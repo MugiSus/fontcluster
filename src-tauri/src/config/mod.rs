@@ -63,6 +63,7 @@ impl Default for HogConfig {
 pub struct ImageConfig {
     pub width: u32,
     pub height: u32,
+    pub font_size: f32,
 }
 
 impl Default for ImageConfig {
@@ -70,6 +71,7 @@ impl Default for ImageConfig {
         Self {
             width: 512,
             height: 128,
+            font_size: DEFAULT_FONT_SIZE,
         }
     }
 }

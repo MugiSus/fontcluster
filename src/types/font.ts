@@ -15,6 +15,7 @@ export interface HogOptions {
 export interface ImageOptions {
   width: number;
   height: number;
+  font_size: number;
 }
 
 export interface AlgorithmConfig {
