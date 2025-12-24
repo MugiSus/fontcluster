@@ -27,18 +27,18 @@ pub struct AlgorithmConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PacmapConfig {
-    pub attraction: usize,
-    pub local_structure: usize,
-    pub global_structure_phases: usize,
+    pub mn_phases: usize,
+    pub nn_phases: usize,
+    pub fp_phases: usize,
     pub learning_rate: f32,
 }
 
 impl Default for PacmapConfig {
     fn default() -> Self {
         Self {
-            attraction: 100,
-            local_structure: 100,
-            global_structure_phases: 150,
+            mn_phases: 100,
+            nn_phases: 100,
+            fp_phases: 150,
             learning_rate: 1.0,
         }
     }

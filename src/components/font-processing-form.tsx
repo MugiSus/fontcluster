@@ -98,9 +98,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         cell_side: Number(formData.get('hog-cell-side')),
       },
       pacmap: {
-        attraction: Number(formData.get('pacmap-attraction')),
-        local_structure: Number(formData.get('pacmap-local-structure')),
-        global_structure_phases: Number(formData.get('pacmap-global-phases')),
+        mn_phases: Number(formData.get('pacmap-mn-phases')),
+        nn_phases: Number(formData.get('pacmap-nn-phases')),
+        fp_phases: Number(formData.get('pacmap-fp-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
       },
     };
@@ -119,10 +119,13 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex w-full flex-col items-stretch gap-1.5'
+      class='flex w-full flex-col items-stretch gap-1'
     >
       <TextField class='grid w-full items-center gap-1 pt-1'>
-        <TextFieldLabel for='preview-text' class='text-xs'>
+        <TextFieldLabel
+          for='preview-text'
+          class='text-[10px] uppercase text-muted-foreground'
+        >
           Preview Text
         </TextFieldLabel>
         <TextFieldInput
@@ -134,14 +137,22 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           spellcheck='false'
         />
       </TextField>
-      <WeightSelector
-        weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-        selectedWeights={props.selectedWeights}
-        onWeightChange={props.onSelectedWeightsChange}
-      />
-      <details class='text-xs text-muted-foreground'>
-        <summary class='cursor-pointer py-1 hover:text-foreground'>
-          Algorithm options
+      <TextField class='grid w-full items-center gap-1 pt-1'>
+        <TextFieldLabel
+          for='weights'
+          class='text-[10px] uppercase text-muted-foreground'
+        >
+          Font Weights
+        </TextFieldLabel>
+        <WeightSelector
+          weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
+          selectedWeights={props.selectedWeights}
+          onWeightChange={props.onSelectedWeightsChange}
+        />
+      </TextField>
+      <details class='text-[10px] text-muted-foreground'>
+        <summary class='cursor-pointer py-1 font-medium uppercase hover:text-foreground'>
+          Algorithm options (Advanced)
         </summary>
         <div class='mt-1 space-y-3 rounded-md border p-2'>
           <div class='space-y-1.5'>
@@ -218,37 +229,37 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Attraction</TextFieldLabel>
+                <TextFieldLabel class='text-[10px]'>
+                  Global Iterations
+                </TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='pacmap-attraction'
-                  value={props.algorithm?.pacmap?.attraction ?? 100}
+                  name='pacmap-mn-phases'
+                  value={props.algorithm?.pacmap?.mn_phases ?? 100}
                   step='10'
                   class='h-7 text-xs'
                 />
               </TextField>
               <TextField class='gap-0.5'>
                 <TextFieldLabel class='text-[10px]'>
-                  Local structure
+                  Attraction Iterations
                 </TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='pacmap-local-structure'
-                  value={props.algorithm?.pacmap?.local_structure ?? 100}
+                  name='pacmap-nn-phases'
+                  value={props.algorithm?.pacmap?.nn_phases ?? 100}
                   step='10'
                   class='h-7 text-xs'
                 />
               </TextField>
               <TextField class='gap-0.5'>
                 <TextFieldLabel class='text-[10px]'>
-                  Global phases
+                  Repulsion Iterations
                 </TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='pacmap-global-phases'
-                  value={
-                    props.algorithm?.pacmap?.global_structure_phases ?? 150
-                  }
+                  name='pacmap-fp-phases'
+                  value={props.algorithm?.pacmap?.fp_phases ?? 150}
                   step='10'
                   class='h-7 text-xs'
                 />

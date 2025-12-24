@@ -1,9 +1,9 @@
 export type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
 
 export interface PacmapOptions {
-  attraction: number;
-  local_structure: number;
-  global_structure_phases: number;
+  mn_phases: number;
+  nn_phases: number;
+  fp_phases: number;
   learning_rate: number;
 }
 

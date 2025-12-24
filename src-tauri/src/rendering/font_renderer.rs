@@ -31,7 +31,7 @@ impl FontRenderer {
         // Validate weight: font-kit's select_best_match is very permissive.
         // We want to ensure the actual font weight is close to what we requested.
         let actual_weight = font.properties().weight.0 as i32;
-        if (actual_weight - weight_val).abs() > 100 {
+        if actual_weight - weight_val > 50 || weight_val - actual_weight > 50 {
             return Err(AppError::Font(format!(
                 "Weight mismatch for family {}: requested {}, got {}",
                 family, weight_val, actual_weight
