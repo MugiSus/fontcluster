@@ -1,414 +1,85 @@
-use crate::error::{FontResult, FontError};
-use crate::config::{FontConfig, SessionData, SessionConfig};
-use std::path::PathBuf;
+use crate::config::{SessionConfig, FontMetadata, ProcessingStatus};
+use crate::error::Result;
+use std::path::{Path, PathBuf};
 use std::fs;
-use std::sync::RwLock;
 use uuid::Uuid;
-use std::io::Write;
+use std::sync::Mutex;
 
-/// Session management for font processing
-/// 
-/// Each session gets a unique UUIDv7 identifier and creates its own directory structure
-/// under Generated/<session_id>/ with subdirectories for Images, Vectors, and CompressedVectors.
-/// On application start, uses 'default' as fallback until a new session is created.
-pub struct SessionManager {
-    session_id: String,
-    base_dir: PathBuf,
+pub struct AppState {
+    pub current_session: Mutex<Option<SessionConfig>>,
 }
 
-static SESSION_MANAGER: RwLock<Option<SessionManager>> = RwLock::new(None);
-
-impl SessionManager {
-    /// Create a new session with a UUIDv7 identifier
-    fn new() -> FontResult<Self> {
-        Self::with_id(Uuid::now_v7().to_string())
-    }
-    
-    /// Get the current session ID
-    pub fn get_session_id(&self) -> &str {
-        &self.session_id
-    }
-    
-    /// Get session directory for a specific session ID without changing global state
-    pub fn get_session_dir_for_id(session_id: &str) -> FontResult<PathBuf> {
-        let temp_session = Self::with_id(session_id.to_string())?;
-        Ok(temp_session.get_session_dir())
-    }
-    
-    /// Create session with specific ID
-    fn with_id(session_id: String) -> FontResult<Self> {
-        let session_manager = Self {
-            session_id,
-            base_dir: Self::get_base_data_dir()?,
-        };
-        
-        fs::create_dir_all(session_manager.get_session_dir())?;
-        Ok(session_manager)
-    }
-    
-    /// Get the global session manager instance
-    pub fn global() -> SessionManager {
-        let session_guard = SESSION_MANAGER.read().unwrap();
-        if let Some(session) = session_guard.as_ref() {
-            // Return a copy of the current session
-            SessionManager {
-                session_id: session.session_id.clone(),
-                base_dir: session.base_dir.clone(),
-            }
-        } else {
-            // Try to use the latest existing session, otherwise use default
-            drop(session_guard);
-            
-            if let Ok(Some(latest_session_id)) = Self::get_latest_session_id() {
-                // Set the latest session as global and return it
-                if let Ok(latest_session) = Self::with_id(latest_session_id) {
-                    let mut session_guard = SESSION_MANAGER.write().unwrap();
-                    let session_copy = SessionManager {
-                        session_id: latest_session.session_id.clone(),
-                        base_dir: latest_session.base_dir.clone(),
-                    };
-                    *session_guard = Some(latest_session);
-                    return session_copy;
-                }
-            }
-            
-            // Fallback to new session if no valid sessions exist
-            Self::new().expect("Failed to create new session")
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            current_session: Mutex::new(None),
         }
     }
-    
-    /// Create a new session and set it as the global session
-    pub fn create_new_session() -> FontResult<()> {
-        let new_session = Self::new()?;
-        let mut session_guard = SESSION_MANAGER.write().unwrap();
-        *session_guard = Some(new_session);
-        Ok(())
-    }
-    
-    /// Create a new session with preview text and save session config
-    pub fn create_new_session_with_text(preview_text: String) -> FontResult<String> {
-        Self::create_new_session_with_text_and_weights(preview_text, vec![400])
-    }
-    
-    /// Create a new session with preview text and weights
-    pub fn create_new_session_with_text_and_weights(preview_text: String, weights: Vec<i32>) -> FontResult<String> {
-        let session_id = Uuid::now_v7().to_string();
-        let new_session = Self::with_id(session_id.clone())?;
-        
-        // Save session configuration
-        let session_config = SessionData::new(preview_text, session_id.clone(), weights);
-        session_config.save_to_dir(&new_session.get_session_dir())?;
-        
-        let mut session_guard = SESSION_MANAGER.write().unwrap();
-        *session_guard = Some(new_session);
-        
-        Ok(session_id)
-    }
-    
-    /// Restore a session by ID
-    pub fn restore_session(session_id: String) -> FontResult<()> {
-        let session = Self::with_id(session_id)?;
-        
-        // Verify session config exists
-        let session_dir = session.get_session_dir();
-        SessionData::load_from_dir(&session_dir)?;
-        
-        let mut session_guard = SESSION_MANAGER.write().unwrap();
-        *session_guard = Some(session);
-        Ok(())
-    }
-    
-    /// Get the session ID
-    pub fn session_id(&self) -> &str {
-        &self.session_id
-    }
-    
-    /// Get the base application data directory
-    fn get_base_data_dir() -> FontResult<PathBuf> {
+
+    pub fn get_base_dir() -> Result<PathBuf> {
         dirs::data_dir()
-            .ok_or_else(|| FontError::Io(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Failed to get app data directory"
-            )))
-            .map(|dir| dir.join("FontCluster"))
-    }
-    
-    /// Get the session-specific directory
-    pub fn get_session_dir(&self) -> PathBuf {
-        self.base_dir.join("Generated").join(&self.session_id)
-    }
-    
-    
-    /// Get the directory for a specific font
-    pub fn get_font_directory(&self, safe_font_name: &str) -> PathBuf {
-        self.get_session_dir().join(safe_font_name)
-    }
-    
-    /// Create directory structure for a specific font and its config
-    pub fn create_font_directory(&self, safe_font_name: &str, font_name: &str, family_name: &str, weight: i32) -> FontResult<PathBuf> {
-        let font_dir = self.get_font_directory(safe_font_name);
-        fs::create_dir_all(&font_dir)?;
-        
-        let config = FontConfig::new(
-            safe_font_name.to_string(),
-            font_name.to_string(),
-            family_name.to_string(),
-            weight
-        );
-        self.save_font_config(safe_font_name, &config)?;
-        
-        Ok(font_dir)
-    }
-    
-    /// Get the path to a specific font's configuration file
-    pub fn get_font_config_path(&self, safe_font_name: &str) -> PathBuf {
-        self.get_font_directory(safe_font_name).join("config.json")
-    }
-    
-    
-    /// Save font configuration to individual JSON file
-    pub fn save_font_config(&self, safe_font_name: &str, config: &FontConfig) -> FontResult<()> {
-        let config_path = self.get_font_config_path(safe_font_name);
-        let json_content = serde_json::to_string_pretty(config)
-            .map_err(|e| FontError::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to serialize font config: {}", e)
-            )))?;
-        
-        let mut file = fs::File::create(&config_path)?;
-        file.write_all(json_content.as_bytes())?;
-        
-        println!("Saved font configuration: {}", config_path.display());
-        Ok(())
-    }
-    
-    /// Load configuration for a specific font
-    pub fn load_font_config(&self, safe_font_name: &str) -> FontResult<Option<FontConfig>> {
-        let config_path = self.get_font_config_path(safe_font_name);
-        
-        if !config_path.exists() {
-            return Ok(None);
-        }
-        
-        let content = fs::read_to_string(&config_path)?;
-        let config: FontConfig = serde_json::from_str(&content)
-            .map_err(|e| FontError::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Failed to parse font config: {}", e)
-            )))?;
-        
-        Ok(Some(config))
-    }
-    
-    /// Get all font configurations by scanning font directories
-    pub fn load_all_font_configs(&self) -> FontResult<Vec<FontConfig>> {
-        let session_dir = self.get_session_dir();
-        
-        if !session_dir.exists() {
-            return Ok(Vec::new());
-        }
-        
-        Ok(fs::read_dir(&session_dir)?
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.path().is_dir())
-            .filter_map(|entry| {
-                entry.file_name().to_str()
-                    .and_then(|name| self.load_font_config(name).ok())
-                    .flatten()
-            })
-            .collect())
-    }
-    
-    /// Clean up old sessions keeping only the specified number of most recent sessions
-    pub fn cleanup_old_sessions(&self, keep_count: usize) -> FontResult<Vec<String>> {
-        let generated_dir = self.base_dir.join("Generated");
-        
-        if !generated_dir.exists() {
-            return Ok(Vec::new());
-        }
-        
-        let mut session_ids = Vec::new();
-        
-        // Collect all valid session IDs
-        for entry in fs::read_dir(&generated_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.is_dir() {
-                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                    // Skip default directory and only consider valid UUIDs with config.json
-                    if dir_name != "default" && Uuid::parse_str(dir_name).is_ok() {
-                        if path.join("config.json").exists() {
-                            session_ids.push(dir_name.to_string());
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Sort by UUIDv7 timestamp (newest first)
-        session_ids.sort_by(|a, b| {
-            let uuid_a = Uuid::parse_str(a).unwrap();
-            let uuid_b = Uuid::parse_str(b).unwrap();
-            uuid_b.cmp(&uuid_a) // Reverse order for newest first
-        });
-        
-        // If we have fewer sessions than keep_count, nothing to delete
-        if session_ids.len() <= keep_count {
-            return Ok(Vec::new());
-        }
-        
-        // Get sessions to delete (everything after keep_count)
-        let sessions_to_delete = session_ids.split_off(keep_count);
-        let mut deleted_sessions = Vec::new();
-        
-        // Delete old sessions
-        for session_id in &sessions_to_delete {
-            let session_dir = generated_dir.join(session_id);
-            
-            // Check if this is the current active session
-            let current_session = Self::global();
-            if current_session.get_session_id() == session_id {
-                // Clear the global session if deleting the current one
-                let mut session_guard = SESSION_MANAGER.write().unwrap();
-                *session_guard = None;
-            }
-            
-            fs::remove_dir_all(&session_dir)?;
-            println!("Cleaned up old session: {}", session_id);
-            deleted_sessions.push(session_id.clone());
-        }
-        
-        Ok(deleted_sessions)
-    }
-    
-    /// Get all available sessions sorted by date (newest first)
-    pub fn get_available_sessions(max_sessions: Option<usize>) -> FontResult<Vec<SessionConfig>> {
-        let base_dir = Self::get_base_data_dir()?;
-        let generated_dir = base_dir.join("Generated");
-        
-        if !generated_dir.exists() {
-            return Ok(Vec::new());
-        }
-        
-        let mut sessions = Vec::new();
-        
-        for entry in fs::read_dir(&generated_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.is_dir() {
-                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                    // Skip default directory
-                    if dir_name == "default" {
-                        continue;
-                    }
-                    
-                    // Try to load session info
-                    if let Ok(session_info) = SessionConfig::from_session_dir(&path) {
-                        sessions.push(session_info);
-                    }
-                }
-            }
-        }
-        
-        // Sort by date (newest first)
-        sessions.sort_by(|a, b| b.date.cmp(&a.date));
-        
-        // Limit to max_sessions if specified
-        if let Some(max) = max_sessions {
-            sessions.truncate(max);
-        }
-        
-        Ok(sessions)
-    }
-    
-    /// Get session info by session ID
-    pub fn get_session_info_by_id(session_id: &str) -> FontResult<Option<SessionConfig>> {
-        let session_dir = Self::get_session_dir_for_id(session_id)?;
-        if session_dir.join("config.json").exists() {
-            Ok(Some(SessionConfig::from_session_dir(&session_dir)?))
-        } else {
-            Ok(None)
-        }
+            .map(|d| d.join("FontCluster"))
+            .ok_or_else(|| crate::error::AppError::Io("AppData not found".into()))
     }
 
-    /// Get the session ID of the most recent session (by UUIDv7 timestamp)
-    pub fn get_latest_session_id() -> FontResult<Option<String>> {
-        let base_dir = Self::get_base_data_dir()?;
-        let generated_dir = base_dir.join("Generated");
-        
-        if !generated_dir.exists() {
-            return Ok(None);
-        }
-        
-        let mut session_ids = Vec::new();
-        
-        for entry in fs::read_dir(&generated_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            
-            if path.is_dir() {
-                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                    // Skip default directory and only consider valid UUIDs
-                    if dir_name != "default" && Uuid::parse_str(dir_name).is_ok() {
-                        // Verify this session has a config.json
-                        if path.join("config.json").exists() {
-                            session_ids.push(dir_name.to_string());
-                        }
-                    }
-                }
-            }
-        }
-        
-        if session_ids.is_empty() {
-            return Ok(None);
-        }
-        
-        // Sort by UUIDv7 timestamp (newest first)
-        session_ids.sort_by(|a, b| {
-            let uuid_a = Uuid::parse_str(a).unwrap();
-            let uuid_b = Uuid::parse_str(b).unwrap();
-            uuid_b.cmp(&uuid_a) // Reverse order for newest first
-        });
-        
-        Ok(Some(session_ids[0].clone()))
+    pub fn get_session_dir(&self) -> Result<PathBuf> {
+        let guard = self.current_session.lock().unwrap();
+        let session = guard.as_ref().ok_or_else(|| crate::error::AppError::Processing("No active session".into()))?;
+        Ok(Self::get_base_dir()?.join("Generated").join(&session.id))
     }
-    
-    /// Delete a session by UUID if it exists
-    pub fn delete_session_by_uuid(session_uuid: &str) -> FontResult<bool> {
-        // Validate UUID format
-        if Uuid::parse_str(session_uuid).is_err() {
-            return Err(FontError::Io(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("Invalid UUID format: {}", session_uuid)
-            )));
-        }
+
+    pub fn initialize_session(&self, text: String, weights: Vec<i32>) -> Result<String> {
+        let id = Uuid::now_v7().to_string();
+        let session = SessionConfig {
+            id: id.clone(),
+            preview_text: text,
+            date: chrono::Utc::now(),
+            weights,
+            status: ProcessingStatus::default(),
+        };
+
+        let session_dir = Self::get_base_dir()?.join("Generated").join(&id);
+        fs::create_dir_all(&session_dir)?;
         
-        let base_dir = Self::get_base_data_dir()?;
-        let session_dir = base_dir.join("Generated").join(session_uuid);
+        let config_path = session_dir.join("config.json");
+        fs::write(config_path, serde_json::to_string_pretty(&session)?)?;
+
+        let mut guard = self.current_session.lock().unwrap();
+        *guard = Some(session);
         
-        if !session_dir.exists() {
-            return Ok(false);
-        }
-        
-        // Verify it's actually a session directory (has config.json)
-        if !session_dir.join("config.json").exists() {
-            return Ok(false);
-        }
-        
-        // Check if this is the current active session
-        let current_session = Self::global();
-        if current_session.get_session_id() == session_uuid {
-            // Clear the global session if deleting the current one
-            let mut session_guard = SESSION_MANAGER.write().unwrap();
-            *session_guard = None;
-        }
-        
-        // Remove the session directory
-        fs::remove_dir_all(&session_dir)?;
-        println!("Deleted session: {}", session_uuid);
-        
-        Ok(true)
+        Ok(id)
     }
+
+    pub fn load_session(&self, id: &str) -> Result<()> {
+        let session_dir = Self::get_base_dir()?.join("Generated").join(id);
+        let config_path = session_dir.join("config.json");
+        let session: SessionConfig = serde_json::from_str(&fs::read_to_string(config_path)?)?;
+        
+        let mut guard = self.current_session.lock().unwrap();
+        *guard = Some(session);
+        Ok(())
+    }
+
+    pub fn update_status<F>(&self, f: F) -> Result<()> 
+    where F: FnOnce(&mut ProcessingStatus) {
+        let mut guard = self.current_session.lock().unwrap();
+        if let Some(session) = guard.as_mut() {
+            f(&mut session.status);
+            let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
+            fs::write(session_dir.join("config.json"), serde_json::to_string_pretty(&session)?)?;
+        }
+        Ok(())
+    }
+}
+
+pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()> {
+    let font_dir = session_dir.join(&meta.safe_name);
+    fs::create_dir_all(&font_dir)?;
+    fs::write(font_dir.join("meta.json"), serde_json::to_string_pretty(meta)?)?;
+    Ok(())
+}
+
+pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMetadata> {
+    let path = session_dir.join(safe_name).join("meta.json");
+    Ok(serde_json::from_str(&fs::read_to_string(path)?)?)
 }

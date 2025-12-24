@@ -1,104 +1,83 @@
-use crate::core::FontService;
+use crate::config::{RenderConfig, DEFAULT_FONT_SIZE};
+use crate::error::Result;
 use crate::rendering::FontRenderer;
-use crate::config::{FontImageConfig, PREVIEW_TEXT};
-use crate::error::FontResult;
-use crate::commands::progress_commands::progress_events;
-use std::path::PathBuf;
-use tokio::task;
+use crate::core::AppState;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use font_kit::source::SystemSource;
 use tauri::AppHandle;
+use crate::commands::progress::progress_events;
+use futures::StreamExt;
 
-// Main font image generation orchestrator
-pub struct FontImageGenerator {
-    config: FontImageConfig,
-    weights: Vec<i32>,
-    shared_source: Arc<SystemSource>,
+pub struct ImageGenerator {
+    source: Arc<SystemSource>,
     semaphore: Arc<Semaphore>,
 }
 
-impl FontImageGenerator {
-    pub fn new(text: Option<String>, font_size: f32, weights: Vec<i32>) -> FontResult<Self> {
-        let config = FontImageConfig {
-            text: text.unwrap_or_else(|| PREVIEW_TEXT.to_string()),
-            font_size,
-            output_dir: FontService::create_output_directory()?,
-        };
-        
-        // Create shared SystemSource once for all tasks
-        let shared_source = Arc::new(SystemSource::new());
-        // Limit concurrent font processing to prevent resource exhaustion
-        // Dynamically scale based on CPU cores (available_parallelism * 2)
-        let threads = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(8);
-        let semaphore = Arc::new(Semaphore::new(threads * 2)); 
-        println!("🚀 Initializing FontImageGenerator with concurrency: {}", threads * 2);
-        
-        Ok(Self { 
-            config, 
-            weights, 
-            shared_source,
-            semaphore,
-        })
+impl ImageGenerator {
+    pub fn new() -> Self {
+        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(8);
+        Self {
+            source: Arc::new(SystemSource::new()),
+            semaphore: Arc::new(Semaphore::new(threads * 2)),
+        }
     }
-    
-    pub async fn generate_all(&self, app_handle: &AppHandle) -> FontResult<PathBuf> {
-        let font_families = FontService::get_system_fonts_with_source(&self.shared_source);
-        
-        // Calculate total tasks and reset progress
-        let total_tasks = font_families.len() * self.weights.len();
-        progress_events::reset_progress(app_handle);
-        progress_events::set_progress_denominator(app_handle, total_tasks as i32);
-        
-        // Process fonts in batches to prevent memory exhaustion
-        // This maintains the same behavior but reduces peak memory usage
-        const BATCH_SIZE: usize = 128; // Process 128 tasks at a time
 
-        // Create all task combinations
-        let mut all_task_params = Vec::new();
-        for family_name in font_families {
-            for &weight in &self.weights {
-                all_task_params.push((family_name.clone(), weight));
+    pub async fn generate_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
+        let session_dir = state.get_session_dir()?;
+        let (text, weights) = {
+            let guard = state.current_session.lock().unwrap();
+            let s = guard.as_ref().unwrap();
+            (s.preview_text.clone(), s.weights.clone())
+        };
+
+        let families: Vec<String> = self.source.all_families()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|f| !f.to_lowercase().contains("emoji") && !f.to_lowercase().contains("icon"))
+            .collect();
+
+        let mut tasks = Vec::new();
+        for family in families {
+            for &weight in &weights {
+                tasks.push((family.clone(), weight));
             }
         }
-        
-        use futures::StreamExt;
-        
-        // Process fonts concurrently with a limit, without waiting for full batches
-        futures::stream::iter(all_task_params)
-            .map(|(family_name, weight)| {
-                let config_clone = self.config.clone();
-                let shared_source = Arc::clone(&self.shared_source);
-                let semaphore = Arc::clone(&self.semaphore);
-                let app_handle_clone = app_handle.clone();
+
+        progress_events::reset_progress(app);
+        progress_events::set_progress_denominator(app, tasks.len() as i32);
+
+        let render_config = Arc::new(RenderConfig {
+            text,
+            font_size: DEFAULT_FONT_SIZE,
+            output_dir: session_dir,
+        });
+
+        futures::stream::iter(tasks)
+            .map(|(family, weight)| {
+                let config = Arc::clone(&render_config);
+                let source = Arc::clone(&self.source);
+                let sem = Arc::clone(&self.semaphore);
+                let app_handle = app.clone();
                 
                 async move {
-                    // Acquire permit before spawning to avoid over-spawning threads
-                    let _permit = semaphore.acquire_owned().await.unwrap();
+                    let _permit = sem.acquire_owned().await.unwrap();
+                    let res = tokio::task::spawn_blocking(move || {
+                        let renderer = FontRenderer::new(config, source);
+                        renderer.render(&family, weight)
+                    }).await;
                     
-                    task::spawn_blocking(move || {
-                        // Maintain the permit during execution
-                        let _permit = _permit;
-                        
-                        let renderer = FontRenderer::with_shared_source(&config_clone, shared_source);
-                        if let Err(_e) = renderer.generate_font_image(&family_name, weight) {
-                            // Decrement denominator for failed tasks
-                            progress_events::decrement_progress_denominator(&app_handle_clone);
-                        } else {
-                            println!("Successfully generated image for font: {} weight: {}", family_name, weight);
-                            // Increment progress after successful completion
-                            progress_events::increment_progress(&app_handle_clone);
-                        }
-                    }).await
+                    match res {
+                        Ok(Ok(_)) => progress_events::increment_progress(&app_handle),
+                        _ => progress_events::decrement_progress_denominator(&app_handle),
+                    }
                 }
             })
-            .buffer_unordered(BATCH_SIZE) // Use BATCH_SIZE as the number of concurrent futures
+            .buffer_unordered(128)
             .collect::<Vec<_>>()
             .await;
-        
-        Ok(self.config.output_dir.clone())
+
+        state.update_status(|s| s.has_images = true)?;
+        Ok(())
     }
-    
 }

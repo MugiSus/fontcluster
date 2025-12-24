@@ -1,0 +1,79 @@
+use crate::core::AppState;
+use crate::error::Result;
+use tauri::{command, State};
+use crate::config::SessionConfig;
+use std::fs;
+use chrono::{DateTime, Utc};
+use std::path::PathBuf;
+
+#[command]
+pub async fn create_new_session(text: String, weights: Vec<i32>, state: State<'_, AppState>) -> Result<String> {
+    state.initialize_session(text, weights)
+}
+
+#[command]
+pub async fn get_session_info(sessionId: Option<String>, state: State<'_, AppState>) -> Result<String> {
+    if let Some(id) = sessionId {
+        state.load_session(&id)?;
+    }
+    let guard = state.current_session.lock().unwrap();
+    let session = guard.as_ref().ok_or_else(|| crate::error::AppError::Processing("No session".into()))?;
+    Ok(serde_json::to_string(session)?)
+}
+
+#[command]
+pub async fn get_available_sessions() -> Result<String> {
+    let base = AppState::get_base_dir()?.join("Generated");
+    if !base.exists() { return Ok("[]".into()); }
+    
+    let mut sessions = Vec::new();
+    for entry in fs::read_dir(base)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            let config_path = path.join("config.json");
+            if config_path.exists() {
+                if let Ok(s) = serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?) {
+                    sessions.push(s);
+                }
+            }
+        }
+    }
+    sessions.sort_by(|a, b| b.date.cmp(&a.date));
+    Ok(serde_json::to_string(&sessions)?)
+}
+
+#[command]
+pub async fn get_latest_session_id() -> Result<Option<String>> {
+    let base = AppState::get_base_dir()?.join("Generated");
+    if !base.exists() { return Ok(None); }
+    
+    let mut latest: Option<(DateTime<Utc>, String)> = None;
+    for entry in fs::read_dir(base)? {
+        let path = entry?.path();
+        if path.is_dir() {
+            let config_path = path.join("config.json");
+            if let Ok(s) = serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?) {
+                if latest.is_none() || s.date > latest.as_ref().unwrap().0 {
+                    latest = Some((s.date, s.id));
+                }
+            }
+        }
+    }
+    Ok(latest.map(|(_, id)| id))
+}
+
+#[command]
+pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
+    AppState::get_base_dir().map(|d| d.join("Generated").join(sessionId))
+}
+
+#[command]
+pub async fn delete_session(sessionUuid: String) -> Result<bool> {
+    let path = AppState::get_base_dir()?.join("Generated").join(sessionUuid);
+    if path.exists() {
+        fs::remove_dir_all(path)?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
