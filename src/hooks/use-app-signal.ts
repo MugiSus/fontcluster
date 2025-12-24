@@ -5,6 +5,7 @@ import {
   FontConfig,
   type FontWeight,
   type SessionConfig,
+  type AlgorithmConfig,
 } from '../types/font';
 
 export function useAppSignal() {
@@ -78,12 +79,17 @@ export function useAppSignal() {
   });
 
   // Processing actions
-  const generateFontImages = async (text: string, weights: FontWeight[]) => {
+  const generateFontImages = async (
+    text: string,
+    weights: FontWeight[],
+    algorithm: AlgorithmConfig,
+  ) => {
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
         text,
         weights,
+        algorithm,
       });
       console.log('Complete pipeline result:', result);
     } catch (error) {

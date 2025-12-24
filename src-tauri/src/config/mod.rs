@@ -13,8 +13,33 @@ pub struct SessionConfig {
     pub preview_text: String,
     pub date: DateTime<Utc>,
     pub weights: Vec<i32>,
+    pub algorithm: Option<AlgorithmConfig>,
     #[serde(flatten)]
     pub status: ProcessingStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AlgorithmConfig {
+    pub pacmap: Option<PacmapConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PacmapConfig {
+    pub attraction: usize,
+    pub local_structure: usize,
+    pub global_structure_phases: usize,
+    pub learning_rate: f32,
+}
+
+impl Default for PacmapConfig {
+    fn default() -> Self {
+        Self {
+            attraction: 200,
+            local_structure: 100,
+            global_structure_phases: 400,
+            learning_rate: 1.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

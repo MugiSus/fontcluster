@@ -1,5 +1,16 @@
 export type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
 
+export interface PacmapOptions {
+  attraction: number;
+  local_structure: number;
+  global_structure_phases: number;
+  learning_rate: number;
+}
+
+export interface AlgorithmConfig {
+  pacmap: PacmapOptions | null;
+}
+
 export interface SessionConfig {
   session_id: string;
   preview_text: string;
@@ -11,6 +22,7 @@ export interface SessionConfig {
   clusters_amount: number;
   samples_amount: number;
   weights: number[];
+  algorithm?: AlgorithmConfig;
 }
 
 export interface ComputedData {

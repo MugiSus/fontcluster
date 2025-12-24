@@ -1,4 +1,4 @@
-use crate::config::{SessionConfig, FontMetadata, ProcessingStatus};
+use crate::config::{SessionConfig, FontMetadata, ProcessingStatus, AlgorithmConfig};
 use crate::error::Result;
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -32,13 +32,14 @@ impl AppState {
         Ok(path)
     }
 
-    pub fn initialize_session(&self, text: String, weights: Vec<i32>) -> Result<String> {
+    pub fn initialize_session(&self, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>) -> Result<String> {
         let id = Uuid::now_v7().to_string();
         let session = SessionConfig {
             id: id.clone(),
             preview_text: text,
             date: chrono::Utc::now(),
             weights,
+            algorithm,
             status: ProcessingStatus::default(),
         };
 

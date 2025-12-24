@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
-import { type FontWeight } from '../types/font';
+import { type FontWeight, type AlgorithmConfig } from '../types/font';
 
 export type ProcessingStatus =
   | 'idle'
@@ -17,7 +17,11 @@ interface FontProcessingFormProps {
   sampleText: string;
   selectedWeights: FontWeight[];
   onSelectedWeightsChange: (weights: FontWeight[]) => void;
-  onSubmit: (text: string, weights: FontWeight[]) => void;
+  onSubmit: (
+    text: string,
+    weights: FontWeight[],
+    algorithm: AlgorithmConfig,
+  ) => void;
 }
 
 export function FontProcessingForm(props: FontProcessingFormProps) {
@@ -82,9 +86,19 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       .split(',')
       .map(Number) as FontWeight[];
 
+    const algorithm: AlgorithmConfig = {
+      pacmap: {
+        attraction: Number(formData.get('pacmap-attraction')),
+        local_structure: Number(formData.get('pacmap-local-structure')),
+        global_structure_phases: Number(formData.get('pacmap-global-phases')),
+        learning_rate: Number(formData.get('pacmap-learning-rate')),
+      },
+    };
+
     props.onSubmit(
       text || 'Hamburgevons',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
+      algorithm,
     );
 
     setProcessingStatus('generating');
@@ -115,6 +129,53 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         selectedWeights={props.selectedWeights}
         onWeightChange={props.onSelectedWeightsChange}
       />
+      <details class='text-xs text-muted-foreground'>
+        <summary class='cursor-pointer py-1 hover:text-foreground'>
+          PACMAP options
+        </summary>
+        <div class='mt-1 grid grid-cols-2 gap-2 rounded-md border p-2'>
+          <TextField class='gap-0.5'>
+            <TextFieldLabel class='text-[10px]'>Attraction</TextFieldLabel>
+            <TextFieldInput
+              type='number'
+              name='pacmap-attraction'
+              value='200'
+              step='10'
+              class='h-7 text-xs'
+            />
+          </TextField>
+          <TextField class='gap-0.5'>
+            <TextFieldLabel class='text-[10px]'>Local structure</TextFieldLabel>
+            <TextFieldInput
+              type='number'
+              name='pacmap-local-structure'
+              value='100'
+              step='10'
+              class='h-7 text-xs'
+            />
+          </TextField>
+          <TextField class='gap-0.5'>
+            <TextFieldLabel class='text-[10px]'>Global phases</TextFieldLabel>
+            <TextFieldInput
+              type='number'
+              name='pacmap-global-phases'
+              value='400'
+              step='10'
+              class='h-7 text-xs'
+            />
+          </TextField>
+          <TextField class='gap-0.5'>
+            <TextFieldLabel class='text-[10px]'>Learning rate</TextFieldLabel>
+            <TextFieldInput
+              type='number'
+              name='pacmap-learning-rate'
+              value='1.0'
+              step='0.1'
+              class='h-7 text-xs'
+            />
+          </TextField>
+        </div>
+      </details>
       <Button
         type='submit'
         disabled={isProcessing()}

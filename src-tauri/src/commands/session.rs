@@ -1,14 +1,14 @@
 use crate::core::AppState;
 use crate::error::Result;
 use tauri::{command, State};
-use crate::config::SessionConfig;
+use crate::config::{SessionConfig, AlgorithmConfig};
 use std::fs;
 use chrono::{DateTime, Utc};
 use std::path::PathBuf;
 
 #[command]
-pub async fn create_new_session(text: String, weights: Vec<i32>, state: State<'_, AppState>) -> Result<String> {
-    state.initialize_session(text, weights)
+pub async fn create_new_session(text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, state: State<'_, AppState>) -> Result<String> {
+    state.initialize_session(text, weights, algorithm)
 }
 
 #[command]

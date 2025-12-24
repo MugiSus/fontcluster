@@ -33,11 +33,19 @@ impl Compressor {
         let data = Array2::from_shape_vec((n_samples, n_features), vectors.into_iter().flatten().collect())
             .map_err(|e| AppError::Processing(e.to_string()))?;
 
+        let pacmap_config = {
+            let guard = state.current_session.lock().map_err(|_| AppError::Processing("Lock poisoned".into()))?;
+            guard.as_ref()
+                .and_then(|s| s.algorithm.as_ref())
+                .and_then(|a| a.pacmap.clone())
+                .unwrap_or_default()
+        };
+
         let config = Configuration::builder()
             .embedding_dimensions(2)
             .initialization(Initialization::Random(Some(42)))
-            .num_iters((200, 100, 400))
-            .learning_rate(1.0)
+            .num_iters((pacmap_config.attraction, pacmap_config.local_structure, pacmap_config.global_structure_phases))
+            .learning_rate(pacmap_config.learning_rate)
             .build();
 
         let (embedding, _) = tokio::task::spawn_blocking(move || {

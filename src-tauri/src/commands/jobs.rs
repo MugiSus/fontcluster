@@ -1,11 +1,12 @@
 use crate::core::{AppState, ImageGenerator, Vectorizer, Compressor, Clusterer};
+use crate::config::AlgorithmConfig;
 use crate::error::Result;
 use tauri::{command, State, AppHandle, Emitter};
 
 #[command]
-pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, state: State<'_, AppState>) -> Result<String> {
+pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, state: State<'_, AppState>) -> Result<String> {
     // Initialize session if not exists or if weights/text changed
-    state.initialize_session(text, weights)?;
+    state.initialize_session(text, weights, algorithm)?;
     let id = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().id.clone()
