@@ -16,6 +16,7 @@ export type ProcessingStatus =
 interface FontProcessingFormProps {
   sampleText: string;
   selectedWeights: FontWeight[];
+  algorithm?: AlgorithmConfig | null | undefined;
   onSelectedWeightsChange: (weights: FontWeight[]) => void;
   onSubmit: (
     text: string,
@@ -93,6 +94,10 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         global_structure_phases: Number(formData.get('pacmap-global-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
       },
+      hog: {
+        orientations: Number(formData.get('hog-orientations')),
+        cell_side: Number(formData.get('hog-cell-side')),
+      },
     };
 
     props.onSubmit(
@@ -131,49 +136,94 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       />
       <details class='text-xs text-muted-foreground'>
         <summary class='cursor-pointer py-1 hover:text-foreground'>
-          PACMAP options
+          Algorithm options
         </summary>
-        <div class='mt-1 grid grid-cols-2 gap-2 rounded-md border p-2'>
-          <TextField class='gap-0.5'>
-            <TextFieldLabel class='text-[10px]'>Attraction</TextFieldLabel>
-            <TextFieldInput
-              type='number'
-              name='pacmap-attraction'
-              value='200'
-              step='10'
-              class='h-7 text-xs'
-            />
-          </TextField>
-          <TextField class='gap-0.5'>
-            <TextFieldLabel class='text-[10px]'>Local structure</TextFieldLabel>
-            <TextFieldInput
-              type='number'
-              name='pacmap-local-structure'
-              value='100'
-              step='10'
-              class='h-7 text-xs'
-            />
-          </TextField>
-          <TextField class='gap-0.5'>
-            <TextFieldLabel class='text-[10px]'>Global phases</TextFieldLabel>
-            <TextFieldInput
-              type='number'
-              name='pacmap-global-phases'
-              value='400'
-              step='10'
-              class='h-7 text-xs'
-            />
-          </TextField>
-          <TextField class='gap-0.5'>
-            <TextFieldLabel class='text-[10px]'>Learning rate</TextFieldLabel>
-            <TextFieldInput
-              type='number'
-              name='pacmap-learning-rate'
-              value='1.0'
-              step='0.1'
-              class='h-7 text-xs'
-            />
-          </TextField>
+        <div class='mt-1 space-y-3 rounded-md border p-2'>
+          <div class='space-y-1.5'>
+            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              PaCMAP (Dimensionality Reduction)
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Attraction</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='pacmap-attraction'
+                  value={props.algorithm?.pacmap?.attraction ?? 100}
+                  step='10'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>
+                  Local structure
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='pacmap-local-structure'
+                  value={props.algorithm?.pacmap?.local_structure ?? 100}
+                  step='10'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>
+                  Global phases
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='pacmap-global-phases'
+                  value={
+                    props.algorithm?.pacmap?.global_structure_phases ?? 150
+                  }
+                  step='10'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>
+                  Learning rate
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='pacmap-learning-rate'
+                  value={props.algorithm?.pacmap?.learning_rate ?? 1.0}
+                  step='0.1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div>
+          </div>
+
+          <div class='space-y-1.5'>
+            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              HOG (Feature Extraction)
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>
+                  Orientations
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-orientations'
+                  value={props.algorithm?.hog?.orientations ?? 9}
+                  step='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Cell Side</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-cell-side'
+                  value={props.algorithm?.hog?.cell_side ?? 8}
+                  step='2'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div>
+          </div>
         </div>
       </details>
       <Button

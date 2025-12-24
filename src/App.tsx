@@ -33,6 +33,7 @@ function App() {
           <FontProcessingForm
             sampleText={appSignal.sessionConfig()?.preview_text || ''}
             selectedWeights={appSignal.selectedWeights()}
+            algorithm={appSignal.sessionConfig()?.algorithm}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
           />

@@ -7,8 +7,14 @@ export interface PacmapOptions {
   learning_rate: number;
 }
 
+export interface HogOptions {
+  orientations: number;
+  cell_side: number;
+}
+
 export interface AlgorithmConfig {
   pacmap: PacmapOptions | null;
+  hog: HogOptions | null;
 }
 
 export interface SessionConfig {

@@ -21,6 +21,7 @@ pub struct SessionConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlgorithmConfig {
     pub pacmap: Option<PacmapConfig>,
+    pub hog: Option<HogConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,10 +35,25 @@ pub struct PacmapConfig {
 impl Default for PacmapConfig {
     fn default() -> Self {
         Self {
-            attraction: 200,
+            attraction: 100,
             local_structure: 100,
-            global_structure_phases: 400,
+            global_structure_phases: 150,
             learning_rate: 1.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HogConfig {
+    pub orientations: usize,
+    pub cell_side: usize,
+}
+
+impl Default for HogConfig {
+    fn default() -> Self {
+        Self {
+            orientations: 9,
+            cell_side: 8,
         }
     }
 }
