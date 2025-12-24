@@ -43,7 +43,7 @@ impl Compressor {
         let (embedding, _) = tokio::task::spawn_blocking(move || {
             fit_transform(data.view(), config)
         }).await.map_err(|e| AppError::Processing(e.to_string()))?
-          .map_err(|e| AppError::Processing(e.to_string()))?;
+            .map_err(|e| AppError::Processing(e.to_string()))?;
 
         for (i, id) in font_ids.iter().enumerate() {
             let mut meta = load_font_metadata(&session_dir, id)?;
