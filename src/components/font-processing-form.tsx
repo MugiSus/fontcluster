@@ -88,15 +88,19 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       .map(Number) as FontWeight[];
 
     const algorithm: AlgorithmConfig = {
+      image: {
+        width: Number(formData.get('image-width')),
+        height: Number(formData.get('image-height')),
+      },
+      hog: {
+        orientations: Number(formData.get('hog-orientations')),
+        cell_side: Number(formData.get('hog-cell-side')),
+      },
       pacmap: {
         attraction: Number(formData.get('pacmap-attraction')),
         local_structure: Number(formData.get('pacmap-local-structure')),
         global_structure_phases: Number(formData.get('pacmap-global-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
-      },
-      hog: {
-        orientations: Number(formData.get('hog-orientations')),
-        cell_side: Number(formData.get('hog-cell-side')),
       },
     };
 
@@ -139,6 +143,64 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           Algorithm options
         </summary>
         <div class='mt-1 space-y-3 rounded-md border p-2'>
+          <div class='space-y-1.5'>
+            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              Image Generation
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Width</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='image-width'
+                  value={props.algorithm?.image?.width ?? 512}
+                  step='32'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Height</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='image-height'
+                  value={props.algorithm?.image?.height ?? 128}
+                  step='16'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div>
+          </div>
+
+          <div class='space-y-1.5'>
+            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              HOG (Feature Extraction)
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>
+                  Orientations
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-orientations'
+                  value={props.algorithm?.hog?.orientations ?? 9}
+                  step='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Cell Side</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-cell-side'
+                  value={props.algorithm?.hog?.cell_side ?? 8}
+                  step='2'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div>
+          </div>
+
           <div class='space-y-1.5'>
             <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
               PaCMAP (Dimensionality Reduction)
@@ -189,36 +251,6 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='pacmap-learning-rate'
                   value={props.algorithm?.pacmap?.learning_rate ?? 1.0}
                   step='0.1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              HOG (Feature Extraction)
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Orientations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-orientations'
-                  value={props.algorithm?.hog?.orientations ?? 9}
-                  step='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Cell Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-cell-side'
-                  value={props.algorithm?.hog?.cell_side ?? 8}
-                  step='2'
                   class='h-7 text-xs'
                 />
               </TextField>

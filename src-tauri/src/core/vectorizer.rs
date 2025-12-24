@@ -7,7 +7,7 @@ use tokio::sync::Semaphore;
 use tauri::AppHandle;
 use futures::StreamExt;
 use imageproc::hog::{hog, HogOptions};
-use crate::config::HogConfig;
+use crate::config::{HogConfig, ImageConfig};
 use bytemuck;
 
 pub struct Vectorizer {
@@ -27,6 +27,13 @@ impl Vectorizer {
             guard.as_ref()
                 .and_then(|s| s.algorithm.as_ref())
                 .and_then(|a| a.hog.clone())
+                .unwrap_or_default()
+        };
+        let image_config = {
+            let guard = state.current_session.lock().map_err(|_| crate::error::AppError::Processing("Lock poisoned".into()))?;
+            guard.as_ref()
+                .and_then(|s| s.algorithm.as_ref())
+                .and_then(|a| a.image.clone())
                 .unwrap_or_default()
         };
 
@@ -53,10 +60,11 @@ impl Vectorizer {
                 let sem = Arc::clone(&self.semaphore);
                 let app_handle = app.clone();
                 let path_log = path.clone();
-                let config = hog_config.clone();
+                let h_config = hog_config.clone();
+                let i_config = image_config.clone();
                 async move {
                     let _permit = sem.acquire_owned().await.unwrap();
-                    let res = tokio::task::spawn_blocking(move || Self::process_image(path, config)).await;
+                    let res = tokio::task::spawn_blocking(move || Self::process_image(path, h_config, i_config)).await;
                     match res {
                         Ok(Ok(_)) => {
                             progress_events::increment_progress(&app_handle);
@@ -80,12 +88,12 @@ impl Vectorizer {
         Ok(())
     }
 
-    fn process_image(path: PathBuf, config: HogConfig) -> Result<()> {
+    fn process_image(path: PathBuf, h_config: HogConfig, i_config: ImageConfig) -> Result<()> {
         let img = image::open(&path).map_err(|e| crate::error::AppError::Image(e.to_string()))?.to_luma8();
-        let resized = image::imageops::resize(&img, 512, 128, image::imageops::FilterType::Lanczos3);
+        let resized = image::imageops::resize(&img, i_config.width, i_config.height, image::imageops::FilterType::Lanczos3);
         let opts = HogOptions { 
-            orientations: config.orientations, 
-            cell_side: config.cell_side, 
+            orientations: h_config.orientations, 
+            cell_side: h_config.cell_side, 
             block_side: 2, 
             block_stride: 2, 
             signed: false 

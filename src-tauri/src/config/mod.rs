@@ -20,8 +20,9 @@ pub struct SessionConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlgorithmConfig {
-    pub pacmap: Option<PacmapConfig>,
+    pub image: Option<ImageConfig>,
     pub hog: Option<HogConfig>,
+    pub pacmap: Option<PacmapConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +55,21 @@ impl Default for HogConfig {
         Self {
             orientations: 9,
             cell_side: 8,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImageConfig {
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Default for ImageConfig {
+    fn default() -> Self {
+        Self {
+            width: 512,
+            height: 128,
         }
     }
 }

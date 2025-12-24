@@ -12,9 +12,15 @@ export interface HogOptions {
   cell_side: number;
 }
 
+export interface ImageOptions {
+  width: number;
+  height: number;
+}
+
 export interface AlgorithmConfig {
-  pacmap: PacmapOptions | null;
+  image: ImageOptions | null;
   hog: HogOptions | null;
+  pacmap: PacmapOptions | null;
 }
 
 export interface SessionConfig {
