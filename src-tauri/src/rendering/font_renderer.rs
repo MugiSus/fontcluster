@@ -28,6 +28,16 @@ impl FontRenderer {
         let handle = self.source.select_best_match(&[FamilyName::Title(family.to_string())], &properties)?;
         let font = handle.load()?;
         
+        // Validate weight: font-kit's select_best_match is very permissive.
+        // We want to ensure the actual font weight is close to what we requested.
+        let actual_weight = font.properties().weight.0 as i32;
+        if (actual_weight - weight_val).abs() > 100 {
+            return Err(AppError::Font(format!(
+                "Weight mismatch for family {}: requested {}, got {}",
+                family, weight_val, actual_weight
+            )));
+        }
+
         let full_name = font.full_name();
         let metrics = font.metrics();
         let scale = self.config.font_size / metrics.units_per_em as f32;
@@ -54,13 +64,23 @@ impl FontRenderer {
 
         if canvas.pixels.iter().all(|&p| p == 0) { return Ok(()); }
 
+        // Find available weights for metadata
+        let available_weights = self.source.select_family_by_name(family)
+            .map(|f| {
+                f.fonts().iter()
+                    .filter_map(|h| h.load().ok())
+                    .map(|f| format!("{:?}", f.properties().weight))
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let safe_name = format!("{}_{}", weight_val, family.replace(' ', "_").replace('/', "_"));
         save_font_metadata(&self.config.output_dir, &FontMetadata {
             safe_name: safe_name.clone(),
             display_name: full_name,
             family: family.to_string(),
             weight: weight_val,
-            weights: Vec::new(),
+            weights: available_weights,
             computed: None,
         })?;
 
