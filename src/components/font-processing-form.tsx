@@ -2,6 +2,12 @@ import { createSignal, onMount } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from './ui/accordion';
 import { ArrowRightIcon, LoaderCircleIcon } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import { type FontWeight, type AlgorithmConfig } from '../types/font';
@@ -150,136 +156,138 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           onWeightChange={props.onSelectedWeightsChange}
         />
       </TextField>
-      <details class='text-[10px] text-muted-foreground'>
-        <summary class='cursor-pointer py-1 font-medium uppercase hover:text-foreground'>
-          Algorithm options (Advanced)
-        </summary>
-        <div class='mt-1 space-y-3 rounded-md border p-2'>
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              Image Generation
+      <Accordion collapsible class='w-full'>
+        <AccordionItem value='algorithm-options' class='border-none'>
+          <AccordionTrigger class='py-1 text-[10px] font-medium uppercase text-muted-foreground hover:text-foreground hover:no-underline [&>svg]:ml-2 [&>svg]:size-3'>
+            Algorithm options (Advanced)
+          </AccordionTrigger>
+          <AccordionContent class='mt-1 space-y-3 rounded-md border p-2 text-muted-foreground'>
+            <div class='space-y-1.5'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                Image Generation
+              </div>
+              <div class='grid grid-cols-2 gap-2'>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>Width</TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='image-width'
+                    value={props.algorithm?.image?.width ?? 512}
+                    step='32'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>Height</TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='image-height'
+                    value={props.algorithm?.image?.height ?? 128}
+                    step='16'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>Font Size</TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='image-font-size'
+                    value={props.algorithm?.image?.font_size ?? 48}
+                    step='4'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+              </div>
             </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Width</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-width'
-                  value={props.algorithm?.image?.width ?? 512}
-                  step='32'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Height</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-height'
-                  value={props.algorithm?.image?.height ?? 128}
-                  step='16'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Font Size</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-font-size'
-                  value={props.algorithm?.image?.font_size ?? 48}
-                  step='4'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
 
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              HOG (Feature Extraction)
+            <div class='space-y-1.5'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                HOG (Feature Extraction)
+              </div>
+              <div class='grid grid-cols-2 gap-2'>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>
+                    Orientations
+                  </TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='hog-orientations'
+                    value={props.algorithm?.hog?.orientations ?? 9}
+                    step='1'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>Cell Side</TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='hog-cell-side'
+                    value={props.algorithm?.hog?.cell_side ?? 8}
+                    step='2'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+              </div>
             </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Orientations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-orientations'
-                  value={props.algorithm?.hog?.orientations ?? 9}
-                  step='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Cell Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-cell-side'
-                  value={props.algorithm?.hog?.cell_side ?? 8}
-                  step='2'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
 
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              PaCMAP (Dimensionality Reduction)
+            <div class='space-y-1.5'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                PaCMAP (Dimensionality Reduction)
+              </div>
+              <div class='grid grid-cols-2 gap-2'>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>
+                    Global Iterations
+                  </TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='pacmap-mn-phases'
+                    value={props.algorithm?.pacmap?.mn_phases ?? 100}
+                    step='10'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>
+                    Attraction Iterations
+                  </TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='pacmap-nn-phases'
+                    value={props.algorithm?.pacmap?.nn_phases ?? 100}
+                    step='10'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>
+                    Repulsion Iterations
+                  </TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='pacmap-fp-phases'
+                    value={props.algorithm?.pacmap?.fp_phases ?? 150}
+                    step='10'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+                <TextField class='gap-0.5'>
+                  <TextFieldLabel class='text-[10px]'>
+                    Learning rate
+                  </TextFieldLabel>
+                  <TextFieldInput
+                    type='number'
+                    name='pacmap-learning-rate'
+                    value={props.algorithm?.pacmap?.learning_rate ?? 1.0}
+                    step='0.1'
+                    class='h-7 text-xs'
+                  />
+                </TextField>
+              </div>
             </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Global Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-mn-phases'
-                  value={props.algorithm?.pacmap?.mn_phases ?? 100}
-                  step='10'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Attraction Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-nn-phases'
-                  value={props.algorithm?.pacmap?.nn_phases ?? 100}
-                  step='10'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Repulsion Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-fp-phases'
-                  value={props.algorithm?.pacmap?.fp_phases ?? 150}
-                  step='10'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Learning rate
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-learning-rate'
-                  value={props.algorithm?.pacmap?.learning_rate ?? 1.0}
-                  step='0.1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-        </div>
-      </details>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
       <Button
         type='submit'
         disabled={isProcessing()}
