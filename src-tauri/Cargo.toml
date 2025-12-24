@@ -22,8 +22,16 @@ panic = "abort"
 strip = true
 
 # Optimize dependencies even in debug mode
-[profile.dev.package."*"]
-opt-level = 2
+[profile.dev.package]
+# 数学・重量級ライブラリのみ最適化し、ビルド時間を短縮
+"ndarray" = { opt-level = 2 }
+"nalgebra" = { opt-level = 2 }
+"image" = { opt-level = 2 }
+"imageproc" = { opt-level = 2 }
+"linfa" = { opt-level = 2 }
+"linfa-clustering" = { opt-level = 2 }
+"pacmap" = { opt-level = 2 }
+"hdbscan" = { opt-level = 2 }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -53,8 +61,9 @@ rand = "0.8"
 # HDBSCAN clustering algorithm
 hdbscan = "0.9"
 # Linfa clustering algorithms including Gaussian Mixture
-linfa = "0.7"
-linfa-clustering = "0.7.1"
+# Note: linfa 0.7 normally uses ndarray 0.15, but we try to unify or manage duplicates
+linfa = { version = "0.7", default-features = false }
+linfa-clustering = { version = "0.7.1", default-features = false }
 # UUIDv7 for session management
 uuid = { version = "1.0", features = ["v7", "serde"] }
 # Date/time handling
