@@ -66,6 +66,7 @@ type AccordionContentProps<T extends ValidComponent = 'div'> =
   AccordionPrimitive.AccordionContentProps<T> & {
     class?: string | undefined;
     children?: JSX.Element;
+    forceMount?: boolean;
   };
 
 const AccordionContent = <T extends ValidComponent = 'div'>(
@@ -74,6 +75,7 @@ const AccordionContent = <T extends ValidComponent = 'div'>(
   const [local, others] = splitProps(props as AccordionContentProps, [
     'class',
     'children',
+    'forceMount',
   ]);
   return (
     <AccordionPrimitive.Content
@@ -81,6 +83,7 @@ const AccordionContent = <T extends ValidComponent = 'div'>(
         'animate-accordion-up overflow-hidden text-sm transition-all data-[expanded]:animate-accordion-down',
         local.class,
       )}
+      forceMount={local.forceMount}
       {...others}
     >
       <div class='py-0'>{local.children}</div>
