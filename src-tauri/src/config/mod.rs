@@ -23,6 +23,22 @@ pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
     pub hog: Option<HogConfig>,
     pub pacmap: Option<PacmapConfig>,
+    pub hdbscan: Option<HdbscanConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HdbscanConfig {
+    pub min_cluster_size: usize,
+    pub min_samples: usize,
+}
+
+impl Default for HdbscanConfig {
+    fn default() -> Self {
+        Self {
+            min_cluster_size: 5,
+            min_samples: 3,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

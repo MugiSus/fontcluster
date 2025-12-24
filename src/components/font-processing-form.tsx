@@ -107,6 +107,10 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         fp_phases: Number(formData.get('pacmap-fp-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
       },
+      hdbscan: {
+        min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
+        min_samples: Number(formData.get('hdbscan-min-samples')),
+      },
     };
 
     props.onSubmit(
@@ -159,7 +163,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1.5 size-3 transition-transform group-open:rotate-180' />
         </summary>
-        <div class='mt-1 space-y-3 rounded-md border p-2 text-muted-foreground'>
+        <div class='mt-1 max-h-[320px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
           <div class='space-y-1.5'>
             <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
               Image Generation
@@ -278,6 +282,36 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='pacmap-learning-rate'
                   value={props.algorithm?.pacmap?.learning_rate ?? 1.0}
                   step='0.1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div>
+          </div>
+
+          <div class='space-y-1.5'>
+            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              HDBSCAN (Clustering)
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>
+                  Min Cluster Size
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hdbscan-min-cluster-size'
+                  value={props.algorithm?.hdbscan?.min_cluster_size ?? 5}
+                  step='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-[10px]'>Min Samples</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hdbscan-min-samples'
+                  value={props.algorithm?.hdbscan?.min_samples ?? 3}
+                  step='1'
                   class='h-7 text-xs'
                 />
               </TextField>

@@ -12,6 +12,11 @@ export interface HogOptions {
   cell_side: number;
 }
 
+export interface HdbscanOptions {
+  min_cluster_size: number;
+  min_samples: number;
+}
+
 export interface ImageOptions {
   width: number;
   height: number;
@@ -22,6 +27,7 @@ export interface AlgorithmConfig {
   image: ImageOptions | null;
   hog: HogOptions | null;
   pacmap: PacmapOptions | null;
+  hdbscan: HdbscanOptions | null;
 }
 
 export interface SessionConfig {
@@ -40,7 +46,7 @@ export interface SessionConfig {
 
 export interface ComputedData {
   vector: number[]; // [x, y] 2D coordinates from PaCMAP
-  k: number; // Cluster assignment from GMM
+  k: number; // Cluster assignment from HDBSCAN
 }
 
 export interface FontConfig {
