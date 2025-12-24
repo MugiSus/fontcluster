@@ -38,10 +38,10 @@ function App() {
             onSubmit={appSignal.generateFontImages}
           />
           <Separator />
-          <Tabs value='name' class='flex min-h-0 flex-1 flex-col'>
+          <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
             <TabsList class='grid w-full shrink-0 grid-cols-2'>
-              <TabsTrigger value='name'>Name (A-Z)</TabsTrigger>
               <TabsTrigger value='similarity'>Similarity</TabsTrigger>
+              <TabsTrigger value='name'>Name (A-Z)</TabsTrigger>
             </TabsList>
 
             <TabsContent
