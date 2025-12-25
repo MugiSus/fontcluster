@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
-import { SessionItem, type CompletionBadge } from './session-item';
+import { SessionItem } from './session-item';
 import { type SessionConfig } from '../types/font';
 
 // Constants
@@ -19,8 +19,6 @@ interface SessionSelectorProps {
   currentSessionId: string;
   onSessionSelect: (sessionId: string) => void;
 }
-
-// CompletionBadge type is re-exported from SessionItem for reuse
 
 export function SessionSelector(props: SessionSelectorProps) {
   const [open, setOpen] = createSignal(false);
@@ -53,15 +51,6 @@ export function SessionSelector(props: SessionSelectorProps) {
       }
     },
   );
-
-  const getCompletionBadge = (session: SessionConfig): CompletionBadge => {
-    if (session.has_clusters) return { text: 'Complete', variant: 'default' };
-    if (session.has_compressed)
-      return { text: 'Compressed', variant: 'outline' };
-    if (session.has_vectors) return { text: 'Vectorized', variant: 'outline' };
-    if (session.has_images) return { text: 'Rasterized', variant: 'outline' };
-    return { text: 'Empty', variant: 'error' };
-  };
 
   // Event handlers
   const selectSession = (sessionId: string) => {
@@ -123,7 +112,6 @@ export function SessionSelector(props: SessionSelectorProps) {
         <div class='flex flex-col overflow-y-auto rounded border'>
           <For each={availableSessions()}>
             {(session) => {
-              const badge = getCompletionBadge(session);
               const clusterCount = Math.min(
                 session.clusters_amount,
                 MAX_DISPLAYED_CLUSTERS,
@@ -132,7 +120,6 @@ export function SessionSelector(props: SessionSelectorProps) {
               return (
                 <SessionItem
                   session={session}
-                  badge={badge}
                   clusterCount={clusterCount}
                   isCurrentSession={
                     session.session_id === props.currentSessionId

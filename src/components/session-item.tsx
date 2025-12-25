@@ -2,7 +2,11 @@ import { For } from 'solid-js';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ArchiveRestoreIcon, Trash2Icon } from 'lucide-solid';
-import { FontWeight, type SessionConfig } from '../types/font';
+import {
+  FontWeight,
+  type SessionConfig,
+  type ProcessStatus,
+} from '../types/font';
 
 // Constants (local to SessionItem rendering)
 const CLUSTER_COLORS = [
@@ -18,14 +22,30 @@ const CLUSTER_COLORS = [
   'bg-fuchsia-400',
 ] as const;
 
-export type CompletionBadge = {
-  text: 'Complete' | 'Compressed' | 'Vectorized' | 'Rasterized' | 'Empty';
+export type ProcessStatusBadge = {
+  text: 'Complete' | 'Compressed' | 'Vectorized' | 'Generated' | 'Empty';
   variant: 'default' | 'outline' | 'error';
+};
+
+export const getProcessStatusBadge = (
+  status: ProcessStatus,
+): ProcessStatusBadge => {
+  switch (status) {
+    case 'clustered':
+      return { text: 'Complete', variant: 'default' };
+    case 'compressed':
+      return { text: 'Compressed', variant: 'outline' };
+    case 'vectorized':
+      return { text: 'Vectorized', variant: 'outline' };
+    case 'generated':
+      return { text: 'Generated', variant: 'outline' };
+    default:
+      return { text: 'Empty', variant: 'error' };
+  }
 };
 
 interface SessionItemProps {
   session: SessionConfig;
-  badge: CompletionBadge;
   clusterCount: number;
   isCurrentSession: boolean;
   isConfirmingDelete: boolean;
@@ -36,13 +56,15 @@ interface SessionItemProps {
 }
 
 export function SessionItem(props: SessionItemProps) {
+  const badge = () => getProcessStatusBadge(props.session.process_status);
+
   return (
     <div class='border-b p-4 transition-colors hover:bg-muted/50'>
       <div class='flex items-center justify-between gap-4'>
         <div class='flex flex-col gap-1'>
           <div class='mb-1.5 flex items-center gap-2'>
-            <Badge variant={props.badge.variant} class='py-0' round>
-              {props.badge.text}
+            <Badge variant={badge().variant} class='py-0' round>
+              {badge().text}
             </Badge>
             <time class='text-xs tabular-nums text-muted-foreground'>
               {new Date(props.session.date).toLocaleString('ja-JP', {

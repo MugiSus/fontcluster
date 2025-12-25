@@ -306,11 +306,11 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         type='submit'
         disabled={props.isProcessing}
         variant='default'
-        class='relative flex items-center gap-2 pb-1.5'
+        class='relative flex items-center gap-2 rounded-full pb-1.5'
       >
         {currentStatus() === 'generating' ? (
           <>
-            Generating images... (
+            Generating... (
             {Math.trunc(
               (progressLabelNumerator() / progressLabelDenominator()) * 100,
             ) || 0}
@@ -319,7 +319,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : currentStatus() === 'vectorizing' ? (
           <>
-            Vectorizing images... (
+            Vectorizing... (
             {Math.trunc(
               (progressLabelNumerator() / progressLabelDenominator()) * 100,
             ) || 0}
@@ -328,7 +328,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : currentStatus() === 'compressing' ? (
           <>
-            Compressing vectors...
+            Compressing...
             <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
           </>
         ) : currentStatus() === 'clustering' ? (
@@ -338,7 +338,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </>
         ) : (
           <>
-            Cluster with current text
+            Run
             <ArrowRightIcon class='absolute right-3' />
           </>
         )}
