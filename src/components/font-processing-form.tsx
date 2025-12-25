@@ -20,11 +20,13 @@ interface FontProcessingFormProps {
   algorithm?: AlgorithmConfig | null | undefined;
   isProcessing?: boolean;
   processStatus?: ProcessStatus | undefined;
+  sessionId?: string | undefined;
   onSelectedWeightsChange: (weights: FontWeight[]) => void;
   onSubmit: (
     text: string,
     weights: FontWeight[],
     algorithm: AlgorithmConfig,
+    sessionId?: string,
   ) => void;
 }
 
@@ -89,10 +91,13 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       },
     };
 
+    const canResume = props.processStatus !== 'clustered' && props.sessionId;
+
     props.onSubmit(
       text || 'Hamburgevons',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
       algorithm,
+      canResume ? props.sessionId : undefined,
     );
   };
 
@@ -103,6 +108,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       if (status === 'generated') return 'vectorizing';
       if (status === 'vectorized') return 'compressing';
       if (status === 'compressed') return 'clustering';
+    }
+    if (status !== 'clustered' && props.sessionId) {
+      return 'continue';
     }
     return status;
   };
@@ -322,7 +330,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               ? 'Compressing...'
               : currentStatus() === 'clustering'
                 ? 'Clustering...'
-                : 'Run'}
+                : currentStatus() === 'continue'
+                  ? 'Continue'
+                  : 'Run'}
         <Show
           when={props.isProcessing}
           fallback={<ArrowRightIcon class='absolute right-3' />}

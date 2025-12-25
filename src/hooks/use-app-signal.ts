@@ -93,15 +93,19 @@ export function useAppSignal() {
     text: string,
     weights: FontWeight[],
     algorithm: AlgorithmConfig,
+    sessionId?: string,
   ) => {
     setIsProcessing(true);
-    setProcessStatus('empty');
+    if (!sessionId) {
+      setProcessStatus('empty');
+    }
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
         text,
         weights,
         algorithm,
+        sessionId,
       });
       console.log('Complete pipeline result:', result);
       await refetchSessionConfig();

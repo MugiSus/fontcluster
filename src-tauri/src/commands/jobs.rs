@@ -1,38 +1,52 @@
 use crate::core::{AppState, ImageGenerator, Vectorizer, Compressor, Clusterer};
-use crate::config::AlgorithmConfig;
+use crate::config::{AlgorithmConfig, ProcessStatus};
 use crate::error::Result;
 use tauri::{command, State, AppHandle, Emitter};
 
 #[command]
-pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, state: State<'_, AppState>) -> Result<String> {
-    // Initialize session if not exists or if weights/text changed
-    state.initialize_session(text, weights, algorithm)?;
-    let id = {
+pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, session_id: Option<String>, state: State<'_, AppState>) -> Result<String> {
+    // Initialize or load session
+    let id = if let Some(sid) = session_id {
+        state.load_session(&sid)?;
+        sid
+    } else {
+        state.initialize_session(text, weights, algorithm)?
+    };
+
+    let status = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().id.clone()
+        guard.as_ref().unwrap().status.process_status.clone()
     };
 
     // Step 1: Images
-    app.emit("font_generation_start", ())?;
-    let gen = ImageGenerator::new();
-    gen.generate_all(&app, &state).await?;
-    app.emit("font_generation_complete", id.clone())?;
+    if status == ProcessStatus::Empty {
+        app.emit("font_generation_start", ())?;
+        let gen = ImageGenerator::new();
+        gen.generate_all(&app, &state).await?;
+        app.emit("font_generation_complete", id.clone())?;
+    }
 
     // Step 2: Vectors
-    app.emit("vectorization_start", ())?;
-    let vec = Vectorizer::new();
-    vec.vectorize_all(&app, &state).await?;
-    app.emit("vectorization_complete", id.clone())?;
+    if status == ProcessStatus::Empty || status == ProcessStatus::Generated {
+        app.emit("vectorization_start", ())?;
+        let vec = Vectorizer::new();
+        vec.vectorize_all(&app, &state).await?;
+        app.emit("vectorization_complete", id.clone())?;
+    }
 
     // Step 3: Compression
-    app.emit("compression_start", ())?;
-    Compressor::compress_all(&state).await?;
-    app.emit("compression_complete", id.clone())?;
+    if status != ProcessStatus::Compressed && status != ProcessStatus::Clustered {
+        app.emit("compression_start", ())?;
+        Compressor::compress_all(&state).await?;
+        app.emit("compression_complete", id.clone())?;
+    }
 
     // Step 4: Clustering
-    app.emit("clustering_start", ())?;
-    Clusterer::cluster_all(&state).await?;
-    app.emit("clustering_complete", id.clone())?;
+    if status != ProcessStatus::Clustered {
+        app.emit("clustering_start", ())?;
+        Clusterer::cluster_all(&state).await?;
+        app.emit("clustering_complete", id.clone())?;
+    }
 
     app.emit("all_jobs_complete", id)?;
 

@@ -41,6 +41,7 @@ function App() {
             algorithm={appSignal.sessionConfig()?.algorithm}
             isProcessing={appSignal.isProcessing()}
             processStatus={appSignal.processStatus()}
+            sessionId={appSignal.currentSessionId()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
           />
@@ -98,11 +99,11 @@ function App() {
           initialSize={0.75}
         >
           <Show
-            when={false}
+            when={appSignal.processStatus() === 'clustered'}
             fallback={
               <div class='flex size-full flex-col items-center justify-center text-sm font-light text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />
-                <h2>No results found</h2>
+                <h2>No results yet</h2>
                 <p class='text-xs'>Complete processing to see results</p>
               </div>
             }
