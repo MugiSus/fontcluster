@@ -30,14 +30,18 @@ export interface AlgorithmConfig {
   hdbscan: HdbscanOptions | null;
 }
 
+export type ProcessStatus =
+  | 'empty'
+  | 'generated'
+  | 'vectorized'
+  | 'compressed'
+  | 'clustered';
+
 export interface SessionConfig {
   session_id: string;
   preview_text: string;
   date: string;
-  has_images: boolean;
-  has_vectors: boolean;
-  has_compressed: boolean;
-  has_clusters: boolean;
+  process_status: ProcessStatus;
   clusters_amount: number;
   samples_amount: number;
   weights: number[];

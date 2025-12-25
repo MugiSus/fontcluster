@@ -81,7 +81,7 @@ impl ImageGenerator {
             .collect::<Vec<_>>()
             .await;
 
-        state.update_status(|s| s.has_images = true)?;
+        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Generated)?;
         Ok(())
     }
 }

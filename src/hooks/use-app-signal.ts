@@ -6,6 +6,7 @@ import {
   type FontWeight,
   type SessionConfig,
   type AlgorithmConfig,
+  type ProcessStatus,
 } from '../types/font';
 
 export function useAppSignal() {
@@ -16,6 +17,10 @@ export function useAppSignal() {
   const [nearestFontConfig, setNearestFontConfig] =
     createSignal<FontConfig | null>(null);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
+
+  const [isProcessing, setIsProcessing] = createSignal<boolean>(false);
+  const [processStatus, setProcessStatus] =
+    createSignal<ProcessStatus>('empty');
 
   // Resources
   const [sessionDirectory] = createResource(
@@ -31,7 +36,7 @@ export function useAppSignal() {
     },
   );
 
-  const [sessionConfig] = createResource(
+  const [sessionConfig, { refetch: refetchSessionConfig }] = createResource(
     () => currentSessionId(),
     async (sessionId): Promise<SessionConfig | null> => {
       if (!sessionId) return null;
@@ -50,7 +55,7 @@ export function useAppSignal() {
     },
   );
 
-  const [fontConfigs] = createResource(
+  const [fontConfigs, { refetch: refetchFontConfigs }] = createResource(
     () => currentSessionId(),
     async (sessionId): Promise<FontConfigRecord> => {
       if (!sessionId) return {};
@@ -69,12 +74,17 @@ export function useAppSignal() {
     },
   );
 
-  // Auto-sync weights when sessionConfig changes
+  // Auto-sync weights and status when sessionConfig changes
   createEffect(() => {
     const config = sessionConfig();
-    if (config?.weights) {
-      const weights = config.weights as FontWeight[];
-      setSelectedWeights(weights);
+    if (config) {
+      if (config.weights) {
+        const weights = config.weights as FontWeight[];
+        setSelectedWeights(weights);
+      }
+      if (config.process_status) {
+        setProcessStatus(config.process_status);
+      }
     }
   });
 
@@ -84,6 +94,8 @@ export function useAppSignal() {
     weights: FontWeight[],
     algorithm: AlgorithmConfig,
   ) => {
+    setIsProcessing(true);
+    setProcessStatus('empty');
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
@@ -92,8 +104,12 @@ export function useAppSignal() {
         algorithm,
       });
       console.log('Complete pipeline result:', result);
+      await refetchSessionConfig();
+      await refetchFontConfigs();
     } catch (error) {
       console.error('Failed to process fonts:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -102,6 +118,8 @@ export function useAppSignal() {
     selectedWeights,
     nearestFontConfig,
     currentSessionId,
+    isProcessing,
+    processStatus,
 
     // Resources
     sessionConfig,
@@ -112,6 +130,7 @@ export function useAppSignal() {
     setSelectedWeights,
     setNearestFontConfig,
     setCurrentSessionId,
+    setProcessStatus,
     generateFontImages,
   };
 }

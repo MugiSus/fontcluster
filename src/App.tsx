@@ -15,7 +15,10 @@ import { Separator } from './components/ui/separator';
 
 function App() {
   const appSignal = useAppSignal();
-  useEventListeners(appSignal);
+  useEventListeners({
+    setCurrentSessionId: appSignal.setCurrentSessionId,
+    setProcessStatus: appSignal.setProcessStatus,
+  });
 
   return (
     <>
@@ -34,6 +37,8 @@ function App() {
             sampleText={appSignal.sessionConfig()?.preview_text || ''}
             selectedWeights={appSignal.selectedWeights()}
             algorithm={appSignal.sessionConfig()?.algorithm}
+            isProcessing={appSignal.isProcessing()}
+            processStatus={appSignal.processStatus()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
           />

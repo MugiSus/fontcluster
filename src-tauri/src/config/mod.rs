@@ -92,12 +92,20 @@ impl Default for ImageConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessStatus {
+    #[default]
+    Empty,
+    Generated,
+    Vectorized,
+    Compressed,
+    Clustered,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProcessingStatus {
-    pub has_images: bool,
-    pub has_vectors: bool,
-    pub has_compressed: bool,
-    pub has_clusters: bool,
+    pub process_status: ProcessStatus,
     #[serde(rename = "clusters_amount")]
     pub cluster_count: usize,
     #[serde(rename = "samples_amount")]

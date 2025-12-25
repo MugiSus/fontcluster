@@ -61,7 +61,7 @@ impl Clusterer {
         let n_clusters = (max_cluster + 1) as usize;
 
         state.update_status(|s| {
-            s.has_clusters = true;
+            s.process_status = crate::config::ProcessStatus::Clustered;
             s.cluster_count = n_clusters;
             s.sample_count = n;
         })?;

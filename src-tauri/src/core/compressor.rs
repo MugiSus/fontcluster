@@ -66,7 +66,7 @@ impl Compressor {
             let _ = fs::remove_file(font_dir.join("vector.bin"));
         }
 
-        state.update_status(|s| s.has_compressed = true)?;
+        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Compressed)?;
         Ok(())
     }
 }

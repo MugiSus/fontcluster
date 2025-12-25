@@ -84,7 +84,7 @@ impl Vectorizer {
             .collect::<Vec<_>>()
             .await;
 
-        state.update_status(|s| s.has_vectors = true)?;
+        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Vectorized)?;
         Ok(())
     }
 
