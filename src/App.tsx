@@ -100,7 +100,7 @@ function App() {
           <Show
             when={appSignal.sessionConfig()?.process_status === 'clustered'}
             fallback={
-              <div class='flex size-full flex-col items-center justify-center text-sm font-light text-muted-foreground'>
+              <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />
                 <h2>No results yet</h2>
                 <p class='text-xs'>Complete processing to see results</p>
