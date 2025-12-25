@@ -36,7 +36,7 @@ impl Default for HdbscanConfig {
     fn default() -> Self {
         Self {
             min_cluster_size: 10,
-            min_samples: 6,
+            min_samples: 8,
         }
     }
 }
