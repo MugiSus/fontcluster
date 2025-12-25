@@ -5,6 +5,7 @@ import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
   ArrowRightIcon,
   ChevronDownIcon,
+  ListVideoIcon,
   LoaderCircleIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
@@ -155,9 +156,18 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           <ChevronDownIcon class='mb-0.5 ml-1.5 size-3 transition-transform group-open:rotate-180' />
         </summary>
         <div class='mt-1 max-h-[280px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              Image Generation
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                Image Generation
+              </div>
+              <Button
+                variant='ghost'
+                size='icon'
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+              >
+                <ListVideoIcon class='size-3 max-h-3' />
+              </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -193,9 +203,18 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
           </div>
 
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              HOG Feature Extraction
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                HOG Feature Extraction
+              </div>
+              <Button
+                variant='ghost'
+                size='icon'
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+              >
+                <ListVideoIcon class='size-3 max-h-3' />
+              </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -223,9 +242,18 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
           </div>
 
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              PaCMAP (Dimensionality Reduction)
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                PaCMAP (Dimensionality Reduction)
+              </div>
+              <Button
+                variant='ghost'
+                size='icon'
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+              >
+                <ListVideoIcon class='size-3 max-h-3' />
+              </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -279,9 +307,18 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
           </div>
 
-          <div class='space-y-1.5'>
-            <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-              HDBSCAN (Clustering)
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+                HDBSCAN (Clustering)
+              </div>
+              <Button
+                variant='ghost'
+                size='icon'
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+              >
+                <ListVideoIcon class='size-3 max-h-3' />
+              </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
