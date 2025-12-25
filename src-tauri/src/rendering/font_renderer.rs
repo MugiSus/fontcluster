@@ -43,8 +43,17 @@ impl FontRenderer {
         let scale = self.config.font_size / metrics.units_per_em as f32;
 
         let mut glyph_data = Vec::new();
+        let replacement_gid = font.glyph_for_char('\u{FFFD}');
         for ch in self.config.text.chars() {
             let gid = font.glyph_for_char(ch).ok_or_else(|| AppError::Font(format!("No glyph for {}", ch)))?;
+            
+            // Check if it's a fallback/missing glyph (tofu).
+            // 1. GID 0 is typically the .notdef glyph.
+            // 2. If it matches the replacement character glyph (U+FFFD) but isn't that character, it's a fallback.
+            if gid == 0 || (replacement_gid == Some(gid) && ch != '\u{FFFD}') {
+                return Err(AppError::Font(format!("Font fallback (tofu) detected for character '{}'", ch)));
+            }
+
             let advance = font.advance(gid)?;
             let bounds = font.typographic_bounds(gid)?;
             glyph_data.push((gid, (advance.x() * scale) as i32, bounds.max_y() * scale, bounds.min_y() * scale));
