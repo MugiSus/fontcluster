@@ -94,9 +94,10 @@ export function useAppSignal() {
     weights: FontWeight[],
     algorithm: AlgorithmConfig,
     sessionId?: string,
+    overrideStatus?: ProcessStatus,
   ) => {
     setIsProcessing(true);
-    if (!sessionId) {
+    if (!sessionId || overrideStatus === 'empty') {
       setProcessStatus('empty');
     }
     try {
@@ -106,6 +107,7 @@ export function useAppSignal() {
         weights,
         algorithm,
         sessionId,
+        overrideStatus,
       });
       console.log('Complete pipeline result:', result);
       await refetchSessionConfig();

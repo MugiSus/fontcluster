@@ -4,10 +4,13 @@ use crate::error::Result;
 use tauri::{command, State, AppHandle, Emitter};
 
 #[command]
-pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, session_id: Option<String>, state: State<'_, AppState>) -> Result<String> {
+pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, session_id: Option<String>, override_status: Option<ProcessStatus>, state: State<'_, AppState>) -> Result<String> {
     // Initialize or load session
     let id = if let Some(sid) = session_id {
         state.load_session(&sid)?;
+        if let Some(ovr) = override_status {
+            state.update_session_config(algorithm, Some(ovr))?;
+        }
         sid
     } else {
         state.initialize_session(text, weights, algorithm)?

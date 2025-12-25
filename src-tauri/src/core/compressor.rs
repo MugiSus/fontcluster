@@ -65,8 +65,6 @@ impl Compressor {
             });
             let font_dir = session_dir.join(id);
             fs::write(font_dir.join("meta.json"), serde_json::to_string_pretty(&meta)?)?;
-            println!("🧹 Cleaning up intermediate vector for {}", id);
-            let _ = fs::remove_file(font_dir.join("vector.bin"));
         }
 
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Compressed)?;

@@ -1,4 +1,4 @@
-use crate::config::{SessionConfig, FontMetadata, ProcessingStatus, AlgorithmConfig};
+use crate::config::{SessionConfig, FontMetadata, ProcessingStatus, AlgorithmConfig, ProcessStatus};
 use crate::error::Result;
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -75,6 +75,21 @@ impl AppState {
         let mut guard = self.current_session.lock().unwrap();
         if let Some(session) = guard.as_mut() {
             f(&mut session.status);
+            let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
+            fs::write(session_dir.join("config.json"), serde_json::to_string_pretty(&session)?)?;
+        }
+        Ok(())
+    }
+
+    pub fn update_session_config(&self, algorithm: Option<AlgorithmConfig>, status: Option<ProcessStatus>) -> Result<()> {
+        let mut guard = self.current_session.lock().unwrap();
+        if let Some(session) = guard.as_mut() {
+            if let Some(alg) = algorithm {
+                session.algorithm = Some(alg);
+            }
+            if let Some(s) = status {
+                session.status.process_status = s;
+            }
             let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
             fs::write(session_dir.join("config.json"), serde_json::to_string_pretty(&session)?)?;
         }

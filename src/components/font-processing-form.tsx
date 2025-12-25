@@ -28,6 +28,7 @@ interface FontProcessingFormProps {
     weights: FontWeight[],
     algorithm: AlgorithmConfig,
     sessionId?: string,
+    overrideStatus?: ProcessStatus,
   ) => void;
 }
 
@@ -59,18 +60,8 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     });
   });
 
-  const handleSubmit = (e: Event) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const text = formData.get('preview-text') as string;
-
-    // Get selected font weights
-    const selectedWeights = formData.get('weights') as string;
-    const selectedWeightsArray = selectedWeights
-      .split(',')
-      .map(Number) as FontWeight[];
-
-    const algorithm: AlgorithmConfig = {
+  const getAlgorithmConfigFromForm = (formData: FormData): AlgorithmConfig => {
+    return {
       image: {
         width: Number(formData.get('image-width')),
         height: Number(formData.get('image-height')),
@@ -91,14 +82,35 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         min_samples: Number(formData.get('hdbscan-min-samples')),
       },
     };
+  };
 
+  const handleSubmit = (e: Event) => {
+    e.preventDefault();
+    handleRun();
+  };
+
+  const handleRun = (targetStatus?: ProcessStatus) => {
+    // Get form data from the current form state
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const text = formData.get('preview-text') as string;
+
+    // Get selected font weights
+    const selectedWeights = formData.get('weights') as string;
+    const selectedWeightsArray = (
+      selectedWeights ? selectedWeights.split(',').map(Number) : []
+    ) as FontWeight[];
+
+    const algorithm = getAlgorithmConfigFromForm(formData);
     const canResume = props.processStatus !== 'clustered' && props.sessionId;
-
     props.onSubmit(
       text || 'Hamburgevons',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
       algorithm,
       canResume ? props.sessionId : undefined,
+      targetStatus ?? undefined,
     );
   };
 
@@ -165,6 +177,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 variant='ghost'
                 size='icon'
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('empty')}
               >
                 <ListVideoIcon class='size-3 max-h-3' />
               </Button>
@@ -212,6 +225,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 variant='ghost'
                 size='icon'
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('generated')}
               >
                 <ListVideoIcon class='size-3 max-h-3' />
               </Button>
@@ -251,6 +265,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 variant='ghost'
                 size='icon'
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('vectorized')}
               >
                 <ListVideoIcon class='size-3 max-h-3' />
               </Button>
@@ -316,6 +331,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 variant='ghost'
                 size='icon'
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('compressed')}
               >
                 <ListVideoIcon class='size-3 max-h-3' />
               </Button>
