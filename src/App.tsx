@@ -1,3 +1,4 @@
+import { Show } from 'solid-js';
 import { FontConfigList } from './components/font-config-list';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 import { SessionSelector } from './components/session-selector';
@@ -12,6 +13,7 @@ import {
   ResizablePanel,
 } from './components/ui/resizable';
 import { Separator } from './components/ui/separator';
+import { CircleSlash2Icon } from 'lucide-solid';
 
 function App() {
   const appSignal = useAppSignal();
@@ -95,14 +97,25 @@ function App() {
           class='flex min-h-0 min-w-0 overflow-hidden'
           initialSize={0.75}
         >
-          <FontClusterVisualization
-            fontConfigRecord={appSignal.fontConfigs()}
-            nearestFontConfig={appSignal.nearestFontConfig()}
-            sessionWeights={
-              (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
+          <Show
+            when={false}
+            fallback={
+              <div class='flex size-full flex-col items-center justify-center text-sm font-light text-muted-foreground'>
+                <CircleSlash2Icon class='mb-4 size-6' />
+                <h2>No results found</h2>
+                <p class='text-xs'>Complete processing to see results</p>
+              </div>
             }
-            onFontSelect={appSignal.setNearestFontConfig}
-          />
+          >
+            <FontClusterVisualization
+              fontConfigRecord={appSignal.fontConfigs()}
+              nearestFontConfig={appSignal.nearestFontConfig()}
+              sessionWeights={
+                (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
+              }
+              onFontSelect={appSignal.setNearestFontConfig}
+            />
+          </Show>
         </ResizablePanel>
       </Resizable>
     </>
