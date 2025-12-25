@@ -163,7 +163,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1.5 size-3 transition-transform group-open:rotate-180' />
         </summary>
-        <div class='mt-1 max-h-[320px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
+        <div class='mt-1 max-h-[280px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
           <div class='space-y-1.5'>
             <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
               Image Generation
