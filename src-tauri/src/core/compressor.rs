@@ -47,6 +47,7 @@ impl Compressor {
         let config = Configuration::builder()
             .embedding_dimensions(2)
             .initialization(Initialization::Random(Some(42)))
+            .seed(42)
             .num_iters((pacmap_config.mn_phases, pacmap_config.nn_phases, pacmap_config.fp_phases))
             .learning_rate(pacmap_config.learning_rate)
             .build();
