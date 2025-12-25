@@ -300,7 +300,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='hdbscan-min-cluster-size'
-                  value={props.algorithm?.hdbscan?.min_cluster_size ?? 5}
+                  value={props.algorithm?.hdbscan?.min_cluster_size ?? 8}
                   step='1'
                   class='h-7 text-xs'
                 />
@@ -310,7 +310,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='hdbscan-min-samples'
-                  value={props.algorithm?.hdbscan?.min_samples ?? 3}
+                  value={props.algorithm?.hdbscan?.min_samples ?? 14}
                   step='1'
                   class='h-7 text-xs'
                 />
