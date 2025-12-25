@@ -124,7 +124,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           name='preview-text'
           id='preview-text'
           value={props.sampleText}
-          placeholder='Hamburgevons'
+          placeholder='fonts'
           spellcheck='false'
         />
       </TextField>
@@ -157,7 +157,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='image-width'
-                  value={props.algorithm?.image?.width ?? 512}
+                  value={props.algorithm?.image?.width ?? 320}
                   step='32'
                   class='h-7 text-xs'
                 />
@@ -167,7 +167,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='image-height'
-                  value={props.algorithm?.image?.height ?? 128}
+                  value={props.algorithm?.image?.height ?? 80}
                   step='16'
                   class='h-7 text-xs'
                 />
@@ -177,7 +177,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='image-font-size'
-                  value={props.algorithm?.image?.font_size ?? 48}
+                  value={props.algorithm?.image?.font_size ?? 64}
                   step='4'
                   class='h-7 text-xs'
                 />
@@ -197,7 +197,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='hog-orientations'
-                  value={props.algorithm?.hog?.orientations ?? 9}
+                  value={props.algorithm?.hog?.orientations ?? 12}
                   step='1'
                   class='h-7 text-xs'
                 />
@@ -239,7 +239,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='pacmap-nn-phases'
-                  value={props.algorithm?.pacmap?.nn_phases ?? 100}
+                  value={props.algorithm?.pacmap?.nn_phases ?? 300}
                   step='10'
                   class='h-7 text-xs'
                 />
@@ -251,7 +251,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='pacmap-fp-phases'
-                  value={props.algorithm?.pacmap?.fp_phases ?? 150}
+                  value={props.algorithm?.pacmap?.fp_phases ?? 200}
                   step='10'
                   class='h-7 text-xs'
                 />
@@ -283,7 +283,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='hdbscan-min-cluster-size'
-                  value={props.algorithm?.hdbscan?.min_cluster_size ?? 8}
+                  value={props.algorithm?.hdbscan?.min_cluster_size ?? 10}
                   step='1'
                   class='h-7 text-xs'
                 />
@@ -293,7 +293,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 <TextFieldInput
                   type='number'
                   name='hdbscan-min-samples'
-                  value={props.algorithm?.hdbscan?.min_samples ?? 14}
+                  value={props.algorithm?.hdbscan?.min_samples ?? 6}
                   step='1'
                   class='h-7 text-xs'
                 />

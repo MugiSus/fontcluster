@@ -12,8 +12,11 @@ impl Clusterer {
         let mut points = Vec::new();
         let mut ids = Vec::new();
 
-        for entry in fs::read_dir(&session_dir)? {
-            let path = entry?.path();
+        let mut entries: Vec<_> = fs::read_dir(&session_dir)?.filter_map(|e| e.ok()).collect();
+        entries.sort_by_key(|e| e.path());
+
+        for entry in entries {
+            let path = entry.path();
             if path.is_dir() {
                 if let Ok(meta) = load_font_metadata(&session_dir, path.file_name().unwrap().to_str().unwrap()) {
                     if let Some(comp) = meta.computed {

@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use chrono::{DateTime, Utc};
 
-pub const PREVIEW_TEXT: &str = "Hamburgevons";
-pub const DEFAULT_FONT_SIZE: f32 = 48.0;
+pub const PREVIEW_TEXT: &str = "fonts";
+pub const DEFAULT_FONT_SIZE: f32 = 64.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,8 +35,8 @@ pub struct HdbscanConfig {
 impl Default for HdbscanConfig {
     fn default() -> Self {
         Self {
-            min_cluster_size: 8,
-            min_samples: 14,
+            min_cluster_size: 10,
+            min_samples: 6,
         }
     }
 }
@@ -53,8 +53,8 @@ impl Default for PacmapConfig {
     fn default() -> Self {
         Self {
             mn_phases: 100,
-            nn_phases: 100,
-            fp_phases: 150,
+            nn_phases: 300,
+            fp_phases: 200,
             learning_rate: 1.0,
         }
     }
@@ -69,7 +69,7 @@ pub struct HogConfig {
 impl Default for HogConfig {
     fn default() -> Self {
         Self {
-            orientations: 9,
+            orientations: 12,
             cell_side: 8,
         }
     }
@@ -85,8 +85,8 @@ pub struct ImageConfig {
 impl Default for ImageConfig {
     fn default() -> Self {
         Self {
-            width: 512,
-            height: 128,
+            width: 320,
+            height: 80,
             font_size: DEFAULT_FONT_SIZE,
         }
     }

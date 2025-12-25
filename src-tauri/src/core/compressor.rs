@@ -13,8 +13,11 @@ impl Compressor {
         let mut vectors = Vec::new();
         let mut font_ids = Vec::new();
 
-        for entry in fs::read_dir(&session_dir)? {
-            let path = entry?.path();
+        let mut entries: Vec<_> = fs::read_dir(&session_dir)?.filter_map(|e| e.ok()).collect();
+        entries.sort_by_key(|e| e.path());
+
+        for entry in entries {
+            let path = entry.path();
             if path.is_dir() {
                 let bin_path = path.join("vector.bin");
                 if bin_path.exists() {
