@@ -26,6 +26,13 @@ export function FontVectorPoint(props: FontVectorPointProps) {
     };
   });
 
+  const isSelected = createMemo(
+    () => props.nearestFontConfig?.font_name === fontConfig().font_name,
+  );
+  const isFamilySelected = createMemo(
+    () => props.nearestFontConfig?.family_name === fontConfig().family_name,
+  );
+
   return (
     <Show
       when={
@@ -44,7 +51,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           cx={0}
           cy={0}
           r={
-            props.nearestFontConfig?.font_name === fontConfig().font_name
+            isSelected() || isFamilySelected()
               ? 6
               : props.nearestFontConfig?.family_name ===
                   fontConfig().family_name
@@ -54,41 +61,28 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           class='pointer-events-none fill-current'
         />
 
-        <Show
-          when={
-            props.nearestFontConfig?.font_name === fontConfig().font_name ||
-            props.nearestFontConfig?.family_name === fontConfig().family_name
-          }
-        >
+        <Show when={isSelected() || isFamilySelected()}>
           <circle
             cx={0}
             cy={0}
-            r={
-              props.nearestFontConfig?.font_name === fontConfig().font_name
-                ? 40
-                : 20
-            }
+            r={isSelected() ? 40 : 20}
             fill='transparent'
             stroke='currentColor'
             stroke-width={1.5}
           />
         </Show>
 
-        <Show when={props.zoomFactor() < 0.25}>
+        <Show when={props.zoomFactor() < 0.25 || isSelected()}>
           <text
             x={0}
-            y={-8}
-            opacity={
-              1 - Math.min(Math.max((props.zoomFactor() - 0.125) / 0.125, 0), 1)
-            }
+            y={-12}
+            opacity={1}
             class={`pointer-events-none select-none fill-foreground text-xs ${
-              props.nearestFontConfig?.font_name === fontConfig().font_name
-                ? 'font-bold'
-                : ''
+              isSelected() ? 'font-bold' : ''
             }`}
             text-anchor='middle'
           >
-            {props.nearestFontConfig?.font_name === fontConfig().font_name
+            {isSelected()
               ? fontConfig().font_name
               : fontConfig().font_name.length > 12
                 ? fontConfig().font_name.substring(0, 12) + '…'
