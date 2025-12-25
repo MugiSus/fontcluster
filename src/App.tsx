@@ -42,6 +42,7 @@ function App() {
             sessionId={appSignal.currentSessionId()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
+            onStop={appSignal.stopJobs}
           />
           <Separator />
           <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>

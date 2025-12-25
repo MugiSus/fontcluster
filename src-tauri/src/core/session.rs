@@ -4,15 +4,18 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use uuid::Uuid;
 use std::sync::Mutex;
+use std::sync::atomic::AtomicBool;
 
 pub struct AppState {
     pub current_session: Mutex<Option<SessionConfig>>,
+    pub is_cancelled: AtomicBool,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             current_session: Mutex::new(None),
+            is_cancelled: AtomicBool::new(false),
         }
     }
 

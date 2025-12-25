@@ -7,6 +7,7 @@ import {
   ChevronDownIcon,
   StepForwardIcon,
   LoaderCircleIcon,
+  PauseIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import {
@@ -29,6 +30,7 @@ interface FontProcessingFormProps {
     sessionId?: string,
     overrideStatus?: ProcessStatus,
   ) => Promise<void>;
+  onStop?: () => Promise<void>;
 }
 
 export function FontProcessingForm(props: FontProcessingFormProps) {
@@ -206,7 +208,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1.5 size-3 transition-transform group-open:rotate-180' />
         </summary>
-        <div class='mt-1 max-h-[280px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
+        <div class='mt-1 max-h-[300px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
@@ -402,36 +404,53 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </div>
         </div>
       </details>
-      <Button
-        type='submit'
-        disabled={isProcessing()}
-        variant='default'
-        class='relative flex items-center gap-2 rounded-full pb-1.5'
-      >
-        {currentStatus() === 'generating'
-          ? `Generating... (${Math.trunc(
-              (progressLabelNumerator() / progressLabelDenominator() || 0) * 50,
-            )}%)`
-          : currentStatus() === 'vectorizing'
-            ? `Vectorizing... (${Math.trunc(
-                50 +
-                  (progressLabelNumerator() / progressLabelDenominator() || 0) *
-                    50,
-              )}%)`
-            : currentStatus() === 'compressing'
-              ? 'Compressing...'
-              : currentStatus() === 'clustering'
-                ? 'Clustering...'
-                : currentStatus() === 'continue'
-                  ? 'Continue'
-                  : 'Run'}
-        <Show
-          when={isProcessing()}
-          fallback={<ArrowRightIcon class='absolute right-3' />}
+
+      <div class='flex items-center gap-1'>
+        <Button
+          type='submit'
+          disabled={isProcessing()}
+          variant='default'
+          size='sm'
+          class='relative flex flex-1 items-center gap-2 rounded-full text-sm'
         >
-          <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
+          {currentStatus() === 'generating'
+            ? `Generating... (${Math.trunc(
+                (progressLabelNumerator() / progressLabelDenominator() || 0) *
+                  100,
+              )}%)`
+            : currentStatus() === 'vectorizing'
+              ? `Vectorizing... (${Math.trunc(
+                  (progressLabelNumerator() / progressLabelDenominator() || 0) *
+                    100,
+                )}%)`
+              : currentStatus() === 'compressing'
+                ? 'Compressing...'
+                : currentStatus() === 'clustering'
+                  ? 'Clustering...'
+                  : currentStatus() === 'continue'
+                    ? 'Continue'
+                    : 'Run'}
+          <Show
+            when={isProcessing()}
+            fallback={<ArrowRightIcon class='absolute right-3' />}
+          >
+            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
+          </Show>
+        </Button>
+
+        <Show when={isProcessing()}>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon'
+            class='size-9 shrink-0 rounded-full text-destructive hover:bg-destructive/20 hover:text-destructive'
+            onClick={() => props.onStop?.()}
+            title='Stop Run'
+          >
+            <PauseIcon class='size-3' />
+          </Button>
         </Show>
-      </Button>
+      </div>
     </form>
   );
 }

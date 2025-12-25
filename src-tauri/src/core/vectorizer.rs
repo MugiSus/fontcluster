@@ -3,6 +3,7 @@ use crate::core::AppState;
 use crate::commands::progress::progress_events;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tokio::sync::Semaphore;
 use tauri::AppHandle;
 use futures::StreamExt;
@@ -63,6 +64,9 @@ impl Vectorizer {
                 let h_config = hog_config.clone();
                 let i_config = image_config.clone();
                 async move {
+                    if state.is_cancelled.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let _permit = sem.acquire_owned().await.unwrap();
                     let res = tokio::task::spawn_blocking(move || Self::process_image(path, h_config, i_config)).await;
                     match res {
@@ -83,6 +87,10 @@ impl Vectorizer {
             .buffer_unordered(64)
             .collect::<Vec<_>>()
             .await;
+
+        if state.is_cancelled.load(Ordering::Relaxed) {
+            return Ok(());
+        }
 
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Vectorized)?;
         Ok(())

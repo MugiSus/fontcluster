@@ -108,6 +108,14 @@ export function useAppSignal() {
     }
   };
 
+  const stopJobs = async () => {
+    try {
+      await invoke('stop_jobs');
+    } catch (error) {
+      console.error('Failed to stop jobs:', error);
+    }
+  };
+
   return {
     // Signals
     selectedWeights,
@@ -124,5 +132,6 @@ export function useAppSignal() {
     setNearestFontConfig,
     setCurrentSessionId,
     generateFontImages,
+    stopJobs,
   };
 }

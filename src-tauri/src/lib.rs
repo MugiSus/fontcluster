@@ -68,6 +68,7 @@ pub fn run() {
             crate::commands::get_session_directory,
             crate::commands::delete_session,
             crate::commands::run_jobs,
+            crate::commands::stop_jobs,
             crate::commands::get_compressed_vectors,
             crate::commands::get_system_fonts,
         ])

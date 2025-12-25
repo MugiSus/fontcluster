@@ -3,6 +3,7 @@ use crate::error::Result;
 use crate::rendering::FontRenderer;
 use crate::core::AppState;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use tokio::sync::Semaphore;
 use font_kit::source::SystemSource;
 use tauri::AppHandle;
@@ -65,6 +66,9 @@ impl ImageGenerator {
                 let app_handle = app.clone();
                 
                 async move {
+                    if state.is_cancelled.load(Ordering::Relaxed) {
+                        return;
+                    }
                     let _permit = sem.acquire_owned().await.unwrap();
                     let res = tokio::task::spawn_blocking(move || {
                         let renderer = FontRenderer::new(config, source);
@@ -80,6 +84,10 @@ impl ImageGenerator {
             .buffer_unordered(128)
             .collect::<Vec<_>>()
             .await;
+
+        if state.is_cancelled.load(Ordering::Relaxed) {
+            return Ok(());
+        }
 
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Generated)?;
         Ok(())
