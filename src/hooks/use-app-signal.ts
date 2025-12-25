@@ -82,7 +82,7 @@ export function useAppSignal() {
   });
 
   // Processing actions
-  const generateFontImages = async (
+  const runProcessingJobs = async (
     text: string,
     weights: FontWeight[],
     algorithm: AlgorithmConfig,
@@ -131,7 +131,7 @@ export function useAppSignal() {
     setSelectedWeights,
     setNearestFontConfig,
     setCurrentSessionId,
-    generateFontImages,
+    runProcessingJobs,
     stopJobs,
   };
 }

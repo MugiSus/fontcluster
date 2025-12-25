@@ -93,15 +93,20 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
   };
 
   const handleRun = async (targetStatus?: ProcessStatus) => {
-    // Get form data from the current form state
     const form = document.querySelector('form');
     if (!form) return;
 
+    // Determine if we should start a fresh session or continue/rerun an existing one
+    const isRerun = targetStatus !== undefined;
+    const isFinished = processStatus() === 'clustered';
+    const shouldStartNewSession = !isRerun && (isFinished || !props.sessionId);
+
     setIsProcessing(true);
 
-    if (targetStatus) {
+    if (isRerun) {
       setProcessStatus(targetStatus);
-      console.log('targetStatus', targetStatus);
+    } else if (shouldStartNewSession) {
+      setProcessStatus('empty');
     }
 
     const formData = new FormData(form);
@@ -140,9 +145,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         text || 'Hamburgevons',
         selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
         algorithm,
-        processStatus() !== 'clustered' && props.sessionId
-          ? props.sessionId
-          : undefined,
+        !shouldStartNewSession ? props.sessionId : undefined,
         targetStatus ?? undefined,
       );
     } finally {
@@ -408,9 +411,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 ? 'Compressing...'
                 : isProcessing() && processStatus() === 'compressed'
                   ? 'Clustering...'
-                  : !isProcessing() && processStatus() !== 'clustered'
-                    ? 'Continue'
-                    : 'Run'}
+                  : processStatus() === 'clustered'
+                    ? 'Run'
+                    : 'Continue'}
           <Show
             when={isProcessing()}
             fallback={<ArrowRightIcon class='absolute right-3' />}

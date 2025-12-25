@@ -41,7 +41,7 @@ function App() {
             initialStatus={appSignal.sessionConfig()?.process_status}
             sessionId={appSignal.currentSessionId()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
-            onSubmit={appSignal.generateFontImages}
+            onSubmit={appSignal.runProcessingJobs}
             onStop={appSignal.stopJobs}
           />
           <Separator />
