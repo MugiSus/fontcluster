@@ -1,4 +1,4 @@
-import { createSignal, onMount, untrack } from 'solid-js';
+import { createSignal, onMount, untrack, Show } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
@@ -308,40 +308,27 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         variant='default'
         class='relative flex items-center gap-2 rounded-full pb-1.5'
       >
-        {currentStatus() === 'generating' ? (
-          <>
-            Generating... (
-            {Math.trunc(
-              (progressLabelNumerator() / progressLabelDenominator()) * 100,
-            ) || 0}
-            %)
-            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-          </>
-        ) : currentStatus() === 'vectorizing' ? (
-          <>
-            Vectorizing... (
-            {Math.trunc(
-              (progressLabelNumerator() / progressLabelDenominator()) * 100,
-            ) || 0}
-            %)
-            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-          </>
-        ) : currentStatus() === 'compressing' ? (
-          <>
-            Compressing...
-            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-          </>
-        ) : currentStatus() === 'clustering' ? (
-          <>
-            Clustering...
-            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-          </>
-        ) : (
-          <>
-            Run
-            <ArrowRightIcon class='absolute right-3' />
-          </>
-        )}
+        {currentStatus() === 'generating'
+          ? `Generating... (${Math.trunc(
+              (progressLabelNumerator() / progressLabelDenominator() || 0) * 50,
+            )}%)`
+          : currentStatus() === 'vectorizing'
+            ? `Vectorizing... (${Math.trunc(
+                50 +
+                  (progressLabelNumerator() / progressLabelDenominator() || 0) *
+                    50,
+              )}%)`
+            : currentStatus() === 'compressing'
+              ? 'Compressing...'
+              : currentStatus() === 'clustering'
+                ? 'Clustering...'
+                : 'Run'}
+        <Show
+          when={props.isProcessing}
+          fallback={<ArrowRightIcon class='absolute right-3' />}
+        >
+          <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
+        </Show>
       </Button>
     </form>
   );

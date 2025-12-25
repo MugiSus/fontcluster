@@ -1,7 +1,7 @@
-import { For } from 'solid-js';
+import { Index, Show } from 'solid-js';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { ArchiveRestoreIcon, Trash2Icon } from 'lucide-solid';
+import { HistoryIcon, Trash2Icon } from 'lucide-solid';
 import {
   FontWeight,
   type SessionConfig,
@@ -61,7 +61,7 @@ export function SessionItem(props: SessionItemProps) {
   return (
     <div class='border-b p-4 transition-colors hover:bg-muted/50'>
       <div class='flex items-center justify-between gap-4'>
-        <div class='flex flex-col gap-1'>
+        <div class='flex flex-col gap-2'>
           <div class='mb-1.5 flex items-center gap-2'>
             <Badge variant={badge().variant} class='py-0' round>
               {badge().text}
@@ -82,7 +82,7 @@ export function SessionItem(props: SessionItemProps) {
               {props.session.samples_amount}
             </div>
           </div>
-          <p class='truncate font-medium leading-none'>
+          <p class='truncate text-lg font-medium leading-none'>
             {props.session.preview_text}
           </p>
         </div>
@@ -102,9 +102,16 @@ export function SessionItem(props: SessionItemProps) {
 function ClusterIndicators(props: { count: number }) {
   return (
     <div class='flex gap-1.5'>
-      <For each={Array.from({ length: props.count }, (_, i) => i)}>
-        {(i) => <div class={`size-2 rounded-full ${CLUSTER_COLORS[i]}`} />}
-      </For>
+      <Index each={Array(Math.min(props.count, CLUSTER_COLORS.length))}>
+        {(_, i) => <div class={`size-2 rounded-full ${CLUSTER_COLORS[i]}`} />}
+      </Index>
+      <Show when={props.count > CLUSTER_COLORS.length}>
+        <div class='flex items-center gap-0.5'>
+          <div class='size-0.5 rounded-full bg-muted-foreground' />
+          <div class='size-0.5 rounded-full bg-muted-foreground' />
+          <div class='size-0.5 rounded-full bg-muted-foreground' />
+        </div>
+      </Show>
     </div>
   );
 }
@@ -124,17 +131,19 @@ function WeightIndicators(props: { weights: number[] }) {
 
   return (
     <div class='flex gap-1 text-xs'>
-      <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900] as FontWeight[]}>
-        {(weight) => {
-          const isSelectable = () => props.weights.includes(weight);
-
-          return (
-            <div class={isSelectable() ? 'text-foreground' : 'text-muted'}>
-              {weightLabels[weight]}
-            </div>
-          );
-        }}
-      </For>
+      <Index each={[100, 200, 300, 400, 500, 600, 700, 800, 900]}>
+        {(weight) => (
+          <div
+            class={
+              props.weights.includes(weight())
+                ? 'text-foreground'
+                : 'text-muted'
+            }
+          >
+            {weightLabels[weight() as FontWeight]}
+          </div>
+        )}
+      </Index>
     </div>
   );
 }
@@ -150,6 +159,14 @@ function SessionActions(props: {
   return (
     <div class='flex gap-1'>
       <Button
+        size='icon'
+        onClick={props.onSelectSession}
+        disabled={props.isCurrentSession || props.isRestoring}
+        variant='ghost'
+      >
+        <HistoryIcon class='size-4' />
+      </Button>
+      <Button
         class='text-destructive hover:bg-destructive/10 hover:text-destructive'
         size={props.isConfirmingDelete ? 'default' : 'icon'}
         variant='ghost'
@@ -157,14 +174,6 @@ function SessionActions(props: {
         disabled={props.isDeletingSession}
       >
         {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
-      </Button>
-      <Button
-        size='icon'
-        onClick={props.onSelectSession}
-        disabled={props.isCurrentSession || props.isRestoring}
-        variant='outline'
-      >
-        <ArchiveRestoreIcon class='size-4' />
       </Button>
     </div>
   );

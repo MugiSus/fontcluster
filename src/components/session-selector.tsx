@@ -13,7 +13,6 @@ import { type SessionConfig } from '../types/font';
 
 // Constants
 const CONFIRMATION_TIMEOUT = 3000;
-const MAX_DISPLAYED_CLUSTERS = 10;
 
 interface SessionSelectorProps {
   currentSessionId: string;
@@ -100,7 +99,7 @@ export function SessionSelector(props: SessionSelectorProps) {
 
   return (
     <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='h-[80vh] max-w-3xl py-5'>
+      <DialogContent class='max-h-[80vh] max-w-screen-lg py-5'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
@@ -112,15 +111,10 @@ export function SessionSelector(props: SessionSelectorProps) {
         <div class='flex flex-col overflow-y-auto rounded border'>
           <For each={availableSessions()}>
             {(session) => {
-              const clusterCount = Math.min(
-                session.clusters_amount,
-                MAX_DISPLAYED_CLUSTERS,
-              );
-
               return (
                 <SessionItem
                   session={session}
-                  clusterCount={clusterCount}
+                  clusterCount={session.clusters_amount}
                   isCurrentSession={
                     session.session_id === props.currentSessionId
                   }
