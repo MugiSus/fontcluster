@@ -1,11 +1,11 @@
-import { createSignal, onMount, untrack, Show } from 'solid-js';
+import { createSignal, onMount, Show, createEffect } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
   ArrowRightIcon,
   ChevronDownIcon,
-  ListVideoIcon,
+  StepForwardIcon,
   LoaderCircleIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
@@ -19,8 +19,7 @@ interface FontProcessingFormProps {
   sampleText: string;
   selectedWeights: FontWeight[];
   algorithm?: AlgorithmConfig | null | undefined;
-  isProcessing?: boolean;
-  processStatus?: ProcessStatus | undefined;
+  initialStatus?: ProcessStatus | undefined;
   sessionId?: string | undefined;
   onSelectedWeightsChange: (weights: FontWeight[]) => void;
   onSubmit: (
@@ -29,34 +28,60 @@ interface FontProcessingFormProps {
     algorithm: AlgorithmConfig,
     sessionId?: string,
     overrideStatus?: ProcessStatus,
-  ) => void;
+  ) => Promise<void>;
 }
 
 export function FontProcessingForm(props: FontProcessingFormProps) {
   const [progressLabelNumerator, setProgressLabelNumerator] = createSignal(0);
   const [progressLabelDenominator, setProgressLabelDenominator] =
     createSignal(0);
+  const [isProcessing, setIsProcessing] = createSignal<boolean>(false);
+  const [processStatus, setProcessStatus] =
+    createSignal<ProcessStatus>('empty');
 
-  // Progress tracking event listeners
+  // Sync initial status when props change
+  createEffect(() => {
+    if (props.initialStatus) {
+      setProcessStatus(props.initialStatus);
+    }
+  });
+
+  // Progress tracking and status update event listeners
   onMount(() => {
     listen('progress_numerator_reset', (event: { payload: number }) => {
-      untrack(() => setProgressLabelNumerator(event.payload));
+      setProgressLabelNumerator(event.payload);
     });
 
     listen('progress_denominator_reset', (event: { payload: number }) => {
-      untrack(() => setProgressLabelDenominator(event.payload));
+      setProgressLabelDenominator(event.payload);
     });
 
     listen('progress_numerator_increment', () => {
-      untrack(() => setProgressLabelNumerator((prev: number) => prev + 1));
+      setProgressLabelNumerator((prev: number) => prev + 1);
     });
 
     listen('progress_denominator_set', (event: { payload: number }) => {
-      untrack(() => setProgressLabelDenominator(event.payload));
+      setProgressLabelDenominator(event.payload);
     });
 
     listen('progress_denominator_decrement', () => {
-      untrack(() => setProgressLabelDenominator((prev: number) => prev - 1));
+      setProgressLabelDenominator((prev: number) => prev - 1);
+    });
+
+    listen('font_generation_complete', () => {
+      setProcessStatus('generated');
+    });
+
+    listen('vectorization_complete', () => {
+      setProcessStatus('vectorized');
+    });
+
+    listen('compression_complete', () => {
+      setProcessStatus('compressed');
+    });
+
+    listen('clustering_complete', () => {
+      setProcessStatus('clustered');
     });
   });
 
@@ -89,10 +114,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     handleRun();
   };
 
-  const handleRun = (targetStatus?: ProcessStatus) => {
+  const handleRun = async (targetStatus?: ProcessStatus) => {
     // Get form data from the current form state
     const form = document.querySelector('form');
     if (!form) return;
+
+    if (targetStatus) {
+      setProcessStatus(targetStatus);
+    }
 
     const formData = new FormData(form);
     const text = formData.get('preview-text') as string;
@@ -104,19 +133,29 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     ) as FontWeight[];
 
     const algorithm = getAlgorithmConfigFromForm(formData);
-    const canResume = props.processStatus !== 'clustered' && props.sessionId;
-    props.onSubmit(
-      text || 'Hamburgevons',
-      selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
-      algorithm,
-      canResume ? props.sessionId : undefined,
-      targetStatus ?? undefined,
-    );
+    const canResume = processStatus() !== 'clustered' && props.sessionId;
+
+    setIsProcessing(true);
+    if (!props.sessionId || targetStatus === 'empty') {
+      setProcessStatus('empty');
+    }
+
+    try {
+      await props.onSubmit(
+        text || 'Hamburgevons',
+        selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
+        algorithm,
+        canResume ? props.sessionId : undefined,
+        targetStatus ?? undefined,
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const currentStatus = () => {
-    const status = props.processStatus;
-    if (props.isProcessing) {
+    const status = processStatus();
+    if (isProcessing()) {
       if (status === 'empty') return 'generating';
       if (status === 'generated') return 'vectorizing';
       if (status === 'vectorized') return 'compressing';
@@ -179,7 +218,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('empty')}
               >
-                <ListVideoIcon class='size-3 max-h-3' />
+                <StepForwardIcon class='size-3 max-h-3' />
               </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
@@ -227,7 +266,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('generated')}
               >
-                <ListVideoIcon class='size-3 max-h-3' />
+                <StepForwardIcon class='size-3 max-h-3' />
               </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
@@ -267,7 +306,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('vectorized')}
               >
-                <ListVideoIcon class='size-3 max-h-3' />
+                <StepForwardIcon class='size-3 max-h-3' />
               </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
@@ -333,7 +372,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('compressed')}
               >
-                <ListVideoIcon class='size-3 max-h-3' />
+                <StepForwardIcon class='size-3 max-h-3' />
               </Button>
             </div>
             <div class='grid grid-cols-2 gap-2'>
@@ -365,7 +404,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       </details>
       <Button
         type='submit'
-        disabled={props.isProcessing}
+        disabled={isProcessing()}
         variant='default'
         class='relative flex items-center gap-2 rounded-full pb-1.5'
       >
@@ -387,7 +426,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   ? 'Continue'
                   : 'Run'}
         <Show
-          when={props.isProcessing}
+          when={isProcessing()}
           fallback={<ArrowRightIcon class='absolute right-3' />}
         >
           <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />

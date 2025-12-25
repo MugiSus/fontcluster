@@ -18,10 +18,6 @@ export function useAppSignal() {
     createSignal<FontConfig | null>(null);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
-  const [isProcessing, setIsProcessing] = createSignal<boolean>(false);
-  const [processStatus, setProcessStatus] =
-    createSignal<ProcessStatus>('empty');
-
   // Resources
   const [sessionDirectory] = createResource(
     () => currentSessionId(),
@@ -74,16 +70,13 @@ export function useAppSignal() {
     },
   );
 
-  // Auto-sync weights and status when sessionConfig changes
+  // Auto-sync weights when sessionConfig changes
   createEffect(() => {
     const config = sessionConfig();
     if (config) {
       if (config.weights) {
         const weights = config.weights as FontWeight[];
         setSelectedWeights(weights);
-      }
-      if (config.process_status) {
-        setProcessStatus(config.process_status);
       }
     }
   });
@@ -96,10 +89,6 @@ export function useAppSignal() {
     sessionId?: string,
     overrideStatus?: ProcessStatus,
   ) => {
-    setIsProcessing(true);
-    if (!sessionId || overrideStatus === 'empty') {
-      setProcessStatus('empty');
-    }
     try {
       // Single command to run all jobs sequentially
       const result = await invoke<string>('run_jobs', {
@@ -115,7 +104,7 @@ export function useAppSignal() {
     } catch (error) {
       console.error('Failed to process fonts:', error);
     } finally {
-      setIsProcessing(false);
+      // isProcessing is now handled by the caller (form)
     }
   };
 
@@ -124,8 +113,6 @@ export function useAppSignal() {
     selectedWeights,
     nearestFontConfig,
     currentSessionId,
-    isProcessing,
-    processStatus,
 
     // Resources
     sessionConfig,
@@ -136,7 +123,6 @@ export function useAppSignal() {
     setSelectedWeights,
     setNearestFontConfig,
     setCurrentSessionId,
-    setProcessStatus,
     generateFontImages,
   };
 }

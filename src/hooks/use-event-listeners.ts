@@ -1,11 +1,9 @@
 import { onMount, untrack } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { type ProcessStatus } from '../types/font';
 
 interface UseEventListenersProps {
   setCurrentSessionId: (sessionId: string) => void;
-  setProcessStatus: (status: ProcessStatus) => void;
 }
 
 export function useEventListeners(props: UseEventListenersProps) {
@@ -31,22 +29,9 @@ export function useEventListeners(props: UseEventListenersProps) {
 
     loadCurrentSession();
 
-    listen('font_generation_complete', () => {
-      untrack(() => props.setProcessStatus('generated'));
-    });
-
-    listen('vectorization_complete', () => {
-      untrack(() => props.setProcessStatus('vectorized'));
-    });
-
-    listen('compression_complete', () => {
-      untrack(() => props.setProcessStatus('compressed'));
-    });
-
     listen('clustering_complete', (event: { payload: string }) => {
       console.log('Clustering completed for session:', event.payload);
       untrack(() => {
-        props.setProcessStatus('clustered');
         props.setCurrentSessionId(event.payload);
       });
     });

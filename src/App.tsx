@@ -19,7 +19,6 @@ function App() {
   const appSignal = useAppSignal();
   useEventListeners({
     setCurrentSessionId: appSignal.setCurrentSessionId,
-    setProcessStatus: appSignal.setProcessStatus,
   });
 
   return (
@@ -39,8 +38,7 @@ function App() {
             sampleText={appSignal.sessionConfig()?.preview_text || ''}
             selectedWeights={appSignal.selectedWeights()}
             algorithm={appSignal.sessionConfig()?.algorithm}
-            isProcessing={appSignal.isProcessing()}
-            processStatus={appSignal.processStatus()}
+            initialStatus={appSignal.sessionConfig()?.process_status}
             sessionId={appSignal.currentSessionId()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.generateFontImages}
@@ -99,7 +97,7 @@ function App() {
           initialSize={0.75}
         >
           <Show
-            when={appSignal.processStatus() === 'clustered'}
+            when={appSignal.sessionConfig()?.process_status === 'clustered'}
             fallback={
               <div class='flex size-full flex-col items-center justify-center text-sm font-light text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />
