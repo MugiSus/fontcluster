@@ -87,8 +87,33 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     });
   });
 
-  const getAlgorithmConfigFromForm = (formData: FormData): AlgorithmConfig => {
-    return {
+  const handleSubmit = (e: Event) => {
+    e.preventDefault();
+    handleRun();
+  };
+
+  const handleRun = async (targetStatus?: ProcessStatus) => {
+    // Get form data from the current form state
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    setIsProcessing(true);
+
+    if (targetStatus) {
+      setProcessStatus(targetStatus);
+      console.log('targetStatus', targetStatus);
+    }
+
+    const formData = new FormData(form);
+    const text = formData.get('preview-text') as string;
+
+    // Get selected font weights
+    const selectedWeights = formData.get('weights') as string;
+    const selectedWeightsArray = (
+      selectedWeights ? selectedWeights.split(',').map(Number) : []
+    ) as FontWeight[];
+
+    const algorithm: AlgorithmConfig = {
       image: {
         width: Number(formData.get('image-width')),
         height: Number(formData.get('image-height')),
@@ -109,64 +134,20 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         min_samples: Number(formData.get('hdbscan-min-samples')),
       },
     };
-  };
-
-  const handleSubmit = (e: Event) => {
-    e.preventDefault();
-    handleRun();
-  };
-
-  const handleRun = async (targetStatus?: ProcessStatus) => {
-    // Get form data from the current form state
-    const form = document.querySelector('form');
-    if (!form) return;
-
-    if (targetStatus) {
-      setProcessStatus(targetStatus);
-    }
-
-    const formData = new FormData(form);
-    const text = formData.get('preview-text') as string;
-
-    // Get selected font weights
-    const selectedWeights = formData.get('weights') as string;
-    const selectedWeightsArray = (
-      selectedWeights ? selectedWeights.split(',').map(Number) : []
-    ) as FontWeight[];
-
-    const algorithm = getAlgorithmConfigFromForm(formData);
-    const canResume = processStatus() !== 'clustered' && props.sessionId;
-
-    setIsProcessing(true);
-    if (!props.sessionId || targetStatus === 'empty') {
-      setProcessStatus('empty');
-    }
 
     try {
       await props.onSubmit(
         text || 'Hamburgevons',
         selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
         algorithm,
-        canResume ? props.sessionId : undefined,
+        processStatus() !== 'clustered' && props.sessionId
+          ? props.sessionId
+          : undefined,
         targetStatus ?? undefined,
       );
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const currentStatus = () => {
-    const status = processStatus();
-    if (isProcessing()) {
-      if (status === 'empty') return 'generating';
-      if (status === 'generated') return 'vectorizing';
-      if (status === 'vectorized') return 'compressing';
-      if (status === 'compressed') return 'clustering';
-    }
-    if (status !== 'clustered' && props.sessionId) {
-      return 'continue';
-    }
-    return status;
   };
 
   return (
@@ -413,21 +394,21 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           size='sm'
           class='relative flex flex-1 items-center gap-2 rounded-full text-sm'
         >
-          {currentStatus() === 'generating'
+          {isProcessing() && processStatus() === 'empty'
             ? `Generating... (${Math.trunc(
                 (progressLabelNumerator() / progressLabelDenominator() || 0) *
                   100,
               )}%)`
-            : currentStatus() === 'vectorizing'
+            : isProcessing() && processStatus() === 'generated'
               ? `Vectorizing... (${Math.trunc(
                   (progressLabelNumerator() / progressLabelDenominator() || 0) *
                     100,
                 )}%)`
-              : currentStatus() === 'compressing'
+              : isProcessing() && processStatus() === 'vectorized'
                 ? 'Compressing...'
-                : currentStatus() === 'clustering'
+                : isProcessing() && processStatus() === 'compressed'
                   ? 'Clustering...'
-                  : currentStatus() === 'continue'
+                  : !isProcessing() && processStatus() !== 'clustered'
                     ? 'Continue'
                     : 'Run'}
           <Show
