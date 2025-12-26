@@ -15,6 +15,7 @@ import {
   type AlgorithmConfig,
   type ProcessStatus,
 } from '../types/font';
+import { cn } from '@/lib/utils';
 
 interface FontProcessingFormProps {
   sampleText: string;
@@ -392,51 +393,82 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         </div>
       </details>
 
-      <div class='flex items-center gap-1'>
-        <Button
-          type='submit'
-          disabled={isProcessing()}
-          variant='default'
-          size='sm'
-          class='relative flex flex-1 items-center gap-2 rounded-full text-sm'
-        >
-          {isProcessing() && processStatus() === 'empty'
-            ? `Generating... (${Math.trunc(
-                (progressLabelNumerator() / progressLabelDenominator() || 0) *
-                  100,
-              )}%)`
-            : isProcessing() && processStatus() === 'generated'
-              ? `Vectorizing... (${Math.trunc(
-                  (progressLabelNumerator() / progressLabelDenominator() || 0) *
-                    100,
-                )}%)`
-              : isProcessing() && processStatus() === 'vectorized'
-                ? 'Compressing...'
-                : isProcessing() && processStatus() === 'compressed'
-                  ? 'Clustering...'
-                  : processStatus() === 'clustered'
-                    ? 'Run'
-                    : 'Continue'}
-          <Show
-            when={isProcessing()}
-            fallback={<ArrowRightIcon class='absolute right-3' />}
-          >
-            <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-          </Show>
-        </Button>
-
-        <Show when={isProcessing()}>
+      <div class='flex flex-col gap-1.5'>
+        <div class='flex items-center gap-1'>
           <Button
-            type='button'
-            variant='ghost'
-            size='icon'
-            class='size-9 shrink-0 rounded-full text-destructive hover:bg-destructive/20 hover:text-destructive'
-            onClick={() => props.onStop?.()}
-            title='Stop Run'
+            type='submit'
+            disabled={isProcessing()}
+            variant='default'
+            size='sm'
+            class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums'
           >
-            <PauseIcon class='size-3' />
+            {isProcessing() && processStatus() === 'empty'
+              ? `Generating... (${progressLabelNumerator()}/${progressLabelDenominator()})`
+              : isProcessing() && processStatus() === 'generated'
+                ? `Vectorizing... (${progressLabelNumerator()}/${progressLabelDenominator()})`
+                : isProcessing() && processStatus() === 'vectorized'
+                  ? 'Compressing...'
+                  : isProcessing() && processStatus() === 'compressed'
+                    ? 'Clustering...'
+                    : processStatus() === 'clustered'
+                      ? 'Run'
+                      : 'Continue'}
+            <Show
+              when={isProcessing()}
+              fallback={<ArrowRightIcon class='absolute right-3' />}
+            >
+              <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
+            </Show>
           </Button>
-        </Show>
+
+          <Show when={isProcessing()}>
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon'
+              class='size-9 shrink-0 rounded-full text-destructive hover:bg-destructive/20 hover:text-destructive'
+              onClick={() => props.onStop?.()}
+              title='Stop Run'
+            >
+              <PauseIcon class='size-3' />
+            </Button>
+          </Show>
+        </div>
+
+        <div class='grid grid-cols-4 gap-1'>
+          <div
+            class={cn(
+              'h-1 rounded bg-muted-foreground/30 transition-colors',
+              processStatus() === 'empty' && 'animate-pulse bg-foreground',
+              (processStatus() === 'generated' ||
+                processStatus() === 'vectorized' ||
+                processStatus() === 'compressed') &&
+                'bg-muted-foreground',
+            )}
+          />
+          <div
+            class={cn(
+              'h-1 rounded bg-muted-foreground/30 transition-colors',
+              processStatus() === 'generated' && 'animate-pulse bg-foreground',
+              (processStatus() === 'vectorized' ||
+                processStatus() === 'compressed') &&
+                'bg-muted-foreground',
+            )}
+          />
+          <div
+            class={cn(
+              'h-1 rounded bg-muted-foreground/30 transition-colors',
+              processStatus() === 'vectorized' && 'animate-pulse bg-foreground',
+              processStatus() === 'compressed' && 'bg-muted-foreground',
+            )}
+          />
+          <div
+            class={cn(
+              'h-1 rounded bg-muted-foreground/30 transition-colors',
+              processStatus() === 'compressed' && 'animate-pulse bg-foreground',
+            )}
+          />
+        </div>
       </div>
     </form>
   );

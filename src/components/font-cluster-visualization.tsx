@@ -80,8 +80,11 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
       if (nearestFontConfigParse) {
         props.onFontSelect(nearestFontConfigParse);
-        if (event.shiftKey) {
-          emit('copy_family_name', { toast: false });
+        if (event.shiftKey || event.ctrlKey || event.metaKey) {
+          emit('copy_family_name', {
+            toast: false,
+            isFontName: event.ctrlKey || event.metaKey,
+          });
         }
         const elements = document.querySelectorAll(
           `[data-font-name="${nearestFontConfigParse.safe_name}"] > img`,
