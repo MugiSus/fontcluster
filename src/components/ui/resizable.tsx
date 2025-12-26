@@ -49,7 +49,7 @@ const ResizableHandle = <T extends ValidComponent = 'button'>(
       {...rest}
     >
       <Show when={props.withHandle}>
-        <div class='z-10 flex h-12 items-center justify-center rounded-sm border bg-border' />
+        <div class='z-10 flex h-16 items-center justify-center rounded-sm border border-muted-foreground' />
       </Show>
     </ResizablePrimitive.Handle>
   );

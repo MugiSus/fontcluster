@@ -1,9 +1,13 @@
-import { HistoryIcon } from 'lucide-solid';
+import { CopyIcon, HistoryIcon } from 'lucide-solid';
 import { emit } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 
 export function Titlebar() {
+  const copyCurrentNearestFont = () => {
+    emit('copy_current_font_name');
+  };
+
   const showSessions = () => {
     emit('show_session_selection');
   };
@@ -17,6 +21,14 @@ export function Titlebar() {
         FontCluster
       </h1>
       <div class='fixed right-1 top-1 mr-0.5 flex items-center gap-px'>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={copyCurrentNearestFont}
+          class='size-6 rounded-full'
+        >
+          <CopyIcon class='size-6' />
+        </Button>
         <Button
           variant='ghost'
           size='icon'

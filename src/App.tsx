@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 import { SessionSelector } from './components/session-selector';
 import { FontClusterVisualization } from './components/font-cluster-visualization';
 import { FontProcessingForm } from './components/font-processing-form';
+import { ClipboardManager } from './components/clipboard-manager';
 import { useAppSignal } from './hooks/use-app-signal';
 import { useEventListeners } from './hooks/use-event-listeners';
 import { type FontWeight } from './types/font';
@@ -12,27 +13,31 @@ import {
   ResizableHandle,
   ResizablePanel,
 } from './components/ui/resizable';
-import { Separator } from './components/ui/separator';
 import { CircleSlash2Icon } from 'lucide-solid';
 
 function App() {
   const appSignal = useAppSignal();
+
   useEventListeners({
     setCurrentSessionId: appSignal.setCurrentSessionId,
   });
 
   return (
     <>
+      <ClipboardManager nearestFont={appSignal.nearestFontConfig()} />
       <SessionSelector
         currentSessionId={appSignal.currentSessionId() || ''}
         onSessionSelect={appSignal.setCurrentSessionId}
       />
       <Resizable class='min-h-0 overflow-hidden p-3 pt-0'>
         <ResizablePanel
-          class='flex min-h-0 min-w-0 flex-col gap-3'
-          initialSize={0.3}
-          minSize={0.25}
-          maxSize={0.75}
+          class='flex min-w-0 flex-col gap-3 overflow-hidden'
+          initialSize={0.2}
+          minSize={0.2}
+          collapsible={true}
+          collapsedSize={0}
+          collapseThreshold={0.05}
+          maxSize={0.5}
         >
           <FontProcessingForm
             sampleText={appSignal.sessionConfig()?.preview_text || ''}
@@ -44,7 +49,47 @@ function App() {
             onSubmit={appSignal.runProcessingJobs}
             onStop={appSignal.stopJobs}
           />
-          <Separator />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle class='bg-transparent px-1.5' />
+
+        <ResizablePanel
+          class='flex min-h-0 min-w-0'
+          minSize={0.2}
+          initialSize={0.6}
+        >
+          <Show
+            when={appSignal.sessionConfig()?.process_status === 'clustered'}
+            fallback={
+              <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
+                <CircleSlash2Icon class='mb-4 size-6' />
+                <h2>No results yet</h2>
+                <p class='text-xs'>Complete processing to see results</p>
+              </div>
+            }
+          >
+            <FontClusterVisualization
+              fontConfigRecord={appSignal.fontConfigs()}
+              nearestFontConfig={appSignal.nearestFontConfig()}
+              sessionWeights={
+                (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
+              }
+              onFontSelect={appSignal.setNearestFontConfig}
+            />
+          </Show>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle class='bg-transparent px-1.5' />
+
+        <ResizablePanel
+          initialSize={0.2}
+          minSize={0.19}
+          collapsible={true}
+          collapsedSize={0}
+          collapseThreshold={0.05}
+          maxSize={0.5}
+          class='flex min-h-0 min-w-0 flex-col overflow-hidden'
+        >
           <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
             <TabsList class='grid w-full shrink-0 grid-cols-2'>
               <TabsTrigger value='similarity'>Similarity</TabsTrigger>
@@ -89,33 +134,6 @@ function App() {
               />
             </TabsContent>
           </Tabs>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle class='bg-transparent px-1.5' />
-
-        <ResizablePanel
-          class='flex min-h-0 min-w-0 overflow-hidden'
-          initialSize={0.75}
-        >
-          <Show
-            when={appSignal.sessionConfig()?.process_status === 'clustered'}
-            fallback={
-              <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
-                <CircleSlash2Icon class='mb-4 size-6' />
-                <h2>No results yet</h2>
-                <p class='text-xs'>Complete processing to see results</p>
-              </div>
-            }
-          >
-            <FontClusterVisualization
-              fontConfigRecord={appSignal.fontConfigs()}
-              nearestFontConfig={appSignal.nearestFontConfig()}
-              sessionWeights={
-                (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
-              }
-              onFontSelect={appSignal.setNearestFontConfig}
-            />
-          </Show>
         </ResizablePanel>
       </Resizable>
     </>

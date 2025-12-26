@@ -156,7 +156,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex w-full flex-col items-stretch gap-1'
+      class='flex min-h-0 flex-1 flex-col items-stretch gap-1'
     >
       <TextField class='grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
@@ -187,12 +187,15 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           onWeightChange={props.onSelectedWeightsChange}
         />
       </TextField>
-      <details class='group w-full'>
-        <summary class='flex cursor-pointer list-none items-center py-1 text-[10px] font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
+      <details
+        class='group flex min-h-0 w-full grow flex-col overflow-y-auto'
+        open
+      >
+        <summary class='flex cursor-pointer list-none items-center gap-1 py-1 text-[10px] font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
           Algorithm options (Advanced)
-          <ChevronDownIcon class='mb-0.5 ml-1.5 size-3 transition-transform group-open:rotate-180' />
+          <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
         </summary>
-        <div class='mt-1 max-h-[300px] space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
+        <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
@@ -284,7 +287,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
-                PaCMAP (Dimensionality Reduction)
+                PaCMAP (D-Reduction)
               </div>
               <Button
                 variant='ghost'
