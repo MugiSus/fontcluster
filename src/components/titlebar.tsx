@@ -4,8 +4,11 @@ import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 
 export function Titlebar() {
-  const copyCurrentNearestFont = () => {
-    emit('copy_family_name', { toast: true });
+  const copyCurrentNearestFont = (event: MouseEvent) => {
+    emit('copy_family_name', {
+      toast: true,
+      isFontName: event.ctrlKey || event.metaKey,
+    });
   };
 
   const showSessions = () => {
