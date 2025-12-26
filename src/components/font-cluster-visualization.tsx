@@ -1,4 +1,5 @@
 import { For, createSignal, createEffect, createMemo } from 'solid-js';
+import { emit } from '@tauri-apps/api/event';
 import { FontConfigRecord, FontConfig, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
@@ -79,6 +80,9 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
       if (nearestFontConfigParse) {
         props.onFontSelect(nearestFontConfigParse);
+        if (event.shiftKey) {
+          emit('copy_family_name', { toast: false });
+        }
         const elements = document.querySelectorAll(
           `[data-font-name="${nearestFontConfigParse.safe_name}"] > img`,
         );

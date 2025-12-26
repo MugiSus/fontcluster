@@ -5,7 +5,7 @@ import { ModeToggle } from './mode-toggle';
 
 export function Titlebar() {
   const copyCurrentNearestFont = () => {
-    emit('copy_current_font_name');
+    emit('copy_family_name', { toast: true });
   };
 
   const showSessions = () => {

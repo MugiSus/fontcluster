@@ -14,6 +14,7 @@ import {
   ResizablePanel,
 } from './components/ui/resizable';
 import { CircleSlash2Icon } from 'lucide-solid';
+import { Toaster } from './components/ui/toast';
 
 function App() {
   const appSignal = useAppSignal();
@@ -24,6 +25,7 @@ function App() {
 
   return (
     <>
+      <Toaster />
       <ClipboardManager nearestFont={appSignal.nearestFontConfig()} />
       <SessionSelector
         currentSessionId={appSignal.currentSessionId() || ''}
