@@ -23,19 +23,21 @@ export function ClipboardManager(props: ClipboardManagerProps) {
               event.payload?.toast &&
               showToast({
                 title: (
-                  <div class='flex items-center gap-2'>
-                    <CopyCheckIcon class='mb-0.5 size-4' />'
+                  <div>
+                    <CopyCheckIcon class='mb-0.5 inline size-4' />
+                    {"'"}
                     {event.payload?.isFontName
                       ? nearest.font_name
                       : nearest.family_name}
-                    '
+                    {"'"}
                   </div>
                 ),
                 description: (
-                  <div class=''>
+                  <div>
                     Tips: Hold the Shift
                     <ArrowBigUpIcon class='mx-0.5 mb-0.5 inline size-4' />
-                    while selecting a font to copy the family name directly.{' '}
+                    while selecting a font to copy the family name directly from
+                    the graph.{' '}
                     <Show when={!event.payload?.isFontName}>
                       Hold the Command
                       <CommandIcon class='mx-0.5 mb-0.5 inline size-4' />
