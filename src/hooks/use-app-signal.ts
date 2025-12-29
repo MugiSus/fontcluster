@@ -1,8 +1,8 @@
 import { createSignal, createResource, createEffect } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  FontConfigRecord,
-  FontConfig,
+  FontMetadataRecord,
+  FontMetadata,
   type FontWeight,
   type SessionConfig,
   type AlgorithmConfig,
@@ -14,8 +14,8 @@ export function useAppSignal() {
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
-  const [nearestFontConfig, setNearestFontConfig] =
-    createSignal<FontConfig | null>(null);
+  const [selectedFontMetadata, setNearestFontMetadata] =
+    createSignal<FontMetadata | null>(null);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
   // Resources
@@ -51,9 +51,9 @@ export function useAppSignal() {
     },
   );
 
-  const [fontConfigs, { refetch: refetchFontConfigs }] = createResource(
+  const [fontMetadatas, { refetch: refetchFontMetadatas }] = createResource(
     () => currentSessionId(),
-    async (sessionId): Promise<FontConfigRecord> => {
+    async (sessionId): Promise<FontMetadataRecord> => {
       if (!sessionId) return {};
       try {
         const response = await invoke<string>('get_compressed_vectors', {
@@ -62,7 +62,7 @@ export function useAppSignal() {
         if (!response) {
           return {};
         }
-        return JSON.parse(response) as FontConfigRecord;
+        return JSON.parse(response) as FontMetadataRecord;
       } catch (error) {
         console.error('Failed to parse font configs:', error);
         return {};
@@ -100,7 +100,7 @@ export function useAppSignal() {
       });
       console.log('Complete pipeline result:', result);
       await refetchSessionConfig();
-      await refetchFontConfigs();
+      await refetchFontMetadatas();
     } catch (error) {
       console.error('Failed to process fonts:', error);
     } finally {
@@ -119,17 +119,17 @@ export function useAppSignal() {
   return {
     // Signals
     selectedWeights,
-    nearestFontConfig,
+    selectedFontMetadata,
     currentSessionId,
 
     // Resources
     sessionConfig,
     sessionDirectory,
-    fontConfigs,
+    fontMetadatas,
 
     // Actions
     setSelectedWeights,
-    setNearestFontConfig,
+    setNearestFontMetadata,
     setCurrentSessionId,
     runProcessingJobs,
     stopJobs,

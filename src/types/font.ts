@@ -53,7 +53,7 @@ export interface ComputedData {
   k: number; // Cluster assignment from HDBSCAN
 }
 
-export interface FontConfig {
+export interface FontMetadata {
   safe_name: string;
   font_name: string;
   family_name: string;
@@ -62,5 +62,5 @@ export interface FontConfig {
   computed?: ComputedData; // Optional, present after compression and clustering
 }
 
-// Unified type using FontConfig with computed data
-export type FontConfigRecord = Record<string, FontConfig>;
+// Unified type using FontMetadata with computed data
+export type FontMetadataRecord = Record<string, FontMetadata>;

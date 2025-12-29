@@ -1,5 +1,5 @@
 import { Show } from 'solid-js';
-import { FontConfigList } from './components/font-config-list';
+import { FontMetadataList } from './components/font-config-list';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 import { SessionSelector } from './components/session-selector';
 import { FontClusterVisualization } from './components/font-cluster-visualization';
@@ -26,7 +26,7 @@ function App() {
   return (
     <>
       <Toaster />
-      <ClipboardManager nearestFont={appSignal.nearestFontConfig()} />
+      <ClipboardManager selectedFont={appSignal.selectedFontMetadata()} />
       <SessionSelector
         currentSessionId={appSignal.currentSessionId() || ''}
         onSessionSelect={appSignal.setCurrentSessionId}
@@ -71,12 +71,12 @@ function App() {
             }
           >
             <FontClusterVisualization
-              fontConfigRecord={appSignal.fontConfigs()}
-              nearestFontConfig={appSignal.nearestFontConfig()}
+              fontMetadataRecord={appSignal.fontMetadatas()}
+              selectedFontMetadata={appSignal.selectedFontMetadata()}
               sessionWeights={
                 (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
               }
-              onFontSelect={appSignal.setNearestFontConfig}
+              onFontSelect={appSignal.setNearestFontMetadata}
             />
           </Show>
         </ResizablePanel>
@@ -102,15 +102,17 @@ function App() {
               value='name'
               class='min-h-0 flex-1 overflow-scroll rounded-md border'
             >
-              <FontConfigList
-                fontConfigs={Object.values(appSignal.fontConfigs() || {}).sort(
+              <FontMetadataList
+                fontMetadatas={Object.values(
+                  appSignal.fontMetadatas() || {},
+                ).sort(
                   (a, b) =>
                     a.family_name.localeCompare(b.family_name) ||
                     a.weight - b.weight,
                 )}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
-                nearestFontConfig={appSignal.nearestFontConfig()}
-                onFontClick={appSignal.setNearestFontConfig}
+                selectedFontMetadata={appSignal.selectedFontMetadata()}
+                onFontClick={appSignal.setNearestFontMetadata}
               />
             </TabsContent>
 
@@ -118,21 +120,21 @@ function App() {
               value='similarity'
               class='min-h-0 flex-1 overflow-scroll rounded-md border'
             >
-              <FontConfigList
-                fontConfigs={Object.values(appSignal.fontConfigs() || {}).sort(
-                  (a, b) => {
-                    const aK = a.computed?.k ?? -1;
-                    const bK = b.computed?.k ?? -1;
-                    return (
-                      (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
-                      a.family_name.localeCompare(b.family_name) ||
-                      a.weight - b.weight
-                    );
-                  },
-                )}
+              <FontMetadataList
+                fontMetadatas={Object.values(
+                  appSignal.fontMetadatas() || {},
+                ).sort((a, b) => {
+                  const aK = a.computed?.k ?? -1;
+                  const bK = b.computed?.k ?? -1;
+                  return (
+                    (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
+                    a.family_name.localeCompare(b.family_name) ||
+                    a.weight - b.weight
+                  );
+                })}
                 sessionDirectory={appSignal.sessionDirectory() || ''}
-                nearestFontConfig={appSignal.nearestFontConfig()}
-                onFontClick={appSignal.setNearestFontConfig}
+                selectedFontMetadata={appSignal.selectedFontMetadata()}
+                onFontClick={appSignal.setNearestFontMetadata}
               />
             </TabsContent>
           </Tabs>

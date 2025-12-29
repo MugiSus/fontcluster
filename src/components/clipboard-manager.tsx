@@ -1,18 +1,18 @@
 import { onCleanup, untrack, Show } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
-import { type FontConfig } from '../types/font';
+import { type FontMetadata } from '../types/font';
 import { showToast } from './ui/toast';
 import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
 
 interface ClipboardManagerProps {
-  nearestFont: FontConfig | null;
+  selectedFont: FontMetadata | null;
 }
 
 export function ClipboardManager(props: ClipboardManagerProps) {
   const promise = listen<{ toast?: boolean; isFontName?: boolean }>(
     'copy_family_name',
     (event) => {
-      const nearest = untrack(() => props.nearestFont);
+      const nearest = untrack(() => props.selectedFont);
       if (nearest) {
         navigator.clipboard
           .writeText(

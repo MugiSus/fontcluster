@@ -1,6 +1,10 @@
 import { For, createSignal, createEffect, createMemo } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
-import { FontConfigRecord, FontConfig, type FontWeight } from '../types/font';
+import {
+  FontMetadataRecord,
+  FontMetadata,
+  type FontWeight,
+} from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 
@@ -15,17 +19,19 @@ const INITIAL_VIEWBOX = {
 const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
-  fontConfigRecord: FontConfigRecord | undefined;
-  nearestFontConfig: FontConfig | null;
+  fontMetadataRecord: FontMetadataRecord | undefined;
+  selectedFontMetadata: FontMetadata | null;
   sessionWeights: FontWeight[];
-  onFontSelect: (safeName: FontConfig) => void;
+  onFontSelect: (safeName: FontMetadata) => void;
 }
 
 export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
-  const vectors = createMemo(() => Object.values(props.fontConfigRecord || {}));
+  const vectors = createMemo(() =>
+    Object.values(props.fontMetadataRecord || {}),
+  );
   const zoomFactor = createMemo(() => viewBox().width / 700);
 
   const [isDragging, setIsDragging] = createSignal(false);
@@ -55,7 +61,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       return;
     }
 
-    let nearestFontConfig = '';
+    let selectedFontMetadata = '';
     let nearestDistance = Infinity;
 
     fontElements.forEach((el) => {
@@ -69,17 +75,17 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        nearestFontConfig = circle.getAttribute('data-font-config') || '';
+        selectedFontMetadata = circle.getAttribute('data-font-config') || '';
       }
     });
 
-    if (nearestFontConfig) {
-      const nearestFontConfigParse = JSON.parse(
-        nearestFontConfig,
-      ) as FontConfig;
+    if (selectedFontMetadata) {
+      const selectedFontMetadataParse = JSON.parse(
+        selectedFontMetadata,
+      ) as FontMetadata;
 
-      if (nearestFontConfigParse) {
-        props.onFontSelect(nearestFontConfigParse);
+      if (selectedFontMetadataParse) {
+        props.onFontSelect(selectedFontMetadataParse);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,
@@ -87,7 +93,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           });
         }
         const elements = document.querySelectorAll(
-          `[data-font-name="${nearestFontConfigParse.safe_name}"] > img`,
+          `[data-font-name="${selectedFontMetadataParse.safe_name}"] > img`,
         );
         elements.forEach((element) => {
           element.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -208,10 +214,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
         />
       </div>
       {/* <ul class='absolute left-3 top-2 flex flex-col text-xxs text-muted-foreground'>
-        <li>{props.nearestFontConfig?.font_name}</li>
-        <li>{props.nearestFontConfig?.weight}</li>
-        <li>{props.nearestFontConfig?.computed?.vector.join(', ')}</li>
-        <li>K: {props.nearestFontConfig?.computed?.k}</li>
+        <li>{props.selectedFontMetadata?.font_name}</li>
+        <li>{props.selectedFontMetadata?.weight}</li>
+        <li>{props.selectedFontMetadata?.computed?.vector.join(', ')}</li>
+        <li>K: {props.selectedFontMetadata?.computed?.k}</li>
       </ul> */}
       <svg
         class='size-full select-none'
@@ -264,10 +270,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           />
         </g>
         <For each={vectors()}>
-          {(fontConfig: FontConfig) => (
+          {(fontMetadata: FontMetadata) => (
             <FontVectorPoint
-              fontConfig={fontConfig}
-              nearestFontConfig={props.nearestFontConfig}
+              fontMetadata={fontMetadata}
+              selectedFontMetadata={props.selectedFontMetadata}
               bounds={bounds()}
               visualizerWeights={visualizerWeights}
               viewBox={viewBox}
