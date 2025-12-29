@@ -162,7 +162,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       <TextField class='grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
           for='preview-text'
-          class='text-[10px] uppercase text-muted-foreground'
+          class='text-xxs uppercase text-muted-foreground'
         >
           Preview Text
         </TextFieldLabel>
@@ -178,7 +178,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       <TextField class='grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
           for='weights'
-          class='text-[10px] uppercase text-muted-foreground'
+          class='text-xxs uppercase text-muted-foreground'
         >
           Font Weights
         </TextFieldLabel>
@@ -192,14 +192,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         class='group flex min-h-0 w-full grow flex-col overflow-y-auto'
         open
       >
-        <summary class='flex cursor-pointer list-none items-center gap-1 py-1 text-[10px] font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
+        <summary class='flex cursor-pointer list-none items-center gap-1 py-1 text-xxs font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
         </summary>
         <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 Image Generation
               </div>
               <Button
@@ -213,7 +213,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Width</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='image-width'
@@ -223,7 +223,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Height</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Height</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='image-height'
@@ -233,7 +233,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Font Size</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Font Size</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='image-font-size'
@@ -247,7 +247,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 HOG Feature Extraction
               </div>
               <Button
@@ -261,9 +261,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Orientations
-                </TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Orientations</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='hog-orientations'
@@ -273,7 +271,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Cell Side</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Cell Side</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='hog-cell-side'
@@ -287,7 +285,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 PaCMAP (D-Reduction)
               </div>
               <Button
@@ -301,7 +299,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
+                <TextFieldLabel class='text-xxs'>
                   Global Iterations
                 </TextFieldLabel>
                 <TextFieldInput
@@ -313,7 +311,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
+                <TextFieldLabel class='text-xxs'>
                   Attraction Iterations
                 </TextFieldLabel>
                 <TextFieldInput
@@ -325,7 +323,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
+                <TextFieldLabel class='text-xxs'>
                   Repulsion Iterations
                 </TextFieldLabel>
                 <TextFieldInput
@@ -337,9 +335,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
-                  Learning rate
-                </TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Learning rate</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='pacmap-learning-rate'
@@ -353,7 +349,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 HDBSCAN (Clustering)
               </div>
               <Button
@@ -367,7 +363,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>
+                <TextFieldLabel class='text-xxs'>
                   Min Cluster Size
                 </TextFieldLabel>
                 <TextFieldInput
@@ -379,7 +375,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-[10px]'>Min Samples</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Min Samples</TextFieldLabel>
                 <TextFieldInput
                   type='number'
                   name='hdbscan-min-samples'

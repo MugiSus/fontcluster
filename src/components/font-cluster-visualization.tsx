@@ -55,7 +55,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       return;
     }
 
-    let nearestFontConfig = null;
+    let nearestFontConfig = '';
     let nearestDistance = Infinity;
 
     fontElements.forEach((el) => {
@@ -207,6 +207,12 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           isVertical
         />
       </div>
+      {/* <ul class='absolute left-3 top-2 flex flex-col text-xxs text-muted-foreground'>
+        <li>{props.nearestFontConfig?.font_name}</li>
+        <li>{props.nearestFontConfig?.weight}</li>
+        <li>{props.nearestFontConfig?.computed?.vector.join(', ')}</li>
+        <li>K: {props.nearestFontConfig?.computed?.k}</li>
+      </ul> */}
       <svg
         class='size-full select-none'
         viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
