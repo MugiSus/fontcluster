@@ -45,5 +45,9 @@ export function useEventListeners(props: UseEventListenersProps) {
         props.setCurrentSessionId(event.payload);
       });
     });
+
+    listen('refresh-requested', () => {
+      window.location.reload();
+    });
   });
 }

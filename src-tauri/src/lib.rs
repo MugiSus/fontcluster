@@ -12,6 +12,7 @@ use crate::core::AppState;
 
 fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let restore = MenuItem::with_id(app, "restore_sessions", "Restore Recent Session...", true, None::<&str>)?;
+    let refresh = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
     
     #[cfg(target_os = "macos")]
     {
@@ -20,6 +21,7 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &PredefinedMenuItem::about(app, Some("About FontCluster"), Some(meta))?,
             &PredefinedMenuItem::separator(app)?,
             &restore,
+            &refresh,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::hide(app, None)?,
             &PredefinedMenuItem::hide_others(app, None)?,
@@ -38,15 +40,13 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         ])?;
         Menu::with_items(app, &[&app_menu, &edit_menu])
     }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Menu::with_items(app, &[&Submenu::with_items(app, "File", true, &[&restore])?])
-    }
 }
 
 fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
     if event.id().as_ref() == "restore_sessions" {
         let _ = app.emit("show_session_selection", ());
+    } else if event.id().as_ref() == "refresh" {
+        let _ = app.emit("refresh-requested", ());
     }
 }
 
