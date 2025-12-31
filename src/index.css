@@ -4,6 +4,7 @@
 
 :root {
   overscroll-behavior: none;
+  user-select: none;
 }
 
 @layer base {

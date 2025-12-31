@@ -162,7 +162,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       <TextField class='grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
           for='preview-text'
-          class='text-xxs uppercase text-muted-foreground'
+          class='text-xs uppercase text-muted-foreground'
         >
           Preview Text
         </TextFieldLabel>
@@ -178,7 +178,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       <TextField class='grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
           for='weights'
-          class='text-xxs uppercase text-muted-foreground'
+          class='text-xs uppercase text-muted-foreground'
         >
           Font Weights
         </TextFieldLabel>
