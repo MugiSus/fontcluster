@@ -34,7 +34,7 @@ function App() {
       <Resizable class='min-h-0 overflow-hidden p-3 pt-0'>
         <ResizablePanel
           class='flex min-w-0 flex-col gap-3 overflow-hidden'
-          initialSize={0.2}
+          initialSize={0.25}
           minSize={0.2}
           collapsible={true}
           collapsedSize={0}
@@ -58,7 +58,7 @@ function App() {
         <ResizablePanel
           class='flex min-h-0 min-w-0'
           minSize={0.2}
-          initialSize={0.6}
+          initialSize={0.5}
         >
           <Show
             when={appSignal.sessionConfig()?.process_status === 'clustered'}
@@ -84,7 +84,7 @@ function App() {
         <ResizableHandle withHandle class='bg-transparent px-1.5' />
 
         <ResizablePanel
-          initialSize={0.2}
+          initialSize={0.25}
           minSize={0.19}
           collapsible={true}
           collapsedSize={0}

@@ -39,7 +39,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
               </div>
             </div>
             <img
-              class={`block size-auto h-10 max-h-none max-w-none px-4 grayscale invert dark:invert-0 ${
+              class={`block size-auto h-8 max-h-none max-w-none px-4 grayscale invert dark:invert-0 ${
                 props.selectedFontMetadata?.safe_name ===
                   fontMetadata.safe_name &&
                 'mix-blend-darken dark:mix-blend-lighten'
