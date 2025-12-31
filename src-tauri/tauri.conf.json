@@ -17,7 +17,8 @@
         "height": 720,
         "resizable": true,
         "maximizable": true,
-        "titleBarStyle": "Overlay"
+        "titleBarStyle": "Overlay",
+        "windowEffects": { "effects": ["hudWindow", "acrylic", "mica"], "radius": 12 }
       }
     ],
     "security": {
