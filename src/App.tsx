@@ -1,5 +1,5 @@
 import { Show } from 'solid-js';
-import { FontMetadataList } from './components/font-config-list';
+import { FontMetadataList } from './components/font-metadata-list';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
 import { SessionSelector } from './components/session-selector';
 import { FontClusterVisualization } from './components/font-cluster-visualization';
