@@ -85,11 +85,9 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             }`}
             text-anchor='middle'
           >
-            {isSelected()
+            {isSelected() || fontMetadata().font_name.length <= 16
               ? fontMetadata().font_name
-              : fontMetadata().font_name.length > 12
-                ? fontMetadata().font_name.substring(0, 12) + '…'
-                : fontMetadata().font_name}
+              : fontMetadata().font_name.substring(0, 16) + '…'}
           </text>
         </Show>
 
