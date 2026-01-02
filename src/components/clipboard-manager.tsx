@@ -24,7 +24,7 @@ export function ClipboardManager(props: ClipboardManagerProps) {
               showToast({
                 title: (
                   <div>
-                    <CopyCheckIcon class='mb-0.5 inline size-4' />
+                    <CopyCheckIcon class='mb-0.5 mr-1 inline size-4' />
                     {"'"}
                     {event.payload?.isFontName
                       ? nearest.font_name
