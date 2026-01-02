@@ -444,7 +444,8 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               'h-1 overflow-hidden rounded-full bg-foreground/25',
               (processStatus() === 'generated' ||
                 processStatus() === 'vectorized' ||
-                processStatus() === 'compressed') &&
+                processStatus() === 'compressed' ||
+                processStatus() === 'clustered') &&
                 'bg-foreground',
             )}
           >
@@ -462,7 +463,8 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             class={cn(
               'h-1 overflow-hidden rounded-full bg-foreground/25',
               (processStatus() === 'vectorized' ||
-                processStatus() === 'compressed') &&
+                processStatus() === 'compressed' ||
+                processStatus() === 'clustered') &&
                 'bg-foreground',
             )}
           >
@@ -479,7 +481,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           <div
             class={cn(
               'h-1 overflow-hidden rounded-full bg-foreground/25',
-              processStatus() === 'compressed' && 'bg-foreground',
+              (processStatus() === 'compressed' ||
+                processStatus() === 'clustered') &&
+                'bg-foreground',
             )}
           >
             <div
@@ -494,8 +498,10 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           <div class={cn('h-1 overflow-hidden rounded-full bg-foreground/25')}>
             <div
               class={cn(
-                'h-full animate-pulse rounded-full bg-foreground',
-                isProcessing() && processStatus() === 'compressed'
+                'h-full rounded-full bg-foreground',
+                isProcessing() && 'animate-pulse',
+                processStatus() === 'compressed' ||
+                  processStatus() === 'clustered'
                   ? 'w-full transition-[width] duration-1000'
                   : 'w-0',
               )}
