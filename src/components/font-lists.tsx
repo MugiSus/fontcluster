@@ -51,6 +51,7 @@ export function FontLists(props: FontListsProps) {
             placeholder='Search fonts...'
             class='pl-9'
             onInput={(e) => localSearchQuery(e.currentTarget.value)}
+            spellcheck='false'
           />
         </div>
       </TextField>
