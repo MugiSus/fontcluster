@@ -450,13 +450,16 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </Show>
         </div>
 
-        <div
-          class='grid grid-cols-4 gap-1'
-          style={{
-            '--progress': `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`,
-          }}
-        >
-          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
+        <div class='grid grid-cols-4 gap-1'>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-foreground/25'
+            style={{
+              '--progress':
+                isProcessing() && processStatus() === 'empty'
+                  ? `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`
+                  : '0%',
+            }}
+          >
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-foreground',
@@ -471,7 +474,15 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               )}
             />
           </div>
-          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-foreground/25'
+            style={{
+              '--progress':
+                isProcessing() && processStatus() === 'generated'
+                  ? `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`
+                  : '0%',
+            }}
+          >
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-foreground',
