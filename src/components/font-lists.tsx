@@ -52,7 +52,7 @@ export function FontLists(props: FontListsProps) {
         <Show
           when={filteredFonts().length > 0}
           fallback={
-            <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-xs text-muted-foreground'>
+            <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-sm text-muted-foreground'>
               <SearchSlashIcon />
               No results found
             </div>
