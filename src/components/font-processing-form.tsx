@@ -450,72 +450,62 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </Show>
         </div>
 
-        <div class='grid grid-cols-4 gap-1'>
-          <div
-            class={cn(
-              'h-1 overflow-hidden rounded-full bg-foreground/25',
-              (processStatus() === 'generated' ||
-                processStatus() === 'vectorized' ||
-                processStatus() === 'compressed' ||
-                processStatus() === 'clustered') &&
-                'bg-foreground',
-            )}
-          >
-            <div
-              class='h-full animate-pulse rounded-full bg-foreground'
-              style={{
-                width:
-                  isProcessing() && processStatus() === 'empty'
-                    ? `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`
-                    : '0%',
-              }}
-            />
-          </div>
-          <div
-            class={cn(
-              'h-1 overflow-hidden rounded-full bg-foreground/25',
-              (processStatus() === 'vectorized' ||
-                processStatus() === 'compressed' ||
-                processStatus() === 'clustered') &&
-                'bg-foreground',
-            )}
-          >
-            <div
-              class='h-full animate-pulse rounded-full bg-foreground'
-              style={{
-                width:
-                  isProcessing() && processStatus() === 'generated'
-                    ? `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`
-                    : '0%',
-              }}
-            />
-          </div>
-          <div
-            class={cn(
-              'h-1 overflow-hidden rounded-full bg-foreground/25',
-              (processStatus() === 'compressed' ||
-                processStatus() === 'clustered') &&
-                'bg-foreground',
-            )}
-          >
+        <div
+          class='grid grid-cols-4 gap-1'
+          style={{
+            '--progress': `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`,
+          }}
+        >
+          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
             <div
               class={cn(
-                'h-full animate-pulse rounded-full bg-foreground',
-                isProcessing() && processStatus() === 'vectorized'
-                  ? 'w-full transition-[width] duration-1000'
-                  : 'w-0',
+                'h-full w-0 rounded-full bg-foreground',
+                isProcessing() &&
+                  processStatus() === 'empty' &&
+                  'w-[var(--progress)] animate-pulse',
+                (processStatus() === 'generated' ||
+                  processStatus() === 'vectorized' ||
+                  processStatus() === 'compressed' ||
+                  processStatus() === 'clustered') &&
+                  'w-full',
               )}
             />
           </div>
-          <div class={cn('h-1 overflow-hidden rounded-full bg-foreground/25')}>
+          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
             <div
               class={cn(
-                'h-full rounded-full bg-foreground',
-                isProcessing() && 'animate-pulse',
-                processStatus() === 'compressed' ||
-                  processStatus() === 'clustered'
-                  ? 'w-full transition-[width] duration-1000'
-                  : 'w-0',
+                'h-full w-0 rounded-full bg-foreground',
+                isProcessing() &&
+                  processStatus() === 'generated' &&
+                  'w-[var(--progress)] animate-pulse',
+                (processStatus() === 'vectorized' ||
+                  processStatus() === 'compressed' ||
+                  processStatus() === 'clustered') &&
+                  'w-full',
+              )}
+            />
+          </div>
+          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-foreground',
+                (processStatus() === 'compressed' ||
+                  processStatus() === 'clustered') &&
+                  'w-full',
+                isProcessing() &&
+                  processStatus() === 'vectorized' &&
+                  'w-full animate-pulse transition-[width] duration-1000',
+              )}
+            />
+          </div>
+          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-foreground',
+                processStatus() === 'clustered' && 'w-full',
+                isProcessing() &&
+                  processStatus() === 'compressed' &&
+                  'w-full animate-pulse transition-[width] duration-1000',
               )}
             />
           </div>
