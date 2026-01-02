@@ -12,6 +12,7 @@ use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::ImageEncoder;
 use std::io::BufWriter;
 use std::fs::File;
+use std::collections::HashMap;
 
 pub struct FontRenderer {
     config: Arc<RenderConfig>,
@@ -31,7 +32,7 @@ impl FontRenderer {
         // Validate weight: font-kit's select_best_match is very permissive.
         // We want to ensure the actual font weight is close to what we requested.
         let actual_weight = font.properties().weight.0 as i32;
-        if actual_weight - weight_val > 50 || weight_val - actual_weight > 50 {
+        if actual_weight - weight_val > 50 || actual_weight - weight_val <= -50 {
             return Err(AppError::Font(format!(
                 "Weight mismatch for family {}: requested {}, got {}",
                 family, weight_val, actual_weight
@@ -83,11 +84,50 @@ impl FontRenderer {
             })
             .unwrap_or_default();
 
+        // Extract localized names using ttf-parser
+        let mut localized_names = HashMap::new();
+        if let Some(font_data) = font.copy_font_data() {
+            if let Ok(ttf_font) = ttf_parser::Face::parse(&font_data, 0) {
+                for name_record in ttf_font.names() {
+                    let priority = match name_record.name_id {
+                        16 => 2, // Preferred Family (Typographic Family)
+                        1 => 1,  // Family Name
+                        _ => 0,
+                    };
+
+                    if priority > 0 {
+                        if let Some(name_str) = name_record.to_string() {
+                            let lang = match (name_record.platform_id, name_record.language_id) {
+                                (ttf_parser::PlatformId::Macintosh, 0) => "en",
+                                (ttf_parser::PlatformId::Windows, 0x0409) => "en",
+                                (ttf_parser::PlatformId::Windows, 0x0411) => "ja",
+                                (ttf_parser::PlatformId::Windows, 0x0412) => "ko",
+                                (ttf_parser::PlatformId::Windows, 0x0804) => "zh-CN",
+                                (ttf_parser::PlatformId::Windows, 0x0404) => "zh-TW",
+                                _ => continue,
+                            };
+
+                            // Overwrite only if higher priority, or if same priority but current is missing
+                            let entry = localized_names.entry(lang.to_string()).or_insert((0, String::new()));
+                            if priority >= entry.0 {
+                                *entry = (priority, name_str);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let localized_names_map: HashMap<String, String> = localized_names.into_iter()
+            .map(|(k, (_, v))| (k, v))
+            .collect();
+
         let safe_name = format!("{}_{}", weight_val, family.replace(' ', "_").replace('/', "_"));
         save_font_metadata(&self.config.output_dir, &FontMetadata {
             safe_name: safe_name.clone(),
             display_name: full_name,
             family: family.to_string(),
+            localized_names: localized_names_map,
             weight: weight_val,
             weights: available_weights,
             computed: None,

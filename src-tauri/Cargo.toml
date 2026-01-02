@@ -69,3 +69,4 @@ uuid = { version = "1.0", features = ["v7", "serde"] }
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.23.2"
+ttf-parser = "0.25.1"

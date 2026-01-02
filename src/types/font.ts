@@ -57,6 +57,7 @@ export interface FontMetadata {
   safe_name: string;
   font_name: string;
   family_name: string;
+  localized_names: Record<string, string>;
   weight: number;
   weights: string[];
   computed?: ComputedData; // Optional, present after compression and clustering

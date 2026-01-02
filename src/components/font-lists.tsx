@@ -34,7 +34,15 @@ export function FontLists(props: FontListsProps) {
   const fuse = createMemo(() => {
     const fonts = Object.values(props.fontMetadatas || {});
     return new Fuse(fonts, {
-      keys: ['font_name'],
+      keys: [
+        'font_name',
+        'family_name',
+        'localized_names',
+        {
+          name: 'localized_names_list',
+          getFn: (item) => Object.values(item.localized_names),
+        },
+      ],
       threshold: 0.6,
     });
   });

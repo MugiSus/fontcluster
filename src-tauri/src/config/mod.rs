@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
 pub const PREVIEW_TEXT: &str = "fonts";
@@ -125,6 +126,7 @@ pub struct FontMetadata {
     pub display_name: String,
     #[serde(rename = "family_name")]
     pub family: String,
+    pub localized_names: HashMap<String, String>,
     pub weight: i32,
     pub weights: Vec<String>,
     pub computed: Option<ComputedData>,
