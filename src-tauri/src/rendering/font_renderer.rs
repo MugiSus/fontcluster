@@ -3,9 +3,7 @@ use crate::error::{Result, AppError};
 use crate::core::session::save_font_metadata;
 use font_kit::source::SystemSource;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
-use font_kit::family_name::FamilyName;
 use font_kit::hinting::HintingOptions;
-use font_kit::properties::{Properties, Weight};
 use std::sync::Arc;
 use pathfinder_geometry::transform2d::Transform2F;
 use pathfinder_geometry::vector::{Vector2F, Vector2I};
@@ -14,47 +12,76 @@ use std::io::BufWriter;
 use std::fs::File;
 use std::collections::HashMap;
 
+pub struct ExtractedMeta {
+    pub display_name: String,
+    pub family_names: HashMap<String, String>,
+    pub preferred_family_names: HashMap<String, String>,
+    pub publishers: HashMap<String, String>,
+    pub designers: HashMap<String, String>,
+    pub actual_weight: i32,
+    pub available_weights: Vec<String>,
+}
+
 pub struct FontRenderer {
     config: Arc<RenderConfig>,
-    source: Arc<SystemSource>,
 }
 
 impl FontRenderer {
-    pub fn new(config: Arc<RenderConfig>, source: Arc<SystemSource>) -> Self {
-        Self { config, source }
+    pub fn new(config: Arc<RenderConfig>, _source: Arc<SystemSource>) -> Self {
+        Self { config }
     }
 
-    pub fn render(&self, family: &str, weight_val: i32) -> Result<()> {
-        let properties = Properties { weight: Weight(weight_val as f32), ..Default::default() };
-        let handle = self.source.select_best_match(&[FamilyName::Title(family.to_string())], &properties)?;
-        let font = handle.load()?;
-        
-        // Validate weight: font-kit's select_best_match is very permissive.
-        // We want to ensure the actual font weight is close to what we requested.
+    pub fn extract_meta(font: &font_kit::font::Font, available_weights: Vec<String>) -> Result<ExtractedMeta> {
+        let display_name = font.full_name();
         let actual_weight = font.properties().weight.0 as i32;
-        if actual_weight - weight_val > 50 || actual_weight - weight_val <= -50 {
-            return Err(AppError::Font(format!(
-                "Weight mismatch for family {}: requested {}, got {}",
-                family, weight_val, actual_weight
-            )));
-        }
 
-        let full_name = font.full_name();
-        let metrics = font.metrics();
-        let scale = self.config.font_size / metrics.units_per_em as f32;
+        let font_data = font.copy_font_data();
+        let (family_names, preferred_family_names, publishers, designers) = font_data.as_ref()
+            .and_then(|data| ttf_parser::Face::parse(data, 0).ok())
+            .map(|face| {
+                let mut fams = HashMap::new();
+                let mut prefs = HashMap::new();
+                let mut pubs = HashMap::new();
+                let mut dess = HashMap::new();
 
+                for rec in face.names().into_iter() {
+                    let lang_id = rec.language_id.to_string();
+                    let name_id = rec.name_id;
+                    if let Some(val) = rec.to_string() {
+                        match name_id {
+                            1 => { fams.insert(lang_id, val); }
+                            16 => { prefs.insert(lang_id, val); }
+                            8 => { pubs.insert(lang_id, val); }
+                            9 => { dess.insert(lang_id, val); }
+                            _ => {}
+                        }
+                    }
+                }
+                (fams, prefs, pubs, dess)
+            })
+            .unwrap_or_else(|| (HashMap::new(), HashMap::new(), HashMap::new(), HashMap::new()));
+
+        Ok(ExtractedMeta {
+            display_name,
+            family_names,
+            preferred_family_names,
+            publishers,
+            designers,
+            actual_weight,
+            available_weights,
+        })
+    }
+
+    pub fn render_and_save(&self, font: &font_kit::font::Font, family: &str, weight_val: i32, meta: ExtractedMeta) -> Result<()> {
+        let scale = self.config.font_size / font.metrics().units_per_em as f32;
         let mut glyph_data = Vec::new();
         let replacement_gid = font.glyph_for_char('\u{FFFD}');
+        
         for ch in self.config.text.chars() {
             let gid = font.glyph_for_char(ch).ok_or_else(|| AppError::Font(format!("No glyph for {}", ch)))?;
-            
-            // Check if it's a fallback/missing glyph (tofu).
-            // 1. GID 0 is typically the .notdef glyph.
-            // 2. If it matches the replacement character glyph (U+FFFD) but isn't that character, it's a fallback.
             if gid == 0 || (replacement_gid == Some(gid) && ch != '\u{FFFD}') {
-                return Err(AppError::Font(format!("Font fallback (tofu) detected for character '{}'", ch)));
+                return Err(AppError::Font(format!("Font fallback detected for character '{}'", ch)));
             }
-
             let advance = font.advance(gid)?;
             let bounds = font.typographic_bounds(gid)?;
             glyph_data.push((gid, (advance.x() * scale) as i32, bounds.max_y() * scale, bounds.min_y() * scale));
@@ -74,55 +101,17 @@ impl FontRenderer {
 
         if canvas.pixels.iter().all(|&p| p == 0) { return Ok(()); }
 
-        // Find available weights for metadata
-        let available_weights = self.source.select_family_by_name(family)
-            .map(|f| {
-                f.fonts().iter()
-                    .filter_map(|h| h.load().ok())
-                    .map(|f| format!("{:?}", f.properties().weight))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        // Extract localized names using ttf-parser
-        let font_data = font.copy_font_data();
-        let (family_names, preferred_family_names, publishers, designers) = font_data.as_ref()
-            .and_then(|data| ttf_parser::Face::parse(data, 0).ok())
-            .map(|face| {
-                let mut fams = HashMap::new();
-                let mut prefs = HashMap::new();
-                let mut pubs = HashMap::new();
-                let mut dess = HashMap::new();
-
-                for rec in face.names().into_iter() {
-                    let lang_id = rec.language_id.to_string();
-                    let name_id = rec.name_id;
-                    
-                    if let Some(val) = rec.to_string() {
-                        match name_id {
-                            1 => { fams.insert(lang_id, val); }
-                            8 => { pubs.insert(lang_id, val); }
-                            9 => { dess.insert(lang_id, val); }
-                            16 => { prefs.insert(lang_id, val); }
-                            _ => {}
-                        }
-                    }
-                }
-                (fams, prefs, pubs, dess)
-            })
-            .unwrap_or_else(|| (HashMap::new(), HashMap::new(), HashMap::new(), HashMap::new()));
-
         let safe_name = format!("{}_{}", weight_val, family.replace(' ', "_").replace('/', "_"));
         save_font_metadata(&self.config.output_dir, &FontMetadata {
             safe_name: safe_name.clone(),
-            display_name: full_name,
+            display_name: meta.display_name,
             family: family.to_string(),
-            family_names,
-            preferred_family_names,
-            publishers,
-            designers,
+            family_names: meta.family_names,
+            preferred_family_names: meta.preferred_family_names,
+            publishers: meta.publishers,
+            designers: meta.designers,
             weight: weight_val,
-            weights: available_weights,
+            weights: meta.available_weights,
             computed: None,
         })?;
 
