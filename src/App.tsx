@@ -37,7 +37,7 @@ function App() {
           minSize={0.2}
           collapsible={true}
           collapsedSize={0}
-          collapseThreshold={0.05}
+          collapseThreshold={0.1}
           maxSize={0.5}
         >
           <FontProcessingForm
@@ -84,10 +84,10 @@ function App() {
 
         <ResizablePanel
           initialSize={0.25}
-          minSize={0.19}
+          minSize={0.2}
           collapsible={true}
           collapsedSize={0}
-          collapseThreshold={0.05}
+          collapseThreshold={0.1}
           maxSize={0.5}
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
