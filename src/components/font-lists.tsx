@@ -5,6 +5,7 @@ import { ArrowUpIcon, SearchIcon, SearchSlashIcon } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
 import { createMemo, createSignal, Show } from 'solid-js';
 import Fuse from 'fuse.js';
+import { Button } from './ui/button';
 
 interface FontListsProps {
   fontMetadatas: FontMetadataRecord | undefined;
@@ -28,7 +29,7 @@ export function FontLists(props: FontListsProps) {
     const fonts = Object.values(props.fontMetadatas || {});
     return new Fuse(fonts, {
       keys: ['font_name', 'family_name'],
-      threshold: 0.5,
+      threshold: 0.6,
     });
   });
 
@@ -45,7 +46,7 @@ export function FontLists(props: FontListsProps) {
     return result;
   });
 
-  const fontSearchResultList = createMemo(() => {
+  const FontSearchResultList = () => {
     return (
       <Show when={searchQuery()}>
         <Show
@@ -57,6 +58,7 @@ export function FontLists(props: FontListsProps) {
             </div>
           }
         >
+          <div data-font-search-results-top />
           <FontMetadataList
             fontMetadatas={filteredFonts()}
             sessionDirectory={props.sessionDirectory}
@@ -64,16 +66,25 @@ export function FontLists(props: FontListsProps) {
             onFontClick={props.onFontClick}
           />
           <div class='sticky inset-x-0 inset-y-1 flex items-center justify-center py-1'>
-            <div class='flex items-center gap-1 rounded-full border bg-background px-2 py-0.5'>
+            <Button
+              size='sm'
+              variant='outline'
+              class='flex h-7 items-center gap-1 rounded-full bg-background px-2 shadow-sm'
+              onClick={() => {
+                document
+                  .querySelector('[data-font-search-results-top]')
+                  ?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
               <ArrowUpIcon class='size-4' />
-              <p class='text-sm font-light'>search results</p>
+              <p class='pt-px text-sm font-light'>Search results</p>
               <ArrowUpIcon class='size-4' />
-            </div>
+            </Button>
           </div>
         </Show>
       </Show>
     );
-  });
+  };
 
   return (
     <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
@@ -99,7 +110,7 @@ export function FontLists(props: FontListsProps) {
         value='similarity'
         class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
-        {fontSearchResultList()}
+        <FontSearchResultList />
         <FontMetadataList
           fontMetadatas={Object.values(props.fontMetadatas || {}).sort(
             (a, b) => {
@@ -122,7 +133,7 @@ export function FontLists(props: FontListsProps) {
         value='name'
         class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
-        {fontSearchResultList()}
+        <FontSearchResultList />
         <FontMetadataList
           fontMetadatas={Object.values(props.fontMetadatas || {}).sort(
             (a, b) =>
