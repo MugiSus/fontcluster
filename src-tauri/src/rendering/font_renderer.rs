@@ -93,18 +93,7 @@ impl FontRenderer {
                     .into_iter()
                     .filter_map(|rec| {
                         let priority = match rec.name_id { 16 => 2, 1 => 1, _ => return None };
-                        let lang = match (rec.platform_id, rec.language_id) {
-                            (ttf_parser::PlatformId::Macintosh, 0) | (ttf_parser::PlatformId::Windows, 0x0409) => "en".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x0411) => "ja".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x0412) => "ko".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x0804) => "zh-CN".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x0404) | (ttf_parser::PlatformId::Windows, 0x0c04) | (ttf_parser::PlatformId::Windows, 0x141a) => "zh-TW".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x0407) => "de".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x040c) => "fr".to_string(),
-                            (ttf_parser::PlatformId::Windows, 0x040a) => "es".to_string(),
-                            // fallback for any other language tags (ensures 100% coverage for search)
-                            _ => format!("id-{}", rec.language_id),
-                        };
+                        let lang = rec.language_id.to_string();
                         rec.to_string().map(|name| (lang, priority, name))
                     })
                     .fold(HashMap::new(), |mut acc: HashMap<String, (u16, String)>, (lang, priority, name)| {
