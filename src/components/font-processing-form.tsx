@@ -256,6 +256,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               <Button
                 variant='ghost'
                 size='icon'
+                disabled={isProcessing()}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('generated')}
               >
@@ -294,6 +295,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               <Button
                 variant='ghost'
                 size='icon'
+                disabled={isProcessing()}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('vectorized')}
               >
@@ -358,6 +360,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               <Button
                 variant='ghost'
                 size='icon'
+                disabled={isProcessing()}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('compressed')}
               >
@@ -402,9 +405,9 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
             class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums'
           >
             {isProcessing() && processStatus() === 'empty'
-              ? `Generating... (${progressLabelNumerator()}/${progressLabelDenominator()})`
+              ? 'Generating...'
               : isProcessing() && processStatus() === 'generated'
-                ? `Vectorizing... (${progressLabelNumerator()}/${progressLabelDenominator()})`
+                ? 'Vectorizing...'
                 : isProcessing() && processStatus() === 'vectorized'
                   ? 'Compressing...'
                   : isProcessing() && processStatus() === 'compressed'
@@ -437,33 +440,49 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         <div class='grid grid-cols-4 gap-1'>
           <div
             class={cn(
-              'h-1 rounded bg-muted-foreground/30 transition-colors',
-              processStatus() === 'empty' && 'animate-pulse bg-foreground',
+              'h-1 rounded bg-foreground/25',
               (processStatus() === 'generated' ||
                 processStatus() === 'vectorized' ||
                 processStatus() === 'compressed') &&
-                'bg-muted-foreground',
+                'bg-foreground',
             )}
-          />
+          >
+            <Show when={isProcessing() && processStatus() === 'empty'}>
+              <div
+                class='h-full animate-pulse rounded-full bg-foreground'
+                style={{
+                  width: `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`,
+                }}
+              />
+            </Show>
+          </div>
           <div
             class={cn(
-              'h-1 rounded bg-muted-foreground/30 transition-colors',
-              processStatus() === 'generated' && 'animate-pulse bg-foreground',
+              'h-1 rounded bg-foreground/25',
               (processStatus() === 'vectorized' ||
                 processStatus() === 'compressed') &&
-                'bg-muted-foreground',
+                'bg-foreground',
             )}
-          />
+          >
+            <Show when={isProcessing() && processStatus() === 'generated'}>
+              <div
+                class='h-full animate-pulse rounded-full bg-foreground'
+                style={{
+                  width: `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`,
+                }}
+              />
+            </Show>
+          </div>
           <div
             class={cn(
-              'h-1 rounded bg-muted-foreground/30 transition-colors',
+              'h-1 rounded bg-foreground/25',
               processStatus() === 'vectorized' && 'animate-pulse bg-foreground',
-              processStatus() === 'compressed' && 'bg-muted-foreground',
+              processStatus() === 'compressed' && 'bg-foreground',
             )}
           />
           <div
             class={cn(
-              'h-1 rounded bg-muted-foreground/30 transition-colors',
+              'h-1 rounded bg-foreground/25',
               processStatus() === 'compressed' && 'animate-pulse bg-foreground',
             )}
           />
