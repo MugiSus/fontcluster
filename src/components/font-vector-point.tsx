@@ -50,19 +50,52 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         transform={`translate(${position().x}, ${position().y}) scale(${props.zoomFactor()})`}
         class={getClusterTextColor(fontMetadata().computed?.k ?? -1)}
       >
-        <circle
-          cx={0}
-          cy={0}
-          r={
-            isSelected() || isFamilySelected()
-              ? 6
-              : props.selectedFontMetadata?.family_name ===
-                  fontMetadata().family_name
-                ? 4
-                : 1.5
-          }
+        <rect
+          x={-1.5}
+          y={-1.5}
+          width={3}
+          height={3}
+          transform={`rotate(45) scale(${isSelected() ? 3 : isFamilySelected() ? 2 : 1})`}
           class='pointer-events-none fill-current'
         />
+
+        <Show when={isSelected()}>
+          <line
+            x1={-10}
+            y1={0}
+            x2={10}
+            y2={0}
+            stroke='currentColor'
+            stroke-width={1}
+          />
+          <line
+            x1={0}
+            y1={-15}
+            x2={0}
+            y2={15}
+            stroke='currentColor'
+            stroke-width={1}
+          />
+        </Show>
+
+        <Show when={!isSelected() && isFamilySelected()}>
+          <line
+            x1={-8}
+            y1={0}
+            x2={8}
+            y2={0}
+            stroke='currentColor'
+            stroke-width={1}
+          />
+          <line
+            x1={0}
+            y1={-12}
+            x2={0}
+            y2={12}
+            stroke='currentColor'
+            stroke-width={1}
+          />
+        </Show>
 
         <Show when={isSelected() || isFamilySelected()}>
           <circle
