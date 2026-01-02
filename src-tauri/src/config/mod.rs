@@ -127,6 +127,8 @@ pub struct FontMetadata {
     #[serde(rename = "family_name")]
     pub family: String,
     pub localized_names: HashMap<String, String>,
+    pub publisher: Option<String>,
+    pub designer: Option<String>,
     pub weight: i32,
     pub weights: Vec<String>,
     pub computed: Option<ComputedData>,
