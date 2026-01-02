@@ -1,6 +1,5 @@
 import { Show } from 'solid-js';
-import { FontMetadataList } from './components/font-metadata-list';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs';
+import { FontLists } from './components/font-lists';
 import { SessionSelector } from './components/session-selector';
 import { FontClusterVisualization } from './components/font-cluster-visualization';
 import { FontProcessingForm } from './components/font-processing-form';
@@ -92,52 +91,12 @@ function App() {
           maxSize={0.5}
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
-          <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
-            <TabsList class='grid w-full shrink-0 grid-cols-2'>
-              <TabsTrigger value='similarity'>Similarity</TabsTrigger>
-              <TabsTrigger value='name'>Name (A-Z)</TabsTrigger>
-            </TabsList>
-
-            <TabsContent
-              value='name'
-              class='min-h-0 flex-1 overflow-scroll rounded-md border'
-            >
-              <FontMetadataList
-                fontMetadatas={Object.values(
-                  appSignal.fontMetadatas() || {},
-                ).sort(
-                  (a, b) =>
-                    a.family_name.localeCompare(b.family_name) ||
-                    a.weight - b.weight,
-                )}
-                sessionDirectory={appSignal.sessionDirectory() || ''}
-                selectedFontMetadata={appSignal.selectedFontMetadata()}
-                onFontClick={appSignal.setNearestFontMetadata}
-              />
-            </TabsContent>
-
-            <TabsContent
-              value='similarity'
-              class='min-h-0 flex-1 overflow-scroll rounded-md border'
-            >
-              <FontMetadataList
-                fontMetadatas={Object.values(
-                  appSignal.fontMetadatas() || {},
-                ).sort((a, b) => {
-                  const aK = a.computed?.k ?? -1;
-                  const bK = b.computed?.k ?? -1;
-                  return (
-                    (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
-                    a.family_name.localeCompare(b.family_name) ||
-                    a.weight - b.weight
-                  );
-                })}
-                sessionDirectory={appSignal.sessionDirectory() || ''}
-                selectedFontMetadata={appSignal.selectedFontMetadata()}
-                onFontClick={appSignal.setNearestFontMetadata}
-              />
-            </TabsContent>
-          </Tabs>
+          <FontLists
+            fontMetadatas={appSignal.fontMetadatas()}
+            sessionDirectory={appSignal.sessionDirectory() || ''}
+            selectedFontMetadata={appSignal.selectedFontMetadata()}
+            onFontClick={appSignal.setNearestFontMetadata}
+          />
         </ResizablePanel>
       </Resizable>
     </>
