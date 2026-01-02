@@ -86,58 +86,41 @@ impl FontRenderer {
 
         // Extract localized names using ttf-parser
         let font_data = font.copy_font_data();
-        let (localized_names, publisher, designer) = font_data.as_ref()
+        let (family_names, preferred_family_names, publishers, designers) = font_data.as_ref()
             .and_then(|data| ttf_parser::Face::parse(data, 0).ok())
             .map(|face| {
-                let mut names = HashMap::new();
-                let mut pub_val: Option<(u16, String)> = None;
-                let mut des_val: Option<(u16, String)> = None;
+                let mut fams = HashMap::new();
+                let mut prefs = HashMap::new();
+                let mut pubs = HashMap::new();
+                let mut dess = HashMap::new();
 
                 for rec in face.names().into_iter() {
-                    let lang_id = rec.language_id;
-                    let priority = match (rec.platform_id, lang_id) {
-                        (ttf_parser::PlatformId::Macintosh, 0) | (ttf_parser::PlatformId::Windows, 0x0409) => 2, // en
-                        (ttf_parser::PlatformId::Windows, 0x0411) | (ttf_parser::PlatformId::Windows, 0x0412) => 1, // ja/ko
-                        _ => 0,
-                    };
-
+                    let lang_id = rec.language_id.to_string();
+                    let name_id = rec.name_id;
+                    
                     if let Some(val) = rec.to_string() {
-                        match rec.name_id {
-                            1 | 16 => {
-                                let p = if rec.name_id == 16 { 10 + priority } else { priority };
-                                let entry = names.entry(lang_id.to_string()).or_insert((0, String::new()));
-                                if p >= entry.0 { *entry = (p, val); }
-                            }
-                            8 => { // Manufacturer/Publisher
-                                if pub_val.as_ref().map_or(true, |(p, _)| priority >= *p) {
-                                    pub_val = Some((priority, val));
-                                }
-                            }
-                            9 => { // Designer
-                                if des_val.as_ref().map_or(true, |(p, _)| priority >= *p) {
-                                    des_val = Some((priority, val));
-                                }
-                            }
+                        match name_id {
+                            1 => { fams.insert(lang_id, val); }
+                            8 => { pubs.insert(lang_id, val); }
+                            9 => { dess.insert(lang_id, val); }
+                            16 => { prefs.insert(lang_id, val); }
                             _ => {}
                         }
                     }
                 }
-                (
-                    names.into_iter().map(|(k, (_, v))| (k, v)).collect::<HashMap<String, String>>(),
-                    pub_val.map(|(_, v)| v),
-                    des_val.map(|(_, v)| v),
-                )
+                (fams, prefs, pubs, dess)
             })
-            .unwrap_or_else(|| (HashMap::new(), None, None));
+            .unwrap_or_else(|| (HashMap::new(), HashMap::new(), HashMap::new(), HashMap::new()));
 
         let safe_name = format!("{}_{}", weight_val, family.replace(' ', "_").replace('/', "_"));
         save_font_metadata(&self.config.output_dir, &FontMetadata {
             safe_name: safe_name.clone(),
             display_name: full_name,
             family: family.to_string(),
-            localized_names,
-            publisher,
-            designer,
+            family_names,
+            preferred_family_names,
+            publishers,
+            designers,
             weight: weight_val,
             weights: available_weights,
             computed: None,

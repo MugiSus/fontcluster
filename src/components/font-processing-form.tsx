@@ -441,7 +441,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         <div class='grid grid-cols-4 gap-1'>
           <div
             class={cn(
-              'h-1 rounded bg-foreground/25',
+              'h-1 overflow-hidden rounded-full bg-foreground/25',
               (processStatus() === 'generated' ||
                 processStatus() === 'vectorized' ||
                 processStatus() === 'compressed') &&
@@ -459,7 +459,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </div>
           <div
             class={cn(
-              'h-1 rounded bg-foreground/25',
+              'h-1 overflow-hidden rounded-full bg-foreground/25',
               (processStatus() === 'vectorized' ||
                 processStatus() === 'compressed') &&
                 'bg-foreground',
@@ -476,14 +476,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           </div>
           <div
             class={cn(
-              'h-1 rounded bg-foreground/25',
+              'h-1 overflow-hidden rounded-full bg-foreground/25',
               processStatus() === 'vectorized' && 'animate-pulse bg-foreground',
               processStatus() === 'compressed' && 'bg-foreground',
             )}
           />
           <div
             class={cn(
-              'h-1 rounded bg-foreground/25',
+              'h-1 overflow-hidden rounded-full bg-foreground/25',
               processStatus() === 'compressed' && 'animate-pulse bg-foreground',
             )}
           />

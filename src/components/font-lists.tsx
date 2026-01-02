@@ -37,10 +37,25 @@ export function FontLists(props: FontListsProps) {
       keys: [
         'font_name',
         'family_name',
-        'localized_names',
+        'family_names',
+        'preferred_family_names',
+        'publishers',
+        'designers',
         {
-          name: 'localized_names_list',
-          getFn: (item) => Object.values(item.localized_names),
+          name: 'family_names_list',
+          getFn: (item) => Object.values(item.family_names),
+        },
+        {
+          name: 'preferred_family_names_list',
+          getFn: (item) => Object.values(item.preferred_family_names),
+        },
+        {
+          name: 'publishers_list',
+          getFn: (item) => Object.values(item.publishers),
+        },
+        {
+          name: 'designers_list',
+          getFn: (item) => Object.values(item.designers),
         },
       ],
       threshold: 0.5,
