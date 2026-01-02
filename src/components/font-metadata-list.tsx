@@ -12,7 +12,7 @@ interface FontMetadataListProps {
 
 export function FontMetadataList(props: FontMetadataListProps) {
   return (
-    <ul class='flex flex-col items-start gap-0 bg-muted/20'>
+    <ul class='flex flex-col items-start gap-0'>
       <For each={props.fontMetadatas}>
         {(fontMetadata: FontMetadata) => (
           <li

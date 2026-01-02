@@ -1,9 +1,9 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { FontMetadataList } from './font-metadata-list';
 import { FontMetadata, FontMetadataRecord } from '../types/font';
-import { SearchIcon } from 'lucide-solid';
+import { ArrowUpIcon, SearchIcon, SearchSlashIcon } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
-import { createMemo, createSignal } from 'solid-js';
+import { createMemo, createSignal, Show } from 'solid-js';
 import Fuse from 'fuse.js';
 
 interface FontListsProps {
@@ -45,6 +45,36 @@ export function FontLists(props: FontListsProps) {
     return result;
   });
 
+  const fontSearchResultList = createMemo(() => {
+    return (
+      <Show when={searchQuery()}>
+        <Show
+          when={filteredFonts().length > 0}
+          fallback={
+            <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-xs text-muted-foreground'>
+              <SearchSlashIcon />
+              No results found
+            </div>
+          }
+        >
+          <FontMetadataList
+            fontMetadatas={filteredFonts()}
+            sessionDirectory={props.sessionDirectory}
+            selectedFontMetadata={props.selectedFontMetadata}
+            onFontClick={props.onFontClick}
+          />
+          <div class='sticky inset-x-0 inset-y-1 flex items-center justify-center py-1'>
+            <div class='flex items-center gap-1 rounded-full border bg-background px-2 py-0.5'>
+              <ArrowUpIcon class='size-4' />
+              <p class='text-sm font-light'>search results</p>
+              <ArrowUpIcon class='size-4' />
+            </div>
+          </div>
+        </Show>
+      </Show>
+    );
+  });
+
   return (
     <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
       <TextField class='mb-2'>
@@ -66,13 +96,21 @@ export function FontLists(props: FontListsProps) {
       </TabsList>
 
       <TabsContent
-        value='name'
-        class='min-h-0 flex-1 overflow-scroll rounded-md border'
+        value='similarity'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
+        {fontSearchResultList()}
         <FontMetadataList
-          fontMetadatas={filteredFonts().sort(
-            (a, b) =>
-              a.family_name.localeCompare(b.family_name) || a.weight - b.weight,
+          fontMetadatas={Object.values(props.fontMetadatas || {}).sort(
+            (a, b) => {
+              const aK = a.computed?.k ?? -1;
+              const bK = b.computed?.k ?? -1;
+              return (
+                (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
+                a.family_name.localeCompare(b.family_name) ||
+                a.weight - b.weight
+              );
+            },
           )}
           sessionDirectory={props.sessionDirectory}
           selectedFontMetadata={props.selectedFontMetadata}
@@ -81,19 +119,15 @@ export function FontLists(props: FontListsProps) {
       </TabsContent>
 
       <TabsContent
-        value='similarity'
-        class='min-h-0 flex-1 overflow-scroll rounded-md border'
+        value='name'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
+        {fontSearchResultList()}
         <FontMetadataList
-          fontMetadatas={filteredFonts().sort((a, b) => {
-            const aK = a.computed?.k ?? -1;
-            const bK = b.computed?.k ?? -1;
-            return (
-              (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
-              a.family_name.localeCompare(b.family_name) ||
-              a.weight - b.weight
-            );
-          })}
+          fontMetadatas={Object.values(props.fontMetadatas || {}).sort(
+            (a, b) =>
+              a.family_name.localeCompare(b.family_name) || a.weight - b.weight,
+          )}
           sessionDirectory={props.sessionDirectory}
           selectedFontMetadata={props.selectedFontMetadata}
           onFontClick={props.onFontClick}
