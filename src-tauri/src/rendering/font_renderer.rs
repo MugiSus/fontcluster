@@ -85,49 +85,45 @@ impl FontRenderer {
             .unwrap_or_default();
 
         // Extract localized names using ttf-parser
-        let mut localized_names = HashMap::new();
-        if let Some(font_data) = font.copy_font_data() {
-            if let Ok(ttf_font) = ttf_parser::Face::parse(&font_data, 0) {
-                for name_record in ttf_font.names() {
-                    let priority = match name_record.name_id {
-                        16 => 2, // Preferred Family (Typographic Family)
-                        1 => 1,  // Family Name
-                        _ => 0,
-                    };
-
-                    if priority > 0 {
-                        if let Some(name_str) = name_record.to_string() {
-                            let lang = match (name_record.platform_id, name_record.language_id) {
-                                (ttf_parser::PlatformId::Macintosh, 0) => "en",
-                                (ttf_parser::PlatformId::Windows, 0x0409) => "en",
-                                (ttf_parser::PlatformId::Windows, 0x0411) => "ja",
-                                (ttf_parser::PlatformId::Windows, 0x0412) => "ko",
-                                (ttf_parser::PlatformId::Windows, 0x0804) => "zh-CN",
-                                (ttf_parser::PlatformId::Windows, 0x0404) => "zh-TW",
-                                _ => continue,
-                            };
-
-                            // Overwrite only if higher priority, or if same priority but current is missing
-                            let entry = localized_names.entry(lang.to_string()).or_insert((0, String::new()));
-                            if priority >= entry.0 {
-                                *entry = (priority, name_str);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let localized_names_map: HashMap<String, String> = localized_names.into_iter()
-            .map(|(k, (_, v))| (k, v))
-            .collect();
+        let font_data = font.copy_font_data();
+        let localized_names = font_data.as_ref()
+            .and_then(|data| ttf_parser::Face::parse(data, 0).ok())
+            .map(|face| {
+                face.names()
+                    .into_iter()
+                    .filter_map(|rec| {
+                        let priority = match rec.name_id { 16 => 2, 1 => 1, _ => return None };
+                        let lang = match (rec.platform_id, rec.language_id) {
+                            (ttf_parser::PlatformId::Macintosh, 0) | (ttf_parser::PlatformId::Windows, 0x0409) => "en".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x0411) => "ja".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x0412) => "ko".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x0804) => "zh-CN".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x0404) | (ttf_parser::PlatformId::Windows, 0x0c04) | (ttf_parser::PlatformId::Windows, 0x141a) => "zh-TW".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x0407) => "de".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x040c) => "fr".to_string(),
+                            (ttf_parser::PlatformId::Windows, 0x040a) => "es".to_string(),
+                            // fallback for any other language tags (ensures 100% coverage for search)
+                            _ => format!("id-{}", rec.language_id),
+                        };
+                        rec.to_string().map(|name| (lang, priority, name))
+                    })
+                    .fold(HashMap::new(), |mut acc: HashMap<String, (u16, String)>, (lang, priority, name)| {
+                        let entry = acc.entry(lang).or_insert((0, String::new()));
+                        if priority >= entry.0 { *entry = (priority, name); }
+                        acc
+                    })
+            })
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(lang, (_, name))| (lang, name))
+            .collect::<HashMap<String, String>>();
 
         let safe_name = format!("{}_{}", weight_val, family.replace(' ', "_").replace('/', "_"));
         save_font_metadata(&self.config.output_dir, &FontMetadata {
             safe_name: safe_name.clone(),
             display_name: full_name,
             family: family.to_string(),
-            localized_names: localized_names_map,
+            localized_names,
             weight: weight_val,
             weights: available_weights,
             computed: None,
