@@ -34,7 +34,7 @@ export function FontLists(props: FontListsProps) {
   const fuse = createMemo(() => {
     const fonts = Object.values(props.fontMetadatas || {});
     return new Fuse(fonts, {
-      keys: ['font_name', 'family_name'],
+      keys: ['font_name'],
       threshold: 0.6,
     });
   });
@@ -53,6 +53,8 @@ export function FontLists(props: FontListsProps) {
   });
 
   const FontSearchResultList = () => {
+    let topElement!: HTMLDivElement;
+
     return (
       <Show when={searchQuery()}>
         <Show
@@ -64,7 +66,7 @@ export function FontLists(props: FontListsProps) {
             </div>
           }
         >
-          <div data-font-search-results-top />
+          <div ref={topElement} />
           <FontMetadataList
             fontMetadatas={filteredFonts()}
             sessionDirectory={props.sessionDirectory}
@@ -77,9 +79,7 @@ export function FontLists(props: FontListsProps) {
               variant='outline'
               class='flex h-7 items-center gap-1 rounded-full bg-background px-2 shadow-sm'
               onClick={() => {
-                document
-                  .querySelector('[data-font-search-results-top]')
-                  ?.scrollIntoView({ behavior: 'smooth' });
+                topElement.scrollIntoView({ behavior: 'smooth' });
               }}
             >
               <ArrowUpIcon class='size-4' />
