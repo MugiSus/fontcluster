@@ -75,7 +75,7 @@ function App() {
               sessionWeights={
                 (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
               }
-              onFontSelect={appSignal.setNearestFontMetadata}
+              onFontSelect={appSignal.setSelectedFontMetadata}
             />
           </Show>
         </ResizablePanel>
@@ -95,7 +95,7 @@ function App() {
             fontMetadatas={appSignal.fontMetadatas()}
             sessionDirectory={appSignal.sessionDirectory() || ''}
             selectedFontMetadata={appSignal.selectedFontMetadata()}
-            onFontClick={appSignal.setNearestFontMetadata}
+            onFontClick={appSignal.setSelectedFontMetadata}
           />
         </ResizablePanel>
       </Resizable>

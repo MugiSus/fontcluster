@@ -21,14 +21,14 @@ export function FontLists(props: FontListsProps) {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       setSearchQuery(value);
-    }, 500);
+    }, 300);
   };
 
   const fuse = createMemo(() => {
     const fonts = Object.values(props.fontMetadatas || {});
     return new Fuse(fonts, {
       keys: ['font_name', 'family_name'],
-      threshold: 0.6,
+      threshold: 0.5,
     });
   });
 
@@ -36,16 +36,20 @@ export function FontLists(props: FontListsProps) {
     const query = searchQuery();
     if (!query) return Object.values(props.fontMetadatas || {});
 
-    return fuse()
+    const result = fuse()
       .search(query)
       .map((result) => result.item);
+
+    if (result[0]) props.onFontClick(result[0]);
+
+    return result;
   });
 
   return (
     <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
       <TextField class='mb-2'>
         <div class='relative'>
-          <SearchIcon class='absolute left-2.5 top-2.5 size-4 text-muted-foreground' />
+          <SearchIcon class='absolute left-3 top-3 size-4 text-muted-foreground' />
           <TextFieldInput
             type='text'
             placeholder='Search fonts...'

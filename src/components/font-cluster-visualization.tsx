@@ -50,7 +50,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     }
   });
 
-  const selectNearestFont = (event: MouseEvent) => {
+  const selectSelectedFont = (event: MouseEvent) => {
     const elements = document.elementsFromPoint(event.clientX, event.clientY);
 
     const fontElements = elements.filter((el) =>
@@ -127,7 +127,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
     if (event.buttons === 0) return;
 
-    selectNearestFont(event);
+    selectSelectedFont(event);
   };
 
   const handleMouseDown = (event: MouseEvent) => {
@@ -138,7 +138,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       setLastMousePos({ x: event.clientX, y: event.clientY });
     } else if (event.button === 0) {
       // Left click
-      selectNearestFont(event);
+      selectSelectedFont(event);
     }
   };
 

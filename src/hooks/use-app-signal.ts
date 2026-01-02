@@ -14,7 +14,7 @@ export function useAppSignal() {
   const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
     400,
   ]);
-  const [selectedFontMetadata, setNearestFontMetadata] =
+  const [selectedFontMetadata, setSelectedFontMetadata] =
     createSignal<FontMetadata | null>(null);
   const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
 
@@ -129,7 +129,7 @@ export function useAppSignal() {
 
     // Actions
     setSelectedWeights,
-    setNearestFontMetadata,
+    setSelectedFontMetadata,
     setCurrentSessionId,
     runProcessingJobs,
     stopJobs,

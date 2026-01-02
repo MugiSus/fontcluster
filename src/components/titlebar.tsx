@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 
 export function Titlebar() {
-  const copyCurrentNearestFont = (event: MouseEvent) => {
+  const copyCurrentSelectedFont = (event: MouseEvent) => {
     emit('copy_family_name', {
       toast: true,
       isFontName: event.ctrlKey || event.metaKey,
@@ -27,7 +27,7 @@ export function Titlebar() {
         <Button
           variant='ghost'
           size='icon'
-          onClick={copyCurrentNearestFont}
+          onClick={copyCurrentSelectedFont}
           class='size-6 rounded-full'
         >
           <CopyIcon class='size-6' />
