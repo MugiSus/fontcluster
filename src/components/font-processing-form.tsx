@@ -448,14 +448,15 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 'bg-foreground',
             )}
           >
-            <Show when={isProcessing() && processStatus() === 'empty'}>
-              <div
-                class='h-full animate-pulse rounded-full bg-foreground'
-                style={{
-                  width: `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`,
-                }}
-              />
-            </Show>
+            <div
+              class='h-full animate-pulse rounded-full bg-foreground'
+              style={{
+                width:
+                  isProcessing() && processStatus() === 'empty'
+                    ? `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`
+                    : '0%',
+              }}
+            />
           </div>
           <div
             class={cn(
@@ -465,28 +466,41 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                 'bg-foreground',
             )}
           >
-            <Show when={isProcessing() && processStatus() === 'generated'}>
-              <div
-                class='h-full animate-pulse rounded-full bg-foreground'
-                style={{
-                  width: `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`,
-                }}
-              />
-            </Show>
+            <div
+              class='h-full animate-pulse rounded-full bg-foreground'
+              style={{
+                width:
+                  isProcessing() && processStatus() === 'generated'
+                    ? `${(progressLabelNumerator() / progressLabelDenominator() || 0) * 100}%`
+                    : '0%',
+              }}
+            />
           </div>
           <div
             class={cn(
               'h-1 overflow-hidden rounded-full bg-foreground/25',
-              processStatus() === 'vectorized' && 'animate-pulse bg-foreground',
               processStatus() === 'compressed' && 'bg-foreground',
             )}
-          />
-          <div
-            class={cn(
-              'h-1 overflow-hidden rounded-full bg-foreground/25',
-              processStatus() === 'compressed' && 'animate-pulse bg-foreground',
-            )}
-          />
+          >
+            <div
+              class={cn(
+                'h-full animate-pulse rounded-full bg-foreground',
+                isProcessing() && processStatus() === 'vectorized'
+                  ? 'w-full transition-[width] duration-1000'
+                  : 'w-0',
+              )}
+            />
+          </div>
+          <div class={cn('h-1 overflow-hidden rounded-full bg-foreground/25')}>
+            <div
+              class={cn(
+                'h-full animate-pulse rounded-full bg-foreground',
+                isProcessing() && processStatus() === 'compressed'
+                  ? 'w-full transition-[width] duration-1000'
+                  : 'w-0',
+              )}
+            />
+          </div>
         </div>
       </div>
     </form>
