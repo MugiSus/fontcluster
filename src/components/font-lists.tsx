@@ -70,14 +70,19 @@ export function FontLists(props: FontListsProps) {
       .search(query)
       .map((result) => result.item);
 
-    if (result[0]) props.onFontClick(result[0]);
+    if (result[0]) {
+      props.onFontClick(result[0]);
+      document
+        .querySelectorAll(`[data-font-search-result-top]`)
+        .forEach((element) => {
+          element.scrollIntoView({ behavior: 'instant', block: 'center' });
+        });
+    }
 
     return result;
   });
 
   const FontSearchResultList = () => {
-    let topElement!: HTMLDivElement;
-
     return (
       <Show when={searchQuery()}>
         <Show
@@ -89,7 +94,7 @@ export function FontLists(props: FontListsProps) {
             </div>
           }
         >
-          <div ref={topElement} />
+          <div data-font-search-result-top />
           <FontMetadataList
             fontMetadatas={filteredFonts()}
             sessionDirectory={props.sessionDirectory}
@@ -102,7 +107,14 @@ export function FontLists(props: FontListsProps) {
               variant='outline'
               class='flex h-7 items-center gap-1 rounded-full bg-background px-2 shadow-sm'
               onClick={() => {
-                topElement.scrollIntoView({ behavior: 'smooth' });
+                document
+                  .querySelectorAll(`[data-font-search-result-top]`)
+                  .forEach((element) => {
+                    element.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center',
+                    });
+                  });
               }}
             >
               <ArrowUpIcon class='size-4' />
