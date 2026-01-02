@@ -208,6 +208,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               <Button
                 variant='ghost'
                 size='icon'
+                disabled={isProcessing()}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('empty')}
               >
