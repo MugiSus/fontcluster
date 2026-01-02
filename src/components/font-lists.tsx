@@ -58,7 +58,7 @@ export function FontLists(props: FontListsProps) {
           getFn: (item) => Object.values(item.designers),
         },
       ],
-      threshold: 0.5,
+      threshold: 0.4,
     });
   });
 
