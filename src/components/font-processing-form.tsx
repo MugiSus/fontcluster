@@ -9,6 +9,7 @@ import {
   LoaderCircleIcon,
   PauseIcon,
   TypeIcon,
+  FlaskConicalIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import {
@@ -173,7 +174,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           name='preview-text'
           id='preview-text'
           value={props.sampleText}
-          placeholder='fonts'
+          placeholder='Preview Text...'
           spellcheck='false'
           class='pl-9'
         />
@@ -196,6 +197,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         open
       >
         <summary class='flex cursor-pointer list-none items-center gap-1 py-1 text-xxs font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
+          <FlaskConicalIcon class='mb-0.5 size-3' />
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
         </summary>
@@ -223,6 +225,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='image-width'
                   value={props.algorithm?.image?.width ?? 320}
                   step='32'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -233,6 +236,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='image-height'
                   value={props.algorithm?.image?.height ?? 80}
                   step='16'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -243,6 +247,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='image-font-size'
                   value={props.algorithm?.image?.font_size ?? 64}
                   step='4'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -272,6 +277,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='hog-orientations'
                   value={props.algorithm?.hog?.orientations ?? 12}
                   step='1'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -282,6 +288,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='hog-cell-side'
                   value={props.algorithm?.hog?.cell_side ?? 8}
                   step='2'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -313,6 +320,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='pacmap-mn-phases'
                   value={props.algorithm?.pacmap?.mn_phases ?? 100}
                   step='10'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -325,6 +333,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='pacmap-nn-phases'
                   value={props.algorithm?.pacmap?.nn_phases ?? 300}
                   step='10'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -337,6 +346,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='pacmap-fp-phases'
                   value={props.algorithm?.pacmap?.fp_phases ?? 200}
                   step='10'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -378,6 +388,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='hdbscan-min-cluster-size'
                   value={props.algorithm?.hdbscan?.min_cluster_size ?? 10}
                   step='1'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -388,6 +399,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
                   name='hdbscan-min-samples'
                   value={props.algorithm?.hdbscan?.min_samples ?? 6}
                   step='1'
+                  min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
