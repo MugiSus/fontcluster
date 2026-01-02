@@ -1,7 +1,13 @@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { FontMetadataList } from './font-metadata-list';
 import { FontMetadata, FontMetadataRecord } from '../types/font';
-import { ArrowUpIcon, SearchIcon, SearchSlashIcon } from 'lucide-solid';
+import {
+  ArrowDownAZ,
+  ArrowDownNarrowWide,
+  ArrowUpIcon,
+  SearchIcon,
+  SearchSlashIcon,
+} from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
 import { createMemo, createSignal, Show } from 'solid-js';
 import Fuse from 'fuse.js';
@@ -102,8 +108,14 @@ export function FontLists(props: FontListsProps) {
       </TextField>
 
       <TabsList class='grid w-full shrink-0 grid-cols-2'>
-        <TabsTrigger value='similarity'>Similarity</TabsTrigger>
-        <TabsTrigger value='name'>Name (A-Z)</TabsTrigger>
+        <TabsTrigger value='similarity' class='relative'>
+          <ArrowDownNarrowWide class='absolute left-3 size-4' />
+          Similarity
+        </TabsTrigger>
+        <TabsTrigger value='name' class='relative'>
+          <ArrowDownAZ class='absolute left-3 size-4' />
+          Name (A-Z)
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent
