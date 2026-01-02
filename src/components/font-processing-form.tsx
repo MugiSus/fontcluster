@@ -8,6 +8,7 @@ import {
   StepForwardIcon,
   LoaderCircleIcon,
   PauseIcon,
+  TypeIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import {
@@ -159,13 +160,14 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       onSubmit={handleSubmit}
       class='flex min-h-0 flex-1 flex-col items-stretch gap-1'
     >
-      <TextField class='grid w-full items-center gap-1 pt-1'>
+      <TextField class='relative grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
           for='preview-text'
           class='text-xs uppercase text-muted-foreground'
         >
           Preview Text
         </TextFieldLabel>
+        <TypeIcon class='absolute left-3 top-9 size-4 text-muted-foreground' />
         <TextFieldInput
           type='text'
           name='preview-text'
@@ -173,6 +175,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
           value={props.sampleText}
           placeholder='fonts'
           spellcheck='false'
+          class='pl-9'
         />
       </TextField>
       <TextField class='grid w-full items-center gap-1 pt-1'>
