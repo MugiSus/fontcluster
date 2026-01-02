@@ -98,6 +98,7 @@ export function FontLists(props: FontListsProps) {
             fontMetadatas={filteredFonts()}
             sessionDirectory={props.sessionDirectory}
             selectedFontMetadata={props.selectedFontMetadata}
+            isSearchResult
             onFontClick={props.onFontClick}
           />
           <div class='sticky inset-x-0 inset-y-1 flex items-center justify-center py-1'>

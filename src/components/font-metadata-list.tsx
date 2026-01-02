@@ -1,12 +1,14 @@
-import { For } from 'solid-js';
+import { For, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { FontMetadata } from '../types/font';
-import { getClusterBgColor } from '../lib/cluster-colors';
+import { getClusterBgColor, getClusterTextColor } from '../lib/cluster-colors';
+import { SearchIcon } from 'lucide-solid';
 
 interface FontMetadataListProps {
   fontMetadatas: FontMetadata[];
   sessionDirectory: string;
   selectedFontMetadata: FontMetadata | null;
+  isSearchResult?: boolean;
   onFontClick: (fontMetadata: FontMetadata) => void;
 }
 
@@ -24,9 +26,18 @@ export function FontMetadataList(props: FontMetadataListProps) {
             onClick={() => props.onFontClick(fontMetadata)}
           >
             <div class='flex items-center gap-2 px-4'>
-              <div
-                class={`mb-0.5 h-3 w-1 rounded-full ${getClusterBgColor(fontMetadata.computed?.k ?? -1)}`}
-              />
+              <Show
+                when={props.isSearchResult}
+                fallback={
+                  <div
+                    class={`mb-0.5 h-3 w-1 rounded-full ${getClusterBgColor(fontMetadata.computed?.k ?? -1)}`}
+                  />
+                }
+              >
+                <SearchIcon
+                  class={`mb-0.5 size-4 ${getClusterTextColor(fontMetadata.computed?.k ?? -1)}`}
+                />
+              </Show>
               <div class='text-sm font-light text-foreground'>
                 {
                   ['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'][
