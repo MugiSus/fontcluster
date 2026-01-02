@@ -43,7 +43,7 @@ export function FontLists(props: FontListsProps) {
           getFn: (item) => Object.values(item.localized_names),
         },
       ],
-      threshold: 0.6,
+      threshold: 0.5,
     });
   });
 
