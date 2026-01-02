@@ -70,14 +70,13 @@ export function FontLists(props: FontListsProps) {
       .search(query)
       .map((result) => result.item);
 
-    if (result[0]) {
-      props.onFontClick(result[0]);
-      document
-        .querySelectorAll(`[data-font-search-result-top]`)
-        .forEach((element) => {
-          element.scrollIntoView({ behavior: 'instant', block: 'center' });
-        });
-    }
+    if (result[0]) props.onFontClick(result[0]);
+
+    document
+      .querySelectorAll(`[data-font-search-result-top]`)
+      .forEach((element) => {
+        element.scrollIntoView({ behavior: 'instant', block: 'center' });
+      });
 
     return result;
   });
