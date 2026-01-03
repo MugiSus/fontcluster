@@ -9,7 +9,6 @@ interface FontVectorPointProps {
   visualizerWeights: () => FontWeight[];
   viewBox: () => { x: number; y: number; width: number; height: number };
   zoomFactor: () => number;
-  isFiltered?: boolean;
   isDisabled?: boolean;
 }
 
@@ -126,14 +125,16 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           </text>
         </Show>
 
-        <circle
-          cx={0}
-          cy={0}
-          r={48}
-          fill='transparent'
-          data-font-config={JSON.stringify(fontMetadata())}
-          data-font-select-area
-        />
+        <Show when={!props.isDisabled}>
+          <circle
+            cx={0}
+            cy={0}
+            r={48}
+            fill='transparent'
+            data-font-config={JSON.stringify(fontMetadata())}
+            data-font-select-area
+          />
+        </Show>
       </g>
     </Show>
   );

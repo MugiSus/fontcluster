@@ -26,10 +26,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
-  const vectors = createMemo(() =>
-    Array.from(props.fontMetadataMap?.values() || []),
-  );
-
   const zoomFactor = createMemo(() => viewBox().width / 700);
 
   const [isDragging, setIsDragging] = createSignal(false);
@@ -180,7 +176,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   };
 
   const bounds = createMemo(() => {
-    const vecs = vectors();
+    const vecs = Array.from(props.fontMetadataMap?.values() || []);
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
     const [minX, maxX] = vecs.reduce(
@@ -267,6 +263,33 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             class='pointer-events-none stroke-muted'
           />
         </g>
+
+        <g opacity={0.25}>
+          <For
+            each={Array.from(
+              new Set(props.fontMetadataMap?.keys() || []).difference(
+                props.filteredFontMetadataKeys,
+              ),
+            )}
+          >
+            {(fontMetadataKey: string) => (
+              <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
+                {(metadata) => (
+                  <FontVectorPoint
+                    fontMetadata={metadata()}
+                    selectedFontMetadata={props.selectedFontMetadata}
+                    bounds={bounds()}
+                    visualizerWeights={visualizerWeights}
+                    viewBox={viewBox}
+                    zoomFactor={zoomFactor}
+                    isDisabled
+                  />
+                )}
+              </Show>
+            )}
+          </For>
+        </g>
+
         <For each={Array.from(props.filteredFontMetadataKeys)}>
           {(fontMetadataKey: string) => (
             <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
@@ -278,7 +301,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                   visualizerWeights={visualizerWeights}
                   viewBox={viewBox}
                   zoomFactor={zoomFactor}
-                  isFiltered
                 />
               )}
             </Show>
