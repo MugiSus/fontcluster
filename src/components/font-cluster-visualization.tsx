@@ -1,16 +1,9 @@
-import {
-  For,
-  createSignal,
-  createEffect,
-  createMemo,
-  Show,
-  onMount,
-  onCleanup,
-} from 'solid-js';
+import { For, createSignal, createEffect, createMemo, Show } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
 import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
+import { useElementSize } from '../hooks/use-element-size';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -34,26 +27,11 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
-  const [svgMinSide, setSvgMinSide] = createSignal(
-    Math.min(INITIAL_VIEWBOX.width, INITIAL_VIEWBOX.height),
-  );
-  let svgRef: SVGSVGElement | undefined;
+  const { ref: svgRef, size: svgSize } = useElementSize<SVGSVGElement>();
 
-  const zoomFactor = createMemo(() => viewBox().width / svgMinSide());
-
-  onMount(() => {
-    if (!svgRef) return;
-
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setSvgMinSide(
-          Math.min(entry.contentRect.width, entry.contentRect.height),
-        );
-      }
-    });
-
-    observer.observe(svgRef);
-    onCleanup(() => observer.disconnect());
+  const zoomFactor = createMemo(() => {
+    const minSide = Math.min(svgSize().width, svgSize().height);
+    return viewBox().width / (minSide || INITIAL_VIEWBOX.width);
   });
 
   const [isDragging, setIsDragging] = createSignal(false);
