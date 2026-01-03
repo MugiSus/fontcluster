@@ -24,8 +24,8 @@ const CLUSTER_BG_COLORS = [
   'bg-fuchsia-500 dark:bg-fuchsia-400',
 ];
 
-export function getClusterTextColor(clusterId: number): string {
-  if (clusterId === -1) {
+export function getClusterTextColor(clusterId: number | undefined): string {
+  if (clusterId === undefined || clusterId === -1) {
     return 'text-gray-400';
   }
 
@@ -35,8 +35,10 @@ export function getClusterTextColor(clusterId: number): string {
   );
 }
 
-export function getClusterBgColor(clusterId: number): string {
-  if (clusterId === -1) {
+export function getClusterBackgroundColor(
+  clusterId: number | undefined,
+): string {
+  if (clusterId === undefined || clusterId === -1) {
     return 'bg-gray-400';
   }
 

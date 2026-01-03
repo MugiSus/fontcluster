@@ -49,7 +49,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
     >
       <g
         transform={`translate(${position().x}, ${position().y}) scale(${props.zoomFactor()})`}
-        class={getClusterTextColor(fontMetadata().computed?.k ?? -1)}
+        class={getClusterTextColor(fontMetadata().computed?.k)}
       >
         <rect
           x={-1.5}

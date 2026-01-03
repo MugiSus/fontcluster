@@ -1,7 +1,10 @@
 import { For, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { FontMetadata } from '../types/font';
-import { getClusterBgColor, getClusterTextColor } from '../lib/cluster-colors';
+import {
+  getClusterBackgroundColor,
+  getClusterTextColor,
+} from '../lib/cluster-colors';
 import { SearchIcon } from 'lucide-solid';
 
 interface FontMetadataListProps {
@@ -30,12 +33,12 @@ export function FontMetadataList(props: FontMetadataListProps) {
                 when={props.isSearchResult}
                 fallback={
                   <div
-                    class={`mb-0.5 h-3.5 w-1 rounded-full ${getClusterBgColor(fontMetadata.computed?.k ?? -1)}`}
+                    class={`mb-0.5 h-3.5 w-1 rounded-full ${getClusterBackgroundColor(fontMetadata.computed?.k)}`}
                   />
                 }
               >
                 <SearchIcon
-                  class={`mb-0.5 size-4 ${getClusterTextColor(fontMetadata.computed?.k ?? -1)}`}
+                  class={`mb-0.5 size-4 ${getClusterTextColor(fontMetadata.computed?.k)}`}
                 />
               </Show>
               <div class='text-sm font-light text-foreground'>
