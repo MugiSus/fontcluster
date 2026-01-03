@@ -14,12 +14,18 @@ import {
 } from './components/ui/resizable';
 import { CircleSlash2Icon } from 'lucide-solid';
 import { Toaster } from './components/ui/toast';
+import { useFilteredFontMetadataArray } from './hooks/use-filtered-font-metadata-array';
 
 function App() {
   const appSignal = useAppSignal();
 
   useEventListeners({
     setCurrentSessionId: appSignal.setCurrentSessionId,
+  });
+
+  const { filteredFonts, onQueryChange } = useFilteredFontMetadataArray({
+    fontMetadataRecord: appSignal.fontMetadatas,
+    onFontSelect: appSignal.setSelectedFontMetadata,
   });
 
   return (
@@ -92,10 +98,11 @@ function App() {
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
           <FontLists
-            fontMetadatas={appSignal.fontMetadatas()}
+            fontMetadatas={filteredFonts()}
             sessionDirectory={appSignal.sessionDirectory() || ''}
             selectedFontMetadata={appSignal.selectedFontMetadata()}
-            onFontClick={appSignal.setSelectedFontMetadata}
+            onFontSelect={appSignal.setSelectedFontMetadata}
+            onQueryChange={onQueryChange}
           />
         </ResizablePanel>
       </Resizable>

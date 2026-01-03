@@ -9,7 +9,7 @@ interface FontMetadataListProps {
   sessionDirectory: string;
   selectedFontMetadata: FontMetadata | null;
   isSearchResult?: boolean;
-  onFontClick: (fontMetadata: FontMetadata) => void;
+  onFontSelect: (fontMetadata: FontMetadata) => void;
 }
 
 export function FontMetadataList(props: FontMetadataListProps) {
@@ -23,7 +23,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
                 fontMetadata.safe_name && 'bg-border'
             }`}
             data-font-name={fontMetadata.safe_name}
-            onClick={() => props.onFontClick(fontMetadata)}
+            onClick={() => props.onFontSelect(fontMetadata)}
           >
             <div class='flex items-center gap-2 px-4'>
               <Show

@@ -1,131 +1,31 @@
+import { Show } from 'solid-js';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { FontMetadataList } from './font-metadata-list';
-import { FontMetadata, FontMetadataRecord } from '../types/font';
+import { FontMetadata } from '../types/font';
 import {
   ArrowDownAZ,
   ArrowDownNarrowWide,
-  ArrowUpIcon,
+  FunnelIcon,
   SearchIcon,
   SearchSlashIcon,
 } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
-import { createMemo, createSignal, Show } from 'solid-js';
-import Fuse from 'fuse.js';
-import { Button } from './ui/button';
 
 interface FontListsProps {
-  fontMetadatas: FontMetadataRecord | undefined;
+  fontMetadatas: FontMetadata[];
   sessionDirectory: string;
   selectedFontMetadata: FontMetadata | null;
-  onFontClick: (fontMetadata: FontMetadata) => void;
+  onFontSelect: (fontMetadata: FontMetadata) => void;
+  onQueryChange: (query: string) => void;
 }
 
 export function FontLists(props: FontListsProps) {
-  const [searchQuery, setSearchQuery] = createSignal('');
-
-  let timeout: ReturnType<typeof setTimeout>;
-  const localSearchQuery = (value: string) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      setSearchQuery(value);
-    }, 300);
-  };
-
-  const fuse = createMemo(() => {
-    const fonts = Object.values(props.fontMetadatas || {});
-    return new Fuse(fonts, {
-      keys: [
-        'font_name',
-        'family_name',
-        'family_names',
-        'preferred_family_names',
-        'publishers',
-        'designers',
-        {
-          name: 'family_names_list',
-          getFn: (item) => Object.values(item.family_names),
-        },
-        {
-          name: 'preferred_family_names_list',
-          getFn: (item) => Object.values(item.preferred_family_names),
-        },
-        {
-          name: 'publishers_list',
-          getFn: (item) => Object.values(item.publishers),
-        },
-        {
-          name: 'designers_list',
-          getFn: (item) => Object.values(item.designers),
-        },
-      ],
-      threshold: 0.4,
-    });
-  });
-
-  const filteredFonts = createMemo(() => {
-    const query = searchQuery();
-    if (!query) return Object.values(props.fontMetadatas || {});
-
-    const result = fuse()
-      .search(query)
-      .map((result) => result.item);
-
-    if (result[0]) props.onFontClick(result[0]);
-
-    document
-      .querySelectorAll(`[data-font-search-result-top]`)
-      .forEach((element) => {
-        element.scrollIntoView({ behavior: 'instant', block: 'center' });
-      });
-
-    return result;
-  });
-
-  const FontSearchResultList = () => {
-    return (
-      <Show when={searchQuery()}>
-        <Show
-          when={filteredFonts().length > 0}
-          fallback={
-            <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-sm text-muted-foreground'>
-              <SearchSlashIcon />
-              No results found
-            </div>
-          }
-        >
-          <div data-font-search-result-top />
-          <FontMetadataList
-            fontMetadatas={filteredFonts()}
-            sessionDirectory={props.sessionDirectory}
-            selectedFontMetadata={props.selectedFontMetadata}
-            isSearchResult
-            onFontClick={props.onFontClick}
-          />
-          <div class='sticky inset-x-0 inset-y-1 flex items-center justify-center py-1'>
-            <Button
-              size='sm'
-              variant='outline'
-              class='flex h-7 items-center gap-1 rounded-full bg-background px-2 shadow-sm'
-              onClick={() => {
-                document
-                  .querySelectorAll(`[data-font-search-result-top]`)
-                  .forEach((element) => {
-                    element.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'center',
-                    });
-                  });
-              }}
-            >
-              <ArrowUpIcon class='size-4' />
-              <p class='pt-px text-sm font-light'>Search results</p>
-              <ArrowUpIcon class='size-4' />
-            </Button>
-          </div>
-        </Show>
-      </Show>
-    );
-  };
+  const NoResultsFound = () => (
+    <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-sm text-muted-foreground'>
+      <SearchSlashIcon />
+      No results found
+    </div>
+  );
 
   return (
     <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
@@ -136,9 +36,13 @@ export function FontLists(props: FontListsProps) {
             type='text'
             placeholder='Search fonts...'
             class='pl-9'
-            onInput={(e) => localSearchQuery(e.currentTarget.value)}
+            onInput={(e) => props.onQueryChange(e.currentTarget.value)}
             spellcheck='false'
           />
+          <div class='absolute right-3 top-3 flex items-center gap-1 text-xs text-muted-foreground'>
+            <FunnelIcon class='size-3' />
+            {props.fontMetadatas.length}
+          </div>
         </div>
       </TextField>
 
@@ -157,10 +61,12 @@ export function FontLists(props: FontListsProps) {
         value='similarity'
         class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
-        <FontSearchResultList />
-        <FontMetadataList
-          fontMetadatas={Object.values(props.fontMetadatas || {}).sort(
-            (a, b) => {
+        <Show
+          when={props.fontMetadatas.length > 0}
+          fallback={<NoResultsFound />}
+        >
+          <FontMetadataList
+            fontMetadatas={props.fontMetadatas.sort((a, b) => {
               const aK = a.computed?.k ?? -1;
               const bK = b.computed?.k ?? -1;
               return (
@@ -168,28 +74,33 @@ export function FontLists(props: FontListsProps) {
                 a.family_name.localeCompare(b.family_name) ||
                 a.weight - b.weight
               );
-            },
-          )}
-          sessionDirectory={props.sessionDirectory}
-          selectedFontMetadata={props.selectedFontMetadata}
-          onFontClick={props.onFontClick}
-        />
+            })}
+            sessionDirectory={props.sessionDirectory}
+            selectedFontMetadata={props.selectedFontMetadata}
+            onFontSelect={props.onFontSelect}
+          />
+        </Show>
       </TabsContent>
 
       <TabsContent
         value='name'
         class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
-        <FontSearchResultList />
-        <FontMetadataList
-          fontMetadatas={Object.values(props.fontMetadatas || {}).sort(
-            (a, b) =>
-              a.family_name.localeCompare(b.family_name) || a.weight - b.weight,
-          )}
-          sessionDirectory={props.sessionDirectory}
-          selectedFontMetadata={props.selectedFontMetadata}
-          onFontClick={props.onFontClick}
-        />
+        <Show
+          when={props.fontMetadatas.length > 0}
+          fallback={<NoResultsFound />}
+        >
+          <FontMetadataList
+            fontMetadatas={props.fontMetadatas.sort(
+              (a, b) =>
+                a.family_name.localeCompare(b.family_name) ||
+                a.weight - b.weight,
+            )}
+            sessionDirectory={props.sessionDirectory}
+            selectedFontMetadata={props.selectedFontMetadata}
+            onFontSelect={props.onFontSelect}
+          />
+        </Show>
       </TabsContent>
     </Tabs>
   );
