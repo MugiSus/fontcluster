@@ -1,10 +1,6 @@
-import { For, createSignal, createEffect, createMemo } from 'solid-js';
+import { For, createSignal, createEffect, createMemo, Show } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
-import {
-  FontMetadataRecord,
-  FontMetadata,
-  type FontWeight,
-} from '../types/font';
+import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 
@@ -19,8 +15,8 @@ const INITIAL_VIEWBOX = {
 const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
-  fontMetadataRecord: FontMetadataRecord | undefined;
-  filteredFontMetadata: FontMetadata[];
+  fontMetadataMap: Map<string, FontMetadata> | undefined;
+  filteredFontMetadataKeys: Set<string>;
   selectedFontMetadata: FontMetadata | null;
   sessionWeights: FontWeight[];
   onFontSelect: (safeName: FontMetadata) => void;
@@ -31,8 +27,9 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
   const vectors = createMemo(() =>
-    Object.values(props.fontMetadataRecord || {}),
+    Array.from(props.fontMetadataMap?.values() || []),
   );
+
   const zoomFactor = createMemo(() => viewBox().width / 700);
 
   const [isDragging, setIsDragging] = createSignal(false);
@@ -270,17 +267,21 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             class='pointer-events-none stroke-muted'
           />
         </g>
-        <For each={vectors()}>
-          {(fontMetadata: FontMetadata) => (
-            <FontVectorPoint
-              fontMetadata={fontMetadata}
-              selectedFontMetadata={props.selectedFontMetadata}
-              bounds={bounds()}
-              visualizerWeights={visualizerWeights}
-              viewBox={viewBox}
-              zoomFactor={zoomFactor}
-              isFiltered={props.filteredFontMetadata.includes(fontMetadata)}
-            />
+        <For each={Array.from(props.filteredFontMetadataKeys)}>
+          {(fontMetadataKey: string) => (
+            <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
+              {(metadata) => (
+                <FontVectorPoint
+                  fontMetadata={metadata()}
+                  selectedFontMetadata={props.selectedFontMetadata}
+                  bounds={bounds()}
+                  visualizerWeights={visualizerWeights}
+                  viewBox={viewBox}
+                  zoomFactor={zoomFactor}
+                  isFiltered
+                />
+              )}
+            </Show>
           )}
         </For>
       </svg>

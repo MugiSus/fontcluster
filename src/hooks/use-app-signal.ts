@@ -1,7 +1,6 @@
 import { createSignal, createResource, createEffect } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  FontMetadataRecord,
   FontMetadata,
   type FontWeight,
   type SessionConfig,
@@ -51,21 +50,22 @@ export function useAppSignal() {
     },
   );
 
-  const [fontMetadatas, { refetch: refetchFontMetadatas }] = createResource(
+  const [fontMetadataMap, { refetch: refetchFontMetadataMap }] = createResource(
     () => currentSessionId(),
-    async (sessionId): Promise<FontMetadataRecord> => {
-      if (!sessionId) return {};
+    async (sessionId): Promise<Map<string, FontMetadata>> => {
+      if (!sessionId) return new Map();
       try {
         const response = await invoke<string>('get_compressed_vectors', {
           sessionId,
         });
         if (!response) {
-          return {};
+          return new Map();
         }
-        return JSON.parse(response) as FontMetadataRecord;
+        const data = JSON.parse(response) as Record<string, FontMetadata>;
+        return new Map(Object.entries(data));
       } catch (error) {
         console.error('Failed to parse font configs:', error);
-        return {};
+        return new Map();
       }
     },
   );
@@ -100,7 +100,7 @@ export function useAppSignal() {
       });
       console.log('Complete pipeline result:', result);
       await refetchSessionConfig();
-      await refetchFontMetadatas();
+      await refetchFontMetadataMap();
     } catch (error) {
       console.error('Failed to process fonts:', error);
     } finally {
@@ -125,7 +125,7 @@ export function useAppSignal() {
     // Resources
     sessionConfig,
     sessionDirectory,
-    fontMetadatas,
+    fontMetadataMap,
 
     // Actions
     setSelectedWeights,

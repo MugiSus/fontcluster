@@ -14,7 +14,7 @@ import {
 } from './components/ui/resizable';
 import { CircleSlash2Icon } from 'lucide-solid';
 import { Toaster } from './components/ui/toast';
-import { useFilteredFontMetadataArray } from './hooks/use-filtered-font-metadata-array';
+import { useFilteredFontMetadataKeys } from './hooks/use-filtered-font-metadata-keys';
 
 function App() {
   const appSignal = useAppSignal();
@@ -23,9 +23,9 @@ function App() {
     setCurrentSessionId: appSignal.setCurrentSessionId,
   });
 
-  const { filteredFontMetadatas, query, onQueryChange } =
-    useFilteredFontMetadataArray({
-      fontMetadataRecord: appSignal.fontMetadatas,
+  const { filteredFontMetadataKeys, query, onQueryChange } =
+    useFilteredFontMetadataKeys({
+      fontMetadataMap: appSignal.fontMetadataMap,
       onFontSelect: appSignal.setSelectedFontMetadata,
     });
 
@@ -77,8 +77,8 @@ function App() {
             }
           >
             <FontClusterVisualization
-              fontMetadataRecord={appSignal.fontMetadatas()}
-              filteredFontMetadata={filteredFontMetadatas()}
+              fontMetadataMap={appSignal.fontMetadataMap()}
+              filteredFontMetadataKeys={filteredFontMetadataKeys()}
               selectedFontMetadata={appSignal.selectedFontMetadata()}
               sessionWeights={
                 (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
@@ -100,7 +100,8 @@ function App() {
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
           <FontLists
-            fontMetadatas={filteredFontMetadatas()}
+            fontMetadataMap={appSignal.fontMetadataMap()}
+            filteredFontMetadataKeys={filteredFontMetadataKeys()}
             sessionDirectory={appSignal.sessionDirectory() || ''}
             selectedFontMetadata={appSignal.selectedFontMetadata()}
             onFontSelect={appSignal.setSelectedFontMetadata}

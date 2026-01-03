@@ -1,14 +1,14 @@
-import { FontMetadata, FontMetadataRecord } from '@/types/font';
+import { FontMetadata } from '../types/font';
 import Fuse from 'fuse.js';
-import { createMemo, createSignal } from 'solid-js';
+import { createMemo, createSignal, Accessor } from 'solid-js';
 
-interface useFilteredFontMetadataArrayProps {
-  fontMetadataRecord: () => FontMetadataRecord | undefined;
+interface useFilteredFontMetadataKeysProps {
+  fontMetadataMap: Accessor<Map<string, FontMetadata> | undefined>;
   onFontSelect: (fontMetadata: FontMetadata) => void;
 }
 
-export function useFilteredFontMetadataArray(
-  props: useFilteredFontMetadataArrayProps,
+export function useFilteredFontMetadataKeys(
+  props: useFilteredFontMetadataKeysProps,
 ) {
   const [query, setQuery] = createSignal('');
 
@@ -21,7 +21,7 @@ export function useFilteredFontMetadataArray(
   };
 
   const fuse = createMemo(() => {
-    const fonts = Object.values(props.fontMetadataRecord() || {});
+    const fonts = Array.from(props.fontMetadataMap()?.values() || []);
     return new Fuse(fonts, {
       keys: [
         'font_name',
@@ -51,11 +51,12 @@ export function useFilteredFontMetadataArray(
     });
   });
 
-  const filteredFontMetadatas = createMemo(() => {
+  const filteredFontMetadataKeys = createMemo(() => {
     const q = query();
-    console.log('filter', q);
+    const map = props.fontMetadataMap();
+    if (!map) return new Set<string>();
 
-    if (!q) return Object.values(props.fontMetadataRecord() || {});
+    if (!q) return new Set(map.keys());
 
     const result = fuse()
       .search(q)
@@ -63,19 +64,18 @@ export function useFilteredFontMetadataArray(
 
     if (result[0]) props.onFontSelect(result[0]);
 
-    console.log('results', result);
     document
       .querySelectorAll(`[data-font-search-result-top]`)
       .forEach((element) => {
         element.scrollIntoView({ behavior: 'instant', block: 'center' });
       });
 
-    return result;
+    return new Set(result.map((item) => item.safe_name));
   });
 
   return {
     query,
     onQueryChange,
-    filteredFontMetadatas,
+    filteredFontMetadataKeys,
   };
 }

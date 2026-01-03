@@ -1,4 +1,4 @@
-import { Show } from 'solid-js';
+import { createMemo, Show } from 'solid-js';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { FontMetadataList } from './font-metadata-list';
 import { FontMetadata } from '../types/font';
@@ -12,7 +12,8 @@ import {
 import { TextField, TextFieldInput } from './ui/text-field';
 
 interface FontListsProps {
-  fontMetadatas: FontMetadata[];
+  fontMetadataMap: Map<string, FontMetadata> | undefined;
+  filteredFontMetadataKeys: Set<string>;
   sessionDirectory: string;
   selectedFontMetadata: FontMetadata | null;
   onFontSelect: (fontMetadata: FontMetadata) => void;
@@ -21,6 +22,14 @@ interface FontListsProps {
 }
 
 export function FontLists(props: FontListsProps) {
+  const filteredMetadatas = createMemo(() => {
+    const map = props.fontMetadataMap;
+    if (!map) return [];
+    return Array.from(props.filteredFontMetadataKeys)
+      .map((key) => map.get(key))
+      .filter((m): m is FontMetadata => !!m);
+  });
+
   const NoResultsFound = () => (
     <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-sm text-muted-foreground'>
       <SearchSlashIcon />
@@ -43,7 +52,7 @@ export function FontLists(props: FontListsProps) {
           <Show when={props.isFiltered}>
             <div class='absolute right-3 top-3 flex items-center gap-1 text-xs text-muted-foreground'>
               <FunnelIcon class='size-3' />
-              {props.fontMetadatas.length}
+              {filteredMetadatas().length}
             </div>
           </Show>
         </div>
@@ -65,19 +74,21 @@ export function FontLists(props: FontListsProps) {
         class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
         <Show
-          when={props.fontMetadatas.length > 0}
+          when={filteredMetadatas().length > 0}
           fallback={<NoResultsFound />}
         >
           <FontMetadataList
-            fontMetadatas={props.fontMetadatas.sort((a, b) => {
-              const aK = a.computed?.k ?? -1;
-              const bK = b.computed?.k ?? -1;
-              return (
-                (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
-                a.family_name.localeCompare(b.family_name) ||
-                a.weight - b.weight
-              );
-            })}
+            fontMetadatas={filteredMetadatas()
+              .slice()
+              .sort((a, b) => {
+                const aK = a.computed?.k ?? -1;
+                const bK = b.computed?.k ?? -1;
+                return (
+                  (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
+                  a.family_name.localeCompare(b.family_name) ||
+                  a.weight - b.weight
+                );
+              })}
             sessionDirectory={props.sessionDirectory}
             selectedFontMetadata={props.selectedFontMetadata}
             onFontSelect={props.onFontSelect}
@@ -91,15 +102,17 @@ export function FontLists(props: FontListsProps) {
         class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
       >
         <Show
-          when={props.fontMetadatas.length > 0}
+          when={filteredMetadatas().length > 0}
           fallback={<NoResultsFound />}
         >
           <FontMetadataList
-            fontMetadatas={props.fontMetadatas.sort(
-              (a, b) =>
-                a.family_name.localeCompare(b.family_name) ||
-                a.weight - b.weight,
-            )}
+            fontMetadatas={filteredMetadatas()
+              .slice()
+              .sort(
+                (a, b) =>
+                  a.family_name.localeCompare(b.family_name) ||
+                  a.weight - b.weight,
+              )}
             sessionDirectory={props.sessionDirectory}
             selectedFontMetadata={props.selectedFontMetadata}
             onFontSelect={props.onFontSelect}
