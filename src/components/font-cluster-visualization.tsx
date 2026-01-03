@@ -234,7 +234,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           <path
             d='M 295 295 L 305 305 M 305 295 L 295 305'
             fill='none'
-            stroke='1'
+            stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
           <circle
@@ -242,7 +242,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             cy='300'
             r='75'
             fill='none'
-            stroke='1'
+            stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
           <circle
@@ -250,7 +250,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             cy='300'
             r='150'
             fill='none'
-            stroke='1'
+            stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
           <circle
@@ -258,7 +258,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             cy='300'
             r='250'
             fill='none'
-            stroke='1'
+            stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
           <circle
@@ -266,7 +266,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             cy='300'
             r='400'
             fill='none'
-            stroke='1'
+            stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
         </g>
