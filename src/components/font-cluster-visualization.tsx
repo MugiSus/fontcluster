@@ -1,4 +1,12 @@
-import { For, createSignal, createEffect, createMemo, Show } from 'solid-js';
+import {
+  For,
+  createSignal,
+  createEffect,
+  createMemo,
+  Show,
+  onMount,
+  onCleanup,
+} from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
 import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
@@ -26,7 +34,27 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
-  const zoomFactor = createMemo(() => viewBox().width / 700);
+  const [svgMinSide, setSvgMinSide] = createSignal(
+    Math.min(INITIAL_VIEWBOX.width, INITIAL_VIEWBOX.height),
+  );
+  let svgRef: SVGSVGElement | undefined;
+
+  const zoomFactor = createMemo(() => viewBox().width / svgMinSide());
+
+  onMount(() => {
+    if (!svgRef) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setSvgMinSide(
+          Math.min(entry.contentRect.width, entry.contentRect.height),
+        );
+      }
+    });
+
+    observer.observe(svgRef);
+    onCleanup(() => observer.disconnect());
+  });
 
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
@@ -214,6 +242,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
         <li>K: {props.selectedFontMetadata?.computed?.k}</li>
       </ul> */}
       <svg
+        ref={svgRef}
         class='size-full select-none'
         viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
         xmlns='http://www.w3.org/2000/svg'
@@ -264,7 +293,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           />
         </g>
 
-        <g opacity={0.25}>
+        <g opacity={0.2}>
           <For
             each={Array.from(
               new Set(props.fontMetadataMap?.keys() || []).difference(
