@@ -20,6 +20,7 @@ const ZOOM_FACTOR = 1.1;
 
 interface FontClusterVisualizationProps {
   fontMetadataRecord: FontMetadataRecord | undefined;
+  filteredFontMetadata: FontMetadata[];
   selectedFontMetadata: FontMetadata | null;
   sessionWeights: FontWeight[];
   onFontSelect: (safeName: FontMetadata) => void;
@@ -53,18 +54,18 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   const selectSelectedFont = (event: MouseEvent) => {
     const elements = document.elementsFromPoint(event.clientX, event.clientY);
 
-    const fontElements = elements.filter((el) =>
+    const nearFontElements = elements.filter((el) =>
       el.hasAttribute('data-font-select-area'),
     );
 
-    if (fontElements.length === 0) {
+    if (nearFontElements.length === 0) {
       return;
     }
 
     let selectedFontMetadata = '';
     let nearestDistance = Infinity;
 
-    fontElements.forEach((el) => {
+    nearFontElements.forEach((el) => {
       const circle = el as SVGCircleElement;
       const rect = circle.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
@@ -278,6 +279,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
               visualizerWeights={visualizerWeights}
               viewBox={viewBox}
               zoomFactor={zoomFactor}
+              isFiltered={props.filteredFontMetadata.includes(fontMetadata)}
             />
           )}
         </For>

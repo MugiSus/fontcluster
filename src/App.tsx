@@ -23,10 +23,11 @@ function App() {
     setCurrentSessionId: appSignal.setCurrentSessionId,
   });
 
-  const { filteredFonts, onQueryChange } = useFilteredFontMetadataArray({
-    fontMetadataRecord: appSignal.fontMetadatas,
-    onFontSelect: appSignal.setSelectedFontMetadata,
-  });
+  const { filteredFontMetadatas, query, onQueryChange } =
+    useFilteredFontMetadataArray({
+      fontMetadataRecord: appSignal.fontMetadatas,
+      onFontSelect: appSignal.setSelectedFontMetadata,
+    });
 
   return (
     <>
@@ -77,6 +78,7 @@ function App() {
           >
             <FontClusterVisualization
               fontMetadataRecord={appSignal.fontMetadatas()}
+              filteredFontMetadata={filteredFontMetadatas()}
               selectedFontMetadata={appSignal.selectedFontMetadata()}
               sessionWeights={
                 (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
@@ -98,11 +100,12 @@ function App() {
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
           <FontLists
-            fontMetadatas={filteredFonts()}
+            fontMetadatas={filteredFontMetadatas()}
             sessionDirectory={appSignal.sessionDirectory() || ''}
             selectedFontMetadata={appSignal.selectedFontMetadata()}
             onFontSelect={appSignal.setSelectedFontMetadata}
             onQueryChange={onQueryChange}
+            isFiltered={query().length > 0}
           />
         </ResizablePanel>
       </Resizable>

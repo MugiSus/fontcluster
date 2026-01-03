@@ -10,13 +10,13 @@ interface useFilteredFontMetadataArrayProps {
 export function useFilteredFontMetadataArray(
   props: useFilteredFontMetadataArrayProps,
 ) {
-  const [searchQuery, setSearchQuery] = createSignal('');
+  const [query, setQuery] = createSignal('');
 
   let timeout: ReturnType<typeof setTimeout>;
   const onQueryChange = (value: string) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
-      setSearchQuery(value);
+      setQuery(value);
     }, 300);
   };
 
@@ -51,14 +51,14 @@ export function useFilteredFontMetadataArray(
     });
   });
 
-  const filteredFonts = createMemo(() => {
-    const query = searchQuery();
-    console.log('filter', query);
+  const filteredFontMetadatas = createMemo(() => {
+    const q = query();
+    console.log('filter', q);
 
-    if (!query) return Object.values(props.fontMetadataRecord() || {});
+    if (!q) return Object.values(props.fontMetadataRecord() || {});
 
     const result = fuse()
-      .search(query)
+      .search(q)
       .map((result) => result.item);
 
     if (result[0]) props.onFontSelect(result[0]);
@@ -74,7 +74,8 @@ export function useFilteredFontMetadataArray(
   });
 
   return {
+    query,
     onQueryChange,
-    filteredFonts,
+    filteredFontMetadatas,
   };
 }

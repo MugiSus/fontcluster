@@ -30,7 +30,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
                 when={props.isSearchResult}
                 fallback={
                   <div
-                    class={`mb-0.5 h-3 w-1 rounded-full ${getClusterBgColor(fontMetadata.computed?.k ?? -1)}`}
+                    class={`mb-0.5 h-3.5 w-1 rounded-full ${getClusterBgColor(fontMetadata.computed?.k ?? -1)}`}
                   />
                 }
               >

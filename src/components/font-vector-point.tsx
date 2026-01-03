@@ -9,6 +9,7 @@ interface FontVectorPointProps {
   visualizerWeights: () => FontWeight[];
   viewBox: () => { x: number; y: number; width: number; height: number };
   zoomFactor: () => number;
+  isFiltered?: boolean;
 }
 
 export function FontVectorPoint(props: FontVectorPointProps) {
@@ -49,6 +50,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       <g
         transform={`translate(${position().x}, ${position().y}) scale(${props.zoomFactor()})`}
         class={getClusterTextColor(fontMetadata().computed?.k ?? -1)}
+        opacity={props.isFiltered ? 1 : 0.25}
       >
         <rect
           x={-1.5}

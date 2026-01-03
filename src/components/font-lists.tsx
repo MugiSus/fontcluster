@@ -17,6 +17,7 @@ interface FontListsProps {
   selectedFontMetadata: FontMetadata | null;
   onFontSelect: (fontMetadata: FontMetadata) => void;
   onQueryChange: (query: string) => void;
+  isFiltered?: boolean;
 }
 
 export function FontLists(props: FontListsProps) {
@@ -39,10 +40,12 @@ export function FontLists(props: FontListsProps) {
             onInput={(e) => props.onQueryChange(e.currentTarget.value)}
             spellcheck='false'
           />
-          <div class='absolute right-3 top-3 flex items-center gap-1 text-xs text-muted-foreground'>
-            <FunnelIcon class='size-3' />
-            {props.fontMetadatas.length}
-          </div>
+          <Show when={props.isFiltered}>
+            <div class='absolute right-3 top-3 flex items-center gap-1 text-xs text-muted-foreground'>
+              <FunnelIcon class='size-3' />
+              {props.fontMetadatas.length}
+            </div>
+          </Show>
         </div>
       </TextField>
 
@@ -78,6 +81,7 @@ export function FontLists(props: FontListsProps) {
             sessionDirectory={props.sessionDirectory}
             selectedFontMetadata={props.selectedFontMetadata}
             onFontSelect={props.onFontSelect}
+            isSearchResult={props.isFiltered ?? false}
           />
         </Show>
       </TabsContent>
@@ -99,6 +103,7 @@ export function FontLists(props: FontListsProps) {
             sessionDirectory={props.sessionDirectory}
             selectedFontMetadata={props.selectedFontMetadata}
             onFontSelect={props.onFontSelect}
+            isSearchResult={props.isFiltered ?? false}
           />
         </Show>
       </TabsContent>
