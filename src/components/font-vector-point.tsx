@@ -109,7 +109,11 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           />
         </Show>
 
-        <Show when={props.zoomFactor() < 0.25 || isSelected()}>
+        <Show
+          when={
+            !props.isDisabled && (props.zoomFactor() < 0.25 || isSelected())
+          }
+        >
           <text
             x={0}
             y={-12}
