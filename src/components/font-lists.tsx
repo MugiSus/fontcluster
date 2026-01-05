@@ -10,13 +10,15 @@ import {
   SearchSlashIcon,
 } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
-import { state, setState } from '../store';
+import { state } from '../store';
+import { setSelectedFontMetadata } from '../actions';
+import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
 
-interface FontListsProps {
-  onQueryChange: (query: string) => void;
-}
+export function FontLists() {
+  const { onQueryChange } = useFilteredFontMetadataKeys({
+    onFontSelect: (m) => setSelectedFontMetadata(m),
+  });
 
-export function FontLists(props: FontListsProps) {
   const isFiltered = createMemo(() => state.ui.searchQuery.length > 0);
 
   const filteredMetadatas = createMemo(() => {
@@ -43,7 +45,7 @@ export function FontLists(props: FontListsProps) {
             type='text'
             placeholder='Search fonts...'
             class='pl-9'
-            onInput={(e) => props.onQueryChange(e.currentTarget.value)}
+            onInput={(e) => onQueryChange(e.currentTarget.value)}
             spellcheck='false'
           />
           <Show when={isFiltered()}>
@@ -88,7 +90,7 @@ export function FontLists(props: FontListsProps) {
               })}
             sessionDirectory={state.session.directory}
             selectedFontMetadata={state.ui.selectedFont}
-            onFontSelect={(font) => setState('ui', 'selectedFont', font)}
+            onFontSelect={setSelectedFontMetadata}
             isSearchResult={isFiltered()}
           />
         </Show>
@@ -112,7 +114,7 @@ export function FontLists(props: FontListsProps) {
               )}
             sessionDirectory={state.session.directory}
             selectedFontMetadata={state.ui.selectedFont}
-            onFontSelect={(font) => setState('ui', 'selectedFont', font)}
+            onFontSelect={setSelectedFontMetadata}
             isSearchResult={isFiltered()}
           />
         </Show>

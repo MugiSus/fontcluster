@@ -10,8 +10,13 @@ interface useFilteredFontMetadataKeysProps {
 export function useFilteredFontMetadataKeys(
   props: useFilteredFontMetadataKeysProps,
 ) {
+  let debounceTimer: number | undefined;
+
   const onQueryChange = (value: string) => {
-    setState('ui', 'searchQuery', value);
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
+      setState('ui', 'searchQuery', value);
+    }, 250);
   };
 
   const fuse = createMemo(() => {

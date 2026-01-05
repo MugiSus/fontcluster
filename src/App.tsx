@@ -1,11 +1,10 @@
-import { Show } from 'solid-js';
+import { Show, onMount } from 'solid-js';
 import { FontLists } from './components/font-lists';
 import { SessionSelector } from './components/session-selector';
 import { FontClusterVisualization } from './components/font-cluster-visualization';
 import { FontProcessingForm } from './components/font-processing-form';
 import { ClipboardManager } from './components/clipboard-manager';
-import { useAppSignal } from './hooks/use-app-signal';
-import { useEventListeners } from './hooks/use-event-listeners';
+import { initAppEvents } from './actions';
 import { state } from './store';
 import {
   Resizable,
@@ -14,24 +13,17 @@ import {
 } from './components/ui/resizable';
 import { CircleSlash2Icon } from 'lucide-solid';
 import { Toaster } from './components/ui/toast';
-import { useFilteredFontMetadataKeys } from './hooks/use-filtered-font-metadata-keys';
 
 function App() {
-  const appSignal = useAppSignal();
-
-  useEventListeners({
-    setCurrentSessionId: appSignal.setCurrentSessionId,
-  });
-
-  const { onQueryChange } = useFilteredFontMetadataKeys({
-    onFontSelect: appSignal.setSelectedFontMetadata,
+  onMount(() => {
+    initAppEvents();
   });
 
   return (
     <>
       <Toaster />
       <ClipboardManager />
-      <SessionSelector onSessionSelect={appSignal.setCurrentSessionId} />
+      <SessionSelector />
       <Resizable class='min-h-0 overflow-hidden p-3 pt-0'>
         <ResizablePanel
           class='flex min-w-0 flex-col gap-3 overflow-hidden'
@@ -42,11 +34,7 @@ function App() {
           collapseThreshold={0.1}
           maxSize={0.5}
         >
-          <FontProcessingForm
-            onSelectedWeightsChange={appSignal.setSelectedWeights}
-            onSubmit={appSignal.runProcessingJobs}
-            onStop={appSignal.stopJobs}
-          />
+          <FontProcessingForm />
         </ResizablePanel>
 
         <ResizableHandle withHandle class='bg-transparent px-1.5' />
@@ -81,7 +69,7 @@ function App() {
           maxSize={0.5}
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
-          <FontLists onQueryChange={onQueryChange} />
+          <FontLists />
         </ResizablePanel>
       </Resizable>
     </>

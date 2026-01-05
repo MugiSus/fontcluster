@@ -11,15 +11,12 @@ import {
 import { SessionItem } from './session-item';
 import { type SessionConfig } from '../types/font';
 import { state } from '../store';
+import { setCurrentSessionId } from '../actions';
 
 // Constants
 const CONFIRMATION_TIMEOUT = 3000;
 
-interface SessionSelectorProps {
-  onSessionSelect: (sessionId: string) => void;
-}
-
-export function SessionSelector(props: SessionSelectorProps) {
+export function SessionSelector() {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
   const [deletingSession, setDeletingSession] = createSignal<string | null>(
@@ -55,7 +52,7 @@ export function SessionSelector(props: SessionSelectorProps) {
   const selectSession = (sessionId: string) => {
     setIsRestoring(true);
     try {
-      props.onSessionSelect(sessionId);
+      setCurrentSessionId(sessionId);
       setOpen(false);
     } catch (error) {
       console.error('Failed to select session:', error);

@@ -4,7 +4,8 @@ import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
-import { state, setState } from '../store';
+import { state } from '../store';
+import { setSelectedFontMetadata } from '../actions';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -79,7 +80,7 @@ export function FontClusterVisualization() {
       ) as FontMetadata;
 
       if (selectedFontMetadataParse) {
-        setState('ui', 'selectedFont', selectedFontMetadataParse);
+        setSelectedFontMetadata(selectedFontMetadataParse);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,

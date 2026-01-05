@@ -18,20 +18,9 @@ import {
 } from '../types/font';
 import { cn } from '@/lib/utils';
 import { state, setState } from '../store';
+import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 
-interface FontProcessingFormProps {
-  onSelectedWeightsChange: (weights: FontWeight[]) => void;
-  onSubmit: (
-    text: string,
-    weights: FontWeight[],
-    algorithm: AlgorithmConfig,
-    sessionId?: string,
-    overrideStatus?: ProcessStatus,
-  ) => Promise<void>;
-  onStop?: () => Promise<void>;
-}
-
-export function FontProcessingForm(props: FontProcessingFormProps) {
+export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     handleRun();
@@ -86,7 +75,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
     };
 
     try {
-      await props.onSubmit(
+      await runProcessingJobs(
         text || 'Hamburgevons',
         selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
         algorithm,
@@ -131,7 +120,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
         <WeightSelector
           weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
           selectedWeights={state.ui.selectedWeights}
-          onWeightChange={props.onSelectedWeightsChange}
+          onWeightChange={setSelectedWeights}
         />
       </TextField>
       <details
@@ -405,7 +394,7 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
               variant='ghost'
               size='icon'
               class='size-9 shrink-0 rounded-full text-destructive hover:bg-destructive/20 hover:text-destructive'
-              onClick={() => props.onStop?.()}
+              onClick={() => stopJobs()}
               title='Stop Run'
             >
               <PauseIcon class='size-3' />
