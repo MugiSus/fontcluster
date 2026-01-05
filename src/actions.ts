@@ -1,4 +1,4 @@
-import { createResource, untrack } from 'solid-js';
+import { createResource, untrack, createRoot } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { state, setState } from './store';
@@ -12,25 +12,31 @@ import {
 
 // Resources
 
-export const [sessionDirectory] = createResource(
-  () => state.session.id,
-  async (sessionId): Promise<string> => {
-    if (!sessionId) return '';
-    try {
-      const dir = await invoke<string>('get_session_directory', {
-        sessionId,
-      });
-      setState('session', 'directory', dir);
-      return dir;
-    } catch (error) {
-      console.error('Failed to get session directory:', error);
-      return '';
-    }
-  },
-);
+export const {
+  sessionDirectory,
+  sessionConfig,
+  fontMetadataMap,
+  refetchSessionConfig,
+  refetchFontMetadataMap,
+} = createRoot(() => {
+  const [sessionDirectory] = createResource(
+    () => state.session.id,
+    async (sessionId): Promise<string> => {
+      if (!sessionId) return '';
+      try {
+        const dir = await invoke<string>('get_session_directory', {
+          sessionId,
+        });
+        setState('session', 'directory', dir);
+        return dir;
+      } catch (error) {
+        console.error('Failed to get session directory:', error);
+        return '';
+      }
+    },
+  );
 
-export const [sessionConfig, { refetch: refetchSessionConfig }] =
-  createResource(
+  const [sessionConfig, { refetch: refetchSessionConfig }] = createResource(
     () => state.session.id,
     async (sessionId): Promise<SessionConfig | null> => {
       if (!sessionId) return null;
@@ -55,8 +61,7 @@ export const [sessionConfig, { refetch: refetchSessionConfig }] =
     },
   );
 
-export const [fontMetadataMap, { refetch: refetchFontMetadataMap }] =
-  createResource(
+  const [fontMetadataMap, { refetch: refetchFontMetadataMap }] = createResource(
     () => state.session.id,
     async (sessionId): Promise<Map<string, FontMetadata>> => {
       if (!sessionId) return new Map();
@@ -77,6 +82,15 @@ export const [fontMetadataMap, { refetch: refetchFontMetadataMap }] =
       }
     },
   );
+
+  return {
+    sessionDirectory,
+    sessionConfig,
+    fontMetadataMap,
+    refetchSessionConfig,
+    refetchFontMetadataMap,
+  };
+});
 
 // Actions
 
