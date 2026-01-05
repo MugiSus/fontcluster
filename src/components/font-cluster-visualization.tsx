@@ -284,11 +284,27 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                 {(metadata) => (
                   <FontVectorPoint
                     fontMetadata={metadata()}
-                    selectedFontMetadata={props.selectedFontMetadata}
-                    bounds={bounds()}
-                    visualizerWeights={visualizerWeights}
-                    viewBox={viewBox}
-                    zoomFactor={zoomFactor}
+                    x={
+                      (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
+                        (bounds().maxX - bounds().minX)) *
+                      600
+                    }
+                    y={
+                      (((metadata().computed?.vector[1] ?? 0) - bounds().minY) /
+                        (bounds().maxY - bounds().minY)) *
+                      600
+                    }
+                    isSelected={
+                      props.selectedFontMetadata?.font_name ===
+                      metadata().font_name
+                    }
+                    isFamilySelected={
+                      props.selectedFontMetadata?.family_name ===
+                      metadata().family_name
+                    }
+                    visualizerWeights={visualizerWeights()}
+                    viewBox={viewBox()}
+                    zoomFactor={zoomFactor()}
                     isDisabled
                   />
                 )}
@@ -303,11 +319,27 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
               {(metadata) => (
                 <FontVectorPoint
                   fontMetadata={metadata()}
-                  selectedFontMetadata={props.selectedFontMetadata}
-                  bounds={bounds()}
-                  visualizerWeights={visualizerWeights}
-                  viewBox={viewBox}
-                  zoomFactor={zoomFactor}
+                  x={
+                    (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
+                      (bounds().maxX - bounds().minX)) *
+                    600
+                  }
+                  y={
+                    (((metadata().computed?.vector[1] ?? 0) - bounds().minY) /
+                      (bounds().maxY - bounds().minY)) *
+                    600
+                  }
+                  isSelected={
+                    props.selectedFontMetadata?.font_name ===
+                    metadata().font_name
+                  }
+                  isFamilySelected={
+                    props.selectedFontMetadata?.family_name ===
+                    metadata().family_name
+                  }
+                  visualizerWeights={visualizerWeights()}
+                  viewBox={viewBox()}
+                  zoomFactor={zoomFactor()}
                 />
               )}
             </Show>
