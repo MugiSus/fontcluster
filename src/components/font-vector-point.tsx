@@ -6,7 +6,6 @@ interface FontVectorPointProps {
   fontName: string;
   weight: number;
   clusterId: number | undefined;
-  safeName: string;
   x: number;
   y: number;
   isSelected: boolean;
@@ -108,22 +107,6 @@ export function FontVectorPoint(props: FontVectorPointProps) {
               ? props.fontName
               : props.fontName.substring(0, 16) + '…'}
           </text>
-        </Show>
-
-        <Show when={!props.isDisabled}>
-          <circle
-            cx={0}
-            cy={0}
-            r={48}
-            fill='transparent'
-            data-font-config={JSON.stringify({
-              font_name: props.fontName,
-              weight: props.weight,
-              safe_name: props.safeName,
-              computed: { k: props.clusterId },
-            })}
-            data-font-select-area
-          />
         </Show>
       </g>
     </Show>

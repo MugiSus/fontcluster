@@ -50,55 +50,111 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     }
   });
 
-  const selectSelectedFont = (event: MouseEvent) => {
-    const elements = document.elementsFromPoint(event.clientX, event.clientY);
+  const getSvgCoordinates = (
+    clientX: number,
+    clientY: number,
+    svgElement: SVGElement,
+  ) => {
+    const rect = svgElement.getBoundingClientRect();
 
-    const nearFontElements = elements.filter((el) =>
-      el.hasAttribute('data-font-select-area'),
+    // Mouse position relative to SVG element
+    const mouseX =
+      clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
+    const mouseY =
+      clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
+
+    const currentViewBox = viewBox();
+    const { x, y, width, height } = currentViewBox;
+
+    // Convert mouse position to SVG coordinates
+    const svgMouseX = x + (mouseX / Math.min(rect.width, rect.height)) * width;
+    const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
+
+    return { x: svgMouseX, y: svgMouseY };
+  };
+  const bounds = createMemo(() => {
+    const vecs = Array.from(props.fontMetadataMap?.values() || []);
+    if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
+    const [minX, maxX] = vecs.reduce(
+      ([min, max], v) => {
+        const x = v.computed?.vector[0] ?? 0;
+        return [Math.min(min, x), Math.max(max, x)];
+      },
+      [Infinity, -Infinity],
+    );
+    const [minY, maxY] = vecs.reduce(
+      ([min, max], v) => {
+        const y = v.computed?.vector[1] ?? 0;
+        return [Math.min(min, y), Math.max(max, y)];
+      },
+      [Infinity, -Infinity],
     );
 
-    if (nearFontElements.length === 0) {
-      return;
+    return { minX, maxX, minY, maxY };
+  });
+
+  const pointsPositions = createMemo(() => {
+    const map = props.fontMetadataMap;
+    const { minX, maxX, minY, maxY } = bounds();
+    if (!map || maxX === minX) return [];
+
+    return Array.from(props.filteredFontMetadataKeys)
+      .map((key) => {
+        const metadata = map.get(key);
+        if (!metadata) return null;
+        return {
+          metadata,
+          x:
+            (((metadata.computed?.vector[0] ?? 0) - minX) / (maxX - minX)) *
+            600,
+          y:
+            (((metadata.computed?.vector[1] ?? 0) - minY) / (maxY - minY)) *
+            600,
+        };
+      })
+      .filter(
+        (p): p is { metadata: FontMetadata; x: number; y: number } => !!p,
+      );
+  });
+
+  const selectSelectedFont = (event: MouseEvent) => {
+    const { x: svgMouseX, y: svgMouseY } = getSvgCoordinates(
+      event.clientX,
+      event.clientY,
+      event.currentTarget as SVGElement,
+    );
+
+    let nearestFont: FontMetadata | null = null;
+    let nearestDistanceSq = Infinity;
+    const hitRadiusSq = 48 * 48; // Matches r=48 in previous circle
+
+    for (const point of pointsPositions()) {
+      const dxSq = (svgMouseX - point.x) ** 2;
+      if (dxSq > hitRadiusSq) continue;
+      const dySq = (svgMouseY - point.y) ** 2;
+      const distSq = dxSq + dySq;
+
+      if (distSq < hitRadiusSq && distSq < nearestDistanceSq) {
+        nearestDistanceSq = distSq;
+        nearestFont = point.metadata;
+      }
     }
 
-    let selectedFontMetadata = '';
-    let nearestDistance = Infinity;
-
-    nearFontElements.forEach((el) => {
-      const circle = el as SVGCircleElement;
-      const rect = circle.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const distance = Math.sqrt(
-        (event.clientX - centerX) ** 2 + (event.clientY - centerY) ** 2,
-      );
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        selectedFontMetadata = circle.getAttribute('data-font-config') || '';
-      }
-    });
-
-    if (selectedFontMetadata) {
-      const selectedFontMetadataParse = JSON.parse(
-        selectedFontMetadata,
-      ) as FontMetadata;
-
-      if (selectedFontMetadataParse) {
-        props.onFontSelect(selectedFontMetadataParse);
-        if (event.shiftKey || event.ctrlKey || event.metaKey) {
-          emit('copy_family_name', {
-            toast: false,
-            isFontName: event.ctrlKey || event.metaKey,
-          });
-        }
-        const elements = document.querySelectorAll(
-          `[data-font-name="${selectedFontMetadataParse.safe_name}"] > img`,
-        );
-        elements.forEach((element) => {
-          element.scrollIntoView({ behavior: 'instant', block: 'center' });
+    if (nearestFont) {
+      props.onFontSelect(nearestFont);
+      if (event.shiftKey || event.ctrlKey || event.metaKey) {
+        emit('copy_family_name', {
+          toast: false,
+          isFontName: event.ctrlKey || event.metaKey,
         });
       }
+      const elements = document.querySelectorAll(
+        `[data-font-name="${nearestFont.safe_name}"] > img`,
+      );
+      elements.forEach((element) => {
+        element.scrollIntoView({ behavior: 'instant', block: 'center' });
+      });
     }
   };
 
@@ -180,28 +236,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
   };
-
-  const bounds = createMemo(() => {
-    const vecs = Array.from(props.fontMetadataMap?.values() || []);
-    if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-
-    const [minX, maxX] = vecs.reduce(
-      ([min, max], v) => {
-        const x = v.computed?.vector[0] ?? 0;
-        return [Math.min(min, x), Math.max(max, x)];
-      },
-      [Infinity, -Infinity],
-    );
-    const [minY, maxY] = vecs.reduce(
-      ([min, max], v) => {
-        const y = v.computed?.vector[1] ?? 0;
-        return [Math.min(min, y), Math.max(max, y)];
-      },
-      [Infinity, -Infinity],
-    );
-
-    return { minX, maxX, minY, maxY };
-  });
 
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-muted/20'>
@@ -286,7 +320,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                     fontName={metadata().font_name}
                     weight={metadata().weight}
                     clusterId={metadata().computed?.k}
-                    safeName={metadata().safe_name}
                     x={
                       (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
                         (bounds().maxX - bounds().minX)) *
@@ -324,7 +357,6 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                   fontName={metadata().font_name}
                   weight={metadata().weight}
                   clusterId={metadata().computed?.k}
-                  safeName={metadata().safe_name}
                   x={
                     (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
                       (bounds().maxX - bounds().minX)) *
