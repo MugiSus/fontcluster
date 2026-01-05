@@ -10,11 +10,11 @@ pub mod progress_events {
         let _ = app.emit("progress_denominator_set", den);
     }
 
-    pub fn increment_progress(app: &AppHandle) {
-        let _ = app.emit("progress_numerator_increment", ());
+    pub fn increase_numerator(app: &AppHandle, delta: i32) {
+        let _ = app.emit("progress_numerator_increase", delta);
     }
 
-    pub fn decrement_progress_denominator(app: &AppHandle) {
-        let _ = app.emit("progress_denominator_decrement", ());
+    pub fn decrease_denominator(app: &AppHandle, delta: i32) {
+        let _ = app.emit("progress_denominator_decrease", delta);
     }
 }

@@ -61,16 +61,16 @@ export function FontProcessingForm(props: FontProcessingFormProps) {
       setProgressLabelDenominator(event.payload);
     });
 
-    listen('progress_numerator_increment', () => {
-      setProgressLabelNumerator((prev: number) => prev + 1);
+    listen('progress_numerator_increase', (event: { payload: number }) => {
+      setProgressLabelNumerator((prev: number) => prev + event.payload);
     });
 
     listen('progress_denominator_set', (event: { payload: number }) => {
       setProgressLabelDenominator(event.payload);
     });
 
-    listen('progress_denominator_decrement', () => {
-      setProgressLabelDenominator((prev: number) => prev - 1);
+    listen('progress_denominator_decrease', (event: { payload: number }) => {
+      setProgressLabelDenominator((prev: number) => prev - event.payload);
     });
 
     listen('font_generation_complete', () => {

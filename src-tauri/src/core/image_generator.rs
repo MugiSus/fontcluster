@@ -72,7 +72,7 @@ impl ImageGenerator {
                     let family_handle = match source.select_family_by_name(&family_name) {
                         Ok(h) => h,
                         Err(_) => {
-                            progress_events::decrement_progress_denominator(&app_handle);
+                            progress_events::decrease_denominator(&app_handle, 1);
                             return;
                         }
                     };
@@ -95,9 +95,7 @@ impl ImageGenerator {
                     }
 
                     if available_fonts.is_empty() {
-                        for _ in 0..target_weights.len() {
-                            progress_events::decrement_progress_denominator(&app_handle);
-                        }
+                        progress_events::decrease_denominator(&app_handle, target_weights.len() as i32);
                         return;
                     }
 
@@ -114,7 +112,7 @@ impl ImageGenerator {
 
                         // Only render if it's reasonably close (same as previous logic)
                         if (best_meta.actual_weight - target_weight).abs() > 50 {
-                            progress_events::decrement_progress_denominator(&app_handle);
+                            progress_events::decrease_denominator(&app_handle, 1);
                             continue;
                         }
 
@@ -139,8 +137,8 @@ impl ImageGenerator {
                         let res = renderer.render_and_save(best_font, &family_name, target_weight, meta_to_use);
                         
                         match res {
-                            Ok(_) => progress_events::increment_progress(&app_handle),
-                            _ => progress_events::decrement_progress_denominator(&app_handle),
+                            Ok(_) => progress_events::increase_numerator(&app_handle, 1),
+                            _ => progress_events::decrease_denominator(&app_handle, 1),
                         }
                     }
                 }

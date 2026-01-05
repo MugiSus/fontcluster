@@ -71,15 +71,15 @@ impl Vectorizer {
                     let res = tokio::task::spawn_blocking(move || Self::process_image(path, h_config, i_config)).await;
                     match res {
                         Ok(Ok(_)) => {
-                            progress_events::increment_progress(&app_handle);
+                            progress_events::increase_numerator(&app_handle, 1);
                         }
                         Ok(Err(e)) => {
                             println!("❌ Vectorization failed for {:?}: {}", path_log, e);
-                            progress_events::decrement_progress_denominator(&app_handle);
+                            progress_events::decrease_denominator(&app_handle, 1);
                         }
                         Err(e) => {
                             println!("❌ Task join error: {}", e);
-                            progress_events::decrement_progress_denominator(&app_handle);
+                            progress_events::decrease_denominator(&app_handle, 1);
                         }
                     }
                 }
