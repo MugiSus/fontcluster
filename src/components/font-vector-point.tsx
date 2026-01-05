@@ -12,22 +12,13 @@ interface FontVectorPointProps {
   isSelected: boolean;
   isFamilySelected: boolean;
   visualizerWeights: FontWeight[];
-  viewBox: { x: number; y: number; width: number; height: number };
   zoomFactor: number;
   isDisabled?: boolean;
 }
 
 export function FontVectorPoint(props: FontVectorPointProps) {
   return (
-    <Show
-      when={
-        props.visualizerWeights.includes(props.weight as FontWeight) &&
-        props.x > props.viewBox.x - 50 &&
-        props.x < props.viewBox.x + props.viewBox.width + 50 &&
-        props.y > props.viewBox.y - 50 &&
-        props.y < props.viewBox.y + props.viewBox.height + 50
-      }
-    >
+    <Show when={props.visualizerWeights.includes(props.weight as FontWeight)}>
       <g
         transform={`translate(${props.x}, ${props.y}) scale(${props.zoomFactor})`}
         class={getClusterTextColor(props.clusterId)}

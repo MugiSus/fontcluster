@@ -293,7 +293,6 @@ export function FontClusterVisualization() {
                       metadata().family_name
                     }
                     visualizerWeights={visualizerWeights()}
-                    viewBox={viewBox()}
                     zoomFactor={zoomFactor()}
                     isDisabled
                   />
@@ -330,7 +329,6 @@ export function FontClusterVisualization() {
                     metadata().family_name
                   }
                   visualizerWeights={visualizerWeights()}
-                  viewBox={viewBox()}
                   zoomFactor={zoomFactor()}
                 />
               )}
