@@ -6,7 +6,7 @@ import { FontProcessingForm } from './components/font-processing-form';
 import { ClipboardManager } from './components/clipboard-manager';
 import { useAppSignal } from './hooks/use-app-signal';
 import { useEventListeners } from './hooks/use-event-listeners';
-import { type FontWeight } from './types/font';
+import { state } from './store';
 import {
   Resizable,
   ResizableHandle,
@@ -23,20 +23,15 @@ function App() {
     setCurrentSessionId: appSignal.setCurrentSessionId,
   });
 
-  const { filteredFontMetadataKeys, query, onQueryChange } =
-    useFilteredFontMetadataKeys({
-      fontMetadataMap: appSignal.fontMetadataMap,
-      onFontSelect: appSignal.setSelectedFontMetadata,
-    });
+  const { onQueryChange } = useFilteredFontMetadataKeys({
+    onFontSelect: appSignal.setSelectedFontMetadata,
+  });
 
   return (
     <>
       <Toaster />
-      <ClipboardManager selectedFont={appSignal.selectedFontMetadata()} />
-      <SessionSelector
-        currentSessionId={appSignal.currentSessionId() || ''}
-        onSessionSelect={appSignal.setCurrentSessionId}
-      />
+      <ClipboardManager />
+      <SessionSelector onSessionSelect={appSignal.setCurrentSessionId} />
       <Resizable class='min-h-0 overflow-hidden p-3 pt-0'>
         <ResizablePanel
           class='flex min-w-0 flex-col gap-3 overflow-hidden'
@@ -48,11 +43,6 @@ function App() {
           maxSize={0.5}
         >
           <FontProcessingForm
-            sampleText={appSignal.sessionConfig()?.preview_text || ''}
-            selectedWeights={appSignal.selectedWeights()}
-            algorithm={appSignal.sessionConfig()?.algorithm}
-            initialStatus={appSignal.sessionConfig()?.process_status}
-            sessionId={appSignal.currentSessionId()}
             onSelectedWeightsChange={appSignal.setSelectedWeights}
             onSubmit={appSignal.runProcessingJobs}
             onStop={appSignal.stopJobs}
@@ -67,7 +57,7 @@ function App() {
           initialSize={0.5}
         >
           <Show
-            when={appSignal.sessionConfig()?.process_status === 'clustered'}
+            when={state.session.status === 'clustered'}
             fallback={
               <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />
@@ -76,15 +66,7 @@ function App() {
               </div>
             }
           >
-            <FontClusterVisualization
-              fontMetadataMap={appSignal.fontMetadataMap()}
-              filteredFontMetadataKeys={filteredFontMetadataKeys()}
-              selectedFontMetadata={appSignal.selectedFontMetadata()}
-              sessionWeights={
-                (appSignal.sessionConfig()?.weights as FontWeight[]) || [400]
-              }
-              onFontSelect={appSignal.setSelectedFontMetadata}
-            />
+            <FontClusterVisualization />
           </Show>
         </ResizablePanel>
 
@@ -99,15 +81,7 @@ function App() {
           maxSize={0.5}
           class='flex min-h-0 min-w-0 flex-col overflow-hidden'
         >
-          <FontLists
-            fontMetadataMap={appSignal.fontMetadataMap()}
-            filteredFontMetadataKeys={filteredFontMetadataKeys()}
-            sessionDirectory={appSignal.sessionDirectory() || ''}
-            selectedFontMetadata={appSignal.selectedFontMetadata()}
-            onFontSelect={appSignal.setSelectedFontMetadata}
-            onQueryChange={onQueryChange}
-            isFiltered={query().length > 0}
-          />
+          <FontLists onQueryChange={onQueryChange} />
         </ResizablePanel>
       </Resizable>
     </>

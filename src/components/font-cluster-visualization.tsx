@@ -4,6 +4,7 @@ import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
+import { state, setState } from '../store';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
@@ -15,15 +16,7 @@ const INITIAL_VIEWBOX = {
 
 const ZOOM_FACTOR = 1.1;
 
-interface FontClusterVisualizationProps {
-  fontMetadataMap: Map<string, FontMetadata> | undefined;
-  filteredFontMetadataKeys: Set<string>;
-  selectedFontMetadata: FontMetadata | null;
-  sessionWeights: FontWeight[];
-  onFontSelect: (safeName: FontMetadata) => void;
-}
-
-export function FontClusterVisualization(props: FontClusterVisualizationProps) {
+export function FontClusterVisualization() {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
@@ -44,7 +37,8 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
 
   // Sync visualizer weights with session weights when they change
   createEffect(() => {
-    const sessionWeights = props.sessionWeights;
+    const sessionWeights =
+      (state.session.config?.weights as FontWeight[]) || [];
     if (sessionWeights && sessionWeights.length > 0) {
       setVisualizerWeights(sessionWeights);
     }
@@ -85,7 +79,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
       ) as FontMetadata;
 
       if (selectedFontMetadataParse) {
-        props.onFontSelect(selectedFontMetadataParse);
+        setState('ui', 'selectedFont', selectedFontMetadataParse);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,
@@ -182,7 +176,7 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
   };
 
   const bounds = createMemo(() => {
-    const vecs = Array.from(props.fontMetadataMap?.values() || []);
+    const vecs = Array.from(state.fonts.map.values());
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
     const [minX, maxX] = vecs.reduce(
@@ -207,18 +201,12 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
     <div class='relative flex size-full items-center justify-center rounded-md border bg-muted/20'>
       <div class='absolute bottom-0 right-0 z-10 m-4 flex items-center justify-between'>
         <WeightSelector
-          weights={props.sessionWeights}
+          weights={(state.session.config?.weights as FontWeight[]) || []}
           selectedWeights={visualizerWeights()}
           onWeightChange={setVisualizerWeights}
           isVertical
         />
       </div>
-      {/* <ul class='absolute left-3 top-2 flex flex-col text-xxs text-muted-foreground'>
-        <li>{props.selectedFontMetadata?.font_name}</li>
-        <li>{props.selectedFontMetadata?.weight}</li>
-        <li>{props.selectedFontMetadata?.computed?.vector.join(', ')}</li>
-        <li>K: {props.selectedFontMetadata?.computed?.k}</li>
-      </ul> */}
       <svg
         ref={svgRef}
         class='size-full select-none'
@@ -274,13 +262,13 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
         <g opacity={0.2}>
           <For
             each={Array.from(
-              new Set(props.fontMetadataMap?.keys() || []).difference(
-                props.filteredFontMetadataKeys,
+              new Set(state.fonts.map.keys()).difference(
+                state.fonts.filteredKeys,
               ),
             )}
           >
             {(fontMetadataKey: string) => (
-              <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
+              <Show when={state.fonts.map.get(fontMetadataKey)}>
                 {(metadata) => (
                   <FontVectorPoint
                     fontName={metadata().font_name}
@@ -298,11 +286,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                       600
                     }
                     isSelected={
-                      props.selectedFontMetadata?.font_name ===
-                      metadata().font_name
+                      state.ui.selectedFont?.font_name === metadata().font_name
                     }
                     isFamilySelected={
-                      props.selectedFontMetadata?.family_name ===
+                      state.ui.selectedFont?.family_name ===
                       metadata().family_name
                     }
                     visualizerWeights={visualizerWeights()}
@@ -316,9 +303,9 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
           </For>
         </g>
 
-        <For each={Array.from(props.filteredFontMetadataKeys)}>
+        <For each={Array.from(state.fonts.filteredKeys)}>
           {(fontMetadataKey: string) => (
-            <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
+            <Show when={state.fonts.map.get(fontMetadataKey)}>
               {(metadata) => (
                 <FontVectorPoint
                   fontName={metadata().font_name}
@@ -336,11 +323,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
                     600
                   }
                   isSelected={
-                    props.selectedFontMetadata?.font_name ===
-                    metadata().font_name
+                    state.ui.selectedFont?.font_name === metadata().font_name
                   }
                   isFamilySelected={
-                    props.selectedFontMetadata?.family_name ===
+                    state.ui.selectedFont?.family_name ===
                     metadata().family_name
                   }
                   visualizerWeights={visualizerWeights()}

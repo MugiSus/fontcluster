@@ -10,12 +10,12 @@ import {
 } from './ui/dialog';
 import { SessionItem } from './session-item';
 import { type SessionConfig } from '../types/font';
+import { state } from '../store';
 
 // Constants
 const CONFIRMATION_TIMEOUT = 3000;
 
 interface SessionSelectorProps {
-  currentSessionId: string;
   onSessionSelect: (sessionId: string) => void;
 }
 
@@ -115,9 +115,7 @@ export function SessionSelector(props: SessionSelectorProps) {
                 <SessionItem
                   session={session}
                   clusterCount={session.clusters_amount}
-                  isCurrentSession={
-                    session.session_id === props.currentSessionId
-                  }
+                  isCurrentSession={session.session_id === state.session.id}
                   isConfirmingDelete={
                     confirmDeleteSession() === session.session_id
                   }

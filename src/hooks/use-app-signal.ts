@@ -1,5 +1,6 @@
-import { createSignal, createResource, createEffect } from 'solid-js';
+import { createResource } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
+import { state, setState } from '../store';
 import {
   FontMetadata,
   type FontWeight,
@@ -9,21 +10,17 @@ import {
 } from '../types/font';
 
 export function useAppSignal() {
-  // Signals
-  const [selectedWeights, setSelectedWeights] = createSignal<FontWeight[]>([
-    400,
-  ]);
-  const [selectedFontMetadata, setSelectedFontMetadata] =
-    createSignal<FontMetadata | null>(null);
-  const [currentSessionId, setCurrentSessionId] = createSignal<string>('');
-
   // Resources
   const [sessionDirectory] = createResource(
-    () => currentSessionId(),
+    () => state.session.id,
     async (sessionId): Promise<string> => {
       if (!sessionId) return '';
       try {
-        return await invoke<string>('get_session_directory', { sessionId });
+        const dir = await invoke<string>('get_session_directory', {
+          sessionId,
+        });
+        setState('session', 'directory', dir);
+        return dir;
       } catch (error) {
         console.error('Failed to get session directory:', error);
         return '';
@@ -32,7 +29,7 @@ export function useAppSignal() {
   );
 
   const [sessionConfig, { refetch: refetchSessionConfig }] = createResource(
-    () => currentSessionId(),
+    () => state.session.id,
     async (sessionId): Promise<SessionConfig | null> => {
       if (!sessionId) return null;
       try {
@@ -42,7 +39,13 @@ export function useAppSignal() {
         if (!response) {
           return null;
         }
-        return JSON.parse(response) as SessionConfig;
+        const config = JSON.parse(response) as SessionConfig;
+        setState('session', 'config', config);
+        setState('session', 'status', config.process_status);
+        if (config.weights) {
+          setState('ui', 'selectedWeights', config.weights as FontWeight[]);
+        }
+        return config;
       } catch (error) {
         console.error('Failed to get session info:', error);
         return null;
@@ -51,7 +54,7 @@ export function useAppSignal() {
   );
 
   const [fontMetadataMap, { refetch: refetchFontMetadataMap }] = createResource(
-    () => currentSessionId(),
+    () => state.session.id,
     async (sessionId): Promise<Map<string, FontMetadata>> => {
       if (!sessionId) return new Map();
       try {
@@ -62,24 +65,15 @@ export function useAppSignal() {
           return new Map();
         }
         const data = JSON.parse(response) as Record<string, FontMetadata>;
-        return new Map(Object.entries(data));
+        const map = new Map(Object.entries(data));
+        setState('fonts', 'map', map);
+        return map;
       } catch (error) {
         console.error('Failed to parse font configs:', error);
         return new Map();
       }
     },
   );
-
-  // Auto-sync weights when sessionConfig changes
-  createEffect(() => {
-    const config = sessionConfig();
-    if (config) {
-      if (config.weights) {
-        const weights = config.weights as FontWeight[];
-        setSelectedWeights(weights);
-      }
-    }
-  });
 
   // Processing actions
   const runProcessingJobs = async (
@@ -103,8 +97,6 @@ export function useAppSignal() {
       await refetchFontMetadataMap();
     } catch (error) {
       console.error('Failed to process fonts:', error);
-    } finally {
-      // isProcessing is now handled by the caller (form)
     }
   };
 
@@ -117,21 +109,18 @@ export function useAppSignal() {
   };
 
   return {
-    // Signals
-    selectedWeights,
-    selectedFontMetadata,
-    currentSessionId,
+    // Actions (now updating global store)
+    setSelectedWeights: (weights: FontWeight[]) =>
+      setState('ui', 'selectedWeights', weights),
+    setSelectedFontMetadata: (font: FontMetadata | null) =>
+      setState('ui', 'selectedFont', font),
+    setCurrentSessionId: (id: string) => setState('session', 'id', id),
+    runProcessingJobs,
+    stopJobs,
 
-    // Resources
+    // Expose resources if needed (though store is preferred source)
     sessionConfig,
     sessionDirectory,
     fontMetadataMap,
-
-    // Actions
-    setSelectedWeights,
-    setSelectedFontMetadata,
-    setCurrentSessionId,
-    runProcessingJobs,
-    stopJobs,
   };
 }

@@ -10,22 +10,19 @@ import {
   SearchSlashIcon,
 } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
+import { state, setState } from '../store';
 
 interface FontListsProps {
-  fontMetadataMap: Map<string, FontMetadata> | undefined;
-  filteredFontMetadataKeys: Set<string>;
-  sessionDirectory: string;
-  selectedFontMetadata: FontMetadata | null;
-  onFontSelect: (fontMetadata: FontMetadata) => void;
   onQueryChange: (query: string) => void;
-  isFiltered?: boolean;
 }
 
 export function FontLists(props: FontListsProps) {
+  const isFiltered = createMemo(() => state.ui.searchQuery.length > 0);
+
   const filteredMetadatas = createMemo(() => {
-    const map = props.fontMetadataMap;
-    if (!map) return [];
-    return Array.from(props.filteredFontMetadataKeys)
+    const map = state.fonts.map;
+    if (map.size === 0) return [];
+    return Array.from(state.fonts.filteredKeys)
       .map((key) => map.get(key))
       .filter((m): m is FontMetadata => !!m);
   });
@@ -49,7 +46,7 @@ export function FontLists(props: FontListsProps) {
             onInput={(e) => props.onQueryChange(e.currentTarget.value)}
             spellcheck='false'
           />
-          <Show when={props.isFiltered}>
+          <Show when={isFiltered()}>
             <div class='absolute right-3 top-3 flex items-center gap-1 text-xs text-muted-foreground'>
               <FunnelIcon class='size-3' />
               {filteredMetadatas().length}
@@ -89,10 +86,10 @@ export function FontLists(props: FontListsProps) {
                   a.weight - b.weight
                 );
               })}
-            sessionDirectory={props.sessionDirectory}
-            selectedFontMetadata={props.selectedFontMetadata}
-            onFontSelect={props.onFontSelect}
-            isSearchResult={props.isFiltered ?? false}
+            sessionDirectory={state.session.directory}
+            selectedFontMetadata={state.ui.selectedFont}
+            onFontSelect={(font) => setState('ui', 'selectedFont', font)}
+            isSearchResult={isFiltered()}
           />
         </Show>
       </TabsContent>
@@ -113,10 +110,10 @@ export function FontLists(props: FontListsProps) {
                   a.family_name.localeCompare(b.family_name) ||
                   a.weight - b.weight,
               )}
-            sessionDirectory={props.sessionDirectory}
-            selectedFontMetadata={props.selectedFontMetadata}
-            onFontSelect={props.onFontSelect}
-            isSearchResult={props.isFiltered ?? false}
+            sessionDirectory={state.session.directory}
+            selectedFontMetadata={state.ui.selectedFont}
+            onFontSelect={(font) => setState('ui', 'selectedFont', font)}
+            isSearchResult={isFiltered()}
           />
         </Show>
       </TabsContent>

@@ -1,27 +1,21 @@
 import { FontMetadata } from '../types/font';
 import Fuse from 'fuse.js';
-import { createMemo, createSignal, Accessor } from 'solid-js';
+import { createMemo } from 'solid-js';
+import { state, setState } from '../store';
 
 interface useFilteredFontMetadataKeysProps {
-  fontMetadataMap: Accessor<Map<string, FontMetadata> | undefined>;
   onFontSelect: (fontMetadata: FontMetadata) => void;
 }
 
 export function useFilteredFontMetadataKeys(
   props: useFilteredFontMetadataKeysProps,
 ) {
-  const [query, setQuery] = createSignal('');
-
-  let timeout: ReturnType<typeof setTimeout>;
   const onQueryChange = (value: string) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      setQuery(value);
-    }, 300);
+    setState('ui', 'searchQuery', value);
   };
 
   const fuse = createMemo(() => {
-    const fonts = Array.from(props.fontMetadataMap()?.values() || []);
+    const fonts = Array.from(state.fonts.map.values());
     return new Fuse(fonts, {
       keys: [
         'font_name',
@@ -52,11 +46,15 @@ export function useFilteredFontMetadataKeys(
   });
 
   const filteredFontMetadataKeys = createMemo(() => {
-    const q = query();
-    const map = props.fontMetadataMap();
-    if (!map) return new Set<string>();
+    const q = state.ui.searchQuery;
+    const map = state.fonts.map;
+    if (map.size === 0) return new Set<string>();
 
-    if (!q) return new Set(map.keys());
+    if (!q) {
+      const allKeys = new Set(map.keys());
+      setState('fonts', 'filteredKeys', allKeys);
+      return allKeys;
+    }
 
     const result = fuse()
       .search(q)
@@ -70,11 +68,12 @@ export function useFilteredFontMetadataKeys(
         element.scrollIntoView({ behavior: 'instant', block: 'center' });
       });
 
-    return new Set(result.map((item) => item.safe_name));
+    const filteredKeys = new Set(result.map((item) => item.safe_name));
+    setState('fonts', 'filteredKeys', filteredKeys);
+    return filteredKeys;
   });
 
   return {
-    query,
     onQueryChange,
     filteredFontMetadataKeys,
   };
