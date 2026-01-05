@@ -2,13 +2,13 @@ import { onCleanup, untrack, Show } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { showToast } from './ui/toast';
 import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
-import { state } from '../store';
+import { appState } from '../store';
 
 export function ClipboardManager() {
   const promise = listen<{ toast?: boolean; isFontName?: boolean }>(
     'copy_family_name',
     (event) => {
-      const nearest = untrack(() => state.ui.selectedFont);
+      const nearest = untrack(() => appState.ui.selectedFont);
       if (nearest) {
         navigator.clipboard
           .writeText(

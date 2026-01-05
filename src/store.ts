@@ -54,4 +54,4 @@ const initialState: AppState = {
   },
 };
 
-export const [state, setState] = createStore<AppState>(initialState);
+export const [appState, setAppState] = createStore<AppState>(initialState);

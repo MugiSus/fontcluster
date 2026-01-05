@@ -5,7 +5,7 @@ import { FontClusterVisualization } from './components/font-cluster-visualizatio
 import { FontProcessingForm } from './components/font-processing-form';
 import { ClipboardManager } from './components/clipboard-manager';
 import { initAppEvents } from './actions';
-import { state } from './store';
+import { appState } from './store';
 import {
   Resizable,
   ResizableHandle,
@@ -45,7 +45,7 @@ function App() {
           initialSize={0.5}
         >
           <Show
-            when={state.session.status === 'clustered'}
+            when={appState.session.status === 'clustered'}
             fallback={
               <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />

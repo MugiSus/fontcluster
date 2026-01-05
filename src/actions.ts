@@ -1,7 +1,7 @@
 import { createResource, untrack, createRoot } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { state, setState } from './store';
+import { appState, setAppState } from './store';
 import {
   FontMetadata,
   type FontWeight,
@@ -20,14 +20,14 @@ export const {
   refetchFontMetadataMap,
 } = createRoot(() => {
   const [sessionDirectory] = createResource(
-    () => state.session.id,
+    () => appState.session.id,
     async (sessionId): Promise<string> => {
       if (!sessionId) return '';
       try {
         const dir = await invoke<string>('get_session_directory', {
           sessionId,
         });
-        setState('session', 'directory', dir);
+        setAppState('session', 'directory', dir);
         return dir;
       } catch (error) {
         console.error('Failed to get session directory:', error);
@@ -37,7 +37,7 @@ export const {
   );
 
   const [sessionConfig, { refetch: refetchSessionConfig }] = createResource(
-    () => state.session.id,
+    () => appState.session.id,
     async (sessionId): Promise<SessionConfig | null> => {
       if (!sessionId) return null;
       try {
@@ -48,10 +48,10 @@ export const {
           return null;
         }
         const config = JSON.parse(response) as SessionConfig;
-        setState('session', 'config', config);
-        setState('session', 'status', config.process_status);
+        setAppState('session', 'config', config);
+        setAppState('session', 'status', config.process_status);
         if (config.weights) {
-          setState('ui', 'selectedWeights', config.weights as FontWeight[]);
+          setAppState('ui', 'selectedWeights', config.weights as FontWeight[]);
         }
         return config;
       } catch (error) {
@@ -62,7 +62,7 @@ export const {
   );
 
   const [fontMetadataMap, { refetch: refetchFontMetadataMap }] = createResource(
-    () => state.session.id,
+    () => appState.session.id,
     async (sessionId): Promise<Map<string, FontMetadata>> => {
       if (!sessionId) return new Map();
       try {
@@ -74,7 +74,7 @@ export const {
         }
         const data = JSON.parse(response) as Record<string, FontMetadata>;
         const map = new Map(Object.entries(data));
-        setState('fonts', 'map', map);
+        setAppState('fonts', 'map', map);
         return map;
       } catch (error) {
         console.error('Failed to parse font configs:', error);
@@ -95,13 +95,13 @@ export const {
 // Actions
 
 export const setSelectedWeights = (weights: FontWeight[]) =>
-  setState('ui', 'selectedWeights', weights);
+  setAppState('ui', 'selectedWeights', weights);
 
 export const setSelectedFontMetadata = (font: FontMetadata | null) =>
-  setState('ui', 'selectedFont', font);
+  setAppState('ui', 'selectedFont', font);
 
 export const setCurrentSessionId = (id: string) =>
-  setState('session', 'id', id);
+  setAppState('session', 'id', id);
 
 export const runProcessingJobs = async (
   text: string,
@@ -158,40 +158,40 @@ export function initAppEvents() {
 
   // Progress tracking and status update event listeners
   listen('progress_numerator_reset', (event: { payload: number }) => {
-    setState('progress', 'numerator', event.payload);
+    setAppState('progress', 'numerator', event.payload);
   });
 
   listen('progress_denominator_reset', (event: { payload: number }) => {
-    setState('progress', 'denominator', event.payload);
+    setAppState('progress', 'denominator', event.payload);
   });
 
   listen('progress_numerator_increase', (event: { payload: number }) => {
-    setState('progress', 'numerator', (prev) => prev + event.payload);
+    setAppState('progress', 'numerator', (prev) => prev + event.payload);
   });
 
   listen('progress_denominator_set', (event: { payload: number }) => {
-    setState('progress', 'denominator', event.payload);
+    setAppState('progress', 'denominator', event.payload);
   });
 
   listen('progress_denominator_decrease', (event: { payload: number }) => {
-    setState('progress', 'denominator', (prev) => prev - event.payload);
+    setAppState('progress', 'denominator', (prev) => prev - event.payload);
   });
 
   listen('font_generation_complete', () => {
-    setState('session', 'status', 'generated');
+    setAppState('session', 'status', 'generated');
   });
 
   listen('vectorization_complete', () => {
-    setState('session', 'status', 'vectorized');
+    setAppState('session', 'status', 'vectorized');
   });
 
   listen('compression_complete', () => {
-    setState('session', 'status', 'compressed');
+    setAppState('session', 'status', 'compressed');
   });
 
   listen('clustering_complete', (event: { payload: string }) => {
     console.log('Clustering completed for session:', event.payload);
-    setState('session', 'status', 'clustered');
+    setAppState('session', 'status', 'clustered');
     untrack(() => {
       setCurrentSessionId(event.payload);
     });

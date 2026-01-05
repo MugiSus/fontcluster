@@ -10,7 +10,7 @@ import {
 } from './ui/dialog';
 import { SessionItem } from './session-item';
 import { type SessionConfig } from '../types/font';
-import { state } from '../store';
+import { appState } from '../store';
 import { setCurrentSessionId } from '../actions';
 
 // Constants
@@ -112,7 +112,7 @@ export function SessionSelector() {
                 <SessionItem
                   session={session}
                   clusterCount={session.clusters_amount}
-                  isCurrentSession={session.session_id === state.session.id}
+                  isCurrentSession={session.session_id === appState.session.id}
                   isConfirmingDelete={
                     confirmDeleteSession() === session.session_id
                   }

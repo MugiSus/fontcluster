@@ -17,7 +17,7 @@ import {
   type ProcessStatus,
 } from '../types/font';
 import { cn } from '@/lib/utils';
-import { state, setState } from '../store';
+import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 
 export function FontProcessingForm() {
@@ -32,15 +32,16 @@ export function FontProcessingForm() {
 
     // Determine if we should start a fresh session or continue/rerun an existing one
     const isRerun = targetStatus !== undefined;
-    const isFinished = state.session.status === 'clustered';
-    const shouldStartNewSession = !isRerun && (isFinished || !state.session.id);
+    const isFinished = appState.session.status === 'clustered';
+    const shouldStartNewSession =
+      !isRerun && (isFinished || !appState.session.id);
 
-    setState('session', 'isProcessing', true);
+    setAppState('session', 'isProcessing', true);
 
     if (isRerun) {
-      setState('session', 'status', targetStatus);
+      setAppState('session', 'status', targetStatus);
     } else if (shouldStartNewSession) {
-      setState('session', 'status', 'empty');
+      setAppState('session', 'status', 'empty');
     }
 
     const formData = new FormData(form);
@@ -79,11 +80,11 @@ export function FontProcessingForm() {
         text || 'Hamburgevons',
         selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
         algorithm,
-        !shouldStartNewSession ? state.session.id : undefined,
+        !shouldStartNewSession ? appState.session.id : undefined,
         targetStatus ?? undefined,
       );
     } finally {
-      setState('session', 'isProcessing', false);
+      setAppState('session', 'isProcessing', false);
     }
   };
 
@@ -104,7 +105,7 @@ export function FontProcessingForm() {
           type='text'
           name='preview-text'
           id='preview-text'
-          value={state.ui.sampleText}
+          value={appState.ui.sampleText}
           placeholder='Preview Text...'
           spellcheck='false'
           class='pl-9'
@@ -119,7 +120,7 @@ export function FontProcessingForm() {
         </TextFieldLabel>
         <WeightSelector
           weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-          selectedWeights={state.ui.selectedWeights}
+          selectedWeights={appState.ui.selectedWeights}
           onWeightChange={setSelectedWeights}
         />
       </TextField>
@@ -141,7 +142,7 @@ export function FontProcessingForm() {
               <Button
                 variant='ghost'
                 size='icon'
-                disabled={state.session.isProcessing}
+                disabled={appState.session.isProcessing}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('empty')}
               >
@@ -154,7 +155,9 @@ export function FontProcessingForm() {
                 <TextFieldInput
                   type='number'
                   name='image-width'
-                  value={state.session.config?.algorithm?.image?.width ?? 320}
+                  value={
+                    appState.session.config?.algorithm?.image?.width ?? 320
+                  }
                   step='32'
                   min='0'
                   class='h-7 text-xs'
@@ -165,7 +168,9 @@ export function FontProcessingForm() {
                 <TextFieldInput
                   type='number'
                   name='image-height'
-                  value={state.session.config?.algorithm?.image?.height ?? 80}
+                  value={
+                    appState.session.config?.algorithm?.image?.height ?? 80
+                  }
                   step='16'
                   min='0'
                   class='h-7 text-xs'
@@ -177,7 +182,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='image-font-size'
                   value={
-                    state.session.config?.algorithm?.image?.font_size ?? 64
+                    appState.session.config?.algorithm?.image?.font_size ?? 64
                   }
                   step='4'
                   min='0'
@@ -195,7 +200,7 @@ export function FontProcessingForm() {
               <Button
                 variant='ghost'
                 size='icon'
-                disabled={state.session.isProcessing}
+                disabled={appState.session.isProcessing}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('generated')}
               >
@@ -209,7 +214,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='hog-orientations'
                   value={
-                    state.session.config?.algorithm?.hog?.orientations ?? 12
+                    appState.session.config?.algorithm?.hog?.orientations ?? 12
                   }
                   step='1'
                   min='0'
@@ -221,7 +226,9 @@ export function FontProcessingForm() {
                 <TextFieldInput
                   type='number'
                   name='hog-cell-side'
-                  value={state.session.config?.algorithm?.hog?.cell_side ?? 8}
+                  value={
+                    appState.session.config?.algorithm?.hog?.cell_side ?? 8
+                  }
                   step='2'
                   min='0'
                   class='h-7 text-xs'
@@ -238,7 +245,7 @@ export function FontProcessingForm() {
               <Button
                 variant='ghost'
                 size='icon'
-                disabled={state.session.isProcessing}
+                disabled={appState.session.isProcessing}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('vectorized')}
               >
@@ -254,7 +261,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='pacmap-mn-phases'
                   value={
-                    state.session.config?.algorithm?.pacmap?.mn_phases ?? 100
+                    appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100
                   }
                   step='10'
                   min='0'
@@ -269,7 +276,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='pacmap-nn-phases'
                   value={
-                    state.session.config?.algorithm?.pacmap?.nn_phases ?? 300
+                    appState.session.config?.algorithm?.pacmap?.nn_phases ?? 300
                   }
                   step='10'
                   min='0'
@@ -284,7 +291,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='pacmap-fp-phases'
                   value={
-                    state.session.config?.algorithm?.pacmap?.fp_phases ?? 200
+                    appState.session.config?.algorithm?.pacmap?.fp_phases ?? 200
                   }
                   step='10'
                   min='0'
@@ -297,7 +304,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='pacmap-learning-rate'
                   value={
-                    state.session.config?.algorithm?.pacmap?.learning_rate ??
+                    appState.session.config?.algorithm?.pacmap?.learning_rate ??
                     1.0
                   }
                   step='0.1'
@@ -315,7 +322,7 @@ export function FontProcessingForm() {
               <Button
                 variant='ghost'
                 size='icon'
-                disabled={state.session.isProcessing}
+                disabled={appState.session.isProcessing}
                 class='invisible mb-px size-4 text-xs group-hover/section:visible'
                 onClick={() => handleRun('compressed')}
               >
@@ -331,7 +338,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='hdbscan-min-cluster-size'
                   value={
-                    state.session.config?.algorithm?.hdbscan
+                    appState.session.config?.algorithm?.hdbscan
                       ?.min_cluster_size ?? 10
                   }
                   step='1'
@@ -345,7 +352,8 @@ export function FontProcessingForm() {
                   type='number'
                   name='hdbscan-min-samples'
                   value={
-                    state.session.config?.algorithm?.hdbscan?.min_samples ?? 6
+                    appState.session.config?.algorithm?.hdbscan?.min_samples ??
+                    6
                   }
                   step='1'
                   min='0'
@@ -361,34 +369,35 @@ export function FontProcessingForm() {
         <div class='flex items-center gap-1'>
           <Button
             type='submit'
-            disabled={state.session.isProcessing}
+            disabled={appState.session.isProcessing}
             variant='default'
             size='sm'
             class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums'
           >
-            {state.session.isProcessing && state.session.status === 'empty'
+            {appState.session.isProcessing &&
+            appState.session.status === 'empty'
               ? 'Generating...'
-              : state.session.isProcessing &&
-                  state.session.status === 'generated'
+              : appState.session.isProcessing &&
+                  appState.session.status === 'generated'
                 ? 'Vectorizing...'
-                : state.session.isProcessing &&
-                    state.session.status === 'vectorized'
+                : appState.session.isProcessing &&
+                    appState.session.status === 'vectorized'
                   ? 'Compressing...'
-                  : state.session.isProcessing &&
-                      state.session.status === 'compressed'
+                  : appState.session.isProcessing &&
+                      appState.session.status === 'compressed'
                     ? 'Clustering...'
-                    : state.session.status === 'clustered'
+                    : appState.session.status === 'clustered'
                       ? 'Run'
                       : 'Continue'}
             <Show
-              when={state.session.isProcessing}
+              when={appState.session.isProcessing}
               fallback={<ArrowRightIcon class='absolute right-3' />}
             >
               <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
             </Show>
           </Button>
 
-          <Show when={state.session.isProcessing}>
+          <Show when={appState.session.isProcessing}>
             <Button
               type='button'
               variant='ghost'
@@ -407,21 +416,22 @@ export function FontProcessingForm() {
             class='h-1 overflow-hidden rounded-full bg-foreground/25'
             style={{
               '--progress':
-                state.session.isProcessing && state.session.status === 'empty'
-                  ? `${(state.progress.numerator / state.progress.denominator || 0) * 100}%`
+                appState.session.isProcessing &&
+                appState.session.status === 'empty'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
                   : '0%',
             }}
           >
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-foreground',
-                state.session.isProcessing &&
-                  state.session.status === 'empty' &&
+                appState.session.isProcessing &&
+                  appState.session.status === 'empty' &&
                   'w-[var(--progress)] animate-pulse',
-                (state.session.status === 'generated' ||
-                  state.session.status === 'vectorized' ||
-                  state.session.status === 'compressed' ||
-                  state.session.status === 'clustered') &&
+                (appState.session.status === 'generated' ||
+                  appState.session.status === 'vectorized' ||
+                  appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
                   'w-full',
               )}
             />
@@ -430,21 +440,21 @@ export function FontProcessingForm() {
             class='h-1 overflow-hidden rounded-full bg-foreground/25'
             style={{
               '--progress':
-                state.session.isProcessing &&
-                state.session.status === 'generated'
-                  ? `${(state.progress.numerator / state.progress.denominator || 0) * 100}%`
+                appState.session.isProcessing &&
+                appState.session.status === 'generated'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
                   : '0%',
             }}
           >
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-foreground',
-                state.session.isProcessing &&
-                  state.session.status === 'generated' &&
+                appState.session.isProcessing &&
+                  appState.session.status === 'generated' &&
                   'w-[var(--progress)] animate-pulse',
-                (state.session.status === 'vectorized' ||
-                  state.session.status === 'compressed' ||
-                  state.session.status === 'clustered') &&
+                (appState.session.status === 'vectorized' ||
+                  appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
                   'w-full',
               )}
             />
@@ -453,11 +463,11 @@ export function FontProcessingForm() {
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-foreground',
-                (state.session.status === 'compressed' ||
-                  state.session.status === 'clustered') &&
+                (appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
                   'w-full',
-                state.session.isProcessing &&
-                  state.session.status === 'vectorized' &&
+                appState.session.isProcessing &&
+                  appState.session.status === 'vectorized' &&
                   'w-full animate-pulse transition-[width] duration-1000',
               )}
             />
@@ -466,9 +476,9 @@ export function FontProcessingForm() {
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-foreground',
-                state.session.status === 'clustered' && 'w-full',
-                state.session.isProcessing &&
-                  state.session.status === 'compressed' &&
+                appState.session.status === 'clustered' && 'w-full',
+                appState.session.isProcessing &&
+                  appState.session.status === 'compressed' &&
                   'w-full animate-pulse transition-[width] duration-1000',
               )}
             />

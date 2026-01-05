@@ -10,7 +10,7 @@ import {
   SearchSlashIcon,
 } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
-import { state } from '../store';
+import { appState } from '../store';
 import { setSelectedFontMetadata } from '../actions';
 import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
 
@@ -19,12 +19,12 @@ export function FontLists() {
     onFontSelect: (m) => setSelectedFontMetadata(m),
   });
 
-  const isFiltered = createMemo(() => state.ui.searchQuery.length > 0);
+  const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
   const filteredMetadatas = createMemo(() => {
-    const map = state.fonts.map;
+    const map = appState.fonts.map;
     if (map.size === 0) return [];
-    return Array.from(state.fonts.filteredKeys)
+    return Array.from(appState.fonts.filteredKeys)
       .map((key) => map.get(key))
       .filter((m): m is FontMetadata => !!m);
   });
@@ -88,8 +88,8 @@ export function FontLists() {
                   a.weight - b.weight
                 );
               })}
-            sessionDirectory={state.session.directory}
-            selectedFontMetadata={state.ui.selectedFont}
+            sessionDirectory={appState.session.directory}
+            selectedFontMetadata={appState.ui.selectedFont}
             onFontSelect={setSelectedFontMetadata}
             isSearchResult={isFiltered()}
           />
@@ -112,8 +112,8 @@ export function FontLists() {
                   a.family_name.localeCompare(b.family_name) ||
                   a.weight - b.weight,
               )}
-            sessionDirectory={state.session.directory}
-            selectedFontMetadata={state.ui.selectedFont}
+            sessionDirectory={appState.session.directory}
+            selectedFontMetadata={appState.ui.selectedFont}
             onFontSelect={setSelectedFontMetadata}
             isSearchResult={isFiltered()}
           />

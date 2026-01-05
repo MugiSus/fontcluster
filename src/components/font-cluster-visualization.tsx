@@ -4,7 +4,7 @@ import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
-import { state } from '../store';
+import { appState } from '../store';
 import { setSelectedFontMetadata } from '../actions';
 
 // SVG ViewBox configuration
@@ -39,7 +39,7 @@ export function FontClusterVisualization() {
   // Sync visualizer weights with session weights when they change
   createEffect(() => {
     const sessionWeights =
-      (state.session.config?.weights as FontWeight[]) || [];
+      (appState.session.config?.weights as FontWeight[]) || [];
     if (sessionWeights && sessionWeights.length > 0) {
       setVisualizerWeights(sessionWeights);
     }
@@ -177,7 +177,7 @@ export function FontClusterVisualization() {
   };
 
   const bounds = createMemo(() => {
-    const vecs = Array.from(state.fonts.map.values());
+    const vecs = Array.from(appState.fonts.map.values());
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
     const [minX, maxX] = vecs.reduce(
@@ -202,7 +202,7 @@ export function FontClusterVisualization() {
     <div class='relative flex size-full items-center justify-center rounded-md border bg-muted/20'>
       <div class='absolute bottom-0 right-0 z-10 m-4 flex items-center justify-between'>
         <WeightSelector
-          weights={(state.session.config?.weights as FontWeight[]) || []}
+          weights={(appState.session.config?.weights as FontWeight[]) || []}
           selectedWeights={visualizerWeights()}
           onWeightChange={setVisualizerWeights}
           isVertical
@@ -263,13 +263,13 @@ export function FontClusterVisualization() {
         <g opacity={0.2}>
           <For
             each={Array.from(
-              new Set(state.fonts.map.keys()).difference(
-                state.fonts.filteredKeys,
+              new Set(appState.fonts.map.keys()).difference(
+                appState.fonts.filteredKeys,
               ),
             )}
           >
             {(fontMetadataKey: string) => (
-              <Show when={state.fonts.map.get(fontMetadataKey)}>
+              <Show when={appState.fonts.map.get(fontMetadataKey)}>
                 {(metadata) => (
                   <FontVectorPoint
                     fontName={metadata().font_name}
@@ -287,10 +287,11 @@ export function FontClusterVisualization() {
                       600
                     }
                     isSelected={
-                      state.ui.selectedFont?.font_name === metadata().font_name
+                      appState.ui.selectedFont?.font_name ===
+                      metadata().font_name
                     }
                     isFamilySelected={
-                      state.ui.selectedFont?.family_name ===
+                      appState.ui.selectedFont?.family_name ===
                       metadata().family_name
                     }
                     visualizerWeights={visualizerWeights()}
@@ -303,9 +304,9 @@ export function FontClusterVisualization() {
           </For>
         </g>
 
-        <For each={Array.from(state.fonts.filteredKeys)}>
+        <For each={Array.from(appState.fonts.filteredKeys)}>
           {(fontMetadataKey: string) => (
-            <Show when={state.fonts.map.get(fontMetadataKey)}>
+            <Show when={appState.fonts.map.get(fontMetadataKey)}>
               {(metadata) => (
                 <FontVectorPoint
                   fontName={metadata().font_name}
@@ -323,10 +324,10 @@ export function FontClusterVisualization() {
                     600
                   }
                   isSelected={
-                    state.ui.selectedFont?.font_name === metadata().font_name
+                    appState.ui.selectedFont?.font_name === metadata().font_name
                   }
                   isFamilySelected={
-                    state.ui.selectedFont?.family_name ===
+                    appState.ui.selectedFont?.family_name ===
                     metadata().family_name
                   }
                   visualizerWeights={visualizerWeights()}

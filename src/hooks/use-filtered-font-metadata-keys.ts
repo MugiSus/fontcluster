@@ -1,7 +1,7 @@
 import { FontMetadata } from '../types/font';
 import Fuse from 'fuse.js';
 import { createMemo } from 'solid-js';
-import { state, setState } from '../store';
+import { appState, setAppState } from '../store';
 
 interface useFilteredFontMetadataKeysProps {
   onFontSelect: (fontMetadata: FontMetadata) => void;
@@ -15,12 +15,12 @@ export function useFilteredFontMetadataKeys(
   const onQueryChange = (value: string) => {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = window.setTimeout(() => {
-      setState('ui', 'searchQuery', value);
+      setAppState('ui', 'searchQuery', value);
     }, 250);
   };
 
   const fuse = createMemo(() => {
-    const fonts = Array.from(state.fonts.map.values());
+    const fonts = Array.from(appState.fonts.map.values());
     return new Fuse(fonts, {
       keys: [
         'font_name',
@@ -51,13 +51,13 @@ export function useFilteredFontMetadataKeys(
   });
 
   const filteredFontMetadataKeys = createMemo(() => {
-    const q = state.ui.searchQuery;
-    const map = state.fonts.map;
+    const q = appState.ui.searchQuery;
+    const map = appState.fonts.map;
     if (map.size === 0) return new Set<string>();
 
     if (!q) {
       const allKeys = new Set(map.keys());
-      setState('fonts', 'filteredKeys', allKeys);
+      setAppState('fonts', 'filteredKeys', allKeys);
       return allKeys;
     }
 
@@ -74,7 +74,7 @@ export function useFilteredFontMetadataKeys(
       });
 
     const filteredKeys = new Set(result.map((item) => item.safe_name));
-    setState('fonts', 'filteredKeys', filteredKeys);
+    setAppState('fonts', 'filteredKeys', filteredKeys);
     return filteredKeys;
   });
 
