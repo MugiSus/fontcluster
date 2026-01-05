@@ -1,9 +1,12 @@
-import { Show, createMemo } from 'solid-js';
-import { FontMetadata, type FontWeight } from '../types/font';
+import { Show } from 'solid-js';
+import { type FontWeight } from '../types/font';
 import { getClusterTextColor } from '../lib/cluster-colors';
 
 interface FontVectorPointProps {
-  fontMetadata: FontMetadata;
+  fontName: string;
+  weight: number;
+  clusterId: number | undefined;
+  safeName: string;
   x: number;
   y: number;
   isSelected: boolean;
@@ -15,12 +18,10 @@ interface FontVectorPointProps {
 }
 
 export function FontVectorPoint(props: FontVectorPointProps) {
-  const fontMetadata = createMemo(() => props.fontMetadata);
-
   return (
     <Show
       when={
-        props.visualizerWeights.includes(fontMetadata().weight as FontWeight) &&
+        props.visualizerWeights.includes(props.weight as FontWeight) &&
         props.x > props.viewBox.x - 50 &&
         props.x < props.viewBox.x + props.viewBox.width + 50 &&
         props.y > props.viewBox.y - 50 &&
@@ -29,7 +30,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
     >
       <g
         transform={`translate(${props.x}, ${props.y}) scale(${props.zoomFactor})`}
-        class={getClusterTextColor(fontMetadata().computed?.k)}
+        class={getClusterTextColor(props.clusterId)}
       >
         <rect
           x={-1.5}
@@ -103,9 +104,9 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             }`}
             text-anchor='middle'
           >
-            {props.isSelected || fontMetadata().font_name.length <= 16
-              ? fontMetadata().font_name
-              : fontMetadata().font_name.substring(0, 16) + '…'}
+            {props.isSelected || props.fontName.length <= 16
+              ? props.fontName
+              : props.fontName.substring(0, 16) + '…'}
           </text>
         </Show>
 
@@ -115,7 +116,12 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             cy={0}
             r={48}
             fill='transparent'
-            data-font-config={JSON.stringify(fontMetadata())}
+            data-font-config={JSON.stringify({
+              font_name: props.fontName,
+              weight: props.weight,
+              safe_name: props.safeName,
+              computed: { k: props.clusterId },
+            })}
             data-font-select-area
           />
         </Show>

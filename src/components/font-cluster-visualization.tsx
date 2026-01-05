@@ -283,7 +283,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
               <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
                 {(metadata) => (
                   <FontVectorPoint
-                    fontMetadata={metadata()}
+                    fontName={metadata().font_name}
+                    weight={metadata().weight}
+                    clusterId={metadata().computed?.k}
+                    safeName={metadata().safe_name}
                     x={
                       (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
                         (bounds().maxX - bounds().minX)) *
@@ -318,7 +321,10 @@ export function FontClusterVisualization(props: FontClusterVisualizationProps) {
             <Show when={props.fontMetadataMap?.get(fontMetadataKey)}>
               {(metadata) => (
                 <FontVectorPoint
-                  fontMetadata={metadata()}
+                  fontName={metadata().font_name}
+                  weight={metadata().weight}
+                  clusterId={metadata().computed?.k}
+                  safeName={metadata().safe_name}
                   x={
                     (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
                       (bounds().maxX - bounds().minX)) *
