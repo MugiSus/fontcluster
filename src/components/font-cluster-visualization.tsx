@@ -1,4 +1,4 @@
-import { For, createSignal, createEffect, createMemo, Show } from 'solid-js';
+import { For, createSignal, createEffect, createMemo } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
 import { FontMetadata, type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
@@ -198,6 +198,63 @@ export function FontClusterVisualization() {
     return { minX, maxX, minY, maxY };
   });
 
+  const allPoints = createMemo(() => {
+    const vecs = Array.from(appState.fonts.map.values());
+    const { minX, maxX, minY, maxY } = bounds();
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+
+    return vecs.map((metadata) => {
+      const vx = metadata.computed?.vector[0] ?? 0;
+      const vy = metadata.computed?.vector[1] ?? 0;
+      const x = ((vx - minX) / rangeX) * 600;
+      const y = ((vy - minY) / rangeY) * 600;
+      return {
+        key: metadata.safe_name,
+        metadata,
+        x,
+        y,
+      };
+    });
+  });
+
+  const visiblePoints = createMemo(() => {
+    const vb = viewBox();
+    // Padding to prevent flickering at the edges
+    const padding = 50 * zoomFactor();
+    const minVisibleX = vb.x - padding;
+    const maxVisibleX = vb.x + vb.width + padding;
+    const minVisibleY = vb.y - padding;
+    const maxVisibleY = vb.y + vb.height + padding;
+
+    const filteredKeys = appState.fonts.filteredKeys;
+    const selectedFontName = appState.ui.selectedFont?.font_name;
+
+    const visibleItems = [];
+    const hiddenFilteredItems = [];
+
+    for (const point of allPoints()) {
+      const isVisible =
+        point.x >= minVisibleX &&
+        point.x <= maxVisibleX &&
+        point.y >= minVisibleY &&
+        point.y <= maxVisibleY;
+
+      // Always render selected font
+      const isSelected = point.metadata.font_name === selectedFontName;
+
+      if (isVisible || isSelected) {
+        if (filteredKeys.has(point.key)) {
+          visibleItems.push(point);
+        } else {
+          hiddenFilteredItems.push(point);
+        }
+      }
+    }
+
+    return { visibleItems, hiddenFilteredItems };
+  });
+
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-muted/20'>
       <div class='absolute bottom-0 right-0 z-10 m-4 flex items-center justify-between'>
@@ -262,82 +319,50 @@ export function FontClusterVisualization() {
         </g>
 
         <g opacity={0.2}>
-          <For
-            each={
-              Array.from(
-                new Set(appState.fonts.map.keys()).difference(
-                  appState.fonts.filteredKeys,
-                ),
-              ) as string[]
-            }
-          >
-            {(fontMetadataKey) => (
-              <Show when={appState.fonts.map.get(fontMetadataKey)}>
-                {(metadata) => (
-                  <FontVectorPoint
-                    fontName={metadata().font_name}
-                    weight={metadata().weight}
-                    clusterId={metadata().computed?.k}
-                    safeName={metadata().safe_name}
-                    x={
-                      (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
-                        (bounds().maxX - bounds().minX)) *
-                      600
-                    }
-                    y={
-                      (((metadata().computed?.vector[1] ?? 0) - bounds().minY) /
-                        (bounds().maxY - bounds().minY)) *
-                      600
-                    }
-                    isSelected={
-                      appState.ui.selectedFont?.font_name ===
-                      metadata().font_name
-                    }
-                    isFamilySelected={
-                      appState.ui.selectedFont?.family_name ===
-                      metadata().family_name
-                    }
-                    visualizerWeights={visualizerWeights()}
-                    zoomFactor={zoomFactor()}
-                    isDisabled
-                  />
-                )}
-              </Show>
+          <For each={visiblePoints().hiddenFilteredItems}>
+            {(point) => (
+              <FontVectorPoint
+                fontName={point.metadata.font_name}
+                weight={point.metadata.weight}
+                clusterId={point.metadata.computed?.k}
+                safeName={point.metadata.safe_name}
+                x={point.x}
+                y={point.y}
+                isSelected={
+                  appState.ui.selectedFont?.font_name ===
+                  point.metadata.font_name
+                }
+                isFamilySelected={
+                  appState.ui.selectedFont?.family_name ===
+                  point.metadata.family_name
+                }
+                visualizerWeights={visualizerWeights()}
+                zoomFactor={zoomFactor()}
+                isDisabled
+              />
             )}
           </For>
         </g>
 
-        <For each={Array.from(appState.fonts.filteredKeys) as string[]}>
-          {(fontMetadataKey) => (
-            <Show when={appState.fonts.map.get(fontMetadataKey)}>
-              {(metadata) => (
-                <FontVectorPoint
-                  fontName={metadata().font_name}
-                  weight={metadata().weight}
-                  clusterId={metadata().computed?.k}
-                  safeName={metadata().safe_name}
-                  x={
-                    (((metadata().computed?.vector[0] ?? 0) - bounds().minX) /
-                      (bounds().maxX - bounds().minX)) *
-                    600
-                  }
-                  y={
-                    (((metadata().computed?.vector[1] ?? 0) - bounds().minY) /
-                      (bounds().maxY - bounds().minY)) *
-                    600
-                  }
-                  isSelected={
-                    appState.ui.selectedFont?.font_name === metadata().font_name
-                  }
-                  isFamilySelected={
-                    appState.ui.selectedFont?.family_name ===
-                    metadata().family_name
-                  }
-                  visualizerWeights={visualizerWeights()}
-                  zoomFactor={zoomFactor()}
-                />
-              )}
-            </Show>
+        <For each={visiblePoints().visibleItems}>
+          {(point) => (
+            <FontVectorPoint
+              fontName={point.metadata.font_name}
+              weight={point.metadata.weight}
+              clusterId={point.metadata.computed?.k}
+              safeName={point.metadata.safe_name}
+              x={point.x}
+              y={point.y}
+              isSelected={
+                appState.ui.selectedFont?.font_name === point.metadata.font_name
+              }
+              isFamilySelected={
+                appState.ui.selectedFont?.family_name ===
+                point.metadata.family_name
+              }
+              visualizerWeights={visualizerWeights()}
+              zoomFactor={zoomFactor()}
+            />
           )}
         </For>
       </svg>
