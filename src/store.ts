@@ -1,4 +1,5 @@
 import { createStore } from 'solid-js/store';
+import Fuse from 'fuse.js';
 import {
   FontMetadata,
   SessionConfig,
@@ -20,7 +21,7 @@ export interface AppState {
   };
   fonts: {
     map: Map<string, FontMetadata>;
-    filteredKeys: Set<string>;
+    readonly filteredKeys: Set<string>;
   };
   ui: {
     selectedFont: FontMetadata | null;
@@ -30,7 +31,36 @@ export interface AppState {
   };
 }
 
-const initialState: AppState = {
+const FUSE_OPTIONS = {
+  keys: [
+    'font_name',
+    'family_name',
+    'family_names',
+    'preferred_family_names',
+    'publishers',
+    'designers',
+    {
+      name: 'family_names_list',
+      getFn: (item: FontMetadata) => Object.values(item.family_names),
+    },
+    {
+      name: 'preferred_family_names_list',
+      getFn: (item: FontMetadata) => Object.values(item.preferred_family_names),
+    },
+    {
+      name: 'publishers_list',
+      getFn: (item: FontMetadata) => Object.values(item.publishers),
+    },
+    {
+      name: 'designers_list',
+      getFn: (item: FontMetadata) => Object.values(item.designers),
+    },
+  ],
+  threshold: 0.4,
+};
+
+// Define the store with explicit type to avoid circular inference errors
+export const [appState, setAppState] = createStore<AppState>({
   session: {
     id: '',
     config: null,
@@ -43,8 +73,21 @@ const initialState: AppState = {
     denominator: 0,
   },
   fonts: {
-    map: new Map(),
-    filteredKeys: new Set(),
+    map: new Map<string, FontMetadata>(),
+    get filteredKeys(): Set<string> {
+      const q = appState.ui.searchQuery;
+      const fontsMap = this.map;
+      if (fontsMap.size === 0) return new Set<string>();
+
+      if (!q) {
+        return new Set<string>(fontsMap.keys());
+      }
+
+      const fonts = Array.from(fontsMap.values());
+      const fuse = new Fuse(fonts, FUSE_OPTIONS);
+      const result = fuse.search(q).map((r) => r.item.safe_name);
+      return new Set<string>(result);
+    },
   },
   ui: {
     selectedFont: null,
@@ -52,6 +95,4 @@ const initialState: AppState = {
     searchQuery: '',
     sampleText: 'Hamburgevons',
   },
-};
-
-export const [appState, setAppState] = createStore<AppState>(initialState);
+});

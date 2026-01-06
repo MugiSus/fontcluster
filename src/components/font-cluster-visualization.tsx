@@ -180,14 +180,14 @@ export function FontClusterVisualization() {
     const vecs = Array.from(appState.fonts.map.values());
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
-    const [minX, maxX] = vecs.reduce(
+    const [minX, maxX] = vecs.reduce<[number, number]>(
       ([min, max], v) => {
         const x = v.computed?.vector[0] ?? 0;
         return [Math.min(min, x), Math.max(max, x)];
       },
       [Infinity, -Infinity],
     );
-    const [minY, maxY] = vecs.reduce(
+    const [minY, maxY] = vecs.reduce<[number, number]>(
       ([min, max], v) => {
         const y = v.computed?.vector[1] ?? 0;
         return [Math.min(min, y), Math.max(max, y)];
@@ -263,13 +263,15 @@ export function FontClusterVisualization() {
 
         <g opacity={0.2}>
           <For
-            each={Array.from(
-              new Set(appState.fonts.map.keys()).difference(
-                appState.fonts.filteredKeys,
-              ),
-            )}
+            each={
+              Array.from(
+                new Set(appState.fonts.map.keys()).difference(
+                  appState.fonts.filteredKeys,
+                ),
+              ) as string[]
+            }
           >
-            {(fontMetadataKey: string) => (
+            {(fontMetadataKey) => (
               <Show when={appState.fonts.map.get(fontMetadataKey)}>
                 {(metadata) => (
                   <FontVectorPoint
@@ -305,8 +307,8 @@ export function FontClusterVisualization() {
           </For>
         </g>
 
-        <For each={Array.from(appState.fonts.filteredKeys)}>
-          {(fontMetadataKey: string) => (
+        <For each={Array.from(appState.fonts.filteredKeys) as string[]}>
+          {(fontMetadataKey) => (
             <Show when={appState.fonts.map.get(fontMetadataKey)}>
               {(metadata) => (
                 <FontVectorPoint
