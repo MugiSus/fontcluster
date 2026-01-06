@@ -7,12 +7,15 @@ import { useElementSize } from '../hooks/use-element-size';
 import { appState } from '../store';
 import { setSelectedFontMetadata } from '../actions';
 
+const GRAPH_PADDING = 100;
+const GRAPH_SIZE = 1000;
+
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
-  x: -100,
-  y: -100,
-  width: 1200,
-  height: 1200,
+  x: -GRAPH_PADDING,
+  y: -GRAPH_PADDING,
+  width: GRAPH_SIZE + GRAPH_PADDING * 2,
+  height: GRAPH_SIZE + GRAPH_PADDING * 2,
 };
 
 const ZOOM_FACTOR_RATIO = 1.1;
@@ -208,8 +211,8 @@ export function FontClusterVisualization() {
     return vecs.map((metadata) => {
       const vx = metadata.computed?.vector[0] ?? 0;
       const vy = metadata.computed?.vector[1] ?? 0;
-      const x = ((vx - minX) / rangeX) * 1000;
-      const y = ((vy - minY) / rangeY) * 1000;
+      const x = ((vx - minX) / rangeX) * GRAPH_SIZE;
+      const y = ((vy - minY) / rangeY) * GRAPH_SIZE;
       return {
         key: metadata.safe_name,
         metadata,
