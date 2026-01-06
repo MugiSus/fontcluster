@@ -15,7 +15,7 @@ const INITIAL_VIEWBOX = {
   height: 700,
 };
 
-const ZOOM_FACTOR = 1.1;
+const ZOOM_FACTOR_RATIO = 1.1;
 
 export function FontClusterVisualization() {
   // SVG pan and zoom state
@@ -164,7 +164,8 @@ export function FontClusterVisualization() {
     const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
 
     // Zoom factor
-    const zoomFactor = event.deltaY > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+    const zoomFactor =
+      event.deltaY > 0 ? ZOOM_FACTOR_RATIO : 1 / ZOOM_FACTOR_RATIO;
 
     const newWidth = width * zoomFactor;
     const newHeight = height * zoomFactor;
