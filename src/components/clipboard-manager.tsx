@@ -26,7 +26,6 @@ export function ClipboardManager() {
                       ? nearest.font_name
                       : nearest.family_name}
                     {"'"}
-                    {/* " */}
                   </div>
                 ),
                 description: (

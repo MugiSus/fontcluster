@@ -9,10 +9,10 @@ import { setSelectedFontMetadata } from '../actions';
 
 // SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
-  x: -50,
-  y: -50,
-  width: 700,
-  height: 700,
+  x: -100,
+  y: -100,
+  width: 1200,
+  height: 1200,
 };
 
 const ZOOM_FACTOR_RATIO = 1.1;
@@ -208,8 +208,8 @@ export function FontClusterVisualization() {
     return vecs.map((metadata) => {
       const vx = metadata.computed?.vector[0] ?? 0;
       const vy = metadata.computed?.vector[1] ?? 0;
-      const x = ((vx - minX) / rangeX) * 600;
-      const y = ((vy - minY) / rangeY) * 600;
+      const x = ((vx - minX) / rangeX) * 1000;
+      const y = ((vy - minY) / rangeY) * 1000;
       return {
         key: metadata.safe_name,
         metadata,
@@ -280,39 +280,31 @@ export function FontClusterVisualization() {
       >
         <g>
           <path
-            d='M 295 295 L 305 305 M 305 295 L 295 305'
+            d='M 495 495 L 505 505 M 505 495 L 495 505'
             fill='none'
             stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
           <circle
-            cx='300'
-            cy='300'
-            r='75'
+            cx='500'
+            cy='500'
+            r='200'
             fill='none'
             stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
           />
           <circle
-            cx='300'
-            cy='300'
-            r='150'
-            fill='none'
-            stroke-width={zoomFactor() * 1}
-            class='pointer-events-none stroke-muted'
-          />
-          <circle
-            cx='300'
-            cy='300'
-            r='250'
-            fill='none'
-            stroke-width={zoomFactor() * 1}
-            class='pointer-events-none stroke-muted'
-          />
-          <circle
-            cx='300'
-            cy='300'
+            cx='500'
+            cy='500'
             r='400'
+            fill='none'
+            stroke-width={zoomFactor() * 1}
+            class='pointer-events-none stroke-muted'
+          />
+          <circle
+            cx='500'
+            cy='500'
+            r='600'
             fill='none'
             stroke-width={zoomFactor() * 1}
             class='pointer-events-none stroke-muted'
