@@ -213,6 +213,7 @@ export function FontClusterVisualization() {
         class='size-full select-none'
         viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
         xmlns='http://www.w3.org/2000/svg'
+        text-rendering='optimizeSpeed'
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
