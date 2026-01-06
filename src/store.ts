@@ -93,6 +93,6 @@ export const [appState, setAppState] = createStore<AppState>({
     selectedFont: null,
     selectedWeights: [400],
     searchQuery: '',
-    sampleText: 'Hamburgevons',
+    sampleText: 'font',
   },
 });

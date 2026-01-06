@@ -77,7 +77,7 @@ export function FontProcessingForm() {
 
     try {
       await runProcessingJobs(
-        text || 'Hamburgevons',
+        text || 'font',
         selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
         algorithm,
         !shouldStartNewSession ? appState.session.id : undefined,
