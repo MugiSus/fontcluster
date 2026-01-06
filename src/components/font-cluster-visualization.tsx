@@ -239,10 +239,13 @@ export function FontClusterVisualization() {
     const filteredKeys = appState.fonts.filteredKeys;
     const selectedFontName = appState.ui.selectedFont?.font_name;
 
-    const visibleItems = [];
-    const hiddenFilteredItems = [];
+    const visibleFilteredPoints = [];
+    const visibleUnfilteredPoints = [];
 
     for (const point of allPoints()) {
+      const isWeightIncluded = visualizerWeights().includes(
+        point.metadata.weight as FontWeight,
+      );
       const isVisible =
         point.x >= minVisibleX &&
         point.x <= maxVisibleX &&
@@ -252,16 +255,16 @@ export function FontClusterVisualization() {
       // Always render selected font
       const isSelected = point.metadata.font_name === selectedFontName;
 
-      if (isVisible || isSelected) {
+      if (isWeightIncluded && (isVisible || isSelected)) {
         if (filteredKeys.has(point.key)) {
-          visibleItems.push(point);
+          visibleFilteredPoints.push(point);
         } else {
-          hiddenFilteredItems.push(point);
+          visibleUnfilteredPoints.push(point);
         }
       }
     }
 
-    return { visibleItems, hiddenFilteredItems };
+    return { visibleFilteredPoints, visibleUnfilteredPoints };
   });
 
   return (
@@ -320,7 +323,7 @@ export function FontClusterVisualization() {
         </g>
 
         <g opacity={0.2}>
-          <For each={visiblePoints().hiddenFilteredItems}>
+          <For each={visiblePoints().visibleUnfilteredPoints}>
             {(point) => (
               <FontVectorPoint
                 fontName={point.metadata.font_name}
@@ -345,7 +348,7 @@ export function FontClusterVisualization() {
           </For>
         </g>
 
-        <For each={visiblePoints().visibleItems}>
+        <For each={visiblePoints().visibleFilteredPoints}>
           {(point) => (
             <FontVectorPoint
               fontName={point.metadata.font_name}
