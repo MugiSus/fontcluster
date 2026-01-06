@@ -1,6 +1,6 @@
 import { FontMetadata } from '../types/font';
 import Fuse from 'fuse.js';
-import { createMemo } from 'solid-js';
+import { createMemo, createEffect, on } from 'solid-js';
 import { appState, setAppState } from '../store';
 
 interface useFilteredFontMetadataKeysProps {
@@ -56,27 +56,52 @@ export function useFilteredFontMetadataKeys(
     if (map.size === 0) return new Set<string>();
 
     if (!q) {
-      const allKeys = new Set(map.keys());
-      setAppState('fonts', 'filteredKeys', allKeys);
-      return allKeys;
+      return new Set(map.keys());
     }
 
     const result = fuse()
       .search(q)
       .map((result) => result.item);
 
-    if (result[0]) props.onFontSelect(result[0]);
-
-    document
-      .querySelectorAll(`[data-font-search-result-top]`)
-      .forEach((element) => {
-        element.scrollIntoView({ behavior: 'instant', block: 'center' });
-      });
-
-    const filteredKeys = new Set(result.map((item) => item.safe_name));
-    setAppState('fonts', 'filteredKeys', filteredKeys);
-    return filteredKeys;
+    return new Set(result.map((item) => item.safe_name));
   });
+
+  // Handle side effects (store updates and DOM manipulation) in createEffect
+  createEffect(
+    on(
+      () => filteredFontMetadataKeys(),
+      (keys) => {
+        // 1. Sync store
+        setAppState('fonts', 'filteredKeys', keys);
+
+        // 2. Additional side effects only when searching
+        const q = appState.ui.searchQuery;
+        if (!q) return;
+
+        // Find the first metadata for callbacks/scroll
+        const firstKey = Array.from(keys)[0];
+        const firstMetadata = firstKey
+          ? appState.fonts.map.get(firstKey)
+          : null;
+
+        if (firstMetadata) {
+          props.onFontSelect(firstMetadata);
+
+          // Scroll into view
+          requestAnimationFrame(() => {
+            document
+              .querySelectorAll(`[data-font-search-result-top]`)
+              .forEach((element) => {
+                element.scrollIntoView({
+                  behavior: 'instant',
+                  block: 'center',
+                });
+              });
+          });
+        }
+      },
+    ),
+  );
 
   return {
     onQueryChange,

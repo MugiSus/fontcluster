@@ -1,4 +1,4 @@
-import { createResource, untrack, createRoot } from 'solid-js';
+import { createResource, untrack, createRoot, createEffect } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { appState, setAppState } from './store';
@@ -24,11 +24,9 @@ export const {
     async (sessionId): Promise<string> => {
       if (!sessionId) return '';
       try {
-        const dir = await invoke<string>('get_session_directory', {
+        return await invoke<string>('get_session_directory', {
           sessionId,
         });
-        setAppState('session', 'directory', dir);
-        return dir;
       } catch (error) {
         console.error('Failed to get session directory:', error);
         return '';
@@ -47,13 +45,7 @@ export const {
         if (!response) {
           return null;
         }
-        const config = JSON.parse(response) as SessionConfig;
-        setAppState('session', 'config', config);
-        setAppState('session', 'status', config.process_status);
-        if (config.weights) {
-          setAppState('ui', 'selectedWeights', config.weights as FontWeight[]);
-        }
-        return config;
+        return JSON.parse(response) as SessionConfig;
       } catch (error) {
         console.error('Failed to get session info:', error);
         return null;
@@ -73,15 +65,41 @@ export const {
           return new Map();
         }
         const data = JSON.parse(response) as Record<string, FontMetadata>;
-        const map = new Map(Object.entries(data));
-        setAppState('fonts', 'map', map);
-        return map;
+        return new Map(Object.entries(data));
       } catch (error) {
         console.error('Failed to parse font configs:', error);
         return new Map();
       }
     },
   );
+
+  // Sync session directory to store
+  createEffect(() => {
+    const dir = sessionDirectory();
+    if (dir !== undefined) {
+      setAppState('session', 'directory', dir);
+    }
+  });
+
+  // Sync session config and weights to store
+  createEffect(() => {
+    const config = sessionConfig();
+    if (config) {
+      setAppState('session', 'config', config);
+      setAppState('session', 'status', config.process_status);
+      if (config.weights) {
+        setAppState('ui', 'selectedWeights', config.weights as FontWeight[]);
+      }
+    }
+  });
+
+  // Sync font metadata map to store
+  createEffect(() => {
+    const map = fontMetadataMap();
+    if (map) {
+      setAppState('fonts', 'map', map);
+    }
+  });
 
   return {
     sessionDirectory,
