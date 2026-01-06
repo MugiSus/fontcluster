@@ -221,12 +221,17 @@ export function FontClusterVisualization() {
 
   const visiblePoints = createMemo(() => {
     const vb = viewBox();
-    // Padding to prevent flickering at the edges
-    const padding = 50 * zoomFactor();
-    const minVisibleX = vb.x - padding;
-    const maxVisibleX = vb.x + vb.width + padding;
-    const minVisibleY = vb.y - padding;
-    const maxVisibleY = vb.y + vb.height + padding;
+    const size = svgSize();
+    const scale = zoomFactor();
+
+    const visibleWidth = size.width * scale;
+    const visibleHeight = size.height * scale;
+
+    const padding = 50 * scale;
+    const minVisibleX = vb.x + vb.width / 2 - visibleWidth / 2 - padding;
+    const maxVisibleX = vb.x + vb.width / 2 + visibleWidth / 2 + padding;
+    const minVisibleY = vb.y + vb.height / 2 - visibleHeight / 2 - padding;
+    const maxVisibleY = vb.y + vb.height / 2 + visibleHeight / 2 + padding;
 
     const filteredKeys = appState.fonts.filteredKeys;
     const selectedFontName = appState.ui.selectedFont?.font_name;
