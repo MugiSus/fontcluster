@@ -87,6 +87,7 @@ export const {
     if (config) {
       setAppState('session', 'config', config);
       setAppState('session', 'status', config.process_status);
+      setAppState('ui', 'sampleText', config.preview_text);
       if (config.weights) {
         setAppState('ui', 'selectedWeights', config.weights as FontWeight[]);
       }

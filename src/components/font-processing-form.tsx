@@ -106,6 +106,9 @@ export function FontProcessingForm() {
           name='preview-text'
           id='preview-text'
           value={appState.ui.sampleText}
+          onInput={(e) =>
+            setAppState('ui', 'sampleText', e.currentTarget.value)
+          }
           placeholder='Preview Text...'
           spellcheck='false'
           class='pl-9'
