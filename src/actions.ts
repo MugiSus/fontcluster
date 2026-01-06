@@ -1,4 +1,5 @@
 import { createResource, untrack, createRoot, createEffect } from 'solid-js';
+import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { appState, setAppState } from './store';
@@ -15,9 +16,9 @@ import {
 export const {
   sessionDirectory,
   sessionConfig,
-  fontMetadataMap,
+  fontMetadataRecord,
   refetchSessionConfig,
-  refetchFontMetadataMap,
+  refetchFontMetadataRecord,
 } = createRoot(() => {
   const [sessionDirectory] = createResource(
     () => appState.session.id,
@@ -53,25 +54,25 @@ export const {
     },
   );
 
-  const [fontMetadataMap, { refetch: refetchFontMetadataMap }] = createResource(
-    () => appState.session.id,
-    async (sessionId): Promise<Map<string, FontMetadata>> => {
-      if (!sessionId) return new Map();
-      try {
-        const response = await invoke<string>('get_compressed_vectors', {
-          sessionId,
-        });
-        if (!response) {
-          return new Map();
+  const [fontMetadataRecord, { refetch: refetchFontMetadataRecord }] =
+    createResource(
+      () => appState.session.id,
+      async (sessionId): Promise<Record<string, FontMetadata>> => {
+        if (!sessionId) return {};
+        try {
+          const response = await invoke<string>('get_compressed_vectors', {
+            sessionId,
+          });
+          if (!response) {
+            return {};
+          }
+          return JSON.parse(response) as Record<string, FontMetadata>;
+        } catch (error) {
+          console.error('Failed to parse font configs:', error);
+          return {};
         }
-        const data = JSON.parse(response) as Record<string, FontMetadata>;
-        return new Map(Object.entries(data));
-      } catch (error) {
-        console.error('Failed to parse font configs:', error);
-        return new Map();
-      }
-    },
-  );
+      },
+    );
 
   // Sync session directory to store
   createEffect(() => {
@@ -96,18 +97,22 @@ export const {
 
   // Sync font metadata map to store
   createEffect(() => {
-    const map = fontMetadataMap();
-    if (map) {
-      setAppState('fonts', 'map', map);
+    const data = fontMetadataRecord();
+    if (data) {
+      setAppState('session', 'config', (prev) => {
+        if (!prev) return prev;
+        return { ...prev, samples_amount: Object.keys(data).length };
+      });
+      setAppState('fonts', 'data', reconcile(data));
     }
   });
 
   return {
     sessionDirectory,
     sessionConfig,
-    fontMetadataMap,
+    fontMetadataRecord,
     refetchSessionConfig,
-    refetchFontMetadataMap,
+    refetchFontMetadataRecord,
   };
 });
 
@@ -139,7 +144,7 @@ export const runProcessingJobs = async (
     });
     console.log('Complete pipeline result:', result);
     await refetchSessionConfig();
-    await refetchFontMetadataMap();
+    await refetchFontMetadataRecord();
   } catch (error) {
     console.error('Failed to process fonts:', error);
   }

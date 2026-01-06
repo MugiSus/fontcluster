@@ -1,4 +1,5 @@
 import { createStore } from 'solid-js/store';
+import { createMemo, createRoot } from 'solid-js';
 import Fuse from 'fuse.js';
 import {
   FontMetadata,
@@ -20,7 +21,7 @@ export interface AppState {
     denominator: number;
   };
   fonts: {
-    map: Map<string, FontMetadata>;
+    data: Record<string, FontMetadata>;
     readonly filteredKeys: Set<string>;
   };
   ui: {
@@ -73,19 +74,20 @@ export const [appState, setAppState] = createStore<AppState>({
     denominator: 0,
   },
   fonts: {
-    map: new Map<string, FontMetadata>(),
+    data: {},
     get filteredKeys(): Set<string> {
       const q = appState.ui.searchQuery;
-      const fontsMap = this.map;
-      if (fontsMap.size === 0) return new Set<string>();
+      const data = this.data;
+      if (Object.keys(data).length === 0) return new Set<string>();
 
       if (!q) {
-        return new Set<string>(fontsMap.keys());
+        return new Set<string>(Object.keys(data));
       }
 
-      const fonts = Array.from(fontsMap.values());
-      const fuse = new Fuse(fonts, FUSE_OPTIONS);
-      const result = fuse.search(q).map((r) => r.item.safe_name);
+      // Use the memoized fuse instance
+      const result = fuse()
+        .search(q)
+        .map((r) => r.item.safe_name);
       return new Set<string>(result);
     },
   },
@@ -95,4 +97,12 @@ export const [appState, setAppState] = createStore<AppState>({
     searchQuery: '',
     sampleText: 'font',
   },
+});
+
+export const fuse = createRoot(() => {
+  const memo = createMemo(() => {
+    const fonts = Object.values(appState.fonts.data);
+    return new Fuse(fonts, FUSE_OPTIONS);
+  });
+  return memo;
 });

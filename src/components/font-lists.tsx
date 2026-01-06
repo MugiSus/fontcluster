@@ -22,10 +22,10 @@ export function FontLists() {
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
   const filteredMetadatas = createMemo(() => {
-    const map = appState.fonts.map;
-    if (map.size === 0) return [];
+    const data = appState.fonts.data;
+    if (Object.keys(data).length === 0) return [];
     return Array.from(appState.fonts.filteredKeys)
-      .map((key) => map.get(key))
+      .map((key) => data[key])
       .filter((m): m is FontMetadata => !!m);
   });
 

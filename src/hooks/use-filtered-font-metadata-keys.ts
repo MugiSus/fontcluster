@@ -28,9 +28,7 @@ export function useFilteredFontMetadataKeys(
         if (!q) return;
 
         const firstKey = Array.from(keys)[0];
-        const firstMetadata = firstKey
-          ? appState.fonts.map.get(firstKey)
-          : null;
+        const firstMetadata = firstKey ? appState.fonts.data[firstKey] : null;
 
         if (firstMetadata) {
           props.onFontSelect(firstMetadata);

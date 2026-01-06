@@ -181,7 +181,7 @@ export function FontClusterVisualization() {
   };
 
   const bounds = createMemo(() => {
-    const vecs = Array.from(appState.fonts.map.values());
+    const vecs = Object.values(appState.fonts.data);
     if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
 
     const [minX, maxX] = vecs.reduce<[number, number]>(
@@ -203,7 +203,7 @@ export function FontClusterVisualization() {
   });
 
   const allPoints = createMemo(() => {
-    const vecs = Array.from(appState.fonts.map.values());
+    const vecs = Object.values(appState.fonts.data);
     const { minX, maxX, minY, maxY } = bounds();
     const rangeX = maxX - minX || 1;
     const rangeY = maxY - minY || 1;
