@@ -33,7 +33,7 @@ export function Titlebar() {
         <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
         <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
       </div>
-      <div class='fixed right-1 top-1 mr-0.5 flex items-center gap-px'>
+      <div class='fixed right-1 top-1 mr-0.5 flex items-center'>
         <Button
           variant='ghost'
           size='icon'
