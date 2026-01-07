@@ -416,7 +416,7 @@ export function FontProcessingForm() {
 
         <div class='grid grid-cols-4 gap-1'>
           <div
-            class='h-1 overflow-hidden rounded-full bg-primary/25'
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
               '--progress':
                 appState.session.isProcessing &&
@@ -440,7 +440,7 @@ export function FontProcessingForm() {
             />
           </div>
           <div
-            class='h-1 overflow-hidden rounded-full bg-primary/25'
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
               '--progress':
                 appState.session.isProcessing &&
@@ -462,7 +462,7 @@ export function FontProcessingForm() {
               )}
             />
           </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/25'>
+          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-primary',
@@ -475,7 +475,7 @@ export function FontProcessingForm() {
               )}
             />
           </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/25'>
+          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-primary',

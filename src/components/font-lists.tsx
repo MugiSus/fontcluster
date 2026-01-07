@@ -57,7 +57,7 @@ export function FontLists() {
         </div>
       </TextField>
 
-      <TabsList class='grid w-full shrink-0 grid-cols-2'>
+      <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden'>
         <TabsTrigger value='similarity' class='relative'>
           <ArrowDownNarrowWide class='absolute left-3 size-4' />
           Similarity
