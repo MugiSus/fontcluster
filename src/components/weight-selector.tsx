@@ -34,7 +34,7 @@ export function WeightSelector(props: WeightSelectorProps) {
 
   return (
     <div
-      class={`grid w-full items-center overflow-hidden rounded-md border bg-background ${props.isVertical ? 'grid-rows-10' : 'grid-cols-10'}`}
+      class={`grid w-full items-center overflow-hidden rounded-md border bg-background shadow-sm ${props.isVertical ? 'grid-rows-10' : 'grid-cols-10'}`}
     >
       <input
         type='hidden'
@@ -54,7 +54,7 @@ export function WeightSelector(props: WeightSelectorProps) {
               type='button'
               variant={isSelected() ? 'default' : 'ghost'}
               size='sm'
-              class='h-8 rounded-none px-2'
+              class='h-8 rounded-none px-2 shadow-none'
               style={{ 'font-weight': weight }}
               onClick={() => handleWeightToggle(weight)}
               data-checked={isSelected()}

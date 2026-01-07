@@ -24,54 +24,56 @@ function App() {
       <Toaster />
       <ClipboardManager />
       <SessionSelector />
-      <Resizable class='min-h-0 overflow-hidden p-3 pt-0'>
-        <ResizablePanel
-          class='flex min-w-0 flex-col gap-3 overflow-hidden'
-          initialSize={0.25}
-          minSize={0.2}
-          collapsible={true}
-          collapsedSize={0}
-          collapseThreshold={0.1}
-          maxSize={0.5}
-        >
-          <FontProcessingForm />
-        </ResizablePanel>
-
-        <ResizableHandle withHandle class='bg-transparent px-1.5' />
-
-        <ResizablePanel
-          class='flex min-h-0 min-w-0'
-          minSize={0.2}
-          initialSize={0.5}
-        >
-          <Show
-            when={appState.session.status === 'clustered'}
-            fallback={
-              <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
-                <CircleSlash2Icon class='mb-4 size-6' />
-                <h2>No results yet</h2>
-                <p class='text-xs'>Complete processing to see results</p>
-              </div>
-            }
+      <div class='m-2 mt-0 min-h-0'>
+        <Resizable class='min-h-0 overflow-hidden rounded-lg border border-slate-300/25 bg-slate-200 py-2 dark:bg-stone-800'>
+          <ResizablePanel
+            class='flex min-w-0 flex-col gap-3 overflow-hidden'
+            initialSize={0.25}
+            minSize={0.2}
+            collapsible={true}
+            collapsedSize={0}
+            collapseThreshold={0.1}
+            maxSize={0.5}
           >
-            <FontClusterVisualization />
-          </Show>
-        </ResizablePanel>
+            <FontProcessingForm />
+          </ResizablePanel>
 
-        <ResizableHandle withHandle class='bg-transparent px-1.5' />
+          <ResizableHandle withHandle class='bg-transparent px-1' />
 
-        <ResizablePanel
-          initialSize={0.25}
-          minSize={0.2}
-          collapsible={true}
-          collapsedSize={0}
-          collapseThreshold={0.1}
-          maxSize={0.5}
-          class='flex min-h-0 min-w-0 flex-col overflow-hidden'
-        >
-          <FontLists />
-        </ResizablePanel>
-      </Resizable>
+          <ResizablePanel
+            class='flex min-h-0 min-w-0'
+            minSize={0.2}
+            initialSize={0.5}
+          >
+            <Show
+              when={appState.session.status === 'clustered'}
+              fallback={
+                <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted/20 text-sm font-light text-muted-foreground'>
+                  <CircleSlash2Icon class='mb-4 size-6' />
+                  <h2>No results yet</h2>
+                  <p class='text-xs'>Complete processing to see results</p>
+                </div>
+              }
+            >
+              <FontClusterVisualization />
+            </Show>
+          </ResizablePanel>
+
+          <ResizableHandle withHandle class='bg-transparent px-1' />
+
+          <ResizablePanel
+            initialSize={0.25}
+            minSize={0.2}
+            collapsible={true}
+            collapsedSize={0}
+            collapseThreshold={0.1}
+            maxSize={0.5}
+            class='flex min-h-0 min-w-0 flex-col'
+          >
+            <FontLists />
+          </ResizablePanel>
+        </Resizable>
+      </div>
     </>
   );
 }

@@ -22,8 +22,9 @@ export function FontMetadataList(props: FontMetadataListProps) {
         {(fontMetadata: FontMetadata) => (
           <li
             class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-              props.selectedFontMetadata?.safe_name ===
-                fontMetadata.safe_name && 'bg-border'
+              props.selectedFontMetadata?.safe_name === fontMetadata.safe_name
+                ? 'bg-slate-300 dark:bg-stone-700'
+                : 'bg-slate-100 dark:bg-stone-900'
             }`}
             data-font-name={fontMetadata.safe_name}
             onClick={() => props.onFontSelect(fontMetadata)}
@@ -53,11 +54,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
               </div>
             </div>
             <img
-              class={`block size-auto h-8 max-h-none max-w-none px-4 grayscale invert dark:invert-0 ${
-                props.selectedFontMetadata?.safe_name ===
-                  fontMetadata.safe_name &&
-                'mix-blend-darken dark:mix-blend-lighten'
-              }`}
+              class='block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
               src={convertFileSrc(
                 `${props.sessionDirectory}/${fontMetadata.safe_name}/sample.png`,
               )}

@@ -37,7 +37,7 @@ export function FontLists() {
   );
 
   return (
-    <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
+    <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col pr-2'>
       <TextField class='mb-2'>
         <div class='relative'>
           <SearchIcon class='absolute left-3 top-3 size-4 text-muted-foreground' />
@@ -70,7 +70,7 @@ export function FontLists() {
 
       <TabsContent
         value='similarity'
-        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-slate-100 shadow-sm dark:bg-stone-900'
       >
         <Show
           when={filteredMetadatas().length > 0}
@@ -98,7 +98,7 @@ export function FontLists() {
 
       <TabsContent
         value='name'
-        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-muted/20'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-slate-100 shadow-sm dark:bg-stone-900'
       >
         <Show
           when={filteredMetadatas().length > 0}

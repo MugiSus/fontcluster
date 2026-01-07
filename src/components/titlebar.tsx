@@ -18,11 +18,21 @@ export function Titlebar() {
   return (
     <header
       data-tauri-drag-region
-      class='sticky top-0 z-50 flex h-8 min-h-8 w-full select-none items-center justify-center'
+      class='sticky top-0 z-50 flex h-8 min-h-8 w-full select-none items-center justify-center gap-4'
     >
-      <h1 data-tauri-drag-region class='mt-[3px] text-sm tracking-widest'>
+      <div class='flex items-center gap-4'>
+        <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
+        <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
+        <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
+      </div>
+      <h1 data-tauri-drag-region class='mt-[2px] text-sm tracking-widest'>
         FontCluster
       </h1>
+      <div class='flex items-center gap-4'>
+        <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
+        <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
+        <div class='size-1 rotate-45 bg-slate-400 dark:bg-stone-600' />
+      </div>
       <div class='fixed right-1 top-1 mr-0.5 flex items-center gap-px'>
         <Button
           variant='ghost'

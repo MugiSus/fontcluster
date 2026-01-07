@@ -91,16 +91,16 @@ export function FontProcessingForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex min-h-0 flex-1 flex-col items-stretch gap-1'
+      class='flex min-h-0 flex-1 flex-col items-stretch gap-1 pl-2'
     >
-      <TextField class='relative grid w-full items-center gap-1 pt-1'>
+      <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
           class='text-xs uppercase text-muted-foreground'
         >
           Preview Text
         </TextFieldLabel>
-        <TypeIcon class='absolute left-3 top-9 size-4 text-muted-foreground' />
+        <TypeIcon class='absolute left-3 top-8 size-4 text-muted-foreground' />
         <TextFieldInput
           type='text'
           name='preview-text'
@@ -136,7 +136,7 @@ export function FontProcessingForm() {
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
         </summary>
-        <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground'>
+        <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-slate-100 p-2 text-muted-foreground shadow-sm dark:bg-stone-900'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
@@ -416,7 +416,7 @@ export function FontProcessingForm() {
 
         <div class='grid grid-cols-4 gap-1'>
           <div
-            class='h-1 overflow-hidden rounded-full bg-foreground/25'
+            class='h-1 overflow-hidden rounded-full bg-primary/25'
             style={{
               '--progress':
                 appState.session.isProcessing &&
@@ -427,7 +427,7 @@ export function FontProcessingForm() {
           >
             <div
               class={cn(
-                'h-full w-0 rounded-full bg-foreground',
+                'h-full w-0 rounded-full bg-primary',
                 appState.session.isProcessing &&
                   appState.session.status === 'empty' &&
                   'w-[var(--progress)] animate-pulse',
@@ -440,7 +440,7 @@ export function FontProcessingForm() {
             />
           </div>
           <div
-            class='h-1 overflow-hidden rounded-full bg-foreground/25'
+            class='h-1 overflow-hidden rounded-full bg-primary/25'
             style={{
               '--progress':
                 appState.session.isProcessing &&
@@ -451,7 +451,7 @@ export function FontProcessingForm() {
           >
             <div
               class={cn(
-                'h-full w-0 rounded-full bg-foreground',
+                'h-full w-0 rounded-full bg-primary',
                 appState.session.isProcessing &&
                   appState.session.status === 'generated' &&
                   'w-[var(--progress)] animate-pulse',
@@ -462,10 +462,10 @@ export function FontProcessingForm() {
               )}
             />
           </div>
-          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
+          <div class='h-1 overflow-hidden rounded-full bg-primary/25'>
             <div
               class={cn(
-                'h-full w-0 rounded-full bg-foreground',
+                'h-full w-0 rounded-full bg-primary',
                 (appState.session.status === 'compressed' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
@@ -475,10 +475,10 @@ export function FontProcessingForm() {
               )}
             />
           </div>
-          <div class='h-1 overflow-hidden rounded-full bg-foreground/25'>
+          <div class='h-1 overflow-hidden rounded-full bg-primary/25'>
             <div
               class={cn(
-                'h-full w-0 rounded-full bg-foreground',
+                'h-full w-0 rounded-full bg-primary',
                 appState.session.status === 'clustered' && 'w-full',
                 appState.session.isProcessing &&
                   appState.session.status === 'compressed' &&
