@@ -327,6 +327,7 @@ export function FontClusterVisualization() {
             {(point) => (
               <FontVectorPoint
                 fontName={point.metadata.font_name}
+                familyName={point.metadata.family_name}
                 weight={point.metadata.weight}
                 clusterId={point.metadata.computed?.k}
                 safeName={point.metadata.safe_name}
@@ -352,6 +353,7 @@ export function FontClusterVisualization() {
           {(point) => (
             <FontVectorPoint
               fontName={point.metadata.font_name}
+              familyName={point.metadata.family_name}
               weight={point.metadata.weight}
               clusterId={point.metadata.computed?.k}
               safeName={point.metadata.safe_name}
