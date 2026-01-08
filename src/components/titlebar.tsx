@@ -2,6 +2,7 @@ import { CopyIcon, HistoryIcon } from 'lucide-solid';
 import { emit } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
+import { appState } from '@/store';
 
 export function Titlebar() {
   const copyCurrentSelectedFont = (event: MouseEvent) => {
@@ -39,6 +40,7 @@ export function Titlebar() {
           size='icon'
           onClick={copyCurrentSelectedFont}
           class='size-6 rounded-full'
+          disabled={!appState.ui.selectedFontKey}
         >
           <CopyIcon class='size-6' />
         </Button>
