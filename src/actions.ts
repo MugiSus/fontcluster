@@ -121,8 +121,8 @@ export const {
 export const setSelectedWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'selectedWeights', weights);
 
-export const setSelectedFontMetadata = (font: FontMetadata | null) =>
-  setAppState('ui', 'selectedFont', font);
+export const setSelectedFontKey = (key: string | null) =>
+  setAppState('ui', 'selectedFontKey', key);
 
 export const setCurrentSessionId = (id: string) =>
   setAppState('session', 'id', id);

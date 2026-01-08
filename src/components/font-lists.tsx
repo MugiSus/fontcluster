@@ -11,12 +11,12 @@ import {
 } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
 import { appState } from '../store';
-import { setSelectedFontMetadata } from '../actions';
+import { setSelectedFontKey } from '../actions';
 import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
 
 export function FontLists() {
   const { onQueryChange } = useFilteredFontMetadataKeys({
-    onFontSelect: (m) => setSelectedFontMetadata(m),
+    onFontSelect: (key) => setSelectedFontKey(key),
   });
 
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
@@ -89,8 +89,8 @@ export function FontLists() {
                 );
               })}
             sessionDirectory={appState.session.directory}
-            selectedFontMetadata={appState.ui.selectedFont}
-            onFontSelect={setSelectedFontMetadata}
+            selectedFontKey={appState.ui.selectedFontKey}
+            onFontSelect={setSelectedFontKey}
             isSearchResult={isFiltered()}
           />
         </Show>
@@ -113,8 +113,8 @@ export function FontLists() {
                   a.weight - b.weight,
               )}
             sessionDirectory={appState.session.directory}
-            selectedFontMetadata={appState.ui.selectedFont}
-            onFontSelect={setSelectedFontMetadata}
+            selectedFontKey={appState.ui.selectedFontKey}
+            onFontSelect={setSelectedFontKey}
             isSearchResult={isFiltered()}
           />
         </Show>

@@ -1,9 +1,8 @@
-import { FontMetadata } from '../types/font';
 import { createEffect, on } from 'solid-js';
 import { appState, setAppState } from '../store';
 
 interface useFilteredFontMetadataKeysProps {
-  onFontSelect: (fontMetadata: FontMetadata) => void;
+  onFontSelect: (key: string) => void;
 }
 
 export function useFilteredFontMetadataKeys(
@@ -31,7 +30,7 @@ export function useFilteredFontMetadataKeys(
         const firstMetadata = firstKey ? appState.fonts.data[firstKey] : null;
 
         if (firstMetadata) {
-          props.onFontSelect(firstMetadata);
+          props.onFontSelect(firstMetadata.safe_name);
 
           requestAnimationFrame(() => {
             document

@@ -10,9 +10,9 @@ import { SearchIcon } from 'lucide-solid';
 interface FontMetadataListProps {
   fontMetadatas: FontMetadata[];
   sessionDirectory: string;
-  selectedFontMetadata: FontMetadata | null;
+  selectedFontKey: string | null;
   isSearchResult?: boolean;
-  onFontSelect: (fontMetadata: FontMetadata) => void;
+  onFontSelect: (key: string) => void;
 }
 
 export function FontMetadataList(props: FontMetadataListProps) {
@@ -22,12 +22,12 @@ export function FontMetadataList(props: FontMetadataListProps) {
         {(fontMetadata: FontMetadata) => (
           <li
             class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
-              props.selectedFontMetadata?.safe_name === fontMetadata.safe_name
+              props.selectedFontKey === fontMetadata.safe_name
                 ? 'bg-slate-300 dark:bg-zinc-700'
                 : 'bg-slate-100 dark:bg-zinc-900'
             }`}
             data-font-name={fontMetadata.safe_name}
-            onClick={() => props.onFontSelect(fontMetadata)}
+            onClick={() => props.onFontSelect(fontMetadata.safe_name)}
           >
             <div class='flex items-center gap-2 px-4'>
               <Show

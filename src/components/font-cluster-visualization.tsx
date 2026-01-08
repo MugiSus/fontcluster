@@ -1,11 +1,11 @@
 import { For, createSignal, createEffect, createMemo } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
-import { FontMetadata, type FontWeight } from '../types/font';
+import { type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
 import { appState } from '../store';
-import { setSelectedFontMetadata } from '../actions';
+import { setSelectedFontKey } from '../actions';
 
 const GRAPH_PADDING = 100;
 const GRAPH_SIZE = 1000;
@@ -52,14 +52,15 @@ export function FontClusterVisualization() {
     const elements = document.elementsFromPoint(event.clientX, event.clientY);
 
     const nearFontElements = elements.filter((el) =>
-      el.hasAttribute('data-font-select-area'),
+      el.hasAttribute('data-font-safe-name'),
     );
 
     if (nearFontElements.length === 0) {
+      setSelectedFontKey(null);
       return;
     }
 
-    let selectedFontMetadata = '';
+    let selectedSafeName = '';
     let nearestDistance = Infinity;
 
     nearFontElements.forEach((el) => {
@@ -73,17 +74,14 @@ export function FontClusterVisualization() {
 
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        selectedFontMetadata = circle.getAttribute('data-font-config') || '';
+        selectedSafeName = circle.getAttribute('data-font-safe-name') || '';
       }
     });
 
-    if (selectedFontMetadata) {
-      const selectedFontMetadataParse = JSON.parse(
-        selectedFontMetadata,
-      ) as FontMetadata;
-
-      if (selectedFontMetadataParse) {
-        setSelectedFontMetadata(selectedFontMetadataParse);
+    if (selectedSafeName) {
+      const metadata = appState.fonts.data[selectedSafeName];
+      if (metadata) {
+        setSelectedFontKey(selectedSafeName);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,
@@ -91,7 +89,7 @@ export function FontClusterVisualization() {
           });
         }
         const elements = document.querySelectorAll(
-          `[data-font-name="${selectedFontMetadataParse.safe_name}"] > img`,
+          `[data-font-name="${metadata.safe_name}"] > img`,
         );
         elements.forEach((element) => {
           element.scrollIntoView({ behavior: 'instant', block: 'center' });
@@ -237,7 +235,7 @@ export function FontClusterVisualization() {
     const maxVisibleY = vb.y + vb.height / 2 + visibleHeight / 2 + padding;
 
     const filteredKeys = appState.fonts.filteredKeys;
-    const selectedFontName = appState.ui.selectedFont?.font_name;
+    const selectedFontKey = appState.ui.selectedFontKey;
 
     const visibleFilteredPoints = [];
     const visibleUnfilteredPoints = [];
@@ -253,7 +251,7 @@ export function FontClusterVisualization() {
         point.y <= maxVisibleY;
 
       // Always render selected font
-      const isSelected = point.metadata.font_name === selectedFontName;
+      const isSelected = point.key === selectedFontKey;
 
       if (isWeightIncluded && (isVisible || isSelected)) {
         if (filteredKeys.has(point.key)) {
@@ -327,19 +325,14 @@ export function FontClusterVisualization() {
             {(point) => (
               <FontVectorPoint
                 fontName={point.metadata.font_name}
-                familyName={point.metadata.family_name}
                 weight={point.metadata.weight}
                 clusterId={point.metadata.computed?.k}
                 safeName={point.metadata.safe_name}
                 x={point.x}
                 y={point.y}
-                isSelected={
-                  appState.ui.selectedFont?.font_name ===
-                  point.metadata.font_name
-                }
+                isSelected={appState.ui.selectedFontKey === point.key}
                 isFamilySelected={
-                  appState.ui.selectedFont?.family_name ===
-                  point.metadata.family_name
+                  appState.ui.selectedFontFamily === point.metadata.family_name
                 }
                 visualizerWeights={visualizerWeights()}
                 zoomFactor={zoomFactor()}
@@ -353,18 +346,14 @@ export function FontClusterVisualization() {
           {(point) => (
             <FontVectorPoint
               fontName={point.metadata.font_name}
-              familyName={point.metadata.family_name}
               weight={point.metadata.weight}
               clusterId={point.metadata.computed?.k}
               safeName={point.metadata.safe_name}
               x={point.x}
               y={point.y}
-              isSelected={
-                appState.ui.selectedFont?.font_name === point.metadata.font_name
-              }
+              isSelected={appState.ui.selectedFontKey === point.key}
               isFamilySelected={
-                appState.ui.selectedFont?.family_name ===
-                point.metadata.family_name
+                appState.ui.selectedFontFamily === point.metadata.family_name
               }
               visualizerWeights={visualizerWeights()}
               zoomFactor={zoomFactor()}

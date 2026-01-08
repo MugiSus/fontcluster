@@ -4,7 +4,6 @@ import { getClusterTextColor } from '../lib/cluster-colors';
 
 interface FontVectorPointProps {
   fontName: string;
-  familyName: string;
   weight: number;
   clusterId: number | undefined;
   safeName: string;
@@ -107,14 +106,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           cy={0}
           r={48}
           fill='transparent'
-          data-font-config={JSON.stringify({
-            font_name: props.fontName,
-            family_name: props.familyName,
-            weight: props.weight,
-            safe_name: props.safeName,
-            computed: { k: props.clusterId },
-          })}
-          data-font-select-area
+          data-font-safe-name={props.safeName}
         />
       </Show>
     </g>

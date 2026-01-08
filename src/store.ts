@@ -25,7 +25,9 @@ export interface AppState {
     readonly filteredKeys: Set<string>;
   };
   ui: {
-    selectedFont: FontMetadata | null;
+    selectedFontKey: string | null;
+    readonly selectedFont: FontMetadata | null;
+    readonly selectedFontFamily: string | null;
     selectedWeights: FontWeight[];
     searchQuery: string;
     sampleText: string;
@@ -92,7 +94,14 @@ export const [appState, setAppState] = createStore<AppState>({
     },
   },
   ui: {
-    selectedFont: null,
+    selectedFontKey: null,
+    get selectedFont(): FontMetadata | null {
+      const key = this.selectedFontKey;
+      return key ? appState.fonts.data[key] || null : null;
+    },
+    get selectedFontFamily(): string | null {
+      return this.selectedFont?.family_name || null;
+    },
     selectedWeights: [400],
     searchQuery: '',
     sampleText: 'font',
