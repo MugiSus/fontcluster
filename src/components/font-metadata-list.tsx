@@ -23,8 +23,8 @@ export function FontMetadataList(props: FontMetadataListProps) {
           <li
             class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
               props.selectedFontMetadata?.safe_name === fontMetadata.safe_name
-                ? 'bg-slate-300 dark:bg-stone-700'
-                : 'bg-slate-100 dark:bg-stone-900'
+                ? 'bg-slate-300 dark:bg-zinc-700'
+                : 'bg-slate-100 dark:bg-zinc-900'
             }`}
             data-font-name={fontMetadata.safe_name}
             onClick={() => props.onFontSelect(fontMetadata)}
@@ -54,7 +54,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
               </div>
             </div>
             <img
-              class='block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
+              class='zincscale block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken invert dark:mix-blend-lighten dark:invert-0'
               src={convertFileSrc(
                 `${props.sessionDirectory}/${fontMetadata.safe_name}/sample.png`,
               )}

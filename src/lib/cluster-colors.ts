@@ -26,7 +26,7 @@ const CLUSTER_BG_COLORS = [
 
 export function getClusterTextColor(clusterId: number | undefined): string {
   if (clusterId === undefined || clusterId === -1) {
-    return 'text-gray-400';
+    return 'text-zinc-400';
   }
 
   return (
@@ -39,7 +39,7 @@ export function getClusterBackgroundColor(
   clusterId: number | undefined,
 ): string {
   if (clusterId === undefined || clusterId === -1) {
-    return 'bg-gray-400';
+    return 'bg-zinc-400';
   }
 
   return (

@@ -70,7 +70,7 @@ export function FontLists() {
 
       <TabsContent
         value='similarity'
-        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-slate-100 shadow-sm dark:bg-stone-900'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-slate-100 shadow-sm dark:bg-zinc-900'
       >
         <Show
           when={filteredMetadatas().length > 0}
@@ -98,7 +98,7 @@ export function FontLists() {
 
       <TabsContent
         value='name'
-        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-slate-100 shadow-sm dark:bg-stone-900'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border bg-slate-100 shadow-sm dark:bg-zinc-900'
       >
         <Show
           when={filteredMetadatas().length > 0}

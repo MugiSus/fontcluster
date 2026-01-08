@@ -136,7 +136,7 @@ export function FontProcessingForm() {
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
         </summary>
-        <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-slate-100 p-2 text-muted-foreground shadow-sm dark:bg-stone-900'>
+        <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-slate-100 p-2 text-muted-foreground shadow-sm dark:bg-zinc-900'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
