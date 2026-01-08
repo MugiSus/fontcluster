@@ -48,7 +48,7 @@ function App() {
             <Show
               when={appState.session.status === 'clustered'}
               fallback={
-                <div class='flex size-full flex-col items-center justify-center rounded-md border bg-slate-300 text-sm font-light text-slate-700 dark:bg-zinc-900 dark:text-zinc-200'>
+                <div class='flex size-full flex-col items-center justify-center rounded-md border text-sm font-light text-slate-700 dark:bg-zinc-900 dark:text-zinc-200'>
                   <CircleSlash2Icon class='mb-4 size-6' />
                   <h2>No results found</h2>
                   <p class='text-xs'>Complete processing to see results</p>

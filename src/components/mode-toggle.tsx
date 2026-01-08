@@ -25,7 +25,7 @@ export function ModeToggle(props: { class?: string }) {
         <Moon class='absolute size-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100' />
         <span class='sr-only'>Toggle theme</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent class='rounded-lg bg-slate-50 dark:bg-zinc-900'>
         <DropdownMenuItem onSelect={() => setColorMode('light')}>
           <Sun class='mr-2 size-4' />
           <span>Light</span>
