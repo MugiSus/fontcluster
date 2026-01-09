@@ -21,15 +21,18 @@ export function Titlebar() {
       data-tauri-drag-region
       class='sticky top-0 z-50 flex h-8 min-h-8 w-full select-none items-center justify-center gap-3'
     >
-      <div class='flex items-center gap-2'>
+      <div class='pointer-events-none flex items-center gap-2'>
         <div class='size-1 rotate-45 bg-border' />
         <div class='size-1 rotate-45 bg-border' />
         <div class='size-1 rotate-45 bg-border' />
       </div>
-      <h1 data-tauri-drag-region class='mt-[2px] text-sm tracking-widest'>
+      <h1
+        data-tauri-drag-region
+        class='pointer-events-none mt-[2px] text-sm tracking-widest'
+      >
         FontCluster
       </h1>
-      <div class='flex items-center gap-2'>
+      <div class='pointer-events-none flex items-center gap-2'>
         <div class='size-1 rotate-45 bg-border' />
         <div class='size-1 rotate-45 bg-border' />
         <div class='size-1 rotate-45 bg-border' />

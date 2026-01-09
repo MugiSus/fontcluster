@@ -67,22 +67,19 @@ export function SessionItem(props: SessionItemProps) {
   const badge = () => getProcessStatusBadge(props.session.process_status);
 
   return (
-    <div class='flex items-center justify-between gap-4 border-b p-3 px-4 transition-colors hover:bg-muted/50'>
+    <div class='flex items-center justify-between gap-4 p-3 px-4 transition-colors hover:bg-muted/15'>
       <div class='flex flex-col gap-2'>
         <div class='mb-1.5 flex items-center gap-2'>
           <Badge variant={badge().variant} class='px-1.5 py-0.5' round>
             {badge().text}
           </Badge>
-          {/* <time class='text-xs tabular-nums text-muted-foreground'>
+          <time class='ml-1 text-xs tabular-nums text-muted-foreground'>
             {new Date(props.session.date).toLocaleString('ja-JP', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
             })}
-          </time> */}
+          </time>
           <WeightIcon class='ml-1 size-3 text-muted-foreground' />
           <WeightIndicators weights={props.session.weights} />
           <TypeIcon class='ml-1 size-3 text-muted-foreground' />
@@ -91,7 +88,7 @@ export function SessionItem(props: SessionItemProps) {
           </div>
           <ClusterIndicators count={props.clusterCount} />
         </div>
-        <p class='truncate text-lg font-medium leading-none'>
+        <p class='truncate text-xl font-medium leading-none'>
           {props.session.preview_text}
         </p>
       </div>
@@ -109,7 +106,7 @@ export function SessionItem(props: SessionItemProps) {
 
 function ClusterIndicators(props: { count: number }) {
   return (
-    <div class='flex gap-1.5'>
+    <div class='ml-1 flex gap-1.5'>
       <Index each={Array(Math.min(props.count, CLUSTER_COLORS.length))}>
         {(_, i) => <div class={`size-2 rounded-full ${CLUSTER_COLORS[i]}`} />}
       </Index>
@@ -144,7 +141,7 @@ function WeightIndicators(props: { weights: number[] }) {
           <div
             class={
               props.weights.includes(weight())
-                ? 'text-foreground'
+                ? 'text-muted-foreground'
                 : 'text-muted'
             }
           >

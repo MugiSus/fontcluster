@@ -96,7 +96,7 @@ export function SessionSelector() {
 
   return (
     <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='flex max-h-[80vh] max-w-screen-md flex-col py-6'>
+      <DialogContent class='flex max-h-[80vh] max-w-screen-md flex-col bg-gradient-to-b from-slate-50 to-slate-100 py-6 dark:from-zinc-900 dark:to-zinc-920'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
@@ -105,7 +105,7 @@ export function SessionSelector() {
           </DialogDescription>
         </DialogHeader>
 
-        <div class='flex min-h-0 grow flex-col overflow-y-scroll rounded border'>
+        <div class='flex min-h-0 grow flex-col overflow-y-scroll rounded border bg-slate-20 dark:bg-zinc-900'>
           <For each={availableSessions()}>
             {(session) => {
               return (
