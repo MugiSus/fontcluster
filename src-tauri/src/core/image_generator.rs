@@ -1,27 +1,20 @@
 use crate::config::{RenderConfig, DEFAULT_FONT_SIZE};
-use crate::error::Result;
+use crate::error::{Result, AppError};
 use crate::rendering::FontRenderer;
 use crate::core::AppState;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use tokio::sync::Semaphore;
-use font_kit::source::SystemSource;
 use tauri::AppHandle;
 use crate::commands::progress::progress_events;
 use futures::StreamExt;
 
 pub struct ImageGenerator {
-    source: Arc<SystemSource>,
     semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 impl ImageGenerator {
     pub fn new() -> Self {
-        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(8);
-        Self {
-            source: Arc::new(SystemSource::new()),
-            semaphore: Arc::new(Semaphore::new(threads * 2)),
-        }
+        Self { semaphore: Arc::new(tokio::sync::Semaphore::new(8)) }
     }
 
     // discover_fonts moved to discoverer.rs
@@ -62,7 +55,6 @@ impl ImageGenerator {
         futures::stream::iter(tasks)
             .map(|(family_name, target_weight)| {
                 let config = Arc::clone(&render_config);
-                let source = Arc::clone(&self.source);
                 let sem = Arc::clone(&self.semaphore);
                 let app_handle = app.clone();
                 let state_ref = state;
@@ -72,64 +64,28 @@ impl ImageGenerator {
                         return;
                     }
 
-                    let family_handle = match source.select_family_by_name(&family_name) {
-                        Ok(h) => h,
-                        Err(_) => {
-                            progress_events::decrease_denominator(&app_handle, 1);
-                            return;
-                        }
-                    };
+                    let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, target_weight);
+                    
+                    let res: Result<()> = async {
+                        let meta = crate::core::session::load_font_metadata(&config.output_dir, &safe_name)?;
+                        let path = meta.path.ok_or_else(|| AppError::Processing("No path in metadata".into()))?;
+                        
+                        let font = font_kit::font::Font::from_path(path, meta.font_index)
+                            .map_err(|e| AppError::Font(format!("Failed to load font from path: {}", e)))?;
 
-                    let mut best_handle = None;
-                    let mut min_diff = i32::MAX;
+                        let _permit = sem.clone().acquire_owned().await.unwrap();
+                        let renderer = FontRenderer::new(Arc::clone(&config));
+                        
+                        renderer.render_sample(&font, &safe_name)?;
+                        Ok(())
+                    }.await;
 
-                    for handle in family_handle.fonts() {
-                        let weight = match handle {
-                            font_kit::handle::Handle::Path { ref path, font_index } => {
-                                if let Ok(data) = std::fs::read(path) {
-                                    ttf_parser::Face::parse(&data, *font_index).ok().map(|f| f.weight().to_number() as i32)
-                                } else { None }
-                            }
-                            font_kit::handle::Handle::Memory { ref bytes, font_index } => {
-                                ttf_parser::Face::parse(bytes, *font_index).ok().map(|f| f.weight().to_number() as i32)
-                            }
-                        };
-
-                        if let Some(w) = weight {
-                            let diff = (w - target_weight).abs();
-                            if diff < min_diff && diff <= 50 {
-                                min_diff = diff;
-                                best_handle = Some(handle.clone());
-                            }
-                        }
-                    }
-
-                    if let Some(handle) = best_handle {
-                        // println!("🧵 Processing {} (weight: {})", family_name, target_weight);
-                        if let Ok(font) = handle.load() {
-                            let _permit = sem.clone().acquire_owned().await.unwrap();
-                            let renderer = FontRenderer::new(Arc::clone(&config), Arc::clone(&source));
-                            
-                            let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, target_weight);
-                            
-                            let res = renderer.render_sample(&font, &safe_name);
-                            match res {
-                                Ok(_) => {
-                                    progress_events::increase_numerator(&app_handle, 1);
-                                    // println!("✅ Finished {} (weight: {})", family_name, target_weight);
-                                },
-                                Err(e) => {
-                                    eprintln!("❌ Failed to render {}: {}", family_name, e);
-                                    progress_events::decrease_denominator(&app_handle, 1);
-                                },
-                            }
-                        } else {
-                            eprintln!("❌ Failed to load font handle for {}", family_name);
+                    match res {
+                        Ok(_) => progress_events::increase_numerator(&app_handle, 1),
+                        Err(e) => {
+                            eprintln!("❌ Failed to process {}: {}", family_name, e);
                             progress_events::decrease_denominator(&app_handle, 1);
                         }
-                    } else {
-                        // println!("❓ No suitable weight found for {} matching {}", family_name, target_weight);
-                        progress_events::decrease_denominator(&app_handle, 1);
                     }
                 }
             })

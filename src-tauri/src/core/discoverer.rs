@@ -1,13 +1,10 @@
 use crate::error::{Result, AppError};
 use crate::core::AppState;
-use font_kit::source::SystemSource;
-use font_kit::handle::Handle;
 use tauri::AppHandle;
 use crate::commands::progress::progress_events;
 use futures::StreamExt;
-use std::collections::HashMap;
 use std::fs;
-use std::sync::Arc;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExtractedMeta {
@@ -18,20 +15,63 @@ pub struct ExtractedMeta {
     pub designers: HashMap<String, String>,
     pub actual_weight: i32,
     pub available_weights: Vec<String>,
+    pub path: std::path::PathBuf,
+    pub font_index: u32,
 }
 
 pub struct Discoverer {
-    source: Arc<SystemSource>,
 }
 
 impl Discoverer {
     pub fn new() -> Self {
-        Self {
-            source: Arc::new(SystemSource::new()),
+        Self {}
+    }
+
+    fn get_font_files() -> Vec<std::path::PathBuf> {
+        let mut search_dirs = Vec::new();
+        if cfg!(target_os = "macos") {
+            search_dirs.push(std::path::PathBuf::from("/System/Library/Fonts"));
+            search_dirs.push(std::path::PathBuf::from("/Library/Fonts"));
+            if let Some(user_font_dir) = dirs::font_dir() {
+                search_dirs.push(user_font_dir);
+            }
+        } else if cfg!(target_os = "windows") {
+            if let Some(win_dir) = std::env::var_os("WINDIR") {
+                search_dirs.push(std::path::PathBuf::from(win_dir).join("Fonts"));
+            }
+        } else {
+            // Basic Linux paths
+            search_dirs.push(std::path::PathBuf::from("/usr/share/fonts"));
+            search_dirs.push(std::path::PathBuf::from("/usr/local/share/fonts"));
+            if let Some(user_font_dir) = dirs::font_dir() {
+                search_dirs.push(user_font_dir);
+            }
+        }
+
+        let mut files = Vec::new();
+        for dir in search_dirs {
+            Self::walk_dir(&dir, &mut files);
+        }
+        files
+    }
+
+    fn walk_dir(dir: &std::path::PathBuf, files: &mut Vec<std::path::PathBuf>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.is_dir() {
+                    Self::walk_dir(&path, files);
+                } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                    let ext = ext.to_lowercase();
+                    if ext == "ttf" || ext == "otf" || ext == "ttc" || ext == "otc" {
+                        files.push(path);
+                    }
+                }
+            }
         }
     }
 
-    pub fn analyze_font_data(data: &[u8], index: u32, target_text: &str) -> Result<ExtractedMeta> {
+    pub fn analyze_font_data(data: &[u8], index: u32, target_text: &str, path: std::path::PathBuf) -> Result<ExtractedMeta> {
         let face = ttf_parser::Face::parse(data, index).map_err(|e| AppError::Font(format!("Failed to parse font with ttf-parser: {}", e)))?;
 
         // 1. Glyph Check
@@ -74,6 +114,8 @@ impl Discoverer {
             designers: dess,
             actual_weight,
             available_weights: Vec::new(),
+            path,
+            font_index: index,
         })
     }
 
@@ -85,104 +127,94 @@ impl Discoverer {
         };
         let session_dir = AppState::get_base_dir()?.join("Generated").join(&session_id);
 
-        let families = self.source.all_families().unwrap_or_default();
-        let total_families = families.len();
-        println!("🔍 Found {} font families on system", total_families);
+        println!("🔍 Scanning system for font files...");
+        let font_files = Self::get_font_files();
+        let total_files = font_files.len();
+        println!("🔍 Found {} font files on system", total_files);
+        
         progress_events::reset_progress(app);
-        progress_events::set_progress_denominator(app, total_families as i32);
+        progress_events::set_progress_denominator(app, total_files as i32);
+
+        let results = futures::stream::iter(font_files)
+            .map(|path| {
+                let text = preview_text.clone();
+                let app_handle = app.clone();
+                
+                async move {
+                    let mut local_metas = Vec::new();
+                    let data = match fs::read(&path) {
+                        Ok(d) => d,
+                        Err(_) => {
+                            progress_events::decrease_denominator(&app_handle, 1);
+                            return local_metas;
+                        }
+                    };
+
+                    let count = ttf_parser::fonts_in_collection(&data).unwrap_or(1);
+                    for i in 0..count {
+                        if let Ok(meta) = Self::analyze_font_data(&data, i, &text, path.clone()) {
+                            local_metas.push(meta);
+                        }
+                    }
+                    progress_events::increase_numerator(&app_handle, 1);
+                    local_metas
+                }
+            })
+            .buffer_unordered(128)
+            .collect::<Vec<Vec<ExtractedMeta>>>()
+            .await;
+
+        let all_metas: Vec<ExtractedMeta> = results.into_iter().flatten().collect();
+        println!("🔍 Analyzed {} fonts. Grouping by family...", all_metas.len());
+
+        let mut families: HashMap<String, Vec<ExtractedMeta>> = HashMap::new();
+        for meta in all_metas {
+            families.entry(meta.family_names.get("1033").unwrap_or(&meta.display_name).clone())
+                .or_default()
+                .push(meta);
+        }
 
         let mut discovered = HashMap::new();
         for w in &target_weights {
             discovered.insert(*w, Vec::new());
         }
 
-        let results = futures::stream::iter(families)
-            .map(|family_name| {
-                let source = Arc::clone(&self.source);
-                let text = preview_text.clone();
-                let weights = target_weights.clone();
-                let app_handle = app.clone();
-                let session_dir_clone = session_dir.clone();
-                
-                async move {
-                    let mut local_discovered = Vec::new();
-                    let family_handle = match source.select_family_by_name(&family_name) {
-                        Ok(h) => h,
-                        Err(_) => {
-                            progress_events::increase_numerator(&app_handle, 1);
-                            return local_discovered;
-                        }
+        for (family_name, family_metas) in families {
+            let available_weights: Vec<String> = family_metas.iter()
+                .map(|m| format!("Weight({})", m.actual_weight))
+                .collect();
+
+            for &tw in &target_weights {
+                let best = family_metas.iter()
+                    .filter(|m| (m.actual_weight - tw).abs() <= 50)
+                    .min_by_key(|m| (m.actual_weight - tw).abs());
+
+                if let Some(meta) = best {
+                    let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, tw);
+                    
+                    let font_meta = crate::config::FontMetadata {
+                        safe_name: safe_name.clone(),
+                        display_name: meta.display_name.clone(),
+                        family: family_name.clone(),
+                        family_names: meta.family_names.clone(),
+                        preferred_family_names: meta.preferred_family_names.clone(),
+                        publishers: meta.publishers.clone(),
+                        designers: meta.designers.clone(),
+                        weight: tw,
+                        weights: available_weights.clone(),
+                        path: Some(meta.path.clone()),
+                        font_index: meta.font_index,
+                        computed: None,
                     };
 
-                    let mut family_metas = Vec::new();
-                    for handle in family_handle.fonts() {
-                        let res = match handle {
-                            Handle::Path { ref path, font_index } => {
-                                if let Ok(data) = fs::read(path) {
-                                    Self::analyze_font_data(&data, *font_index, &text)
-                                } else {
-                                    continue;
-                                }
-                            }
-                            Handle::Memory { ref bytes, font_index } => {
-                                Self::analyze_font_data(bytes, *font_index, &text)
-                            }
-                        };
-                        if let Ok(meta) = res {
-                            family_metas.push(meta);
+                    if let Err(e) = crate::core::session::save_font_metadata(&session_dir, &font_meta) {
+                        eprintln!("Failed to save font metadata: {}", e);
+                    }
+
+                    if let Some(list) = discovered.get_mut(&tw) {
+                        if !list.contains(&family_name) {
+                            list.push(family_name.clone());
                         }
-                    }
-
-                    if family_metas.is_empty() {
-                        progress_events::increase_numerator(&app_handle, 1);
-                        return local_discovered;
-                    }
-
-                    let available_weights: Vec<String> = family_metas.iter()
-                        .map(|m| format!("Weight({})", m.actual_weight))
-                        .collect();
-
-                    for &tw in &weights {
-                        let best = family_metas.iter()
-                            .filter(|m| (m.actual_weight - tw).abs() <= 50)
-                            .min_by_key(|m| (m.actual_weight - tw).abs());
-
-                        if let Some(meta) = best {
-                            let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, tw);
-                            
-                            let font_meta = crate::config::FontMetadata {
-                                safe_name: safe_name.clone(),
-                                display_name: meta.display_name.clone(),
-                                family: family_name.clone(),
-                                family_names: meta.family_names.clone(),
-                                preferred_family_names: meta.preferred_family_names.clone(),
-                                publishers: meta.publishers.clone(),
-                                designers: meta.designers.clone(),
-                                weight: tw,
-                                weights: available_weights.clone(),
-                                computed: None,
-                            };
-
-                            if let Err(e) = crate::core::session::save_font_metadata(&session_dir_clone, &font_meta) {
-                                eprintln!("Failed to save font metadata: {}", e);
-                            }
-
-                            local_discovered.push((tw, family_name.clone()));
-                        }
-                    }
-                    progress_events::increase_numerator(&app_handle, 1);
-                    local_discovered
-                }
-            })
-            .buffer_unordered(32)
-            .collect::<Vec<Vec<(i32, String)>>>()
-            .await;
-
-        for local in results {
-            for (w, fam) in local {
-                if let Some(list) = discovered.get_mut(&w) {
-                    if !list.contains(&fam) {
-                        list.push(fam);
                     }
                 }
             }

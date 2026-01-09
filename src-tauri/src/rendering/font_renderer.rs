@@ -1,6 +1,5 @@
 use crate::config::{RenderConfig, GLYPH_PADDING};
 use crate::error::{Result, AppError};
-use font_kit::source::SystemSource;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::hinting::HintingOptions;
 use std::sync::Arc;
@@ -10,20 +9,15 @@ use image::ImageEncoder;
 use std::io::BufWriter;
 use std::fs::File;
 
-// ExtractedMeta moved to discoverer.rs
-
 pub struct FontRenderer {
     config: Arc<RenderConfig>,
 }
 
 impl FontRenderer {
-    pub fn new(config: Arc<RenderConfig>, _source: Arc<SystemSource>) -> Self {
+    pub fn new(config: Arc<RenderConfig>) -> Self {
         Self { config }
     }
 
-    // analyze_font_data moved to discoverer.rs
-
-    // Metadata extraction is now handled by Discoverer
 
     pub fn render_sample(&self, font: &font_kit::font::Font, safe_name: &str) -> Result<()> {
         let scale = self.config.font_size / font.metrics().units_per_em as f32;

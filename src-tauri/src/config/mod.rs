@@ -134,6 +134,8 @@ pub struct FontMetadata {
     pub designers: HashMap<String, String>,
     pub weight: i32,
     pub weights: Vec<String>,
+    pub path: Option<PathBuf>,
+    pub font_index: u32,
     pub computed: Option<ComputedData>,
 }
 
