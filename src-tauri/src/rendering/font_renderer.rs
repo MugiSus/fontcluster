@@ -49,9 +49,9 @@ impl FontRenderer {
             x_off += width as f32;
         }
 
-        if canvas.pixels.iter().all(|&p| p == 0) { return Ok(()); }
-
-        if canvas.pixels.iter().all(|&p| p == 0) { return Ok(()); }
+        if canvas.pixels.iter().all(|&p| p == 0) {
+            return Err(AppError::Font("Empty render result (no visible glyphs)".into()));
+        }
 
         let path = self.config.output_dir.join(safe_name).join("sample.png");
         let writer = BufWriter::new(File::create(path)?);

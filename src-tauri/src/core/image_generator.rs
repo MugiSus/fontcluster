@@ -84,6 +84,11 @@ impl ImageGenerator {
                         Ok(_) => progress_events::increase_numerator(&app_handle, 1),
                         Err(e) => {
                             eprintln!("❌ Failed to process {}: {}", family_name, e);
+                            // Delete the font directory if rendering failed
+                            let font_dir = config.output_dir.join(&safe_name);
+                            if font_dir.exists() {
+                                let _ = std::fs::remove_dir_all(font_dir);
+                            }
                             progress_events::decrease_denominator(&app_handle, 1);
                         }
                     }

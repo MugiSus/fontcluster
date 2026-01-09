@@ -379,13 +379,13 @@ export function FontProcessingForm() {
           >
             {appState.session.isProcessing &&
             appState.session.status === 'empty'
-              ? 'Discovering...'
+              ? `Discovering... (${appState.progress.numerator}/${appState.progress.denominator})`
               : appState.session.isProcessing &&
                   appState.session.status === 'discovered'
-                ? 'Generating...'
+                ? `Generating... (${appState.progress.numerator}/${appState.progress.denominator})`
                 : appState.session.isProcessing &&
                     appState.session.status === 'generated'
-                  ? 'Vectorizing...'
+                  ? `Vectorizing... (${appState.progress.numerator}/${appState.progress.denominator})`
                   : appState.session.isProcessing &&
                       appState.session.status === 'vectorized'
                     ? 'Compressing...'
@@ -395,7 +395,6 @@ export function FontProcessingForm() {
                       : appState.session.status === 'clustered'
                         ? 'Run'
                         : 'Continue'}
-            {` (${appState.progress.numerator}/${appState.progress.denominator})`}
             <Show
               when={appState.session.isProcessing}
               fallback={<ArrowRightIcon class='absolute right-3' />}

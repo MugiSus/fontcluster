@@ -93,6 +93,10 @@ impl Discoverer {
             let lang_id = rec.language_id.to_string();
             let name_id = rec.name_id;
             if let Some(val) = rec.to_string() {
+                if val.contains("LastResort") || val.starts_with('.') {
+                    return Err(AppError::Font(format!("Skipping system internal font: {}", val)));
+                }
+
                 match name_id {
                     1 => { fams.insert(lang_id, val); }
                     4 => { if full_name.is_none() || rec.language_id == 1033 { full_name = Some(val); } } // Prefer English for display_name
@@ -142,20 +146,15 @@ impl Discoverer {
                 
                 async move {
                     let mut local_metas = Vec::new();
-                    let data = match fs::read(&path) {
-                        Ok(d) => d,
-                        Err(_) => {
-                            progress_events::decrease_denominator(&app_handle, 1);
-                            return local_metas;
-                        }
-                    };
-
-                    let count = ttf_parser::fonts_in_collection(&data).unwrap_or(1);
-                    for i in 0..count {
-                        if let Ok(meta) = Self::analyze_font_data(&data, i, &text, path.clone()) {
-                            local_metas.push(meta);
+                    if let Ok(data) = fs::read(&path) {
+                        let count = ttf_parser::fonts_in_collection(&data).unwrap_or(1);
+                        for i in 0..count {
+                            if let Ok(meta) = Self::analyze_font_data(&data, i, &text, path.clone()) {
+                                local_metas.push(meta);
+                            }
                         }
                     }
+
                     progress_events::increase_numerator(&app_handle, 1);
                     local_metas
                 }
