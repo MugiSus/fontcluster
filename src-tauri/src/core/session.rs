@@ -1,6 +1,7 @@
 use crate::config::{SessionConfig, FontMetadata, ProcessingStatus, AlgorithmConfig, ProcessStatus};
 use crate::error::Result;
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 use std::fs;
 use uuid::Uuid;
 use std::sync::Mutex;
@@ -42,6 +43,7 @@ impl AppState {
             preview_text: text,
             date: chrono::Utc::now(),
             weights,
+            discovered_fonts: HashMap::new(),
             algorithm,
             status: ProcessingStatus::default(),
         };

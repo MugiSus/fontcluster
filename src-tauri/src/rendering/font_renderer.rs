@@ -1,6 +1,7 @@
 use crate::config::{RenderConfig, FontMetadata, GLYPH_PADDING};
 use crate::error::{Result, AppError};
 use crate::core::session::save_font_metadata;
+use crate::core::discoverer::ExtractedMeta;
 use font_kit::source::SystemSource;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::hinting::HintingOptions;
@@ -12,15 +13,7 @@ use std::io::BufWriter;
 use std::fs::File;
 use std::collections::HashMap;
 
-pub struct ExtractedMeta {
-    pub display_name: String,
-    pub family_names: HashMap<String, String>,
-    pub preferred_family_names: HashMap<String, String>,
-    pub publishers: HashMap<String, String>,
-    pub designers: HashMap<String, String>,
-    pub actual_weight: i32,
-    pub available_weights: Vec<String>,
-}
+// ExtractedMeta moved to discoverer.rs
 
 pub struct FontRenderer {
     config: Arc<RenderConfig>,
@@ -30,6 +23,8 @@ impl FontRenderer {
     pub fn new(config: Arc<RenderConfig>, _source: Arc<SystemSource>) -> Self {
         Self { config }
     }
+
+    // analyze_font_data moved to discoverer.rs
 
     pub fn extract_meta(font: &font_kit::font::Font, available_weights: Vec<String>) -> Result<ExtractedMeta> {
         let display_name = font.full_name();
@@ -75,16 +70,19 @@ impl FontRenderer {
     pub fn render_and_save(&self, font: &font_kit::font::Font, family: &str, weight_val: i32, meta: ExtractedMeta) -> Result<()> {
         let scale = self.config.font_size / font.metrics().units_per_em as f32;
         let mut glyph_data = Vec::new();
-        let replacement_gid = font.glyph_for_char('\u{FFFD}');
-        
+        let font_data = font.copy_font_data().ok_or_else(|| AppError::Font("Failed to get font data for glyph check".to_string()))?;
+        let face = ttf_parser::Face::parse(&font_data, 0).map_err(|e| AppError::Font(format!("Failed to parse font with ttf-parser: {}", e)))?;
+
         for ch in self.config.text.chars() {
-            let gid = font.glyph_for_char(ch).ok_or_else(|| AppError::Font(format!("No glyph for {}", ch)))?;
-            if gid == 0 || (replacement_gid == Some(gid) && ch != '\u{FFFD}') {
-                return Err(AppError::Font(format!("Font fallback detected for character '{}'", ch)));
+            let gid = face.glyph_index(ch).ok_or_else(|| AppError::Font(format!("No glyph for {}", ch)))?;
+            if gid.0 == 0 && ch != '\0' && ch != '\u{FFFD}' {
+                return Err(AppError::Font(format!("Font fallback detected for character '{}' (missing in cmap)", ch)));
             }
-            let advance = font.advance(gid)?;
-            let bounds = font.typographic_bounds(gid)?;
-            glyph_data.push((gid, (advance.x() * scale) as i32, bounds.max_y() * scale, bounds.min_y() * scale));
+            
+            let fk_gid = gid.0 as u32;
+            let advance = font.advance(fk_gid)?;
+            let bounds = font.typographic_bounds(fk_gid)?;
+            glyph_data.push((fk_gid, (advance.x() * scale) as i32, bounds.max_y() * scale, bounds.min_y() * scale));
         }
 
         let total_width: i32 = glyph_data.iter().map(|g| g.1).sum();

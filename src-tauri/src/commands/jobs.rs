@@ -1,4 +1,4 @@
-use crate::core::{AppState, ImageGenerator, Vectorizer, Compressor, Clusterer};
+use crate::core::{AppState, Discoverer, ImageGenerator, Vectorizer, Compressor, Clusterer};
 use crate::config::{AlgorithmConfig, ProcessStatus};
 use crate::error::Result;
 use tauri::{command, State, AppHandle, Emitter};
@@ -24,8 +24,22 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         guard.as_ref().unwrap().status.process_status.clone()
     };
 
-    // Step 1: Images
+    // Step 0: Discovery
     if status == ProcessStatus::Empty {
+        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        app.emit("discovery_start", ())?;
+        let disc = Discoverer::new();
+        disc.discover_fonts(&app, &state).await?;
+        app.emit("discovery_complete", id.clone())?;
+    }
+
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+
+    // Step 1: Images
+    if status == ProcessStatus::Discovered {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         app.emit("font_generation_start", ())?;
         let gen = ImageGenerator::new();

@@ -14,6 +14,7 @@ pub struct SessionConfig {
     pub preview_text: String,
     pub date: DateTime<Utc>,
     pub weights: Vec<i32>,
+    pub discovered_fonts: HashMap<i32, Vec<String>>,
     pub algorithm: Option<AlgorithmConfig>,
     #[serde(flatten)]
     pub status: ProcessingStatus,
@@ -98,6 +99,7 @@ impl Default for ImageConfig {
 pub enum ProcessStatus {
     #[default]
     Empty,
+    Discovered,
     Generated,
     Vectorized,
     Compressed,
