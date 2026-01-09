@@ -74,37 +74,38 @@ impl ImageGenerator {
                         }
                     };
 
-                    let mut best_match = None;
+                    let mut best_handle = None;
                     let mut min_diff = i32::MAX;
 
                     for handle in family_handle.fonts() {
-                        // LOAD here because we need metrics/rasterization
-                        if let Ok(font) = handle.load() {
-                            let diff = (font.properties().weight.0 as i32 - target_weight).abs();
+                        let weight = match handle {
+                            font_kit::handle::Handle::Path { ref path, font_index } => {
+                                if let Ok(data) = std::fs::read(path) {
+                                    ttf_parser::Face::parse(&data, *font_index).ok().map(|f| f.weight().to_number() as i32)
+                                } else { None }
+                            }
+                            font_kit::handle::Handle::Memory { ref bytes, font_index } => {
+                                ttf_parser::Face::parse(bytes, *font_index).ok().map(|f| f.weight().to_number() as i32)
+                            }
+                        };
+
+                        if let Some(w) = weight {
+                            let diff = (w - target_weight).abs();
                             if diff < min_diff && diff <= 50 {
                                 min_diff = diff;
-                                best_match = Some(font);
+                                best_handle = Some(handle.clone());
                             }
                         }
                     }
 
-                    if let Some(font) = best_match {
-                        let _permit = sem.clone().acquire_owned().await.unwrap();
-                        let renderer = FontRenderer::new(Arc::clone(&config), Arc::clone(&source));
-                        
-                        // We still need metadata for the final save
-                        // We could have cached it from discovery, but let's re-extract or reuse.
-                        // For simplicity, let's re-extract meta from the loaded font for now, 
-                        // or better yet, make analyze_font_data return something we can reuse.
-                        // ExtractedMeta doesn't have the font-kit Font, so we need to reload it anyway.
-                        
-                        let weight_names: Vec<String> = family_handle.fonts().iter()
-                            .filter_map(|h| h.load().ok())
-                            .map(|f| format!("{:?}", f.properties().weight))
-                            .collect();
-
-                        if let Ok(meta) = FontRenderer::extract_meta(&font, weight_names) {
-                            let res = renderer.render_and_save(&font, &family_name, target_weight, meta);
+                    if let Some(handle) = best_handle {
+                        if let Ok(font) = handle.load() {
+                            let _permit = sem.clone().acquire_owned().await.unwrap();
+                            let renderer = FontRenderer::new(Arc::clone(&config), Arc::clone(&source));
+                            
+                            let safe_name = format!("{}_{}", target_weight, family_name.replace(' ', "_").replace('/', "_").replace('\\', "_"));
+                            
+                            let res = renderer.render_sample(&font, &safe_name);
                             match res {
                                 Ok(_) => progress_events::increase_numerator(&app_handle, 1),
                                 _ => progress_events::decrease_denominator(&app_handle, 1),

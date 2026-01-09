@@ -78,11 +78,12 @@ impl Discoverer {
     }
 
     pub async fn discover_fonts(&self, app: &AppHandle, state: &AppState) -> Result<HashMap<i32, Vec<String>>> {
-        let (preview_text, target_weights) = {
+        let (preview_text, target_weights, session_id) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            (s.preview_text.clone(), s.weights.clone())
+            (s.preview_text.clone(), s.weights.clone(), s.id.clone())
         };
+        let session_dir = AppState::get_base_dir()?.join("Generated").join(&session_id);
 
         let families = self.source.all_families().unwrap_or_default();
         let total_families = families.len();
@@ -100,6 +101,7 @@ impl Discoverer {
                 let text = preview_text.clone();
                 let weights = target_weights.clone();
                 let app_handle = app.clone();
+                let session_dir_clone = session_dir.clone();
                 
                 async move {
                     let mut local_discovered = Vec::new();
@@ -111,6 +113,7 @@ impl Discoverer {
                         }
                     };
 
+                    let mut family_metas = Vec::new();
                     for handle in family_handle.fonts() {
                         let res = match handle {
                             Handle::Path { ref path, font_index } => {
@@ -124,14 +127,46 @@ impl Discoverer {
                                 Self::analyze_font_data(bytes, *font_index, &text)
                             }
                         };
-
                         if let Ok(meta) = res {
-                            for &tw in &weights {
-                                if (meta.actual_weight - tw).abs() <= 50 {
-                                    local_discovered.push((tw, family_name.clone()));
-                                    break;
-                                }
+                            family_metas.push(meta);
+                        }
+                    }
+
+                    if family_metas.is_empty() {
+                        progress_events::increase_numerator(&app_handle, 1);
+                        return local_discovered;
+                    }
+
+                    let available_weights: Vec<String> = family_metas.iter()
+                        .map(|m| format!("Weight({})", m.actual_weight))
+                        .collect();
+
+                    for &tw in &weights {
+                        let best = family_metas.iter()
+                            .filter(|m| (m.actual_weight - tw).abs() <= 50)
+                            .min_by_key(|m| (m.actual_weight - tw).abs());
+
+                        if let Some(meta) = best {
+                            let safe_name = format!("{}_{}", tw, family_name.replace(' ', "_").replace('/', "_").replace('\\', "_"));
+                            
+                            let font_meta = crate::config::FontMetadata {
+                                safe_name: safe_name.clone(),
+                                display_name: meta.display_name.clone(),
+                                family: family_name.clone(),
+                                family_names: meta.family_names.clone(),
+                                preferred_family_names: meta.preferred_family_names.clone(),
+                                publishers: meta.publishers.clone(),
+                                designers: meta.designers.clone(),
+                                weight: tw,
+                                weights: available_weights.clone(),
+                                computed: None,
+                            };
+
+                            if let Err(e) = crate::core::session::save_font_metadata(&session_dir_clone, &font_meta) {
+                                eprintln!("Failed to save font metadata: {}", e);
                             }
+
+                            local_discovered.push((tw, family_name.clone()));
                         }
                     }
                     progress_events::increase_numerator(&app_handle, 1);
@@ -156,8 +191,8 @@ impl Discoverer {
         let mut guard = state.current_session.lock().unwrap();
         if let Some(session) = guard.as_mut() {
             session.discovered_fonts = discovered.clone();
-            let session_dir = AppState::get_base_dir()?.join("Generated").join(&session.id);
-            fs::write(session_dir.join("config.json"), serde_json::to_string_pretty(&session)?)?;
+            let session_dir_final = AppState::get_base_dir()?.join("Generated").join(&session.id);
+            fs::write(session_dir_final.join("config.json"), serde_json::to_string_pretty(&session)?)?;
         }
 
         Ok(discovered)

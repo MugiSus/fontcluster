@@ -1,7 +1,5 @@
-use crate::config::{RenderConfig, FontMetadata, GLYPH_PADDING};
+use crate::config::{RenderConfig, GLYPH_PADDING};
 use crate::error::{Result, AppError};
-use crate::core::session::save_font_metadata;
-use crate::core::discoverer::ExtractedMeta;
 use font_kit::source::SystemSource;
 use font_kit::canvas::{Canvas, Format, RasterizationOptions};
 use font_kit::hinting::HintingOptions;
@@ -11,7 +9,6 @@ use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use image::ImageEncoder;
 use std::io::BufWriter;
 use std::fs::File;
-use std::collections::HashMap;
 
 // ExtractedMeta moved to discoverer.rs
 
@@ -26,48 +23,9 @@ impl FontRenderer {
 
     // analyze_font_data moved to discoverer.rs
 
-    pub fn extract_meta(font: &font_kit::font::Font, available_weights: Vec<String>) -> Result<ExtractedMeta> {
-        let display_name = font.full_name();
-        let actual_weight = font.properties().weight.0 as i32;
+    // Metadata extraction is now handled by Discoverer
 
-        let font_data = font.copy_font_data();
-        let (family_names, preferred_family_names, publishers, designers) = font_data.as_ref()
-            .and_then(|data| ttf_parser::Face::parse(data, 0).ok())
-            .map(|face| {
-                let mut fams = HashMap::new();
-                let mut prefs = HashMap::new();
-                let mut pubs = HashMap::new();
-                let mut dess = HashMap::new();
-
-                for rec in face.names().into_iter() {
-                    let lang_id = rec.language_id.to_string();
-                    let name_id = rec.name_id;
-                    if let Some(val) = rec.to_string() {
-                        match name_id {
-                            1 => { fams.insert(lang_id, val); }
-                            16 => { prefs.insert(lang_id, val); }
-                            8 => { pubs.insert(lang_id, val); }
-                            9 => { dess.insert(lang_id, val); }
-                            _ => {}
-                        }
-                    }
-                }
-                (fams, prefs, pubs, dess)
-            })
-            .unwrap_or_else(|| (HashMap::new(), HashMap::new(), HashMap::new(), HashMap::new()));
-
-        Ok(ExtractedMeta {
-            display_name,
-            family_names,
-            preferred_family_names,
-            publishers,
-            designers,
-            actual_weight,
-            available_weights,
-        })
-    }
-
-    pub fn render_and_save(&self, font: &font_kit::font::Font, family: &str, weight_val: i32, meta: ExtractedMeta) -> Result<()> {
+    pub fn render_sample(&self, font: &font_kit::font::Font, safe_name: &str) -> Result<()> {
         let scale = self.config.font_size / font.metrics().units_per_em as f32;
         let mut glyph_data = Vec::new();
         let font_data = font.copy_font_data().ok_or_else(|| AppError::Font("Failed to get font data for glyph check".to_string()))?;
@@ -99,19 +57,7 @@ impl FontRenderer {
 
         if canvas.pixels.iter().all(|&p| p == 0) { return Ok(()); }
 
-        let safe_name = format!("{}_{}", weight_val, family.replace(' ', "_").replace('/', "_"));
-        save_font_metadata(&self.config.output_dir, &FontMetadata {
-            safe_name: safe_name.clone(),
-            display_name: meta.display_name,
-            family: family.to_string(),
-            family_names: meta.family_names,
-            preferred_family_names: meta.preferred_family_names,
-            publishers: meta.publishers,
-            designers: meta.designers,
-            weight: weight_val,
-            weights: meta.available_weights,
-            computed: None,
-        })?;
+        if canvas.pixels.iter().all(|&p| p == 0) { return Ok(()); }
 
         let path = self.config.output_dir.join(safe_name).join("sample.png");
         let writer = BufWriter::new(File::create(path)?);
