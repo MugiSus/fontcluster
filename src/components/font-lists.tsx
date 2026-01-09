@@ -8,11 +8,13 @@ import {
   FunnelIcon,
   SearchIcon,
   SearchSlashIcon,
+  XIcon,
 } from 'lucide-solid';
 import { TextField, TextFieldInput } from './ui/text-field';
 import { appState } from '../store';
 import { setSelectedFontKey } from '../actions';
 import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
+import { Button } from './ui/button';
 
 export function FontLists() {
   const { onQueryChange } = useFilteredFontMetadataKeys({
@@ -40,7 +42,21 @@ export function FontLists() {
     <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col pr-2'>
       <TextField class='mb-2'>
         <div class='relative'>
-          <SearchIcon class='absolute left-3 top-3 size-4 text-muted-foreground' />
+          <Show
+            when={isFiltered()}
+            fallback={
+              <SearchIcon class='absolute left-3 top-3 size-4 text-muted-foreground' />
+            }
+          >
+            <Button
+              variant='ghost'
+              size='icon'
+              class='absolute left-1.5 top-1.5 size-7 hover:bg-destructive/10 hover:text-destructive'
+              onClick={() => onQueryChange('')}
+            >
+              <XIcon class='size-4' />
+            </Button>
+          </Show>
           <TextFieldInput
             type='text'
             placeholder='Search fonts...'

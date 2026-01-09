@@ -12,6 +12,10 @@ export function useFilteredFontMetadataKeys(
 
   const onQueryChange = (value: string) => {
     if (debounceTimer) clearTimeout(debounceTimer);
+    if (value === '') {
+      setAppState('ui', 'searchQuery', '');
+      return;
+    }
     debounceTimer = window.setTimeout(() => {
       setAppState('ui', 'searchQuery', value);
     }, 250);
