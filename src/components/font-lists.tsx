@@ -1,4 +1,4 @@
-import { createMemo, Show } from 'solid-js';
+import { createMemo, createSignal, Show } from 'solid-js';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { FontMetadataList } from './font-metadata-list';
 import { FontMetadata } from '../types/font';
@@ -20,6 +20,18 @@ export function FontLists() {
   const { onQueryChange } = useFilteredFontMetadataKeys({
     onFontSelect: (key) => setSelectedFontKey(key),
   });
+
+  const [inputValue, setInputValue] = createSignal(appState.ui.searchQuery);
+
+  const handleQueryChange = (value: string) => {
+    setInputValue(value);
+    onQueryChange(value);
+  };
+
+  const handleClear = () => {
+    setInputValue('');
+    onQueryChange('');
+  };
 
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
@@ -52,7 +64,7 @@ export function FontLists() {
               variant='ghost'
               size='icon'
               class='absolute left-1.5 top-1.5 size-7 hover:bg-destructive/10 hover:text-destructive'
-              onClick={() => onQueryChange('')}
+              onClick={handleClear}
             >
               <XIcon class='size-4' />
             </Button>
@@ -61,7 +73,8 @@ export function FontLists() {
             type='text'
             placeholder='Search fonts...'
             class='pl-9'
-            onInput={(e) => onQueryChange(e.currentTarget.value)}
+            value={inputValue()}
+            onInput={(e) => handleQueryChange(e.currentTarget.value)}
             spellcheck='false'
           />
           <Show when={isFiltered()}>
