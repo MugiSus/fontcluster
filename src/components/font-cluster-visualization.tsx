@@ -7,7 +7,7 @@ import { useElementSize } from '../hooks/use-element-size';
 import { appState } from '../store';
 import { setSelectedFontKey } from '../actions';
 
-const GRAPH_PADDING = 100;
+const GRAPH_PADDING = 50;
 const GRAPH_SIZE = 1000;
 
 // SVG ViewBox configuration

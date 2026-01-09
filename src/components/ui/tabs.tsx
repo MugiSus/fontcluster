@@ -48,7 +48,7 @@ interface TabsListProps {
 export const TabsList: ParentComponent<TabsListProps> = (props) => {
   return (
     <div
-      class={`inline-flex h-10 items-center justify-center rounded-md bg-slate-100 p-1 text-muted-foreground shadow-sm dark:bg-zinc-900 ${props.class || ''}`}
+      class={`inline-flex h-10 items-center justify-center rounded-md bg-slate-200 p-1 text-muted-foreground dark:bg-zinc-900 ${props.class || ''}`}
     >
       {props.children}
     </div>

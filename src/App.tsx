@@ -25,7 +25,7 @@ function App() {
       <ClipboardManager />
       <SessionSelector />
       <div class='m-2 mt-0 h-full min-h-0'>
-        <Resizable class='min-h-0 overflow-hidden rounded-lg border border-slate-300/25 bg-gradient-to-b from-slate-100 to-slate-200 py-2 dark:border-zinc-700/25 dark:from-zinc-800 dark:to-zinc-900'>
+        <Resizable class='min-h-0 overflow-hidden rounded-lg border border-slate-300/25 bg-gradient-to-b from-slate-100 to-slate-200 py-2 dark:border-zinc-700/25 dark:from-zinc-800 dark:to-zinc-850'>
           <ResizablePanel
             class='flex min-w-0 flex-col gap-3 overflow-hidden'
             initialSize={0.25}

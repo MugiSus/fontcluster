@@ -17,11 +17,11 @@ interface FontMetadataListProps {
 
 export function FontMetadataList(props: FontMetadataListProps) {
   return (
-    <ul class='flex flex-col items-start gap-0'>
+    <ul class='flex w-fit min-w-full flex-col items-stretch gap-0'>
       <For each={props.fontMetadatas}>
         {(fontMetadata: FontMetadata) => (
           <li
-            class={`flex min-w-full cursor-pointer flex-col items-start gap-2 pb-4 pt-3 ${
+            class={`flex w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 ${
               props.selectedFontKey === fontMetadata.safe_name
                 ? 'bg-slate-300 dark:bg-zinc-700'
                 : 'bg-slate-100 dark:bg-zinc-900'
