@@ -395,7 +395,7 @@ export function FontProcessingForm() {
                       : appState.session.status === 'clustered'
                         ? 'Run'
                         : 'Continue'}
-            {/* {` (${appState.progress.numerator}/${appState.progress.denominator})`} */}
+            {` (${appState.progress.numerator}/${appState.progress.denominator})`}
             <Show
               when={appState.session.isProcessing}
               fallback={<ArrowRightIcon class='absolute right-3' />}
