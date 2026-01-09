@@ -25,7 +25,7 @@ function App() {
       <ClipboardManager />
       <SessionSelector />
       <div class='m-2 mt-0 h-full min-h-0'>
-        <Resizable class='min-h-0 overflow-hidden rounded-lg border border-slate-300/25 bg-gradient-to-b from-slate-100 to-slate-200 py-2 dark:border-zinc-700/25 dark:from-zinc-800 dark:to-zinc-850'>
+        <Resizable class='min-h-0 overflow-hidden rounded-lg border border-border bg-gradient-to-b from-slate-100 to-slate-200 py-2 dark:from-zinc-800 dark:to-zinc-850'>
           <ResizablePanel
             class='flex min-w-0 flex-col gap-3 overflow-hidden'
             initialSize={0.25}
@@ -48,7 +48,7 @@ function App() {
             <Show
               when={appState.session.status === 'clustered'}
               fallback={
-                <div class='flex size-full flex-col items-center justify-center rounded-md border text-sm font-light text-slate-700 dark:bg-zinc-900 dark:text-zinc-200'>
+                <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted text-sm font-light text-muted-foreground'>
                   <CircleSlash2Icon class='mb-4 size-6' />
                   <h2>No results found</h2>
                   <p class='text-xs'>Complete processing to see results</p>

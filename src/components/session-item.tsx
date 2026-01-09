@@ -1,7 +1,7 @@
 import { Index, Show } from 'solid-js';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { HistoryIcon, Trash2Icon } from 'lucide-solid';
+import { HistoryIcon, Trash2Icon, TypeIcon, WeightIcon } from 'lucide-solid';
 import {
   FontWeight,
   type SessionConfig,
@@ -67,42 +67,42 @@ export function SessionItem(props: SessionItemProps) {
   const badge = () => getProcessStatusBadge(props.session.process_status);
 
   return (
-    <div class='border-b p-4 transition-colors hover:bg-muted/50'>
-      <div class='flex items-center justify-between gap-4'>
-        <div class='flex flex-col gap-2'>
-          <div class='mb-1.5 flex items-center gap-2'>
-            <Badge variant={badge().variant} class='py-0.5' round>
-              {badge().text}
-            </Badge>
-            <time class='text-xs tabular-nums text-muted-foreground'>
-              {new Date(props.session.date).toLocaleString('ja-JP', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })}
-            </time>
-            <WeightIndicators weights={props.session.weights} />
-            <ClusterIndicators count={props.clusterCount} />
-            <div class='text-xs text-muted-foreground'>
-              {props.session.samples_amount}
-            </div>
+    <div class='flex items-center justify-between gap-4 border-b p-3 px-4 transition-colors hover:bg-muted/50'>
+      <div class='flex flex-col gap-2'>
+        <div class='mb-1.5 flex items-center gap-2'>
+          <Badge variant={badge().variant} class='px-1.5 py-0.5' round>
+            {badge().text}
+          </Badge>
+          {/* <time class='text-xs tabular-nums text-muted-foreground'>
+            {new Date(props.session.date).toLocaleString('ja-JP', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })}
+          </time> */}
+          <WeightIcon class='ml-1 size-3 text-muted-foreground' />
+          <WeightIndicators weights={props.session.weights} />
+          <TypeIcon class='ml-1 size-3 text-muted-foreground' />
+          <div class='text-xs text-muted-foreground'>
+            {props.session.samples_amount}
           </div>
-          <p class='truncate text-lg font-medium leading-none'>
-            {props.session.preview_text}
-          </p>
+          <ClusterIndicators count={props.clusterCount} />
         </div>
-        <SessionActions
-          isCurrentSession={props.isCurrentSession}
-          isConfirmingDelete={props.isConfirmingDelete}
-          isDeletingSession={props.isDeletingSession}
-          isRestoring={props.isRestoring}
-          onDeleteClick={props.onDeleteClick}
-          onSelectSession={props.onSelectSession}
-        />
+        <p class='truncate text-lg font-medium leading-none'>
+          {props.session.preview_text}
+        </p>
       </div>
+      <SessionActions
+        isCurrentSession={props.isCurrentSession}
+        isConfirmingDelete={props.isConfirmingDelete}
+        isDeletingSession={props.isDeletingSession}
+        isRestoring={props.isRestoring}
+        onDeleteClick={props.onDeleteClick}
+        onSelectSession={props.onSelectSession}
+      />
     </div>
   );
 }
@@ -165,7 +165,7 @@ function SessionActions(props: {
   onSelectSession: () => void;
 }) {
   return (
-    <div class='flex gap-1'>
+    <div class='flex'>
       <Button
         size='icon'
         onClick={props.onSelectSession}

@@ -266,8 +266,8 @@ export function FontClusterVisualization() {
   });
 
   return (
-    <div class='relative flex size-full items-center justify-center rounded-md border border-slate-200 bg-slate-50 shadow-sm dark:border-zinc-800 dark:bg-zinc-950'>
-      <div class='absolute bottom-0 right-0 z-10 m-4 flex items-center justify-between'>
+    <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
+      <div class='absolute bottom-2.5 right-2.5 z-10 flex items-center justify-between'>
         <WeightSelector
           weights={(appState.session.config?.weights as FontWeight[]) || []}
           selectedWeights={visualizerWeights()}
@@ -287,12 +287,12 @@ export function FontClusterVisualization() {
         onWheel={handleWheel}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <g>
+        <g opacity={0.5}>
           <path
             d='M 490 490 L 510 510 M 510 490 L 490 510'
             fill='none'
             stroke-width={zoomFactor() * 1}
-            class='pointer-events-none stroke-slate-200 dark:stroke-zinc-800'
+            class='pointer-events-none stroke-border'
           />
           <circle
             cx='500'
@@ -300,7 +300,7 @@ export function FontClusterVisualization() {
             r='200'
             fill='none'
             stroke-width={zoomFactor() * 1}
-            class='pointer-events-none stroke-slate-200 dark:stroke-zinc-800'
+            class='pointer-events-none stroke-border'
           />
           <circle
             cx='500'
@@ -308,7 +308,7 @@ export function FontClusterVisualization() {
             r='400'
             fill='none'
             stroke-width={zoomFactor() * 1}
-            class='pointer-events-none stroke-slate-200 dark:stroke-zinc-800'
+            class='pointer-events-none stroke-border'
           />
           <circle
             cx='500'
@@ -316,7 +316,7 @@ export function FontClusterVisualization() {
             r='600'
             fill='none'
             stroke-width={zoomFactor() * 1}
-            class='pointer-events-none stroke-slate-200 dark:stroke-zinc-800'
+            class='pointer-events-none stroke-border'
           />
         </g>
 

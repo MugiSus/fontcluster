@@ -67,7 +67,7 @@ const TextFieldInput = <T extends ValidComponent = 'input'>(
     <TextFieldPrimitive.Input
       type={local.type}
       class={cn(
-        'flex h-10 w-full rounded-md border border-input bg-slate-20 px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground dark:bg-zinc-950',
+        'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
         local.class,
       )}
       {...others}

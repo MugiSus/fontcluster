@@ -9,29 +9,29 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 210 50% 99.4%;
+    --foreground: 222 47% 11.2%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 210 50% 99.4%;
+    --popover-foreground: 222 47% 11.2%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
+    --border: 213 30% 87.5%;
+    --input: 213 30% 87.5%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 210 50% 99.4%;
+    --card-foreground: 222 47% 11.2%;
 
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11.2%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -56,28 +56,28 @@
   .dark,
   [data-kb-theme="dark"] {
     --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --foreground: 240 5% 96%;
 
-    --muted: 240 3.7% 15.9%;
+    --muted: 240 6% 10%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 240 5% 96%;
 
     --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover-foreground: 240 5% 96%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --border: 240 5% 21%;
+    --input: 240 5% 21%;
 
     --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card-foreground: 240 5% 96%;
 
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 6% 10%;
+    --secondary-foreground: 240 5% 96%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
