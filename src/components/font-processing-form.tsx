@@ -379,19 +379,22 @@ export function FontProcessingForm() {
           >
             {appState.session.isProcessing &&
             appState.session.status === 'empty'
-              ? 'Generating...'
+              ? 'Discovering...'
               : appState.session.isProcessing &&
-                  appState.session.status === 'generated'
-                ? 'Vectorizing...'
+                  appState.session.status === 'discovered'
+                ? 'Generating...'
                 : appState.session.isProcessing &&
-                    appState.session.status === 'vectorized'
-                  ? 'Compressing...'
+                    appState.session.status === 'generated'
+                  ? 'Vectorizing...'
                   : appState.session.isProcessing &&
-                      appState.session.status === 'compressed'
-                    ? 'Clustering...'
-                    : appState.session.status === 'clustered'
-                      ? 'Run'
-                      : 'Continue'}
+                      appState.session.status === 'vectorized'
+                    ? 'Compressing...'
+                    : appState.session.isProcessing &&
+                        appState.session.status === 'compressed'
+                      ? 'Clustering...'
+                      : appState.session.status === 'clustered'
+                        ? 'Run'
+                        : 'Continue'}
             {/* {` (${appState.progress.numerator}/${appState.progress.denominator})`} */}
             <Show
               when={appState.session.isProcessing}
@@ -415,7 +418,7 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='grid grid-cols-4 gap-1'>
+        <div class='grid grid-cols-5 gap-1'>
           <div
             class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
@@ -431,6 +434,31 @@ export function FontProcessingForm() {
                 'h-full w-0 rounded-full bg-primary',
                 appState.session.isProcessing &&
                   appState.session.status === 'empty' &&
+                  'w-[var(--progress)] animate-pulse',
+                (appState.session.status === 'discovered' ||
+                  appState.session.status === 'generated' ||
+                  appState.session.status === 'vectorized' ||
+                  appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
+                  'w-full',
+              )}
+            />
+          </div>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
+            style={{
+              '--progress':
+                appState.session.isProcessing &&
+                appState.session.status === 'discovered'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  : '0%',
+            }}
+          >
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                appState.session.isProcessing &&
+                  appState.session.status === 'discovered' &&
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'generated' ||
                   appState.session.status === 'vectorized' ||

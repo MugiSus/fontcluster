@@ -201,6 +201,10 @@ export function initAppEvents() {
     setAppState('progress', 'denominator', (prev) => prev - event.payload);
   });
 
+  listen('discovery_complete', () => {
+    setAppState('session', 'status', 'discovered');
+  });
+
   listen('font_generation_complete', () => {
     setAppState('session', 'status', 'generated');
   });

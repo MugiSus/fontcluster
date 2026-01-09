@@ -32,6 +32,7 @@ export interface AlgorithmConfig {
 
 export type ProcessStatus =
   | 'empty'
+  | 'discovered'
   | 'generated'
   | 'vectorized'
   | 'compressed'
@@ -45,6 +46,7 @@ export interface SessionConfig {
   clusters_amount: number;
   samples_amount: number;
   weights: number[];
+  discovered_fonts: Record<number, string[]>;
   algorithm?: AlgorithmConfig;
 }
 

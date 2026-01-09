@@ -23,7 +23,13 @@ const CLUSTER_COLORS = [
 ] as const;
 
 export type ProcessStatusBadge = {
-  text: 'Complete' | 'Compressed' | 'Vectorized' | 'Generated' | 'Empty';
+  text:
+    | 'Complete'
+    | 'Compressed'
+    | 'Vectorized'
+    | 'Generated'
+    | 'Discovered'
+    | 'Empty';
   variant: 'default' | 'outline' | 'error';
 };
 
@@ -39,6 +45,8 @@ export const getProcessStatusBadge = (
       return { text: 'Vectorized', variant: 'outline' };
     case 'generated':
       return { text: 'Generated', variant: 'outline' };
+    case 'discovered':
+      return { text: 'Discovered', variant: 'outline' };
     default:
       return { text: 'Empty', variant: 'error' };
   }
@@ -63,7 +71,7 @@ export function SessionItem(props: SessionItemProps) {
       <div class='flex items-center justify-between gap-4'>
         <div class='flex flex-col gap-2'>
           <div class='mb-1.5 flex items-center gap-2'>
-            <Badge variant={badge().variant} class='py-0' round>
+            <Badge variant={badge().variant} class='py-0.5' round>
               {badge().text}
             </Badge>
             <time class='text-xs tabular-nums text-muted-foreground'>
