@@ -34,7 +34,7 @@ export function WeightSelector(props: WeightSelectorProps) {
 
   return (
     <div
-      class={`grid w-full items-center overflow-hidden rounded-md border bg-slate-50 shadow-sm dark:bg-zinc-950 ${props.isVertical ? 'grid-rows-10' : 'grid-cols-10'}`}
+      class={`grid w-full items-center overflow-hidden rounded-md border bg-slate-20 shadow-sm dark:bg-zinc-950 ${props.isVertical ? 'grid-rows-10' : 'grid-cols-10'}`}
     >
       <input
         type='hidden'

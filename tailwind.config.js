@@ -72,6 +72,9 @@ export default {
           850: '#202022',
           920: "#101013",
         },
+        slate: {
+          20: '#fcfdfe',
+        },
       },
       borderRadius: {
         xl: "calc(var(--radius) + 4px)",
