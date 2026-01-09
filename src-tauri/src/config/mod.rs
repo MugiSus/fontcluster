@@ -137,6 +137,12 @@ pub struct FontMetadata {
     pub computed: Option<ComputedData>,
 }
 
+impl FontMetadata {
+    pub fn generate_safe_name(family: &str, weight: i32) -> String {
+        format!("{}_{}", weight, family.replace(' ', "_").replace('/', "_").replace('\\', "_"))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RenderConfig {
     pub text: String,

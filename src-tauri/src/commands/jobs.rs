@@ -19,28 +19,28 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         state.initialize_session(text, weights, algorithm)?
     };
 
+    // Step 0: Discovery
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-
-    // Step 0: Discovery
     if status == ProcessStatus::Empty {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        println!("🔍 Starting discovery...");
         app.emit("discovery_start", ())?;
         let disc = Discoverer::new();
         disc.discover_fonts(&app, &state).await?;
         app.emit("discovery_complete", id.clone())?;
     }
 
+    // Step 1: Images
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-
-    // Step 1: Images
     if status == ProcessStatus::Discovered {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        println!("🖼️ Starting image generation...");
         app.emit("font_generation_start", ())?;
         let gen = ImageGenerator::new();
         gen.generate_all(&app, &state).await?;
@@ -48,8 +48,13 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
     }
 
     // Step 2: Vectors
-    if status == ProcessStatus::Empty || status == ProcessStatus::Generated {
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if status == ProcessStatus::Generated {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        println!("📐 Starting vectorization...");
         app.emit("vectorization_start", ())?;
         let vec = Vectorizer::new();
         vec.vectorize_all(&app, &state).await?;
@@ -57,16 +62,26 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
     }
 
     // Step 3: Compression
-    if status != ProcessStatus::Compressed && status != ProcessStatus::Clustered {
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if status == ProcessStatus::Vectorized {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        println!("📦 Starting compression...");
         app.emit("compression_start", ())?;
         Compressor::compress_all(&state).await?;
         app.emit("compression_complete", id.clone())?;
     }
 
     // Step 4: Clustering
-    if status != ProcessStatus::Clustered {
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if status == ProcessStatus::Compressed {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        println!("✨ Starting clustering...");
         app.emit("clustering_start", ())?;
         Clusterer::cluster_all(&state).await?;
         app.emit("clustering_complete", id.clone())?;

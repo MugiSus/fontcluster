@@ -27,21 +27,27 @@ impl ImageGenerator {
     // discover_fonts moved to discoverer.rs
 
     pub async fn generate_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
-        let (discovered_fonts, session_dir, text, font_size) = {
+        let (discovered_fonts, session_id, text, font_size) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
             let font_size = s.algorithm.as_ref()
                 .and_then(|a| a.image.as_ref())
                 .map(|i| i.font_size)
                 .unwrap_or(DEFAULT_FONT_SIZE);
-            (s.discovered_fonts.clone(), state.get_session_dir()?, s.preview_text.clone(), font_size)
+            (s.discovered_fonts.clone(), s.id.clone(), s.preview_text.clone(), font_size)
         };
+        let session_dir = AppState::get_base_dir()?.join("Generated").join(&session_id);
 
         let mut tasks = Vec::new();
         for (weight, families) in discovered_fonts {
             for family in families {
                 tasks.push((family, weight));
             }
+        }
+
+        println!("📋 Total image generation tasks: {}", tasks.len());
+        if tasks.is_empty() {
+            println!("⚠️ No fonts discovered for weights. Skipping generation.");
         }
 
         progress_events::reset_progress(app);
@@ -99,26 +105,35 @@ impl ImageGenerator {
                     }
 
                     if let Some(handle) = best_handle {
+                        // println!("🧵 Processing {} (weight: {})", family_name, target_weight);
                         if let Ok(font) = handle.load() {
                             let _permit = sem.clone().acquire_owned().await.unwrap();
                             let renderer = FontRenderer::new(Arc::clone(&config), Arc::clone(&source));
                             
-                            let safe_name = format!("{}_{}", target_weight, family_name.replace(' ', "_").replace('/', "_").replace('\\', "_"));
+                            let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, target_weight);
                             
                             let res = renderer.render_sample(&font, &safe_name);
                             match res {
-                                Ok(_) => progress_events::increase_numerator(&app_handle, 1),
-                                _ => progress_events::decrease_denominator(&app_handle, 1),
+                                Ok(_) => {
+                                    progress_events::increase_numerator(&app_handle, 1);
+                                    // println!("✅ Finished {} (weight: {})", family_name, target_weight);
+                                },
+                                Err(e) => {
+                                    eprintln!("❌ Failed to render {}: {}", family_name, e);
+                                    progress_events::decrease_denominator(&app_handle, 1);
+                                },
                             }
                         } else {
+                            eprintln!("❌ Failed to load font handle for {}", family_name);
                             progress_events::decrease_denominator(&app_handle, 1);
                         }
                     } else {
+                        // println!("❓ No suitable weight found for {} matching {}", family_name, target_weight);
                         progress_events::decrease_denominator(&app_handle, 1);
                     }
                 }
             })
-            .buffer_unordered(32)
+            .buffer_unordered(8)
             .collect::<Vec<_>>()
             .await;
 

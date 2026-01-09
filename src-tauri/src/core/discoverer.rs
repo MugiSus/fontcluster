@@ -87,6 +87,7 @@ impl Discoverer {
 
         let families = self.source.all_families().unwrap_or_default();
         let total_families = families.len();
+        println!("🔍 Found {} font families on system", total_families);
         progress_events::reset_progress(app);
         progress_events::set_progress_denominator(app, total_families as i32);
 
@@ -147,7 +148,7 @@ impl Discoverer {
                             .min_by_key(|m| (m.actual_weight - tw).abs());
 
                         if let Some(meta) = best {
-                            let safe_name = format!("{}_{}", tw, family_name.replace(' ', "_").replace('/', "_").replace('\\', "_"));
+                            let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, tw);
                             
                             let font_meta = crate::config::FontMetadata {
                                 safe_name: safe_name.clone(),
@@ -185,6 +186,12 @@ impl Discoverer {
                     }
                 }
             }
+        }
+
+        let total_discovered: usize = discovered.values().map(|v| v.len()).sum();
+        println!("✅ Discovery complete. Discovered {} font-weight pairs.", total_discovered);
+        for (w, list) in &discovered {
+            println!("   Weight {}: {} families", w, list.len());
         }
 
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Discovered)?;
