@@ -102,8 +102,14 @@ export function SessionSelector() {
   };
 
   return (
-    <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='flex h-[80vh] max-w-screen-md flex-col rounded-xl bg-gradient-to-b from-slate-20 to-slate-50 p-6 dark:from-zinc-900 dark:to-zinc-920'>
+    <Dialog open={open()} onOpenChange={setOpen} modal={false}>
+      <DialogContent
+        class='flex h-[80vh] max-w-screen-md flex-col rounded-xl bg-gradient-to-b from-slate-20 to-slate-50 p-6 dark:from-zinc-900 dark:to-zinc-920'
+        onInteractOutside={(e) => {
+          const t = e.target as HTMLElement | null;
+          if (t?.closest?.('[data-sonner-toaster]')) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
