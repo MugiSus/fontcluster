@@ -94,17 +94,29 @@ export function FontProcessingForm() {
     }
   };
 
-  const fontSize = createMemo(
-    () => appState.session.config?.algorithm?.image?.font_size ?? 128,
-  );
   const metrics = createMemo(() =>
-    textMeasurer.measure(appState.ui.sampleText, fontSize()),
+    textMeasurer.measure(
+      appState.ui.sampleText,
+      appState.session.config?.algorithm?.image?.font_size ?? 128,
+    ),
   );
 
   createEffect(() => {
     const met = metrics();
-    const width = Math.ceil(met.width / 16) * 16;
-    const height = Math.ceil(met.height / 16) * 16;
+    const config = appState.session.config?.algorithm?.hog;
+    const cs = config?.cell_side ?? 16;
+    const bs = config?.block_side ?? 2;
+    const bst = config?.block_stride ?? 2;
+
+    const roundSize = (measured: number) => {
+      const minCellsForSize = Math.ceil(measured / cs);
+      const cells =
+        bs + Math.ceil(Math.max(0, minCellsForSize - bs) / bst) * bst;
+      return cells * cs;
+    };
+
+    const width = roundSize(met.width);
+    const height = roundSize(met.height);
 
     setAppState('session', 'config', 'algorithm', 'image', (prev) => ({
       ...prev,
@@ -193,6 +205,30 @@ export function FontProcessingForm() {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Font Size</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='image-font-size'
+                  value={
+                    appState.session.config?.algorithm?.image?.font_size ?? 128
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'image',
+                      'font_size',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='4'
+                  min='0'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <div />
+              <TextField class='gap-0.5'>
                 <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
                 <TextFieldInput
                   type='number'
@@ -238,29 +274,6 @@ export function FontProcessingForm() {
                   class='h-7 text-xs'
                 />
               </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Font Size</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-font-size'
-                  value={
-                    appState.session.config?.algorithm?.image?.font_size ?? 128
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'image',
-                      'font_size',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='4'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
             </div>
           </div>
 
@@ -292,6 +305,16 @@ export function FontProcessingForm() {
                   value={
                     appState.session.config?.algorithm?.hog?.orientations ?? 12
                   }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'hog',
+                      'orientations',
+                      Number(e.currentTarget.value),
+                    )
+                  }
                   step='1'
                   min='0'
                   class='h-7 text-xs'
@@ -304,6 +327,16 @@ export function FontProcessingForm() {
                   name='hog-cell-side'
                   value={
                     appState.session.config?.algorithm?.hog?.cell_side ?? 16
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'hog',
+                      'cell_side',
+                      Number(e.currentTarget.value),
+                    )
                   }
                   step='1'
                   min='1'
@@ -318,6 +351,16 @@ export function FontProcessingForm() {
                   value={
                     appState.session.config?.algorithm?.hog?.block_side ?? 2
                   }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'hog',
+                      'block_side',
+                      Number(e.currentTarget.value),
+                    )
+                  }
                   step='1'
                   min='1'
                   class='h-7 text-xs'
@@ -330,6 +373,16 @@ export function FontProcessingForm() {
                   name='hog-block-stride'
                   value={
                     appState.session.config?.algorithm?.hog?.block_stride ?? 2
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'hog',
+                      'block_stride',
+                      Number(e.currentTarget.value),
+                    )
                   }
                   step='1'
                   min='1'
