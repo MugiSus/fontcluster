@@ -70,7 +70,7 @@ export function SessionItem(props: SessionItemProps) {
     <div class='flex items-center justify-between gap-4 p-3 px-4 transition-colors hover:bg-muted'>
       <div class='flex flex-col gap-2'>
         <div class='mb-1.5 flex items-center gap-2'>
-          <Badge variant={badge().variant} class='px-1.5 py-0.5' round>
+          <Badge variant={badge().variant} class='px-2 py-0.5' round>
             {badge().text}
           </Badge>
           <time class='ml-1 text-xs tabular-nums text-muted-foreground'>
