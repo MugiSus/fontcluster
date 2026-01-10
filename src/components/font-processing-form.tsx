@@ -1,6 +1,7 @@
-import { Show } from 'solid-js';
+import { Show, createEffect, createMemo } from 'solid-js';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
+import { textMeasurer } from '@/lib/text-measurer';
 import {
   ArrowRightIcon,
   StepForwardIcon,
@@ -21,8 +22,6 @@ import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { textMeasurer } from '@/lib/text-measurer';
-import { createEffect, createMemo } from 'solid-js';
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
@@ -103,6 +102,9 @@ export function FontProcessingForm() {
 
   createEffect(() => {
     const met = metrics();
+
+    if (!appState.session.config) return;
+
     const config = appState.session.config?.algorithm?.hog;
     const cs = config?.cell_side ?? 16;
     const bs = config?.block_side ?? 2;
@@ -115,13 +117,17 @@ export function FontProcessingForm() {
       return cells * cs;
     };
 
-    const width = roundSize(met.width);
-    const height = roundSize(met.height);
+    const newWidth = roundSize(met.width);
+    const newHeight = roundSize(met.height);
+
+    // Only update if values actually changed to avoid unnecessary triggers
+    const current = appState.session.config.algorithm?.image;
+    if (current?.width === newWidth && current?.height === newHeight) return;
 
     setAppState('session', 'config', 'algorithm', 'image', (prev) => ({
       ...prev,
-      width,
-      height,
+      width: newWidth,
+      height: newHeight,
     }));
   });
 
