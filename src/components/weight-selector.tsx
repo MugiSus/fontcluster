@@ -52,7 +52,7 @@ export function WeightSelector(props: WeightSelectorProps) {
           const isSelectable = () => props.weights.includes(weight);
 
           return (
-            <Tooltip>
+            <Tooltip placement={props.isVertical ? 'left' : 'bottom'}>
               <TooltipTrigger
                 as={Button<'button'>}
                 type='button'
