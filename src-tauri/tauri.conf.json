@@ -15,8 +15,8 @@
         "title": "",
         "width": 1440,
         "height": 720,
-        "minWidth": 1024,
-        "minHeight": 640,
+        "minWidth": 1080,
+        "minHeight": 600,
         "resizable": true,
         "maximizable": true,
         "titleBarStyle": "Overlay"
