@@ -103,7 +103,7 @@ export default {
         "content-show": "content-show 0.2s ease-out",
         "content-hide": "content-hide 0.2s ease-out",
         "caret-blink": "caret-blink 1.25s ease-out infinite"
-      }
+      },
     }
   },
   plugins: [tailwindcssAnimate]

@@ -9,6 +9,7 @@ import {
   PauseIcon,
   TypeIcon,
   FlaskConicalIcon,
+  WeightIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import {
@@ -96,8 +97,9 @@ export function FontProcessingForm() {
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
-          class='text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1 text-xs uppercase text-muted-foreground'
         >
+          <TypeIcon class='size-3' />
           Preview Text
         </TextFieldLabel>
         <TypeIcon class='absolute left-3 top-8 size-4 text-muted-foreground' />
@@ -117,14 +119,16 @@ export function FontProcessingForm() {
       <TextField class='grid w-full items-center gap-1 pt-1'>
         <TextFieldLabel
           for='weights'
-          class='text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1 text-xs uppercase text-muted-foreground'
         >
+          <WeightIcon class='size-3' />
           Font Weights
         </TextFieldLabel>
         <WeightSelector
           weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
           selectedWeights={appState.ui.selectedWeights}
           onWeightChange={setSelectedWeights}
+          isCompact
         />
       </TextField>
       <details
@@ -132,7 +136,7 @@ export function FontProcessingForm() {
         open
       >
         <summary class='flex cursor-pointer list-none items-center gap-1 py-1 text-xxs font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
-          <FlaskConicalIcon class='mb-0.5 size-3' />
+          <FlaskConicalIcon class='mb-[3px] size-3' />
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
         </summary>
