@@ -185,7 +185,10 @@ impl Discoverer {
 
             for &tw in &target_weights {
                 let best = family_metas.iter()
-                    .filter(|m| (m.actual_weight - tw).abs() <= 50)
+                    .filter(|m| {
+                        let diff = m.actual_weight - tw;
+                        diff >= -50 && diff < 50
+                    })
                     .min_by_key(|m| (m.actual_weight - tw).abs());
 
                 if let Some(meta) = best {

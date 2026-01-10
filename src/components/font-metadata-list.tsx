@@ -45,7 +45,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
               <div class='text-sm font-light text-foreground'>
                 {
                   WEIGHT_LABELS[
-                    (Math.trunc(fontMetadata.weight / 100) * 100) as FontWeight
+                    (Math.round(fontMetadata.weight / 100) * 100) as FontWeight
                   ].short
                 }
               </div>
