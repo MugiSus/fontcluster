@@ -21,6 +21,7 @@ pub struct SessionConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
     pub hog: Option<HogConfig>,
@@ -29,6 +30,7 @@ pub struct AlgorithmConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HdbscanConfig {
     pub min_cluster_size: usize,
     pub min_samples: usize,
@@ -44,6 +46,7 @@ impl Default for HdbscanConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct PacmapConfig {
     pub mn_phases: usize,
     pub nn_phases: usize,
@@ -63,9 +66,12 @@ impl Default for PacmapConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct HogConfig {
     pub orientations: usize,
     pub cell_side: usize,
+    pub block_side: usize,
+    pub block_stride: usize,
 }
 
 impl Default for HogConfig {
@@ -73,11 +79,14 @@ impl Default for HogConfig {
         Self {
             orientations: 12,
             cell_side: 16,
+            block_side: 2,
+            block_stride: 2,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ImageConfig {
     pub width: u32,
     pub height: u32,
@@ -107,6 +116,7 @@ pub enum ProcessStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct ProcessingStatus {
     pub process_status: ProcessStatus,
     #[serde(rename = "clusters_amount")]

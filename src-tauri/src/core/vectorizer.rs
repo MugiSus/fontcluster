@@ -102,8 +102,8 @@ impl Vectorizer {
         let opts = HogOptions { 
             orientations: h_config.orientations, 
             cell_side: h_config.cell_side, 
-            block_side: 2, 
-            block_stride: 2, 
+            block_side: h_config.block_side, 
+            block_stride: h_config.block_stride, 
             signed: false 
         };
         let features = hog(&resized, opts).map_err(|e| crate::error::AppError::Processing(e.to_string()))?;

@@ -25,6 +25,8 @@ export interface PacmapOptions {
 export interface HogOptions {
   orientations: number;
   cell_side: number;
+  block_side: number;
+  block_stride: number;
 }
 
 export interface HdbscanOptions {

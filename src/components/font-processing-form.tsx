@@ -64,6 +64,8 @@ export function FontProcessingForm() {
       hog: {
         orientations: Number(formData.get('hog-orientations')),
         cell_side: Number(formData.get('hog-cell-side')),
+        block_side: Number(formData.get('hog-block-side')),
+        block_stride: Number(formData.get('hog-block-stride')),
       },
       pacmap: {
         mn_phases: Number(formData.get('pacmap-mn-phases')),
@@ -245,8 +247,34 @@ export function FontProcessingForm() {
                   value={
                     appState.session.config?.algorithm?.hog?.cell_side ?? 16
                   }
-                  step='2'
-                  min='0'
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Block Side</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-block-side'
+                  value={
+                    appState.session.config?.algorithm?.hog?.block_side ?? 2
+                  }
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Block Stride</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-block-stride'
+                  value={
+                    appState.session.config?.algorithm?.hog?.block_stride ?? 2
+                  }
+                  step='1'
+                  min='1'
                   class='h-7 text-xs'
                 />
               </TextField>
