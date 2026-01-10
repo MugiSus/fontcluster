@@ -96,8 +96,8 @@ export function SessionSelector() {
 
   return (
     <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='flex max-h-[80vh] max-w-screen-md flex-col rounded-xl bg-gradient-to-b from-slate-50 to-slate-100 p-4 dark:from-zinc-900 dark:to-zinc-920'>
-        <DialogHeader class='pt-1'>
+      <DialogContent class='flex max-h-[80vh] max-w-screen-md flex-col rounded-xl bg-gradient-to-b from-slate-20 to-slate-50 p-6 dark:from-zinc-900 dark:to-zinc-920'>
+        <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
             Select a previous session to restore. You can continue processing
