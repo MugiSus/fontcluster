@@ -67,7 +67,7 @@ export function SessionItem(props: SessionItemProps) {
   const badge = () => getProcessStatusBadge(props.session.process_status);
 
   return (
-    <div class='flex items-center justify-between gap-4 p-3 px-4 transition-colors hover:bg-muted/15'>
+    <div class='flex items-center justify-between gap-4 p-3 px-4 transition-colors hover:bg-muted'>
       <div class='flex flex-col gap-2'>
         <div class='mb-1.5 flex items-center gap-2'>
           <Badge variant={badge().variant} class='px-1.5 py-0.5' round>

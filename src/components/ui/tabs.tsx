@@ -71,7 +71,7 @@ export const TabsTrigger: ParentComponent<TabsTriggerProps> = (props) => {
     <button
       class={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
         isActive()
-          ? 'bg-slate-20 text-foreground shadow-sm dark:bg-zinc-950'
+          ? 'bg-background text-foreground shadow-sm'
           : 'hover:bg-slate-200 hover:text-foreground dark:hover:bg-zinc-800'
       } ${props.class || ''}`}
       onClick={() => context.setValue(props.value)}
