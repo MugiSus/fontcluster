@@ -18,28 +18,28 @@ export function ClipboardManager() {
             () =>
               event.payload?.toast &&
               toast(
-                <div>
-                  <CopyCheckIcon class='mb-0.5 mr-1 inline size-4' />
-                  {"'"}
-                  {event.payload?.isFontName
-                    ? nearest.font_name
-                    : nearest.family_name}
-                  {"'"}
+                <div class='flex flex-col gap-1'>
+                  <div class='flex items-center gap-1 font-semibold'>
+                    <CopyCheckIcon class='mx-0.5 size-4' />
+                    {"'"}
+                    {event.payload?.isFontName
+                      ? nearest.font_name
+                      : nearest.family_name}
+                    {"'"}
+                  </div>
+                  <div class='text-xs leading-5 text-muted-foreground'>
+                    Tips: Hold the Shift
+                    <ArrowBigUpIcon class='mx-0.5 mb-0.5 inline size-4' />
+                    while selecting a font to copy the family name directly from
+                    the graph.{' '}
+                    <Show when={!event.payload?.isFontName}>
+                      Hold the Command
+                      <CommandIcon class='mx-0.5 mb-0.5 inline size-4' />
+                      to copy the weight as well.
+                    </Show>
+                  </div>
                 </div>,
                 {
-                  description: (
-                    <div>
-                      Tips: Hold the Shift
-                      <ArrowBigUpIcon class='mx-0.5 mb-0.5 inline size-4' />
-                      while selecting a font to copy the family name directly
-                      from the graph.{' '}
-                      <Show when={!event.payload?.isFontName}>
-                        Hold the Command
-                        <CommandIcon class='mx-0.5 mb-0.5 inline size-4' />
-                        to copy the weight as well.
-                      </Show>
-                    </div>
-                  ),
                   duration: 5000,
                 },
               ),
