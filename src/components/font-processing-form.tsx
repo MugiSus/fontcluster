@@ -1,7 +1,8 @@
 import { Show, createEffect, createMemo } from 'solid-js';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
-import { textMeasurer } from '@/lib/text-measurer';
+import { measureText } from '@/lib/text-measurer';
+import { alignToHogConstraints } from '@/lib/hog';
 import {
   ArrowRightIcon,
   StepForwardIcon,
@@ -94,7 +95,7 @@ export function FontProcessingForm() {
   };
 
   const metrics = createMemo(() =>
-    textMeasurer.measure(
+    measureText(
       appState.ui.sampleText,
       appState.session.config?.algorithm?.image?.font_size ?? 128,
     ),
@@ -105,20 +106,19 @@ export function FontProcessingForm() {
 
     if (!appState.session.config) return;
 
-    const config = appState.session.config?.algorithm?.hog;
-    const cs = config?.cell_side ?? 16;
-    const bs = config?.block_side ?? 2;
-    const bst = config?.block_stride ?? 2;
-
-    const roundSize = (measured: number) => {
-      const minCellsForSize = Math.ceil(measured / cs);
-      const cells =
-        bs + Math.ceil(Math.max(0, minCellsForSize - bs) / bst) * bst;
-      return cells * cs;
-    };
-
-    const newWidth = roundSize(met.width);
-    const newHeight = roundSize(met.height);
+    const hog = appState.session.config?.algorithm?.hog;
+    const newWidth = alignToHogConstraints(
+      met.width,
+      hog?.cell_side ?? 16,
+      hog?.block_side ?? 2,
+      hog?.block_stride ?? 2,
+    );
+    const newHeight = alignToHogConstraints(
+      met.height,
+      hog?.cell_side ?? 16,
+      hog?.block_side ?? 2,
+      hog?.block_stride ?? 2,
+    );
 
     // Only update if values actually changed to avoid unnecessary triggers
     const current = appState.session.config.algorithm?.image;
