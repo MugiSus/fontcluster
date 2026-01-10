@@ -21,6 +21,8 @@ import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { textMeasurer } from '@/lib/text-measurer';
+import { createEffect, createMemo } from 'solid-js';
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
@@ -91,6 +93,26 @@ export function FontProcessingForm() {
       setAppState('session', 'isProcessing', false);
     }
   };
+
+  const fontSize = createMemo(
+    () => appState.session.config?.algorithm?.image?.font_size ?? 128,
+  );
+  const metrics = createMemo(() =>
+    textMeasurer.measure(appState.ui.sampleText, fontSize()),
+  );
+
+  createEffect(() => {
+    const m = metrics();
+    // Round up to nearest integer for dimensions
+    const w = Math.ceil(m.width);
+    const h = Math.ceil(m.height);
+
+    setAppState('session', 'config', 'algorithm', 'image', (prev) => ({
+      ...prev,
+      width: w,
+      height: h,
+    }));
+  });
 
   return (
     <form
@@ -179,6 +201,16 @@ export function FontProcessingForm() {
                   value={
                     appState.session.config?.algorithm?.image?.width ?? 128
                   }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'image',
+                      'width',
+                      Number(e.currentTarget.value),
+                    )
+                  }
                   step='32'
                   min='0'
                   class='h-7 text-xs'
@@ -192,6 +224,16 @@ export function FontProcessingForm() {
                   value={
                     appState.session.config?.algorithm?.image?.height ?? 128
                   }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'image',
+                      'height',
+                      Number(e.currentTarget.value),
+                    )
+                  }
                   step='16'
                   min='0'
                   class='h-7 text-xs'
@@ -204,6 +246,16 @@ export function FontProcessingForm() {
                   name='image-font-size'
                   value={
                     appState.session.config?.algorithm?.image?.font_size ?? 128
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'image',
+                      'font_size',
+                      Number(e.currentTarget.value),
+                    )
                   }
                   step='4'
                   min='0'
