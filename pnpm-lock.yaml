@@ -14,6 +14,9 @@ importers:
       '@fontsource-variable/chivo':
         specifier: ^5.2.6
         version: 5.2.6
+      '@fontsource/noto-sans':
+        specifier: ^5.2.10
+        version: 5.2.10
       '@kobalte/core':
         specifier: ^0.13.10
         version: 0.13.10(solid-js@1.9.7)
@@ -409,6 +412,9 @@ packages:
 
   '@fontsource-variable/chivo@5.2.6':
     resolution: {integrity: sha512-5T6/Zx3EtzrMTqO8pUlficJFyFuVxu/ssVEtrbF6WmDJGmdBZsHazR9sGiG3Z5+QHHuowHIDJHBshmqrCGA52g==}
+
+  '@fontsource/noto-sans@5.2.10':
+    resolution: {integrity: sha512-J58RVfS/C0Z2VBF+PoU260Tx8cdRGYuS+e3yQe4hYaIYDl0sEVn5CzlLo5zVRvQD0HaIUTV8AZMfqR7rtdEpqQ==}
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -2158,6 +2164,8 @@ snapshots:
   '@floating-ui/utils@0.2.10': {}
 
   '@fontsource-variable/chivo@5.2.6': {}
+
+  '@fontsource/noto-sans@5.2.10': {}
 
   '@humanfs/core@0.19.1': {}
 
