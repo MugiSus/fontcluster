@@ -40,28 +40,30 @@ export function Titlebar() {
       </div>
       <div class='fixed right-1 top-1 mr-0.5 flex items-center'>
         <Tooltip>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant='ghost'
-            size='icon'
-            onClick={copyCurrentSelectedFont}
-            class='size-6 rounded-full'
-            disabled={!appState.ui.selectedFontKey}
-          >
-            <CopyIcon class='size-6' />
+          <TooltipTrigger as='div'>
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={copyCurrentSelectedFont}
+              class='size-6 rounded-full'
+              disabled={!appState.ui.selectedFontKey}
+            >
+              <CopyIcon class='size-6' />
+            </Button>
           </TooltipTrigger>
           <TooltipContent>Copy family name</TooltipContent>
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant='ghost'
-            size='icon'
-            onClick={showSessions}
-            class='size-6 rounded-full'
-          >
-            <HistoryIcon class='size-6' />
+          <TooltipTrigger as='div'>
+            <Button
+              variant='ghost'
+              size='icon'
+              onClick={showSessions}
+              class='size-6 rounded-full'
+            >
+              <HistoryIcon class='size-6' />
+            </Button>
           </TooltipTrigger>
           <TooltipContent>History</TooltipContent>
         </Tooltip>

@@ -1,6 +1,7 @@
 import { createSignal, createResource, For, onMount } from 'solid-js';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { toast } from 'solid-sonner';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,6 @@ import { appState } from '../store';
 import { setCurrentSessionId } from '../actions';
 
 // Constants
-const CONFIRMATION_TIMEOUT = 3000;
 
 export function SessionSelector() {
   const [open, setOpen] = createSignal(false);
@@ -22,9 +22,11 @@ export function SessionSelector() {
   const [deletingSession, setDeletingSession] = createSignal<string | null>(
     null,
   );
-  const [confirmDeleteSession, setConfirmDeleteSession] = createSignal<
-    string | null
-  >(null);
+  const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
+    new Set(),
+  );
+
+  const pendingDeletions = new Map<string, number>();
 
   // Listen for show_session_selection event
   onMount(() => {
@@ -68,30 +70,51 @@ export function SessionSelector() {
         sessionUuid: sessionId,
       });
       if (result) {
-        refetch();
-        setConfirmDeleteSession(null);
-        console.log('Session deleted successfully:', sessionId);
-      } else {
-        console.error('Session deletion failed - session not found');
+        await refetch();
+        setHiddenSessionIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sessionId);
+          return next;
+        });
       }
     } catch (error) {
       console.error('Failed to delete session:', error);
     } finally {
       setDeletingSession(null);
+      pendingDeletions.delete(sessionId);
     }
   };
 
   const handleDeleteClick = (sessionId: string) => {
-    if (confirmDeleteSession() === sessionId) {
+    // Optimistically hide
+    setHiddenSessionIds((prev) => new Set(prev).add(sessionId));
+
+    const timeoutId = window.setTimeout(() => {
       deleteSession(sessionId);
-    } else {
-      setConfirmDeleteSession(sessionId);
-      setTimeout(() => {
-        if (confirmDeleteSession() === sessionId) {
-          setConfirmDeleteSession(null);
-        }
-      }, CONFIRMATION_TIMEOUT);
-    }
+    }, 5000);
+
+    pendingDeletions.set(sessionId, timeoutId);
+
+    toast('Session deleted', {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          window.clearTimeout(timeoutId);
+          pendingDeletions.delete(sessionId);
+          setHiddenSessionIds((prev) => {
+            const next = new Set(prev);
+            next.delete(sessionId);
+            return next;
+          });
+        },
+      },
+      onAutoClose: () => {
+        // Deletion is already scheduled by setTimeout
+      },
+      onDismiss: () => {
+        // Deletion is already scheduled by setTimeout
+      },
+    });
   };
 
   return (
@@ -106,16 +129,17 @@ export function SessionSelector() {
         </DialogHeader>
 
         <div class='flex min-h-0 grow flex-col overflow-y-scroll rounded border bg-background'>
-          <For each={availableSessions()}>
+          <For
+            each={availableSessions()?.filter(
+              (s) => !hiddenSessionIds().has(s.session_id),
+            )}
+          >
             {(session) => {
               return (
                 <SessionItem
                   session={session}
                   clusterCount={session.clusters_amount}
                   isCurrentSession={session.session_id === appState.session.id}
-                  isConfirmingDelete={
-                    confirmDeleteSession() === session.session_id
-                  }
                   isDeletingSession={deletingSession() === session.session_id}
                   isRestoring={isRestoring()}
                   onDeleteClick={() => handleDeleteClick(session.session_id)}

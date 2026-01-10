@@ -58,7 +58,6 @@ interface SessionItemProps {
   session: SessionConfig;
   clusterCount: number;
   isCurrentSession: boolean;
-  isConfirmingDelete: boolean;
   isDeletingSession: boolean;
   isRestoring: boolean;
   onDeleteClick: () => void;
@@ -96,7 +95,6 @@ export function SessionItem(props: SessionItemProps) {
       </div>
       <SessionActions
         isCurrentSession={props.isCurrentSession}
-        isConfirmingDelete={props.isConfirmingDelete}
         isDeletingSession={props.isDeletingSession}
         isRestoring={props.isRestoring}
         onDeleteClick={props.onDeleteClick}
@@ -145,7 +143,6 @@ function WeightIndicators(props: { weights: number[] }) {
 
 function SessionActions(props: {
   isCurrentSession: boolean;
-  isConfirmingDelete: boolean;
   isDeletingSession: boolean;
   isRestoring: boolean;
   onDeleteClick: () => void;
@@ -166,16 +163,16 @@ function SessionActions(props: {
         <TooltipContent>Restore session</TooltipContent>
       </Tooltip>
 
-      <Tooltip disabled={props.isConfirmingDelete}>
+      <Tooltip>
         <TooltipTrigger
           as={Button<'button'>}
           class='text-destructive hover:bg-destructive/10 hover:text-destructive'
-          size={props.isConfirmingDelete ? 'default' : 'icon'}
+          size='icon'
           variant='ghost'
           onClick={props.onDeleteClick}
           disabled={props.isDeletingSession}
         >
-          {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
+          <Trash2Icon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Delete session</TooltipContent>
       </Tooltip>
