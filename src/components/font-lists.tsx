@@ -15,6 +15,7 @@ import { appState } from '../store';
 import { setSelectedFontKey } from '../actions';
 import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export function FontLists() {
   const { onQueryChange } = useFilteredFontMetadataKeys({
@@ -60,14 +61,18 @@ export function FontLists() {
               <SearchIcon class='absolute left-3 top-3 size-4 text-muted-foreground' />
             }
           >
-            <Button
-              variant='ghost'
-              size='icon'
-              class='absolute left-1.5 top-1.5 size-7 hover:bg-destructive/10 hover:text-destructive'
-              onClick={handleClear}
-            >
-              <XIcon class='size-4' />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                variant='ghost'
+                size='icon'
+                class='absolute left-1.5 top-1.5 size-7 hover:bg-destructive/10 hover:text-destructive'
+                onClick={handleClear}
+              >
+                <XIcon class='size-4' />
+              </TooltipTrigger>
+              <TooltipContent>Clear</TooltipContent>
+            </Tooltip>
           </Show>
           <TextFieldInput
             type='text'
@@ -87,14 +92,28 @@ export function FontLists() {
       </TextField>
 
       <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden'>
-        <TabsTrigger value='similarity' class='relative'>
-          <ArrowDownNarrowWide class='absolute left-3 size-4' />
-          Similarity
-        </TabsTrigger>
-        <TabsTrigger value='name' class='relative'>
-          <ArrowDownAZ class='absolute left-3 size-4' />
-          Name (A-Z)
-        </TabsTrigger>
+        <Tooltip>
+          <TooltipTrigger
+            value='similarity'
+            class='relative'
+            as={TabsTrigger<'button'>}
+          >
+            <ArrowDownNarrowWide class='absolute left-3 size-4' />
+            Similarity
+          </TooltipTrigger>
+          <TooltipContent>Sort by cluster</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            value='name'
+            class='relative'
+            as={TabsTrigger<'button'>}
+          >
+            <ArrowDownAZ class='absolute left-3 size-4' />
+            Name
+          </TooltipTrigger>
+          <TooltipContent>Sort by name (A-Z)</TooltipContent>
+        </Tooltip>
       </TabsList>
 
       <TabsContent

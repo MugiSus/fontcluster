@@ -3,6 +3,7 @@ import { Button } from './ui/button';
 import { type FontWeight } from '../types/font';
 import { WeightIcon } from 'lucide-solid';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 interface WeightSelectorProps {
   weights: FontWeight[];
@@ -14,16 +15,16 @@ interface WeightSelectorProps {
 }
 
 export function WeightSelector(props: WeightSelectorProps) {
-  const weightLabels: Record<FontWeight, string> = {
-    100: 'UL',
-    200: 'EL',
-    300: 'L',
-    400: 'R',
-    500: 'M',
-    600: 'DB',
-    700: 'B',
-    800: 'EB',
-    900: 'UB',
+  const weightLabels: Record<FontWeight, { label: string; tooltip: string }> = {
+    100: { label: 'Th', tooltip: 'Thin' },
+    200: { label: 'El', tooltip: 'ExtraLight' },
+    300: { label: 'L', tooltip: 'Light' },
+    400: { label: 'R', tooltip: 'Regular' },
+    500: { label: 'M', tooltip: 'Medium' },
+    600: { label: 'S', tooltip: 'SemiBold' },
+    700: { label: 'B', tooltip: 'Bold' },
+    800: { label: 'Eb', tooltip: 'ExtraBold' },
+    900: { label: 'Bl', tooltip: 'Black' },
   };
 
   const handleWeightToggle = (weight: FontWeight) => {
@@ -63,18 +64,22 @@ export function WeightSelector(props: WeightSelectorProps) {
           const isSelectable = () => props.weights.includes(weight);
 
           return (
-            <Button
-              type='button'
-              variant={isSelected() ? 'default' : 'ghost'}
-              size='sm'
-              class='h-8 rounded-none px-2 shadow-none'
-              style={{ 'font-weight': weight }}
-              onClick={() => handleWeightToggle(weight)}
-              data-checked={isSelected()}
-              disabled={!isSelectable()}
-            >
-              {weightLabels[weight] || weight}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                type='button'
+                variant={isSelected() ? 'default' : 'ghost'}
+                size='sm'
+                class='h-8 rounded-none px-2 shadow-none'
+                style={{ 'font-weight': weight }}
+                onClick={() => handleWeightToggle(weight)}
+                data-checked={isSelected()}
+                disabled={!isSelectable()}
+              >
+                {weightLabels[weight].label}
+              </TooltipTrigger>
+              <TooltipContent>{weightLabels[weight].tooltip}</TooltipContent>
+            </Tooltip>
           );
         }}
       </For>
