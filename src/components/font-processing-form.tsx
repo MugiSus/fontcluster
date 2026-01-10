@@ -154,7 +154,7 @@ export function FontProcessingForm() {
                   size='icon'
                   disabled={appState.session.isProcessing}
                   class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('empty')}
+                  onClick={() => handleRun('discovered')}
                 >
                   <StepForwardIcon class='size-3 max-h-3' />
                 </TooltipTrigger>
@@ -398,7 +398,7 @@ export function FontProcessingForm() {
               disabled={appState.session.isProcessing}
               variant='default'
               size='sm'
-              class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums'
+              class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums hover:shadow-lg hover:shadow-primary/25'
             >
               {appState.session.isProcessing &&
               appState.session.status === 'empty'

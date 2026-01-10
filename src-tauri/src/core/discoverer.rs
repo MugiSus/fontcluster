@@ -168,7 +168,11 @@ impl Discoverer {
 
         let mut families: HashMap<String, Vec<ExtractedMeta>> = HashMap::new();
         for meta in all_metas {
-            families.entry(meta.family_names.get("1033").unwrap_or(&meta.display_name).clone())
+            let family_name = meta.preferred_family_names.get("1033")
+                .or_else(|| meta.family_names.get("1033"))
+                .unwrap_or(&meta.display_name)
+                .clone();
+            families.entry(family_name)
                 .or_default()
                 .push(meta);
         }
@@ -187,7 +191,13 @@ impl Discoverer {
                 let best = family_metas.iter()
                     .filter(|m| {
                         let diff = m.actual_weight - tw;
-                        diff >= -50 && diff < 50
+                        if tw < 400 {
+                            diff > -50 && diff <= 50
+                        } else if tw > 400 {
+                            diff >= -50 && diff < 50
+                        } else {
+                            diff > -50 && diff < 50
+                        }
                     })
                     .min_by_key(|m| (m.actual_weight - tw).abs());
 
