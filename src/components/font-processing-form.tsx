@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
@@ -146,15 +147,19 @@ export function FontProcessingForm() {
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 Image Generation
               </div>
-              <Button
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('empty')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('empty')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -204,15 +209,19 @@ export function FontProcessingForm() {
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 HOG Feature Extraction
               </div>
-              <Button
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('generated')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('generated')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -249,15 +258,19 @@ export function FontProcessingForm() {
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 PaCMAP (D-Reduction)
               </div>
-              <Button
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('vectorized')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('vectorized')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -326,15 +339,19 @@ export function FontProcessingForm() {
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 HDBSCAN (Clustering)
               </div>
-              <Button
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('compressed')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('compressed')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -374,38 +391,46 @@ export function FontProcessingForm() {
 
       <div class='flex flex-col gap-1.5'>
         <div class='flex items-center gap-1'>
-          <Button
-            type='submit'
-            disabled={appState.session.isProcessing}
-            variant='default'
-            size='sm'
-            class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums'
-          >
-            {appState.session.isProcessing &&
-            appState.session.status === 'empty'
-              ? `Discovering...`
-              : appState.session.isProcessing &&
-                  appState.session.status === 'discovered'
-                ? `Generating...`
-                : appState.session.isProcessing &&
-                    appState.session.status === 'generated'
-                  ? `Vectorizing...`
-                  : appState.session.isProcessing &&
-                      appState.session.status === 'vectorized'
-                    ? 'Compressing...'
-                    : appState.session.isProcessing &&
-                        appState.session.status === 'compressed'
-                      ? 'Clustering...'
-                      : appState.session.status === 'clustered'
-                        ? 'Run'
-                        : 'Continue'}
-            <Show
-              when={appState.session.isProcessing}
-              fallback={<ArrowRightIcon class='absolute right-3' />}
+          <Tooltip>
+            <TooltipTrigger
+              as={Button<'button'>}
+              type='submit'
+              disabled={appState.session.isProcessing}
+              variant='default'
+              size='sm'
+              class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums'
             >
-              <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-            </Show>
-          </Button>
+              {appState.session.isProcessing &&
+              appState.session.status === 'empty'
+                ? `Discovering...`
+                : appState.session.isProcessing &&
+                    appState.session.status === 'discovered'
+                  ? `Generating...`
+                  : appState.session.isProcessing &&
+                      appState.session.status === 'generated'
+                    ? `Vectorizing...`
+                    : appState.session.isProcessing &&
+                        appState.session.status === 'vectorized'
+                      ? 'Compressing...'
+                      : appState.session.isProcessing &&
+                          appState.session.status === 'compressed'
+                        ? 'Clustering...'
+                        : appState.session.status === 'clustered'
+                          ? 'Run'
+                          : 'Continue'}
+              <Show
+                when={appState.session.isProcessing}
+                fallback={<ArrowRightIcon class='absolute right-3' />}
+              >
+                <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
+              </Show>
+            </TooltipTrigger>
+            <TooltipContent>
+              {appState.session.status === 'clustered'
+                ? 'Create new and run'
+                : 'Continue'}
+            </TooltipContent>
+          </Tooltip>
 
           <Show when={appState.session.isProcessing}>
             <Button

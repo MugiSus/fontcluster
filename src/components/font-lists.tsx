@@ -93,24 +93,20 @@ export function FontLists() {
 
       <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden'>
         <Tooltip>
-          <TooltipTrigger
-            value='similarity'
-            class='relative'
-            as={TabsTrigger<'button'>}
-          >
-            <ArrowDownNarrowWide class='absolute left-3 size-4' />
-            Similarity
+          <TooltipTrigger as='div' class='w-full'>
+            <TabsTrigger value='similarity' class='relative w-full'>
+              <ArrowDownNarrowWide class='absolute left-3 size-4' />
+              Similarity
+            </TabsTrigger>
           </TooltipTrigger>
           <TooltipContent>Sort by cluster</TooltipContent>
         </Tooltip>
         <Tooltip>
-          <TooltipTrigger
-            value='name'
-            class='relative'
-            as={TabsTrigger<'button'>}
-          >
-            <ArrowDownAZ class='absolute left-3 size-4' />
-            Name
+          <TooltipTrigger as='div' class='w-full'>
+            <TabsTrigger value='name' class='relative w-full'>
+              <ArrowDownAZ class='absolute left-3 size-4' />
+              Name
+            </TabsTrigger>
           </TooltipTrigger>
           <TooltipContent>Sort by name (A-Z)</TooltipContent>
         </Tooltip>
