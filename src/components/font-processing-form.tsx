@@ -3,13 +3,13 @@ import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
   ArrowRightIcon,
-  ChevronDownIcon,
   StepForwardIcon,
   LoaderCircleIcon,
   PauseIcon,
   TypeIcon,
   FlaskConicalIcon,
   WeightIcon,
+  ChevronDownIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import {
@@ -95,7 +95,7 @@ export function FontProcessingForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex min-h-0 flex-1 flex-col items-stretch gap-1 pl-2'
+      class='flex min-h-0 flex-1 flex-col items-stretch gap-2 pl-2'
     >
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
@@ -119,7 +119,7 @@ export function FontProcessingForm() {
           class='pl-9'
         />
       </TextField>
-      <TextField class='grid w-full items-center gap-1 pt-1'>
+      <TextField class='grid w-full items-center gap-1'>
         <TextFieldLabel
           for='weights'
           class='flex items-center gap-1 text-xs uppercase text-muted-foreground'
@@ -134,16 +134,23 @@ export function FontProcessingForm() {
           isCompact
         />
       </TextField>
-      <details
-        class='group flex min-h-0 w-full grow flex-col overflow-y-auto'
-        open
-      >
-        <summary class='flex cursor-pointer list-none items-center gap-1 py-1 text-xxs font-medium uppercase text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
+
+      <section class='flex min-h-0 flex-col gap-1'>
+        <input
+          type='checkbox'
+          id='advanced-options'
+          class='peer sr-only'
+          checked
+        />
+        <label
+          class='flex cursor-pointer items-center gap-1 text-xxs font-medium uppercase text-muted-foreground'
+          for='advanced-options'
+        >
           <FlaskConicalIcon class='mb-[3px] size-3' />
           Algorithm options (Advanced)
-          <ChevronDownIcon class='mb-0.5 ml-1 size-3 transition-transform group-open:rotate-180' />
-        </summary>
-        <div class='min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-muted p-2 text-muted-foreground shadow-sm'>
+          <ChevronDownIcon class='mb-0.5 size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
+        </label>
+        <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-muted p-2 text-muted-foreground shadow-sm peer-checked:block'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
@@ -415,9 +422,9 @@ export function FontProcessingForm() {
             </div>
           </div>
         </div>
-      </details>
+      </section>
 
-      <div class='flex flex-col gap-1.5'>
+      <div class='mt-auto flex flex-col gap-1.5'>
         <div class='flex items-center gap-1'>
           <Tooltip>
             <TooltipTrigger
