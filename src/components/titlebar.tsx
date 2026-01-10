@@ -3,6 +3,7 @@ import { emit } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 import { appState } from '@/store';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export function Titlebar() {
   const copyCurrentSelectedFont = (event: MouseEvent) => {
@@ -38,24 +39,39 @@ export function Titlebar() {
         <div class='size-1 rotate-45 bg-border' />
       </div>
       <div class='fixed right-1 top-1 mr-0.5 flex items-center'>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={copyCurrentSelectedFont}
-          class='size-6 rounded-full'
-          disabled={!appState.ui.selectedFontKey}
-        >
-          <CopyIcon class='size-6' />
-        </Button>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={showSessions}
-          class='size-6 rounded-full'
-        >
-          <HistoryIcon class='size-6' />
-        </Button>
-        <ModeToggle class='size-6 rounded-full' />
+        <Tooltip>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            onClick={copyCurrentSelectedFont}
+            class='size-6 rounded-full'
+            disabled={!appState.ui.selectedFontKey}
+          >
+            <CopyIcon class='size-6' />
+          </TooltipTrigger>
+          <TooltipContent>Copy family name</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            onClick={showSessions}
+            class='size-6 rounded-full'
+          >
+            <HistoryIcon class='size-6' />
+          </TooltipTrigger>
+          <TooltipContent>History</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger as='div'>
+            <ModeToggle class='size-6 rounded-full' />
+          </TooltipTrigger>
+          <TooltipContent>Theme</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );

@@ -8,6 +8,7 @@ import {
   type ProcessStatus,
   WEIGHT_LABELS,
 } from '../types/font';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 // Constants (local to SessionItem rendering)
 const CLUSTER_COLORS = [
@@ -152,23 +153,32 @@ function SessionActions(props: {
 }) {
   return (
     <div class='flex'>
-      <Button
-        size='icon'
-        onClick={props.onSelectSession}
-        disabled={props.isCurrentSession || props.isRestoring}
-        variant='ghost'
-      >
-        <HistoryIcon class='size-4' />
-      </Button>
-      <Button
-        class='text-destructive hover:bg-destructive/10 hover:text-destructive'
-        size={props.isConfirmingDelete ? 'default' : 'icon'}
-        variant='ghost'
-        onClick={props.onDeleteClick}
-        disabled={props.isDeletingSession}
-      >
-        {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          as={Button<'button'>}
+          size='icon'
+          onClick={props.onSelectSession}
+          disabled={props.isCurrentSession || props.isRestoring}
+          variant='ghost'
+        >
+          <HistoryIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Restore session</TooltipContent>
+      </Tooltip>
+
+      <Tooltip disabled={props.isConfirmingDelete}>
+        <TooltipTrigger
+          as={Button<'button'>}
+          class='text-destructive hover:bg-destructive/10 hover:text-destructive'
+          size={props.isConfirmingDelete ? 'default' : 'icon'}
+          variant='ghost'
+          onClick={props.onDeleteClick}
+          disabled={props.isDeletingSession}
+        >
+          {props.isConfirmingDelete ? 'Delete?' : <Trash2Icon class='size-4' />}
+        </TooltipTrigger>
+        <TooltipContent>Delete session</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

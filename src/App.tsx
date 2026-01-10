@@ -12,7 +12,7 @@ import {
   ResizablePanel,
 } from './components/ui/resizable';
 import { CircleSlash2Icon } from 'lucide-solid';
-import { Toaster } from './components/ui/toast';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   onMount(() => {
@@ -21,7 +21,7 @@ function App() {
 
   return (
     <>
-      <Toaster />
+      <Toaster position='bottom-right' />
       <ClipboardManager />
       <SessionSelector />
       <div class='m-2 mt-0 h-full min-h-0'>
