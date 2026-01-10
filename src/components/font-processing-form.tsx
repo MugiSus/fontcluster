@@ -102,15 +102,14 @@ export function FontProcessingForm() {
   );
 
   createEffect(() => {
-    const m = metrics();
-    // Round up to nearest integer for dimensions
-    const w = Math.ceil(m.width);
-    const h = Math.ceil(m.height);
+    const met = metrics();
+    const width = Math.ceil(met.width / 16) * 16;
+    const height = Math.ceil(met.height / 16) * 16;
 
     setAppState('session', 'config', 'algorithm', 'image', (prev) => ({
       ...prev,
-      width: w,
-      height: h,
+      width,
+      height,
     }));
   });
 
@@ -211,7 +210,7 @@ export function FontProcessingForm() {
                       Number(e.currentTarget.value),
                     )
                   }
-                  step='32'
+                  step='16'
                   min='0'
                   class='h-7 text-xs'
                 />
