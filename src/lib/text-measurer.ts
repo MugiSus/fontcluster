@@ -1,91 +1,74 @@
-/**
- * Result of a text measurement operation.
- */
-export interface TextMetrics {
-  /** The precise "ink" width of the text (actualBoundingBoxLeft + actualBoundingBoxRight). */
-  readonly width: number;
-  /** The precise "ink" height of the text (actualBoundingBoxAscent + actualBoundingBoxDescent). */
-  readonly height: number;
-  /** The standard typographic advance width. */
-  readonly advanceWidth: number;
+export interface TextDimensions {
+  /** The "advance width" including side bearings. */
+  width: number;
+  /** The total height from the top-most ink to the bottom-most ink. */
+  height: number;
+  /** The actual "ink width" from the left-most pixel to the right-most pixel. */
+  inkWidth: number;
   /** Distance from the baseline to the top-most ink. */
-  readonly ascent: number;
+  ascent: number;
   /** Distance from the baseline to the bottom-most ink. */
-  readonly descent: number;
+  descent: number;
   /** Distance from the horizontal origin to the left-most ink. */
-  readonly left: number;
+  left: number;
   /** Distance from the horizontal origin to the right-most ink. */
-  readonly right: number;
+  right: number;
 }
 
 /**
- * A modern, smart utility to measure text dimensions using the HTML5 Canvas API.
- * Uses lazy initialization and supports font readiness checks.
+ * A utility class to measure text dimensions using the HTML5 Canvas API.
+ * This is particularly useful for measuring text rendered with "Noto Sans".
  */
 export class TextMeasurer {
-  #ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  private canvas: HTMLCanvasElement | OffscreenCanvas;
+  private ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
-  /**
-   * Lazily initializes and returns the 2D rendering context.
-   */
-  get #context(): CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D {
-    if (this.#ctx) return this.#ctx;
+  constructor() {
+    // Use OffscreenCanvas if available, otherwise fallback to regular canvas
+    if (typeof OffscreenCanvas !== 'undefined') {
+      this.canvas = new OffscreenCanvas(0, 0);
+    } else {
+      this.canvas = document.createElement('canvas');
+    }
 
-    const canvas =
-      typeof OffscreenCanvas !== 'undefined'
-        ? new OffscreenCanvas(0, 0)
-        : document.createElement('canvas');
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx)
-      throw new Error('Failed to initialize 2D context for text measurement');
-
-    this.#ctx = ctx as
+    const ctx = this.canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Could not get 2D context for text measurement');
+    }
+    this.ctx = ctx as
       | CanvasRenderingContext2D
       | OffscreenCanvasRenderingContext2D;
-    return this.#ctx;
   }
 
   /**
-   * Ensures the specified font is loaded and ready for measurement.
-   */
-  async prepare(fontSize: number, fontFamily = '"Noto Sans"'): Promise<void> {
-    if (typeof document !== 'undefined' && 'fonts' in document) {
-      await document.fonts.load(`${fontSize}px ${fontFamily}`);
-    }
-  }
-
-  /**
-   * Measures the dimensions of the given text.
+   * Measures the dimensions of the given text with the specified font size.
+   * Uses "Noto Sans" as the primary font with a fallback to sans-serif.
    *
    * @param text The text to measure.
    * @param fontSize The font size in pixels.
-   * @param fontFamily The font family (defaults to Noto Sans).
-   * @returns Detailed metrics of the rendered text.
+   * @returns An object containing detailed metrics of the text.
    */
-  measure(
-    text: string,
-    fontSize: number,
-    fontFamily = '"Noto Sans", sans-serif',
-  ): TextMetrics {
-    const ctx = this.#context;
-    ctx.font = `${fontSize}px ${fontFamily}`;
+  measure(text: string, fontSize: number): TextDimensions {
+    this.ctx.font = `${fontSize}px "Noto Sans", sans-serif`;
+    const metrics = this.ctx.measureText(text);
 
-    const m = ctx.measureText(text);
+    // actualBoundingBox metrics give the actual "ink" boundaries
+    const ascent = metrics.actualBoundingBoxAscent;
+    const descent = metrics.actualBoundingBoxDescent;
+    const left = metrics.actualBoundingBoxLeft;
+    const right = metrics.actualBoundingBoxRight;
 
     return {
-      width: m.actualBoundingBoxLeft + m.actualBoundingBoxRight,
-      height: m.actualBoundingBoxAscent + m.actualBoundingBoxDescent,
-      advanceWidth: m.width,
-      ascent: m.actualBoundingBoxAscent,
-      descent: m.actualBoundingBoxDescent,
-      left: m.actualBoundingBoxLeft,
-      right: m.actualBoundingBoxRight,
+      width: metrics.width, // Advance width
+      height: ascent + descent,
+      inkWidth: left + right, // Total horizontal span of pixels
+      ascent,
+      descent,
+      left,
+      right,
     };
   }
 }
 
-/**
- * Singleton instance for easy project-wide access.
- */
+// Export a singleton instance for convenience
 export const textMeasurer = new TextMeasurer();
