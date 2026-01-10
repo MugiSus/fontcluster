@@ -19,14 +19,9 @@ import { setCurrentSessionId } from '../actions';
 export function SessionSelector() {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
-  const [deletingSession, setDeletingSession] = createSignal<string | null>(
-    null,
-  );
   const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
     new Set(),
   );
-
-  const pendingDeletions = new Map<string, number>();
 
   // Listen for show_session_selection event
   onMount(() => {
@@ -64,7 +59,6 @@ export function SessionSelector() {
   };
 
   const deleteSession = async (sessionId: string) => {
-    setDeletingSession(sessionId);
     try {
       const result = await invoke<boolean>('delete_session', {
         sessionUuid: sessionId,
@@ -79,47 +73,37 @@ export function SessionSelector() {
       }
     } catch (error) {
       console.error('Failed to delete session:', error);
-    } finally {
-      setDeletingSession(null);
-      pendingDeletions.delete(sessionId);
     }
   };
 
-  const handleDeleteClick = (sessionId: string) => {
-    // Optimistically hide
+  const handleDeleteClick = (session: SessionConfig) => {
+    const sessionId = session.session_id;
     setHiddenSessionIds((prev) => new Set(prev).add(sessionId));
 
-    const timeoutId = window.setTimeout(() => {
-      deleteSession(sessionId);
-    }, 5000);
-
-    pendingDeletions.set(sessionId, timeoutId);
-
-    toast('Session deleted', {
+    toast(`Session deleted: '${session.preview_text}'`, {
+      description: 'The session data will be permanently lost.',
       action: {
         label: 'Undo',
-        onClick: () => {
-          window.clearTimeout(timeoutId);
-          pendingDeletions.delete(sessionId);
+        onClick: () =>
           setHiddenSessionIds((prev) => {
             const next = new Set(prev);
             next.delete(sessionId);
             return next;
-          });
-        },
+          }),
+      },
+      duration: 5000,
+      onDismiss: () => {
+        deleteSession(sessionId);
       },
       onAutoClose: () => {
-        // Deletion is already scheduled by setTimeout
-      },
-      onDismiss: () => {
-        // Deletion is already scheduled by setTimeout
+        deleteSession(sessionId);
       },
     });
   };
 
   return (
     <Dialog open={open()} onOpenChange={setOpen}>
-      <DialogContent class='flex max-h-[80vh] max-w-screen-md flex-col rounded-xl bg-gradient-to-b from-slate-20 to-slate-50 p-6 dark:from-zinc-900 dark:to-zinc-920'>
+      <DialogContent class='flex h-[80vh] max-w-screen-md flex-col rounded-xl bg-gradient-to-b from-slate-20 to-slate-50 p-6 dark:from-zinc-900 dark:to-zinc-920'>
         <DialogHeader>
           <DialogTitle>Restore Recent Session</DialogTitle>
           <DialogDescription>
@@ -140,9 +124,8 @@ export function SessionSelector() {
                   session={session}
                   clusterCount={session.clusters_amount}
                   isCurrentSession={session.session_id === appState.session.id}
-                  isDeletingSession={deletingSession() === session.session_id}
                   isRestoring={isRestoring()}
-                  onDeleteClick={() => handleDeleteClick(session.session_id)}
+                  onDeleteClick={() => handleDeleteClick(session)}
                   onSelectSession={() => selectSession(session.session_id)}
                 />
               );

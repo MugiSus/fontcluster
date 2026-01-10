@@ -415,7 +415,8 @@ export function FontProcessingForm() {
                       : appState.session.isProcessing &&
                           appState.session.status === 'compressed'
                         ? 'Clustering...'
-                        : appState.session.status === 'clustered'
+                        : appState.session.status === 'clustered' ||
+                            appState.session.status === 'empty'
                           ? 'Run'
                           : 'Continue'}
               <Show
@@ -426,8 +427,9 @@ export function FontProcessingForm() {
               </Show>
             </TooltipTrigger>
             <TooltipContent>
-              {appState.session.status === 'clustered'
-                ? 'Create new and run'
+              {appState.session.status === 'clustered' ||
+              appState.session.status === 'empty'
+                ? 'Create new session and run'
                 : 'Continue'}
             </TooltipContent>
           </Tooltip>

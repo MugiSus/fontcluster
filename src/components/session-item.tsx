@@ -58,7 +58,6 @@ interface SessionItemProps {
   session: SessionConfig;
   clusterCount: number;
   isCurrentSession: boolean;
-  isDeletingSession: boolean;
   isRestoring: boolean;
   onDeleteClick: () => void;
   onSelectSession: () => void;
@@ -95,7 +94,6 @@ export function SessionItem(props: SessionItemProps) {
       </div>
       <SessionActions
         isCurrentSession={props.isCurrentSession}
-        isDeletingSession={props.isDeletingSession}
         isRestoring={props.isRestoring}
         onDeleteClick={props.onDeleteClick}
         onSelectSession={props.onSelectSession}
@@ -143,7 +141,6 @@ function WeightIndicators(props: { weights: number[] }) {
 
 function SessionActions(props: {
   isCurrentSession: boolean;
-  isDeletingSession: boolean;
   isRestoring: boolean;
   onDeleteClick: () => void;
   onSelectSession: () => void;
@@ -170,7 +167,6 @@ function SessionActions(props: {
           size='icon'
           variant='ghost'
           onClick={props.onDeleteClick}
-          disabled={props.isDeletingSession}
         >
           <Trash2Icon class='size-4' />
         </TooltipTrigger>
