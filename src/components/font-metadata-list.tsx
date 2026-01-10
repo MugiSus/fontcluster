@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { FontMetadata } from '../types/font';
+import { FontMetadata, FontWeight, WEIGHT_LABELS } from '../types/font';
 import {
   getClusterBackgroundColor,
   getClusterTextColor,
@@ -44,9 +44,9 @@ export function FontMetadataList(props: FontMetadataListProps) {
               </Show>
               <div class='text-sm font-light text-foreground'>
                 {
-                  ['UL', 'EL', 'L', 'R', 'M', 'DB', 'B', 'EB', 'UB'][
-                    Math.trunc(fontMetadata.weight / 100) - 1
-                  ]
+                  WEIGHT_LABELS[
+                    (Math.trunc(fontMetadata.weight / 100) * 100) as FontWeight
+                  ].short
                 }
               </div>
               <div class='text-nowrap text-sm font-light text-muted-foreground'>

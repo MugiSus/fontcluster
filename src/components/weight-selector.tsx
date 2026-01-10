@@ -1,6 +1,6 @@
 import { For, Show } from 'solid-js';
 import { Button } from './ui/button';
-import { type FontWeight } from '../types/font';
+import { type FontWeight, WEIGHT_LABELS } from '../types/font';
 import { WeightIcon } from 'lucide-solid';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -15,18 +15,6 @@ interface WeightSelectorProps {
 }
 
 export function WeightSelector(props: WeightSelectorProps) {
-  const weightLabels: Record<FontWeight, { label: string; tooltip: string }> = {
-    100: { label: 'Th', tooltip: 'Thin' },
-    200: { label: 'El', tooltip: 'ExtraLight' },
-    300: { label: 'L', tooltip: 'Light' },
-    400: { label: 'R', tooltip: 'Regular' },
-    500: { label: 'M', tooltip: 'Medium' },
-    600: { label: 'S', tooltip: 'SemiBold' },
-    700: { label: 'B', tooltip: 'Bold' },
-    800: { label: 'Eb', tooltip: 'ExtraBold' },
-    900: { label: 'Bl', tooltip: 'Black' },
-  };
-
   const handleWeightToggle = (weight: FontWeight) => {
     const currentWeights = props.selectedWeights;
     const newWeights = currentWeights.includes(weight)
@@ -76,9 +64,9 @@ export function WeightSelector(props: WeightSelectorProps) {
                 data-checked={isSelected()}
                 disabled={!isSelectable()}
               >
-                {weightLabels[weight].label}
+                {WEIGHT_LABELS[weight].short}
               </TooltipTrigger>
-              <TooltipContent>{weightLabels[weight].tooltip}</TooltipContent>
+              <TooltipContent>{WEIGHT_LABELS[weight].full}</TooltipContent>
             </Tooltip>
           );
         }}

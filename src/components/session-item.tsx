@@ -6,6 +6,7 @@ import {
   FontWeight,
   type SessionConfig,
   type ProcessStatus,
+  WEIGHT_LABELS,
 } from '../types/font';
 
 // Constants (local to SessionItem rendering)
@@ -122,18 +123,6 @@ function ClusterIndicators(props: { count: number }) {
 }
 
 function WeightIndicators(props: { weights: number[] }) {
-  const weightLabels: Record<FontWeight, string> = {
-    100: 'UL',
-    200: 'EL',
-    300: 'L',
-    400: 'R',
-    500: 'M',
-    600: 'DB',
-    700: 'B',
-    800: 'EB',
-    900: 'UB',
-  };
-
   return (
     <div class='flex gap-1 text-xs'>
       <Index each={[100, 200, 300, 400, 500, 600, 700, 800, 900]}>
@@ -145,7 +134,7 @@ function WeightIndicators(props: { weights: number[] }) {
                 : 'text-muted'
             }
           >
-            {weightLabels[weight() as FontWeight]}
+            {WEIGHT_LABELS[weight() as FontWeight].short}
           </div>
         )}
       </Index>

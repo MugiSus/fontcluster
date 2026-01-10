@@ -1,5 +1,20 @@
 export type FontWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
 
+export const WEIGHT_LABELS: Record<
+  FontWeight,
+  { short: string; full: string }
+> = {
+  100: { short: 'Th', full: 'Thin' },
+  200: { short: 'El', full: 'ExtraLight' },
+  300: { short: 'L', full: 'Light' },
+  400: { short: 'R', full: 'Regular' },
+  500: { short: 'M', full: 'Medium' },
+  600: { short: 'S', full: 'SemiBold' },
+  700: { short: 'B', full: 'Bold' },
+  800: { short: 'Eb', full: 'ExtraBold' },
+  900: { short: 'Bl', full: 'Black' },
+};
+
 export interface PacmapOptions {
   mn_phases: number;
   nn_phases: number;
