@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
-pub const PREVIEW_TEXT: &str = "fonts";
-pub const DEFAULT_FONT_SIZE: f32 = 64.0;
+pub const PREVIEW_TEXT: &str = "ü";
+pub const DEFAULT_FONT_SIZE: f32 = 128.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,8 +37,8 @@ pub struct HdbscanConfig {
 impl Default for HdbscanConfig {
     fn default() -> Self {
         Self {
-            min_cluster_size: 10,
-            min_samples: 8,
+            min_cluster_size: 16,
+            min_samples: 16,
         }
     }
 }
@@ -55,8 +55,8 @@ impl Default for PacmapConfig {
     fn default() -> Self {
         Self {
             mn_phases: 100,
-            nn_phases: 300,
-            fp_phases: 200,
+            nn_phases: 100,
+            fp_phases: 100,
             learning_rate: 1.0,
         }
     }
@@ -72,7 +72,7 @@ impl Default for HogConfig {
     fn default() -> Self {
         Self {
             orientations: 12,
-            cell_side: 8,
+            cell_side: 16,
         }
     }
 }
@@ -87,8 +87,8 @@ pub struct ImageConfig {
 impl Default for ImageConfig {
     fn default() -> Self {
         Self {
-            width: 320,
-            height: 80,
+            width: 128,
+            height: 128,
             font_size: DEFAULT_FONT_SIZE,
         }
     }

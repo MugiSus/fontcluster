@@ -168,7 +168,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='image-width'
                   value={
-                    appState.session.config?.algorithm?.image?.width ?? 320
+                    appState.session.config?.algorithm?.image?.width ?? 128
                   }
                   step='32'
                   min='0'
@@ -181,7 +181,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='image-height'
                   value={
-                    appState.session.config?.algorithm?.image?.height ?? 80
+                    appState.session.config?.algorithm?.image?.height ?? 128
                   }
                   step='16'
                   min='0'
@@ -194,7 +194,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='image-font-size'
                   value={
-                    appState.session.config?.algorithm?.image?.font_size ?? 64
+                    appState.session.config?.algorithm?.image?.font_size ?? 128
                   }
                   step='4'
                   min='0'
@@ -243,7 +243,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='hog-cell-side'
                   value={
-                    appState.session.config?.algorithm?.hog?.cell_side ?? 8
+                    appState.session.config?.algorithm?.hog?.cell_side ?? 16
                   }
                   step='2'
                   min='0'
@@ -296,7 +296,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='pacmap-nn-phases'
                   value={
-                    appState.session.config?.algorithm?.pacmap?.nn_phases ?? 300
+                    appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100
                   }
                   step='10'
                   min='0'
@@ -311,7 +311,7 @@ export function FontProcessingForm() {
                   type='number'
                   name='pacmap-fp-phases'
                   value={
-                    appState.session.config?.algorithm?.pacmap?.fp_phases ?? 200
+                    appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100
                   }
                   step='10'
                   min='0'
@@ -363,7 +363,7 @@ export function FontProcessingForm() {
                   name='hdbscan-min-cluster-size'
                   value={
                     appState.session.config?.algorithm?.hdbscan
-                      ?.min_cluster_size ?? 10
+                      ?.min_cluster_size ?? 16
                   }
                   step='1'
                   min='0'
@@ -377,7 +377,7 @@ export function FontProcessingForm() {
                   name='hdbscan-min-samples'
                   value={
                     appState.session.config?.algorithm?.hdbscan?.min_samples ??
-                    6
+                    16
                   }
                   step='1'
                   min='0'
