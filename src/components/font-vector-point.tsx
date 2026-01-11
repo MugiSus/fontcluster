@@ -99,17 +99,6 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             : props.fontName.substring(0, 16) + '…'}
         </text>
       </Show>
-
-      <Show when={!props.isDisabled}>
-        <circle
-          cx={0}
-          cy={0}
-          r={48}
-          fill='transparent'
-          data-font-select-area
-          data-font-safe-name={props.safeName}
-        />
-      </Show>
     </g>
   );
 }

@@ -24,7 +24,8 @@ export function FontClusterVisualization() {
   // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
-  const { ref: svgRef, size: svgSize } = useElementSize<SVGSVGElement>();
+  let svgElement: SVGSVGElement | undefined;
+  const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
 
   const zoomFactor = createMemo(() => {
     const minSide = Math.min(svgSize().width, svgSize().height);
@@ -49,39 +50,50 @@ export function FontClusterVisualization() {
   });
 
   const selectSelectedFont = (event: MouseEvent) => {
-    const elements = document.elementsFromPoint(event.clientX, event.clientY);
+    if (!svgElement) return;
 
-    const nearFontElements = elements.filter((el) =>
-      el.hasAttribute('data-font-select-area'),
-    );
+    const rect = svgElement.getBoundingClientRect();
 
-    if (nearFontElements.length === 0) {
-      setSelectedFontKey(null);
-      return;
+    // Convert mouse position to SVG coordinates
+    // This logic must match handleWheel's coordinate conversion
+    const mouseX =
+      event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
+    const mouseY =
+      event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
+
+    const currentViewBox = viewBox();
+    const { x: vX, y: vY, width: vWidth, height: vHeight } = currentViewBox;
+
+    const svgMouseX =
+      vX + (mouseX / Math.min(rect.width, rect.height)) * vWidth;
+    const svgMouseY =
+      vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
+
+    let nearestKey = '';
+    let minDistance = Infinity;
+    const selectionRadius = 48 * zoomFactor();
+
+    const activeWeights = visualizerWeights();
+
+    for (const point of allPoints()) {
+      // Only select points that are currently active (rendered)
+      if (!activeWeights.includes(point.metadata.weight as FontWeight))
+        continue;
+
+      const dx = point.x - svgMouseX;
+      const dy = point.y - svgMouseY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < selectionRadius && distance < minDistance) {
+        minDistance = distance;
+        nearestKey = point.key;
+      }
     }
 
-    let selectedSafeName = '';
-    let nearestDistance = Infinity;
-
-    nearFontElements.forEach((el) => {
-      const circle = el as SVGCircleElement;
-      const rect = circle.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const distance = Math.sqrt(
-        (event.clientX - centerX) ** 2 + (event.clientY - centerY) ** 2,
-      );
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        selectedSafeName = circle.getAttribute('data-font-safe-name') || '';
-      }
-    });
-
-    if (selectedSafeName) {
-      const metadata = appState.fonts.data[selectedSafeName];
+    if (nearestKey) {
+      const metadata = appState.fonts.data[nearestKey];
       if (metadata) {
-        setSelectedFontKey(selectedSafeName);
+        setSelectedFontKey(nearestKey);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,
@@ -89,6 +101,8 @@ export function FontClusterVisualization() {
           });
         }
       }
+    } else {
+      setSelectedFontKey(null);
     }
   };
 
@@ -270,7 +284,10 @@ export function FontClusterVisualization() {
         />
       </div>
       <svg
-        ref={svgRef}
+        ref={(el) => {
+          svgElement = el;
+          setSvgRef(el);
+        }}
         class='size-full select-none'
         viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
         xmlns='http://www.w3.org/2000/svg'
