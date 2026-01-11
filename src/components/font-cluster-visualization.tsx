@@ -52,7 +52,7 @@ export function FontClusterVisualization() {
     const elements = document.elementsFromPoint(event.clientX, event.clientY);
 
     const nearFontElements = elements.filter((el) =>
-      el.hasAttribute('data-font-safe-name'),
+      el.hasAttribute('data-font-select-area'),
     );
 
     if (nearFontElements.length === 0) {

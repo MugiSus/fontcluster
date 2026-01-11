@@ -106,6 +106,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           cy={0}
           r={48}
           fill='transparent'
+          data-font-select-area
           data-font-safe-name={props.safeName}
         />
       </Show>
