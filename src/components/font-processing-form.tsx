@@ -2,7 +2,6 @@ import { Show, createEffect, createMemo } from 'solid-js';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import { measureText } from '@/lib/text-measurer';
-import { alignToHogConstraints } from '@/lib/hog';
 import {
   ArrowRightIcon,
   StepForwardIcon,
@@ -23,6 +22,18 @@ import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+
+function alignToHogConstraints(
+  measuredSize: number,
+  cellSide: number,
+  blockSide: number,
+  blockStride: number,
+): number {
+  const minCellsRequired = Math.ceil(measuredSize / cellSide);
+  const n = Math.ceil(Math.max(0, minCellsRequired - blockSide) / blockStride);
+  const totalCells = blockSide + n * blockStride;
+  return totalCells * cellSide;
+}
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
