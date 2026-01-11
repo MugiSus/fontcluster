@@ -21,7 +21,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
   createEffect(() => {
     const key = props.selectedFontKey;
     if (key && itemRefs[key]) {
-      itemRefs[key].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      itemRefs[key].scrollIntoView({ behavior: 'instant', block: 'center' });
     }
   });
 
