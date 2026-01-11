@@ -230,10 +230,13 @@ export function FontClusterVisualization() {
   const fontQuadtree = createMemo(() => {
     const points = allPoints();
     const activeWeights = visualizerWeights();
+    const filteredKeys = appState.fonts.filteredKeys;
 
     // Only index active points to make search faster and accurate for current view
-    const activePoints = points.filter((p) =>
-      activeWeights.includes(p.metadata.weight as FontWeight),
+    const activePoints = points.filter(
+      (p) =>
+        activeWeights.includes(p.metadata.weight as FontWeight) &&
+        filteredKeys.has(p.key),
     );
 
     return quadtree<(typeof points)[number]>()
