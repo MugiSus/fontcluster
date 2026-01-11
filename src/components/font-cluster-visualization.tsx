@@ -1,4 +1,11 @@
-import { For, createSignal, createEffect, createMemo } from 'solid-js';
+import {
+  For,
+  createSignal,
+  createEffect,
+  createMemo,
+  createSelector,
+} from 'solid-js';
+import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
 import { type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
@@ -31,6 +38,8 @@ export function FontClusterVisualization() {
     const minSide = Math.min(svgSize().width, svgSize().height);
     return viewBox().width / (minSide || INITIAL_VIEWBOX.width);
   });
+
+  const isSelected = createSelector(() => appState.ui.selectedFontKey);
 
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
@@ -69,31 +78,20 @@ export function FontClusterVisualization() {
     const svgMouseY =
       vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
 
-    let nearestKey = '';
-    let minDistance = Infinity;
-    const selectionRadius = 48 * zoomFactor();
-
+    const selectionRadius = 48; // Radius matching FontVectorPoint's original hit area
     const activeWeights = visualizerWeights();
 
-    for (const point of allPoints()) {
-      // Only select points that are currently active (rendered)
-      if (!activeWeights.includes(point.metadata.weight as FontWeight))
-        continue;
+    // Use quadtree to find the nearest point within radius
+    const nearest = fontQuadtree().find(svgMouseX, svgMouseY, selectionRadius);
 
-      const dx = point.x - svgMouseX;
-      const dy = point.y - svgMouseY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance < selectionRadius && distance < minDistance) {
-        minDistance = distance;
-        nearestKey = point.key;
-      }
-    }
-
-    if (nearestKey) {
-      const metadata = appState.fonts.data[nearestKey];
+    // Only allow selection if the weight is active
+    if (
+      nearest &&
+      activeWeights.includes(nearest.metadata.weight as FontWeight)
+    ) {
+      const metadata = appState.fonts.data[nearest.key];
       if (metadata) {
-        setSelectedFontKey(nearestKey);
+        setSelectedFontKey(nearest.key);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,
@@ -228,6 +226,21 @@ export function FontClusterVisualization() {
     });
   });
 
+  const fontQuadtree = createMemo(() => {
+    const points = allPoints();
+    const activeWeights = visualizerWeights();
+
+    // Only index active points to make search faster and accurate for current view
+    const activePoints = points.filter((p) =>
+      activeWeights.includes(p.metadata.weight as FontWeight),
+    );
+
+    return quadtree<(typeof points)[number]>()
+      .x((d) => d.x)
+      .y((d) => d.y)
+      .addAll(activePoints);
+  });
+
   const visiblePoints = createMemo(() => {
     const vb = viewBox();
     const size = svgSize();
@@ -341,7 +354,7 @@ export function FontClusterVisualization() {
                 safeName={point.metadata.safe_name}
                 x={point.x}
                 y={point.y}
-                isSelected={appState.ui.selectedFontKey === point.key}
+                isSelected={isSelected(point.key)}
                 isFamilySelected={
                   appState.ui.selectedFontFamily === point.metadata.family_name
                 }
@@ -362,7 +375,7 @@ export function FontClusterVisualization() {
               safeName={point.metadata.safe_name}
               x={point.x}
               y={point.y}
-              isSelected={appState.ui.selectedFontKey === point.key}
+              isSelected={isSelected(point.key)}
               isFamilySelected={
                 appState.ui.selectedFontFamily === point.metadata.family_name
               }
