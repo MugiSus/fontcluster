@@ -1,4 +1,4 @@
-import { For, Show } from 'solid-js';
+import { createEffect, For, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { FontMetadata, FontWeight, WEIGHT_LABELS } from '../types/font';
 import {
@@ -16,11 +16,21 @@ interface FontMetadataListProps {
 }
 
 export function FontMetadataList(props: FontMetadataListProps) {
+  const itemRefs: Record<string, HTMLElement> = {};
+
+  createEffect(() => {
+    const key = props.selectedFontKey;
+    if (key && itemRefs[key]) {
+      itemRefs[key].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
   return (
     <ul class='flex w-fit min-w-full flex-col items-stretch gap-0'>
       <For each={props.fontMetadatas}>
         {(fontMetadata: FontMetadata) => (
           <li
+            ref={(el) => (itemRefs[fontMetadata.safe_name] = el)}
             class={`flex w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 ${
               props.selectedFontKey === fontMetadata.safe_name
                 ? 'bg-slate-300 dark:bg-zinc-700'

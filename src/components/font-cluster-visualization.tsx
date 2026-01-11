@@ -88,12 +88,6 @@ export function FontClusterVisualization() {
             isFontName: event.ctrlKey || event.metaKey,
           });
         }
-        const elements = document.querySelectorAll(
-          `[data-font-name="${metadata.safe_name}"] > img`,
-        );
-        elements.forEach((element) => {
-          element.scrollIntoView({ behavior: 'instant', block: 'center' });
-        });
       }
     }
   };
