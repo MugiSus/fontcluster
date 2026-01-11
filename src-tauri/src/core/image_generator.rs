@@ -6,15 +6,13 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tauri::AppHandle;
 use crate::commands::progress::progress_events;
-use futures::StreamExt;
 
 pub struct ImageGenerator {
-    semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 impl ImageGenerator {
     pub fn new() -> Self {
-        Self { semaphore: Arc::new(tokio::sync::Semaphore::new(8)) }
+        Self {}
     }
 
     // discover_fonts moved to discoverer.rs
@@ -46,57 +44,46 @@ impl ImageGenerator {
         progress_events::reset_progress(app);
         progress_events::set_progress_denominator(app, tasks.len() as i32);
 
+        use rayon::prelude::*;
         let render_config = Arc::new(RenderConfig {
             text,
             font_size,
             output_dir: session_dir,
         });
 
-        futures::stream::iter(tasks)
-            .map(|(family_name, target_weight)| {
-                let config = Arc::clone(&render_config);
-                let sem = Arc::clone(&self.semaphore);
-                let app_handle = app.clone();
-                let state_ref = state;
+        tasks.into_par_iter().for_each(|(family_name, target_weight)| {
+            if state.is_cancelled.load(Ordering::Relaxed) {
+                return;
+            }
+
+            let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, target_weight);
+            
+            let res: Result<()> = (|| {
+                let meta = crate::core::session::load_font_metadata(&render_config.output_dir, &safe_name)?;
+                let path = meta.path.ok_or_else(|| AppError::Processing("No path in metadata".into()))?;
                 
-                async move {
-                    if state_ref.is_cancelled.load(Ordering::Relaxed) {
-                        return;
+                let file = std::fs::File::open(path)?;
+                let mmap = unsafe { memmap2::Mmap::map(&file)? };
+                let font = font_kit::font::Font::from_bytes(Arc::new(mmap.to_vec()), meta.font_index)
+                    .map_err(|e| AppError::Font(format!("Failed to load font from bytes: {}", e)))?;
+
+                let renderer = FontRenderer::new(Arc::clone(&render_config));
+                renderer.render_sample(&font, &safe_name)?;
+                Ok(())
+            })();
+
+            match res {
+                Ok(_) => progress_events::increase_numerator(app, 1),
+                Err(e) => {
+                    eprintln!("❌ Failed to process {}: {}", family_name, e);
+                    let font_dir = render_config.output_dir.join(&safe_name);
+                    if font_dir.exists() {
+                        let _ = std::fs::remove_dir_all(font_dir);
                     }
-
-                    let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, target_weight);
-                    
-                    let res: Result<()> = async {
-                        let meta = crate::core::session::load_font_metadata(&config.output_dir, &safe_name)?;
-                        let path = meta.path.ok_or_else(|| AppError::Processing("No path in metadata".into()))?;
-                        
-                        let font = font_kit::font::Font::from_path(path, meta.font_index)
-                            .map_err(|e| AppError::Font(format!("Failed to load font from path: {}", e)))?;
-
-                        let _permit = sem.clone().acquire_owned().await.unwrap();
-                        let renderer = FontRenderer::new(Arc::clone(&config));
-                        
-                        renderer.render_sample(&font, &safe_name)?;
-                        Ok(())
-                    }.await;
-
-                    match res {
-                        Ok(_) => progress_events::increase_numerator(&app_handle, 1),
-                        Err(e) => {
-                            eprintln!("❌ Failed to process {}: {}", family_name, e);
-                            // Delete the font directory if rendering failed
-                            let font_dir = config.output_dir.join(&safe_name);
-                            if font_dir.exists() {
-                                let _ = std::fs::remove_dir_all(font_dir);
-                            }
-                            progress_events::decrease_denominator(&app_handle, 1);
-                        }
-                    }
+                    progress_events::decrease_denominator(app, 1);
                 }
-            })
-            .buffer_unordered(8)
-            .collect::<Vec<_>>()
-            .await;
+            }
+        });
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok(());

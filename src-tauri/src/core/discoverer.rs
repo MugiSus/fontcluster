@@ -56,19 +56,19 @@ impl Discoverer {
     }
 
     fn walk_dir(dir: &std::path::PathBuf, files: &mut Vec<std::path::PathBuf>) {
-        if let Ok(entries) = fs::read_dir(dir) {
-            for entry in entries.filter_map(|e| e.ok()) {
-                let path = entry.path();
-                if path.is_dir() {
-                    Self::walk_dir(&path, files);
-                } else if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    let ext = ext.to_lowercase();
-                    if ext == "ttf" || ext == "otf" || ext == "ttc" || ext == "otc" {
-                        files.push(path);
+        for entry in jwalk::WalkDir::new(dir)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok()) {
+                if entry.file_type().is_file() {
+                    if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
+                        let ext = ext.to_lowercase();
+                        if ext == "ttf" || ext == "otf" || ext == "ttc" || ext == "otc" {
+                            files.push(entry.path());
+                        }
                     }
                 }
             }
-        }
     }
 
     pub fn analyze_font_data(data: &[u8], index: u32, target_text: &str, path: std::path::PathBuf) -> Result<ExtractedMeta> {
@@ -146,11 +146,13 @@ impl Discoverer {
                 
                 async move {
                     let mut local_metas = Vec::new();
-                    if let Ok(data) = fs::read(&path) {
-                        let count = ttf_parser::fonts_in_collection(&data).unwrap_or(1);
-                        for i in 0..count {
-                            if let Ok(meta) = Self::analyze_font_data(&data, i, &text, path.clone()) {
-                                local_metas.push(meta);
+                    if let Ok(file) = fs::File::open(&path) {
+                        if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
+                            let count = ttf_parser::fonts_in_collection(&mmap).unwrap_or(1);
+                            for i in 0..count {
+                                if let Ok(meta) = Self::analyze_font_data(&mmap, i, &text, path.clone()) {
+                                    local_metas.push(meta);
+                                }
                             }
                         }
                     }
@@ -177,58 +179,67 @@ impl Discoverer {
                 .push(meta);
         }
 
+        use rayon::prelude::*;
+        let target_weights_ref = &target_weights;
+        let session_dir_ref = &session_dir;
+
+        let discovered_pairs: Vec<(i32, String)> = families.into_par_iter()
+            .map(|(family_name, family_metas)| {
+                let mut local_discovered = Vec::new();
+                let available_weights: Vec<String> = family_metas.iter()
+                    .map(|m| format!("Weight({})", m.actual_weight))
+                    .collect();
+
+                for &tw in target_weights_ref {
+                    let best = family_metas.iter()
+                        .filter(|m| {
+                            let diff = m.actual_weight - tw;
+                            if tw < 400 {
+                                diff > -50 && diff <= 50
+                            } else if tw > 400 {
+                                diff >= -50 && diff < 50
+                            } else {
+                                diff > -50 && diff < 50
+                            }
+                        })
+                        .min_by_key(|m| (m.actual_weight - tw).abs());
+
+                    if let Some(meta) = best {
+                        let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, tw);
+                        let font_meta = crate::config::FontMetadata {
+                            safe_name,
+                            display_name: meta.display_name.clone(),
+                            family: family_name.clone(),
+                            family_names: meta.family_names.clone(),
+                            preferred_family_names: meta.preferred_family_names.clone(),
+                            publishers: meta.publishers.clone(),
+                            designers: meta.designers.clone(),
+                            weight: tw,
+                            weights: available_weights.clone(),
+                            path: Some(meta.path.clone()),
+                            font_index: meta.font_index,
+                            computed: None,
+                        };
+
+                        if let Err(e) = crate::core::session::save_font_metadata(session_dir_ref, &font_meta) {
+                            eprintln!("Failed to save font metadata: {}", e);
+                        } else {
+                            local_discovered.push((tw, family_name.clone()));
+                        }
+                    }
+                }
+                local_discovered
+            })
+            .flatten()
+            .collect();
+
         let mut discovered = HashMap::new();
         for w in &target_weights {
             discovered.insert(*w, Vec::new());
         }
-
-        for (family_name, family_metas) in families {
-            let available_weights: Vec<String> = family_metas.iter()
-                .map(|m| format!("Weight({})", m.actual_weight))
-                .collect();
-
-            for &tw in &target_weights {
-                let best = family_metas.iter()
-                    .filter(|m| {
-                        let diff = m.actual_weight - tw;
-                        if tw < 400 {
-                            diff > -50 && diff <= 50
-                        } else if tw > 400 {
-                            diff >= -50 && diff < 50
-                        } else {
-                            diff > -50 && diff < 50
-                        }
-                    })
-                    .min_by_key(|m| (m.actual_weight - tw).abs());
-
-                if let Some(meta) = best {
-                    let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, tw);
-                    
-                    let font_meta = crate::config::FontMetadata {
-                        safe_name: safe_name.clone(),
-                        display_name: meta.display_name.clone(),
-                        family: family_name.clone(),
-                        family_names: meta.family_names.clone(),
-                        preferred_family_names: meta.preferred_family_names.clone(),
-                        publishers: meta.publishers.clone(),
-                        designers: meta.designers.clone(),
-                        weight: tw,
-                        weights: available_weights.clone(),
-                        path: Some(meta.path.clone()),
-                        font_index: meta.font_index,
-                        computed: None,
-                    };
-
-                    if let Err(e) = crate::core::session::save_font_metadata(&session_dir, &font_meta) {
-                        eprintln!("Failed to save font metadata: {}", e);
-                    }
-
-                    if let Some(list) = discovered.get_mut(&tw) {
-                        if !list.contains(&family_name) {
-                            list.push(family_name.clone());
-                        }
-                    }
-                }
+        for (tw, family_name) in discovered_pairs {
+            if let Some(list) = discovered.get_mut(&tw) {
+                list.push(family_name);
             }
         }
 

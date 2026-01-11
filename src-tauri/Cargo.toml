@@ -1,8 +1,8 @@
 [package]
-name = "fontcluster"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "FontCluster"
+version = "0.1.2"
+description = "Browse fonts blazing fast via vector space clustering"
+authors = ["mugisus"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -70,3 +70,6 @@ uuid = { version = "1.0", features = ["v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.23.2"
 ttf-parser = "0.25.1"
+memmap2 = "0.9"
+rayon = "1.10"
+jwalk = "0.8"

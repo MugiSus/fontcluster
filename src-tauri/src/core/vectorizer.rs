@@ -2,23 +2,18 @@ use crate::error::Result;
 use crate::core::AppState;
 use crate::commands::progress::progress_events;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
-use tokio::sync::Semaphore;
 use tauri::AppHandle;
-use futures::StreamExt;
 use imageproc::hog::{hog, HogOptions};
 use crate::config::{HogConfig, ImageConfig};
 use bytemuck;
 
 pub struct Vectorizer {
-    semaphore: Arc<Semaphore>,
 }
 
 impl Vectorizer {
     pub fn new() -> Self {
-        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(8);
-        Self { semaphore: Arc::new(Semaphore::new(threads * 2)) }
+        Self {}
     }
 
     pub async fn vectorize_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
@@ -39,10 +34,11 @@ impl Vectorizer {
         };
 
         let mut png_files = Vec::new();
-        for entry in std::fs::read_dir(&session_dir)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                let png = path.join("sample.png");
+        for entry in jwalk::WalkDir::new(&session_dir)
+            .into_iter()
+            .filter_map(|e| e.ok()) {
+            if entry.file_type().is_dir() {
+                let png = entry.path().join("sample.png");
                 if png.exists() { png_files.push(png); }
             }
         }
@@ -56,37 +52,22 @@ impl Vectorizer {
         progress_events::reset_progress(app);
         progress_events::set_progress_denominator(app, png_files.len() as i32);
 
-        futures::stream::iter(png_files)
-            .map(|path| {
-                let sem = Arc::clone(&self.semaphore);
-                let app_handle = app.clone();
-                let path_log = path.clone();
-                let h_config = hog_config.clone();
-                let i_config = image_config.clone();
-                async move {
-                    if state.is_cancelled.load(Ordering::Relaxed) {
-                        return;
-                    }
-                    let _permit = sem.acquire_owned().await.unwrap();
-                    let res = tokio::task::spawn_blocking(move || Self::process_image(path, h_config, i_config)).await;
-                    match res {
-                        Ok(Ok(_)) => {
-                            progress_events::increase_numerator(&app_handle, 1);
-                        }
-                        Ok(Err(e)) => {
-                            println!("❌ Vectorization failed for {:?}: {}", path_log, e);
-                            progress_events::decrease_denominator(&app_handle, 1);
-                        }
-                        Err(e) => {
-                            println!("❌ Task join error: {}", e);
-                            progress_events::decrease_denominator(&app_handle, 1);
-                        }
-                    }
+        use rayon::prelude::*;
+        png_files.into_par_iter().for_each(|path| {
+            if state.is_cancelled.load(Ordering::Relaxed) {
+                return;
+            }
+            let res = Self::process_image(path.clone(), hog_config.clone(), image_config.clone());
+            match res {
+                Ok(_) => {
+                    progress_events::increase_numerator(app, 1);
                 }
-            })
-            .buffer_unordered(64)
-            .collect::<Vec<_>>()
-            .await;
+                Err(e) => {
+                    println!("❌ Vectorization failed for {:?}: {}", path, e);
+                    progress_events::decrease_denominator(app, 1);
+                }
+            }
+        });
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok(());
