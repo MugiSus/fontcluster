@@ -40,6 +40,7 @@ export function FontClusterVisualization() {
   });
 
   const isSelected = createSelector(() => appState.ui.selectedFontKey);
+  const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
 
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
@@ -355,9 +356,7 @@ export function FontClusterVisualization() {
                 x={point.x}
                 y={point.y}
                 isSelected={isSelected(point.key)}
-                isFamilySelected={
-                  appState.ui.selectedFontFamily === point.metadata.family_name
-                }
+                isFamilySelected={isFamilySelected(point.metadata.family_name)}
                 visualizerWeights={visualizerWeights()}
                 zoomFactor={zoomFactor()}
                 isDisabled
@@ -376,9 +375,7 @@ export function FontClusterVisualization() {
               x={point.x}
               y={point.y}
               isSelected={isSelected(point.key)}
-              isFamilySelected={
-                appState.ui.selectedFontFamily === point.metadata.family_name
-              }
+              isFamilySelected={isFamilySelected(point.metadata.family_name)}
               visualizerWeights={visualizerWeights()}
               zoomFactor={zoomFactor()}
             />
