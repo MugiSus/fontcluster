@@ -1,4 +1,11 @@
-import { createEffect, createSelector, For, Show } from 'solid-js';
+import {
+  createEffect,
+  createSelector,
+  createSignal,
+  For,
+  Show,
+} from 'solid-js';
+import { createVirtualizer } from '@tanstack/solid-virtual';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { FontMetadata, FontWeight, WEIGHT_LABELS } from '../types/font';
 import {
@@ -16,63 +23,94 @@ interface FontMetadataListProps {
 }
 
 export function FontMetadataList(props: FontMetadataListProps) {
-  const itemRefs: Record<string, HTMLElement> = {};
   const isSelected = createSelector(() => props.selectedFontKey);
+  const [scrollContainerRef, setScrollContainerRef] =
+    createSignal<HTMLUListElement>();
+
+  const virtualizer = createVirtualizer({
+    get count() {
+      return props.fontMetadatas.length;
+    },
+    getScrollElement: () => scrollContainerRef()?.parentElement ?? null,
+    estimateSize: () => 84,
+    overscan: 5,
+    getItemKey: (index) => props.fontMetadatas[index]?.safe_name ?? index,
+  });
 
   createEffect(() => {
     const key = props.selectedFontKey;
-    if (key && itemRefs[key]) {
-      itemRefs[key].scrollIntoView({ behavior: 'instant', block: 'center' });
+    if (key) {
+      const index = props.fontMetadatas.findIndex((m) => m.safe_name === key);
+      if (index !== -1) {
+        virtualizer.scrollToIndex(index, {
+          align: 'center',
+          behavior: 'auto',
+        });
+      }
     }
   });
 
   return (
-    <ul class='flex w-fit min-w-full flex-col items-stretch gap-0'>
-      <For each={props.fontMetadatas}>
-        {(fontMetadata: FontMetadata) => (
-          <li
-            ref={(el) => (itemRefs[fontMetadata.safe_name] = el)}
-            class={`flex w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 ${
-              isSelected(fontMetadata.safe_name)
-                ? 'bg-slate-300 dark:bg-zinc-700'
-                : 'bg-slate-100 dark:bg-zinc-900'
-            }`}
-            data-font-name={fontMetadata.safe_name}
-            onClick={() => props.onFontSelect(fontMetadata.safe_name)}
-          >
-            <div class='flex items-center gap-2 px-4'>
-              <Show
-                when={props.isSearchResult}
-                fallback={
-                  <div
-                    class={`mb-0.5 h-3.5 w-1 rounded-full ${getClusterBackgroundColor(fontMetadata.computed?.k)}`}
+    <ul
+      ref={setScrollContainerRef}
+      class='relative w-full'
+      style={{
+        height: `${virtualizer.getTotalSize()}px`,
+      }}
+    >
+      <For each={virtualizer.getVirtualItems()}>
+        {(virtualItem) => {
+          const metadata = props.fontMetadatas[virtualItem.index];
+          if (!metadata) return null;
+
+          return (
+            <li
+              class={`absolute left-0 top-0 flex w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 ${
+                isSelected(metadata.safe_name)
+                  ? 'bg-slate-300 dark:bg-zinc-700'
+                  : 'bg-slate-100 dark:bg-zinc-900'
+              }`}
+              style={{
+                height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+              data-font-name={metadata.safe_name}
+              onClick={() => props.onFontSelect(metadata.safe_name)}
+            >
+              <div class='flex items-center gap-2 px-4'>
+                <Show
+                  when={props.isSearchResult}
+                  fallback={
+                    <div
+                      class={`mb-0.5 h-3.5 w-1 rounded-full ${getClusterBackgroundColor(metadata.computed?.k)}`}
+                    />
+                  }
+                >
+                  <SearchIcon
+                    class={`mb-0.5 size-4 ${getClusterTextColor(metadata.computed?.k)}`}
                   />
-                }
-              >
-                <SearchIcon
-                  class={`mb-0.5 size-4 ${getClusterTextColor(fontMetadata.computed?.k)}`}
-                />
-              </Show>
-              <div class='text-sm font-light text-foreground'>
-                {
-                  WEIGHT_LABELS[
-                    (Math.round(fontMetadata.weight / 100) * 100) as FontWeight
-                  ].short
-                }
+                </Show>
+                <div class='text-sm font-light text-foreground'>
+                  {
+                    WEIGHT_LABELS[
+                      (Math.round(metadata.weight / 100) * 100) as FontWeight
+                    ].short
+                  }
+                </div>
+                <div class='text-nowrap text-sm font-light text-muted-foreground'>
+                  {metadata.font_name}
+                </div>
               </div>
-              <div class='text-nowrap text-sm font-light text-muted-foreground'>
-                {fontMetadata.font_name}
-              </div>
-            </div>
-            <img
-              class='block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
-              src={convertFileSrc(
-                `${props.sessionDirectory}/${fontMetadata.safe_name}/sample.png`,
-              )}
-              alt={`Font preview for ${fontMetadata.font_name}`}
-            />
-          </li>
-        )}
+              <img
+                class='block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
+                src={convertFileSrc(
+                  `${props.sessionDirectory}/${metadata.safe_name}/sample.png`,
+                )}
+                alt={`Font preview for ${metadata.font_name}`}
+              />
+            </li>
+          );
+        }}
       </For>
     </ul>
   );

@@ -44,6 +44,29 @@ export function FontLists() {
       .filter((m): m is FontMetadata => !!m);
   });
 
+  const similaritySortedMetadatas = createMemo(() => {
+    return filteredMetadatas()
+      .slice()
+      .sort((a, b) => {
+        const aK = a.computed?.k ?? -1;
+        const bK = b.computed?.k ?? -1;
+        return (
+          (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
+          a.family_name.localeCompare(b.family_name) ||
+          a.weight - b.weight
+        );
+      });
+  });
+
+  const nameSortedMetadatas = createMemo(() => {
+    return filteredMetadatas()
+      .slice()
+      .sort(
+        (a, b) =>
+          a.family_name.localeCompare(b.family_name) || a.weight - b.weight,
+      );
+  });
+
   const NoResultsFound = () => (
     <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-sm text-muted-foreground'>
       <SearchSlashIcon />
@@ -124,17 +147,7 @@ export function FontLists() {
           fallback={<NoResultsFound />}
         >
           <FontMetadataList
-            fontMetadatas={filteredMetadatas()
-              .slice()
-              .sort((a, b) => {
-                const aK = a.computed?.k ?? -1;
-                const bK = b.computed?.k ?? -1;
-                return (
-                  (aK < 0 ? Infinity : aK) - (bK < 0 ? Infinity : bK) ||
-                  a.family_name.localeCompare(b.family_name) ||
-                  a.weight - b.weight
-                );
-              })}
+            fontMetadatas={similaritySortedMetadatas()}
             sessionDirectory={appState.session.directory}
             selectedFontKey={appState.ui.selectedFontKey}
             onFontSelect={setSelectedFontKey}
@@ -152,13 +165,7 @@ export function FontLists() {
           fallback={<NoResultsFound />}
         >
           <FontMetadataList
-            fontMetadatas={filteredMetadatas()
-              .slice()
-              .sort(
-                (a, b) =>
-                  a.family_name.localeCompare(b.family_name) ||
-                  a.weight - b.weight,
-              )}
+            fontMetadatas={nameSortedMetadatas()}
             sessionDirectory={appState.session.directory}
             selectedFontKey={appState.ui.selectedFontKey}
             onFontSelect={setSelectedFontKey}

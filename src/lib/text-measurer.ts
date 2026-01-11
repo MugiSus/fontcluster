@@ -8,7 +8,10 @@ export function measureText(text: string, fontSize: number) {
     typeof OffscreenCanvas !== 'undefined'
       ? new OffscreenCanvas(0, 0)
       : document.createElement('canvas')
-  ).getContext('2d');
+  ).getContext('2d') as
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D
+    | null;
 
   if (!ctx) return { width: 0, height: 0 };
 

@@ -20,6 +20,9 @@ importers:
       '@kobalte/core':
         specifier: ^0.13.10
         version: 0.13.10(solid-js@1.9.7)
+      '@tanstack/solid-virtual':
+        specifier: ^3.13.18
+        version: 3.13.18(solid-js@1.9.7)
       '@tauri-apps/api':
         specifier: ^2
         version: 2.5.0
@@ -662,6 +665,14 @@ packages:
     resolution: {integrity: sha512-0wDLwCVF5V3x3b1SGXPCDcdsbDHMBe+lkFzBRaHeLvNi+nrrnZ1lA18u+OTWO8iSWU2GxUOCvlXtDuqftc1oiA==}
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders || >=4.0.0-alpha.20 || >=4.0.0-beta.1'
+
+  '@tanstack/solid-virtual@3.13.18':
+    resolution: {integrity: sha512-rU2MHnjylpN1dZ5cHOkkO1adgOILOES+qsNHTGyOzoVZUmZE9fM3fSMpoYzpahKG7Bl8XQZyIg8DKBtC8/N8LQ==}
+    peerDependencies:
+      solid-js: ^1.3.0
+
+  '@tanstack/virtual-core@3.13.18':
+    resolution: {integrity: sha512-Mx86Hqu1k39icq2Zusq+Ey2J6dDWTjDvEv43PJtRCoEYTLyfaPnxIQ6iy7YAOK0NV/qOEmZQ/uCufrppZxTgcg==}
 
   '@tauri-apps/api@2.5.0':
     resolution: {integrity: sha512-Ldux4ip+HGAcPUmuLT8EIkk6yafl5vK0P0c0byzAKzxJh7vxelVtdPONjfgTm96PbN24yjZNESY8CKo8qniluA==}
@@ -2397,6 +2408,13 @@ snapshots:
       lodash.merge: 4.6.2
       postcss-selector-parser: 6.0.10
       tailwindcss: 3.4.17
+
+  '@tanstack/solid-virtual@3.13.18(solid-js@1.9.7)':
+    dependencies:
+      '@tanstack/virtual-core': 3.13.18
+      solid-js: 1.9.7
+
+  '@tanstack/virtual-core@3.13.18': {}
 
   '@tauri-apps/api@2.5.0': {}
 
