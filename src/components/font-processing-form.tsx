@@ -412,21 +412,8 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                PaCMAP (D-Reduction)
+                Compression & Clustering
               </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('vectorized')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
@@ -564,17 +551,14 @@ export function FontProcessingForm() {
                   ? `Generating...`
                   : appState.session.isProcessing &&
                       appState.session.status === 'generated'
-                    ? `Vectorizing...`
+                    ? 'Compressing...'
                     : appState.session.isProcessing &&
-                        appState.session.status === 'vectorized'
-                      ? 'Compressing...'
-                      : appState.session.isProcessing &&
-                          appState.session.status === 'compressed'
-                        ? 'Clustering...'
-                        : appState.session.status === 'clustered' ||
-                            appState.session.status === 'empty'
-                          ? 'Run'
-                          : 'Continue'}
+                        appState.session.status === 'compressed'
+                      ? 'Clustering...'
+                      : appState.session.status === 'clustered' ||
+                          appState.session.status === 'empty'
+                        ? 'Run'
+                        : 'Continue'}
               <Show
                 when={appState.session.isProcessing}
                 fallback={<ArrowRightIcon class='absolute right-3' />}
@@ -604,7 +588,7 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='grid grid-cols-5 gap-1'>
+        <div class='grid grid-cols-4 gap-1'>
           <div
             class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
@@ -623,7 +607,6 @@ export function FontProcessingForm() {
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'discovered' ||
                   appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
                   appState.session.status === 'compressed' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
@@ -647,30 +630,6 @@ export function FontProcessingForm() {
                   appState.session.status === 'discovered' &&
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'generated'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status === 'generated' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'vectorized' ||
                   appState.session.status === 'compressed' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
@@ -685,7 +644,7 @@ export function FontProcessingForm() {
                   appState.session.status === 'clustered') &&
                   'w-full',
                 appState.session.isProcessing &&
-                  appState.session.status === 'vectorized' &&
+                  appState.session.status === 'generated' &&
                   'w-full animate-pulse transition-[width] duration-1000',
               )}
             />

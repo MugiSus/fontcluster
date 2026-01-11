@@ -209,10 +209,6 @@ export function initAppEvents() {
     setAppState('session', 'status', 'generated');
   });
 
-  listen('vectorization_complete', () => {
-    setAppState('session', 'status', 'vectorized');
-  });
-
   listen('compression_complete', () => {
     setAppState('session', 'status', 'compressed');
   });

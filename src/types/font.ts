@@ -51,7 +51,6 @@ export type ProcessStatus =
   | 'empty'
   | 'discovered'
   | 'generated'
-  | 'vectorized'
   | 'compressed'
   | 'clustered';
 

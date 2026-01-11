@@ -110,7 +110,6 @@ pub enum ProcessStatus {
     Empty,
     Discovered,
     Generated,
-    Vectorized,
     Compressed,
     Clustered,
 }
