@@ -33,7 +33,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
     },
     getScrollElement: () => scrollContainerRef()?.parentElement ?? null,
     estimateSize: () => 84,
-    overscan: 5,
+    overscan: 20,
     getItemKey: (index) => props.fontMetadatas[index]?.safe_name ?? index,
   });
 
@@ -107,6 +107,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
                   `${props.sessionDirectory}/${metadata.safe_name}/sample.png`,
                 )}
                 alt={`Font preview for ${metadata.font_name}`}
+                decoding='sync'
               />
             </li>
           );
