@@ -19,7 +19,7 @@ impl FontRenderer {
     }
 
 
-    pub fn render_sample(&self, font: &font_kit::font::Font, safe_name: &str) -> Result<()> {
+    pub fn render_sample(&self, font: &font_kit::font::Font, safe_name: &str) -> Result<image::GrayImage> {
         let scale = self.config.font_size / font.metrics().units_per_em as f32;
         let mut glyph_data = Vec::new();
         let font_data = font.copy_font_data().ok_or_else(|| AppError::Font("Failed to get font data for glyph check".to_string()))?;
@@ -32,8 +32,8 @@ impl FontRenderer {
             }
             
             let fk_gid = gid.0 as u32;
-            let advance = font.advance(fk_gid)?;
-            let bounds = font.typographic_bounds(fk_gid)?;
+            let advance = font.advance(fk_gid).map_err(|e| AppError::Font(e.to_string()))?;
+            let bounds = font.typographic_bounds(fk_gid).map_err(|e| AppError::Font(e.to_string()))?;
             glyph_data.push((fk_gid, (advance.x() * scale) as i32, bounds.max_y() * scale, bounds.min_y() * scale));
         }
 
@@ -53,11 +53,14 @@ impl FontRenderer {
             return Err(AppError::Font("Empty render result (no visible glyphs)".into()));
         }
 
+        let gray_image = image::GrayImage::from_raw(total_width as u32, height as u32, canvas.pixels.clone())
+            .ok_or_else(|| AppError::Image("Failed to create GrayImage from canvas".into()))?;
+
         let path = self.config.output_dir.join(safe_name).join("sample.png");
         let writer = BufWriter::new(File::create(path)?);
         let encoder = image::codecs::png::PngEncoder::new_with_quality(writer, image::codecs::png::CompressionType::Fast, image::codecs::png::FilterType::NoFilter);
         encoder.write_image(&canvas.pixels, total_width as u32, height as u32, image::ExtendedColorType::L8)?;
 
-        Ok(())
+        Ok(gray_image)
     }
 }

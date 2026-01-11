@@ -1,10 +1,11 @@
-use crate::config::{RenderConfig, DEFAULT_FONT_SIZE};
+use crate::config::RenderConfig;
 use crate::error::{Result, AppError};
 use crate::rendering::FontRenderer;
 use crate::core::AppState;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use tauri::AppHandle;
+use imageproc::hog::{hog, HogOptions};
 use crate::commands::progress::progress_events;
 
 pub struct ImageGenerator {
@@ -16,16 +17,14 @@ impl ImageGenerator {
     }
 
     // discover_fonts moved to discoverer.rs
-
     pub async fn generate_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
-        let (discovered_fonts, session_id, text, font_size) = {
+        let (discovered_fonts, session_id, text, hog_config, image_config) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            let font_size = s.algorithm.as_ref()
-                .and_then(|a| a.image.as_ref())
-                .map(|i| i.font_size)
-                .unwrap_or(DEFAULT_FONT_SIZE);
-            (s.discovered_fonts.clone(), s.id.clone(), s.preview_text.clone(), font_size)
+            let (hog_config, image_config) = s.algorithm.as_ref().map(|a| {
+                (a.hog.clone().unwrap_or_default(), a.image.clone().unwrap_or_default())
+            }).unwrap_or_default();
+            (s.discovered_fonts.clone(), s.id.clone(), s.preview_text.clone(), hog_config, image_config)
         };
         let session_dir = AppState::get_base_dir()?.join("Generated").join(&session_id);
 
@@ -47,7 +46,7 @@ impl ImageGenerator {
         use rayon::prelude::*;
         let render_config = Arc::new(RenderConfig {
             text,
-            font_size,
+            font_size: image_config.font_size,
             output_dir: session_dir,
         });
 
@@ -56,6 +55,8 @@ impl ImageGenerator {
                 return;
             }
 
+            let h_config = hog_config.clone();
+            let i_config = image_config.clone();
             let safe_name = crate::config::FontMetadata::generate_safe_name(&family_name, target_weight);
             
             let res: Result<()> = (|| {
@@ -68,7 +69,22 @@ impl ImageGenerator {
                     .map_err(|e| AppError::Font(format!("Failed to load font from bytes: {}", e)))?;
 
                 let renderer = FontRenderer::new(Arc::clone(&render_config));
-                renderer.render_sample(&font, &safe_name)?;
+                let img = renderer.render_sample(&font, &safe_name)?;
+
+                // Direct to HOG
+                let resized = image::imageops::resize(&img, i_config.width, i_config.height, image::imageops::FilterType::Lanczos3);
+                let opts = HogOptions { 
+                    orientations: h_config.orientations, 
+                    cell_side: h_config.cell_side, 
+                    block_side: h_config.block_side, 
+                    block_stride: h_config.block_stride, 
+                    signed: false 
+                };
+                let features = hog(&resized, opts).map_err(|e| AppError::Processing(e.to_string()))?;
+                
+                let bin_path = render_config.output_dir.join(&safe_name).join("vector.bin");
+                std::fs::write(bin_path, bytemuck::cast_slice(&features))?;
+
                 Ok(())
             })();
 

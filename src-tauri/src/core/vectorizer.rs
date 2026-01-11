@@ -57,6 +57,14 @@ impl Vectorizer {
             if state.is_cancelled.load(Ordering::Relaxed) {
                 return;
             }
+
+            let mut bin_path = path.clone();
+            bin_path.set_file_name("vector.bin");
+            if bin_path.exists() {
+                progress_events::increase_numerator(app, 1);
+                return;
+            }
+
             let res = Self::process_image(path.clone(), hog_config.clone(), image_config.clone());
             match res {
                 Ok(_) => {
