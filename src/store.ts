@@ -78,19 +78,7 @@ export const [appState, setAppState] = createStore<AppState>({
   fonts: {
     data: {},
     get filteredKeys(): Set<string> {
-      const q = appState.ui.searchQuery;
-      const data = this.data;
-      if (Object.keys(data).length === 0) return new Set<string>();
-
-      if (!q) {
-        return new Set<string>(Object.keys(data));
-      }
-
-      // Use the memoized fuse instance
-      const result = fuse()
-        .search(q)
-        .map((r) => r.item.safe_name);
-      return new Set<string>(result);
+      return filteredKeysMemo();
     },
   },
   ui: {
@@ -112,6 +100,25 @@ export const fuse = createRoot(() => {
   const memo = createMemo(() => {
     const fonts = Object.values(appState.fonts.data);
     return new Fuse(fonts, FUSE_OPTIONS);
+  });
+  return memo;
+});
+
+export const filteredKeysMemo = createRoot(() => {
+  const memo = createMemo(() => {
+    const q = appState.ui.searchQuery;
+    const data = appState.fonts.data;
+    const keys = Object.keys(data);
+    if (keys.length === 0) return new Set<string>();
+
+    if (!q) {
+      return new Set<string>(keys);
+    }
+
+    const result = fuse()
+      .search(q)
+      .map((r) => r.item.safe_name);
+    return new Set<string>(result);
   });
   return memo;
 });

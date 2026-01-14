@@ -7,7 +7,7 @@ import {
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
-import { type FontWeight } from '../types/font';
+import { type FontWeight, type FontMetadata } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
@@ -26,6 +26,13 @@ const INITIAL_VIEWBOX = {
 };
 
 const ZOOM_FACTOR_RATIO = 1.1;
+
+interface VisualizedPoint {
+  key: string;
+  metadata: FontMetadata;
+  x: number;
+  y: number;
+}
 
 export function FontClusterVisualization() {
   // SVG pan and zoom state
@@ -223,23 +230,32 @@ export function FontClusterVisualization() {
         metadata,
         x,
         y,
-      };
+      } satisfies VisualizedPoint;
     });
   });
 
+  const pointsMap = createMemo(() => {
+    const map = new Map<string, VisualizedPoint>();
+    for (const p of allPoints()) {
+      map.set(p.key, p);
+    }
+    return map;
+  });
+
   const fontQuadtree = createMemo(() => {
-    const points = allPoints();
+    const map = pointsMap();
     const activeWeights = visualizerWeights();
     const filteredKeys = appState.fonts.filteredKeys;
 
-    // Only index active points to make search faster and accurate for current view
-    const activePoints = points.filter(
-      (p) =>
-        activeWeights.includes(p.metadata.weight as FontWeight) &&
-        filteredKeys.has(p.key),
-    );
+    const activePoints = [];
+    for (const key of filteredKeys) {
+      const p = map.get(key);
+      if (p && activeWeights.includes(p.metadata.weight as FontWeight)) {
+        activePoints.push(p);
+      }
+    }
 
-    return quadtree<(typeof points)[number]>()
+    return quadtree<VisualizedPoint>()
       .x((d) => d.x)
       .y((d) => d.y)
       .addAll(activePoints);
@@ -261,12 +277,13 @@ export function FontClusterVisualization() {
 
     const filteredKeys = appState.fonts.filteredKeys;
     const selectedFontKey = appState.ui.selectedFontKey;
+    const activeWeights = new Set(visualizerWeights());
 
     const visibleFilteredPoints = [];
     const visibleUnfilteredPoints = [];
 
     for (const point of allPoints()) {
-      const isWeightIncluded = visualizerWeights().includes(
+      const isWeightIncluded = activeWeights.has(
         point.metadata.weight as FontWeight,
       );
       const isVisible =
