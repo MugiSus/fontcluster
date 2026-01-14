@@ -292,7 +292,6 @@ export function FontClusterVisualization() {
         point.y >= minVisibleY &&
         point.y <= maxVisibleY;
 
-      // Always render selected font
       const isSelected = point.key === selectedFontKey;
 
       if (isWeightIncluded && (isVisible || isSelected)) {
