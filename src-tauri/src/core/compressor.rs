@@ -124,9 +124,18 @@ impl Compressor {
             let mut meta = load_font_metadata(&session_dir, id)?;
             let k = meta.computed.as_ref().map(|c| c.k).unwrap_or(-1);
             
-            let idx = i * config.latent_dim;
+            let start = i * config.latent_dim;
+            let end = start + config.latent_dim;
+            let latent = latent_vecs[start..end].to_vec();
+            
+            let vector = [
+                *latent.get(0).unwrap_or(&0.0),
+                *latent.get(1).unwrap_or(&0.0),
+            ];
+
             meta.computed = Some(crate::config::ComputedData {
-                vector: [latent_vecs[idx], latent_vecs[idx+1]], // Assumes latent_dim=2
+                latent,
+                vector,
                 k,
             });
             let font_dir = session_dir.join(id);

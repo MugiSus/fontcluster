@@ -59,7 +59,8 @@ export interface SessionConfig {
 }
 
 export interface ComputedData {
-  vector: number[]; // [x, y] 2D coordinates from PaCMAP
+  latent: number[]; // Full latent vector
+  vector: number[]; // [x, y] 2D coordinates for visualization
   k: number; // Cluster assignment from HDBSCAN
 }
 

@@ -105,6 +105,7 @@ pub struct ProcessingStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedData {
+    pub latent: Vec<f32>,
     pub vector: [f32; 2],
     pub k: i32,
 }
