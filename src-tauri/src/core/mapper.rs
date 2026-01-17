@@ -2,7 +2,10 @@ use crate::error::{Result, AppError};
 use crate::core::AppState;
 use crate::core::session::load_font_metadata;
 use std::fs;
-use nalgebra::DMatrix;
+use linfa::prelude::*;
+use linfa_reduction::Pca;
+// Use ndarray 0.15 to match linfa-reduction's expectations
+use ndarray015::Array2;
 
 pub struct Mapper;
 
@@ -21,7 +24,7 @@ impl Mapper {
                 let id = path.file_name().unwrap().to_str().unwrap().to_string();
                 if let Ok(meta) = load_font_metadata(&session_dir, &id) {
                     if let Some(computed) = meta.computed {
-                        latents.extend(computed.latent.iter().map(|&v| v as f64));
+                        latents.extend(computed.latent.iter().map(|&v| v as f32));
                         font_ids.push(id);
                     }
                 }
@@ -35,39 +38,37 @@ impl Mapper {
         let n_samples = font_ids.len();
         let n_features = latents.len() / n_samples;
 
-        println!("✨ Running Mapping (PCA) ({} samples, {} features)...", n_samples, n_features);
+        println!("✨ Running Mapping (PCA via linfa) ({} samples, {} features)...", n_samples, n_features);
 
         let embedding = tokio::task::spawn_blocking(move || {
-            let matrix = DMatrix::from_vec(n_samples, n_features, latents);
+            let array = Array2::from_shape_vec((n_samples, n_features), latents)
+                .map_err(|e| AppError::Processing(e.to_string()))?;
             
-            // 1. Center the data
-            let mut centered = matrix;
-            for mut col in centered.column_iter_mut() {
-                let mean = col.mean();
-                col.add_scalar_mut(-mean);
-            }
-
-            // 2. SVD (Singular Value Decomposition)
-            // We want the first 2 principal components.
-            // X = U * S * V^T
-            // The rows of V^T (or columns of V) are the principal components.
-            let svd = centered.clone().svd(false, true);
-            let v_t = svd.v_t.ok_or_else(|| AppError::Processing("SVD failed: no V^T matrix".into()))?;
+            // PCA in linfa works with f64. Convert array to f64.
+            let array_f64 = array.mapv(|x| x as f64);
             
-            // 3. Project data onto the first 2 principal components
-            // Projected = Centered * V[:, :2]
-            // Since we have V^T, V[:, :2] corresponds to the first two rows of V^T transposed.
-            let principal_components = v_t.rows(0, 2).transpose();
-            let projected = centered * principal_components;
+            // Convert to linfa dataset
+            let dataset = Dataset::from(array_f64);
             
-            Ok::<DMatrix<f64>, AppError>(projected)
+            // Train PCA model for 2 components
+            let pca = Pca::params(2)
+                .fit(&dataset)
+                .map_err(|e| AppError::Processing(format!("PCA fit failed: {:?}", e)))?;
+            
+            // Transform data
+            let projected = pca.predict(dataset);
+            
+            // Convert back to f32
+            let records_f32 = projected.records.mapv(|x| x as f32);
+            
+            Ok::<Array2<f32>, AppError>(records_f32)
         }).await.map_err(|e| AppError::Processing(e.to_string()))??;
 
         // Update metadata
         for (i, id) in font_ids.iter().enumerate() {
             let mut meta = load_font_metadata(&session_dir, id)?;
             if let Some(ref mut computed) = meta.computed {
-                computed.vector = [embedding[(i, 0)] as f32, embedding[(i, 1)] as f32];
+                computed.vector = [embedding[[i, 0]], embedding[[i, 1]]];
             }
             let font_dir = session_dir.join(id);
             fs::write(font_dir.join("meta.json"), serde_json::to_string_pretty(&meta)?)?;
