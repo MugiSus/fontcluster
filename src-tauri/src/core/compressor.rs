@@ -2,7 +2,7 @@ use crate::error::{Result, AppError};
 use crate::core::AppState;
 use crate::core::session::load_font_metadata;
 use crate::core::burn_model::{ModelConfig, Model};
-use burn::tensor::Tensor;
+use burn::tensor::{Tensor, Int};
 use burn::optim::{AdamConfig, Optimizer, GradientsParams};
 use burn::module::AutodiffModule;
 use std::fs;
@@ -67,7 +67,6 @@ impl Compressor {
             tensors.push(tensor);
         }
         let batch_input = Tensor::cat(tensors, 0);
-        let batch_input_ad = Tensor::<AD, 4>::from_inner(batch_input.clone());
 
         println!("🚀 Training Autoencoder ({} fonts, {} epochs)...", font_ids.len(), config.epochs);
         println!("🔧 Backend: Wgpu (Metal/Vulkan/DX12)");
@@ -80,33 +79,70 @@ impl Compressor {
         let is_cancelled = state.is_cancelled.clone();
         let epochs = config.epochs;
         let learning_rate = config.learning_rate;
+        let font_ids_len = font_ids.len();
+        let batch_input_train = batch_input.clone();
         let (model, cancelled) = tokio::task::spawn_blocking(move || {
             println!("🚄 Starting training loop in background thread...");
             let mut optim = AdamConfig::new().init();
             let mut current_model = model;
             
+            let mut best_loss = f32::MAX;
+            let mut patience_counter = 0;
+            const PATIENCE: usize = 15;
+            const BATCH_SIZE: usize = 32;
+            const MIN_DELTA: f32 = 1e-4;
+
+            let mut indices: Vec<usize> = (0..font_ids_len).collect();
+            let mut rng = rand::thread_rng();
+            use rand::seq::SliceRandom;
+
             for epoch in 1..=epochs {
                 if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
                     println!("🛑 Training cancelled at epoch {}", epoch);
                     break;
                 }
 
-                if epoch == 1 {
-                    println!("🔄 Epoch 1: Starting first forward pass...");
+                indices.shuffle(&mut rng);
+                let mut epoch_loss = 0.0;
+                let mut n_batches = 0;
+
+                for chunk in indices.chunks(BATCH_SIZE) {
+                    let batch_indices_vec: Vec<i32> = chunk.iter().map(|&i| i as i32).collect();
+                    let batch_indices = Tensor::<B, 1, Int>::from_ints(batch_indices_vec.as_slice(), &device);
+                    
+                    let input_batch = batch_input_train.clone().select(0, batch_indices);
+                    let input_batch_ad = Tensor::<AD, 4>::from_inner(input_batch.clone());
+
+                    let output = current_model.forward(input_batch_ad.clone());
+                    let loss = burn::nn::loss::MseLoss::new().forward(output, input_batch_ad.clone(), burn::nn::loss::Reduction::Mean);
+                    
+                    let loss_val = loss.clone().into_data().iter::<f32>().next().unwrap_or(0.0);
+                    epoch_loss += loss_val;
+                    n_batches += 1;
+
+                    let grads = loss.backward();
+                    let grads = GradientsParams::from_grads(grads, &current_model);
+                    current_model = optim.step(learning_rate, current_model, grads);
                 }
 
-                let output = current_model.forward(batch_input_ad.clone());
-                let loss = burn::nn::loss::MseLoss::new().forward(output, batch_input_ad.clone(), burn::nn::loss::Reduction::Mean);
-                
-                let loss_val = loss.clone().into_data().iter::<f32>().next().unwrap_or(0.0);
-                if epoch % 1 == 0 { // Log every epoch for better visibility
-                    println!("Epoch {:3}/{:3} - Loss: {:.6}", epoch, epochs, loss_val);
-                    progress_events::increase_numerator(&app_handle, 1);
+                let avg_loss = epoch_loss / n_batches as f32;
+                println!("Epoch {:3}/{:3} - Loss: {:.6}", epoch, epochs, avg_loss);
+                progress_events::increase_numerator(&app_handle, 1);
+
+                // Early Stopping
+                if avg_loss < best_loss - MIN_DELTA {
+                    best_loss = avg_loss;
+                    patience_counter = 0;
+                } else {
+                    patience_counter += 1;
                 }
 
-                let grads = loss.backward();
-                let grads = GradientsParams::from_grads(grads, &current_model);
-                current_model = optim.step(learning_rate, current_model, grads);
+                if patience_counter >= PATIENCE {
+                    println!("📉 Early stopping triggered at epoch {}", epoch);
+                    // Fill remaining progress
+                    progress_events::set_progress_numerator(&app_handle, epochs as i32);
+                    break;
+                }
             }
             (current_model, is_cancelled.load(std::sync::atomic::Ordering::Relaxed))
         }).await.map_err(|e| AppError::Processing(e.to_string()))?;
