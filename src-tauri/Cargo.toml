@@ -29,15 +29,13 @@ strip = true
 "imageproc" = { opt-level = 2 }
 "linfa" = { opt-level = 2 }
 "linfa-clustering" = { opt-level = 2 }
-"pacmap" = { opt-level = 2 }
 "hdbscan" = { opt-level = 2 }
+"burn" = { opt-level = 3 }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# Force linfa-compatible ndarray version for clustering only
-ndarray_015 = { package = "ndarray", version = "0.15" }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
@@ -53,8 +51,6 @@ imageproc = "0.24"
 ndarray = "0.16"
 # PCA implementation without LAPACK dependency
 nalgebra = "0.33"
-# PaCMAP for dimensionality reduction
-pacmap = "0.2"
 # Random number generation for K-means
 rand = "0.8"
 # HDBSCAN clustering algorithm
@@ -63,6 +59,9 @@ hdbscan = "0.9"
 # Note: linfa 0.7 normally uses ndarray 0.15, but we try to unify or manage duplicates
 linfa = { version = "0.7", default-features = false }
 linfa-clustering = { version = "0.7.1", default-features = false }
+
+# Burn for Autoencoder
+burn = { version = "0.15", features = ["train", "wgpu", "ndarray", "autodiff"] }
 # UUIDv7 for session management
 uuid = { version = "1.0", features = ["v7", "serde"] }
 # Date/time handling

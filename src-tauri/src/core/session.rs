@@ -9,14 +9,14 @@ use std::sync::atomic::AtomicBool;
 
 pub struct AppState {
     pub current_session: Mutex<Option<SessionConfig>>,
-    pub is_cancelled: AtomicBool,
+    pub is_cancelled: std::sync::Arc<AtomicBool>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
             current_session: Mutex::new(None),
-            is_cancelled: AtomicBool::new(false),
+            is_cancelled: std::sync::Arc::new(AtomicBool::new(false)),
         }
     }
 

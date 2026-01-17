@@ -23,18 +23,6 @@ import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
-function alignToHogConstraints(
-  measuredSize: number,
-  cellSide: number,
-  blockSide: number,
-  blockStride: number,
-): number {
-  const minCellsRequired = Math.ceil(measuredSize / cellSide);
-  const n = Math.ceil(Math.max(0, minCellsRequired - blockSide) / blockStride);
-  const totalCells = blockSide + n * blockStride;
-  return totalCells * cellSide;
-}
-
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
     e.preventDefault();
@@ -74,17 +62,11 @@ export function FontProcessingForm() {
         height: Number(formData.get('image-height')),
         font_size: Number(formData.get('image-font-size')),
       },
-      hog: {
-        orientations: Number(formData.get('hog-orientations')),
-        cell_side: Number(formData.get('hog-cell-side')),
-        block_side: Number(formData.get('hog-block-side')),
-        block_stride: Number(formData.get('hog-block-stride')),
-      },
-      pacmap: {
-        mn_phases: Number(formData.get('pacmap-mn-phases')),
-        nn_phases: Number(formData.get('pacmap-nn-phases')),
-        fp_phases: Number(formData.get('pacmap-fp-phases')),
-        learning_rate: Number(formData.get('pacmap-learning-rate')),
+      autoencoder: {
+        latent_dim: Number(formData.get('autoencoder-latent-dim')),
+        epochs: Number(formData.get('autoencoder-epochs')),
+        batch_size: Number(formData.get('autoencoder-batch-size')),
+        learning_rate: Number(formData.get('autoencoder-learning-rate')),
       },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
@@ -117,19 +99,8 @@ export function FontProcessingForm() {
 
     if (!appState.session.config) return;
 
-    const hog = appState.session.config?.algorithm?.hog;
-    const newWidth = alignToHogConstraints(
-      met.width,
-      hog?.cell_side ?? 16,
-      hog?.block_side ?? 2,
-      hog?.block_stride ?? 2,
-    );
-    const newHeight = alignToHogConstraints(
-      met.height,
-      hog?.cell_side ?? 16,
-      hog?.block_side ?? 2,
-      hog?.block_stride ?? 2,
-    );
+    const newWidth = Math.ceil(met.width / 16) * 16;
+    const newHeight = Math.ceil(met.height / 16) * 16;
 
     // Only update if values actually changed to avoid unnecessary triggers
     const current = appState.session.config.algorithm?.image;
@@ -297,7 +268,7 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                HOG Feature Extraction
+                Autoencoder (Compression)
               </div>
               <Tooltip>
                 <TooltipTrigger
@@ -315,129 +286,48 @@ export function FontProcessingForm() {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Orientations</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Latent Dim</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='hog-orientations'
+                  name='autoencoder-latent-dim'
                   value={
-                    appState.session.config?.algorithm?.hog?.orientations ?? 12
+                    appState.session.config?.algorithm?.autoencoder
+                      ?.latent_dim ?? 2
                   }
                   onInput={(e) =>
                     setAppState(
                       'session',
                       'config',
                       'algorithm',
-                      'hog',
-                      'orientations',
+                      'autoencoder',
+                      'latent_dim',
                       Number(e.currentTarget.value),
                     )
                   }
                   step='1'
-                  min='0'
+                  min='2'
+                  max='2'
                   class='h-7 text-xs'
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Cell Side</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Epochs</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='hog-cell-side'
+                  name='autoencoder-epochs'
                   value={
-                    appState.session.config?.algorithm?.hog?.cell_side ?? 16
+                    appState.session.config?.algorithm?.autoencoder?.epochs ??
+                    100
                   }
                   onInput={(e) =>
                     setAppState(
                       'session',
                       'config',
                       'algorithm',
-                      'hog',
-                      'cell_side',
+                      'autoencoder',
+                      'epochs',
                       Number(e.currentTarget.value),
                     )
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Block Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-block-side'
-                  value={
-                    appState.session.config?.algorithm?.hog?.block_side ?? 2
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'hog',
-                      'block_side',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Block Stride</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-block-stride'
-                  value={
-                    appState.session.config?.algorithm?.hog?.block_stride ?? 2
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'hog',
-                      'block_stride',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                PaCMAP (D-Reduction)
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('vectorized')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Global Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-mn-phases'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100
                   }
                   step='10'
                   min='0'
@@ -445,45 +335,50 @@ export function FontProcessingForm() {
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Attraction Iterations
-                </TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Batch Size</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='pacmap-nn-phases'
+                  name='autoencoder-batch-size'
                   value={
-                    appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100
+                    appState.session.config?.algorithm?.autoencoder
+                      ?.batch_size ?? 32
                   }
-                  step='10'
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'autoencoder',
+                      'batch_size',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='8'
                   min='0'
                   class='h-7 text-xs'
                 />
               </TextField>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Repulsion Iterations
-                </TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Learning Rate</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='pacmap-fp-phases'
+                  name='autoencoder-learning-rate'
                   value={
-                    appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100
+                    appState.session.config?.algorithm?.autoencoder
+                      ?.learning_rate ?? 0.001
                   }
-                  step='10'
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'autoencoder',
+                      'learning_rate',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='0.0001'
                   min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Learning rate</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-learning-rate'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.learning_rate ??
-                    1.0
-                  }
-                  step='0.1'
                   class='h-7 text-xs'
                 />
               </TextField>
@@ -564,17 +459,14 @@ export function FontProcessingForm() {
                   ? `Generating...`
                   : appState.session.isProcessing &&
                       appState.session.status === 'generated'
-                    ? `Vectorizing...`
+                    ? `Compressing...`
                     : appState.session.isProcessing &&
-                        appState.session.status === 'vectorized'
-                      ? 'Compressing...'
-                      : appState.session.isProcessing &&
-                          appState.session.status === 'compressed'
-                        ? 'Clustering...'
-                        : appState.session.status === 'clustered' ||
-                            appState.session.status === 'empty'
-                          ? 'Run'
-                          : 'Continue'}
+                        appState.session.status === 'compressed'
+                      ? 'Clustering...'
+                      : appState.session.status === 'clustered' ||
+                          appState.session.status === 'empty'
+                        ? 'Run'
+                        : 'Continue'}
               <Show
                 when={appState.session.isProcessing}
                 fallback={<ArrowRightIcon class='absolute right-3' />}
@@ -604,7 +496,7 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='grid grid-cols-5 gap-1'>
+        <div class='grid grid-cols-4 gap-1'>
           <div
             class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
@@ -623,7 +515,6 @@ export function FontProcessingForm() {
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'discovered' ||
                   appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
                   appState.session.status === 'compressed' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
@@ -647,30 +538,6 @@ export function FontProcessingForm() {
                   appState.session.status === 'discovered' &&
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'generated'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status === 'generated' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'vectorized' ||
                   appState.session.status === 'compressed' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
@@ -685,7 +552,7 @@ export function FontProcessingForm() {
                   appState.session.status === 'clustered') &&
                   'w-full',
                 appState.session.isProcessing &&
-                  appState.session.status === 'vectorized' &&
+                  appState.session.status === 'generated' &&
                   'w-full animate-pulse transition-[width] duration-1000',
               )}
             />

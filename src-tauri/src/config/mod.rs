@@ -24,8 +24,7 @@ pub struct SessionConfig {
 #[serde(default)]
 pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
-    pub hog: Option<HogConfig>,
-    pub pacmap: Option<PacmapConfig>,
+    pub autoencoder: Option<AutoencoderConfig>,
     pub hdbscan: Option<HdbscanConfig>,
 }
 
@@ -47,40 +46,20 @@ impl Default for HdbscanConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct PacmapConfig {
-    pub mn_phases: usize,
-    pub nn_phases: usize,
-    pub fp_phases: usize,
-    pub learning_rate: f32,
+pub struct AutoencoderConfig {
+    pub latent_dim: usize,
+    pub epochs: usize,
+    pub batch_size: usize,
+    pub learning_rate: f64,
 }
 
-impl Default for PacmapConfig {
+impl Default for AutoencoderConfig {
     fn default() -> Self {
         Self {
-            mn_phases: 100,
-            nn_phases: 100,
-            fp_phases: 100,
-            learning_rate: 1.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct HogConfig {
-    pub orientations: usize,
-    pub cell_side: usize,
-    pub block_side: usize,
-    pub block_stride: usize,
-}
-
-impl Default for HogConfig {
-    fn default() -> Self {
-        Self {
-            orientations: 12,
-            cell_side: 16,
-            block_side: 2,
-            block_stride: 2,
+            latent_dim: 2,
+            epochs: 100,
+            batch_size: 32,
+            learning_rate: 1e-3,
         }
     }
 }
@@ -110,7 +89,6 @@ pub enum ProcessStatus {
     Empty,
     Discovered,
     Generated,
-    Vectorized,
     Compressed,
     Clustered,
 }

@@ -276,7 +276,6 @@ export function FontClusterVisualization() {
     const maxVisibleY = vb.y + vb.height / 2 + visibleHeight / 2 + padding;
 
     const filteredKeys = appState.fonts.filteredKeys;
-    const selectedFontKey = appState.ui.selectedFontKey;
     const activeWeights = new Set(visualizerWeights());
 
     const visibleFilteredPoints = [];
@@ -292,9 +291,7 @@ export function FontClusterVisualization() {
         point.y >= minVisibleY &&
         point.y <= maxVisibleY;
 
-      const isSelected = point.key === selectedFontKey;
-
-      if (isWeightIncluded && (isVisible || isSelected)) {
+      if (isWeightIncluded && isVisible) {
         if (filteredKeys.has(point.key)) {
           visibleFilteredPoints.push(point);
         } else {

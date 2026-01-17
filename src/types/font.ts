@@ -15,18 +15,11 @@ export const WEIGHT_LABELS: Record<
   900: { short: 'Bl', full: 'Black' },
 };
 
-export interface PacmapOptions {
-  mn_phases: number;
-  nn_phases: number;
-  fp_phases: number;
+export interface AutoencoderOptions {
+  latent_dim: number;
+  epochs: number;
+  batch_size: number;
   learning_rate: number;
-}
-
-export interface HogOptions {
-  orientations: number;
-  cell_side: number;
-  block_side: number;
-  block_stride: number;
 }
 
 export interface HdbscanOptions {
@@ -42,8 +35,7 @@ export interface ImageOptions {
 
 export interface AlgorithmConfig {
   image: ImageOptions | null;
-  hog: HogOptions | null;
-  pacmap: PacmapOptions | null;
+  autoencoder: AutoencoderOptions | null;
   hdbscan: HdbscanOptions | null;
 }
 
@@ -51,7 +43,6 @@ export type ProcessStatus =
   | 'empty'
   | 'discovered'
   | 'generated'
-  | 'vectorized'
   | 'compressed'
   | 'clustered';
 

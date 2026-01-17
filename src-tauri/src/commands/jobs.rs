@@ -1,4 +1,4 @@
-use crate::core::{AppState, Discoverer, ImageGenerator, Vectorizer, Compressor, Clusterer};
+use crate::core::{AppState, Discoverer, ImageGenerator, Compressor, Clusterer};
 use crate::config::{AlgorithmConfig, ProcessStatus};
 use crate::error::Result;
 use tauri::{command, State, AppHandle, Emitter};
@@ -47,30 +47,17 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         app.emit("font_generation_complete", id.clone())?;
     }
 
-    // Step 2: Vectors
-    let status = {
-        let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
-    };
-    if status == ProcessStatus::Generated {
-        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
-        println!("📐 Starting vectorization...");
-        app.emit("vectorization_start", ())?;
-        let vec = Vectorizer::new();
-        vec.vectorize_all(&app, &state).await?;
-        app.emit("vectorization_complete", id.clone())?;
-    }
 
     // Step 3: Compression
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-    if status == ProcessStatus::Vectorized {
+    if status == ProcessStatus::Generated {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         println!("📦 Starting compression...");
         app.emit("compression_start", ())?;
-        Compressor::compress_all(&state).await?;
+        Compressor::compress_all(&app, &state).await?;
         app.emit("compression_complete", id.clone())?;
     }
 
