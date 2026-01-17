@@ -1,0 +1,9 @@
+    Checking FontCluster v0.1.2 (/Users/mugisus/Documents/GitHub/fontcluster/src-tauri)
+error[E0433]: failed to resolve: use of undeclared type `Umap`
+  --> src/core/mapper.rs:57:25
+   |
+57 |         let embedding = Umap::new()
+   |                         ^^^^ use of undeclared type `Umap`
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `FontCluster` (lib) due to 1 previous error

@@ -68,6 +68,10 @@ export function FontProcessingForm() {
         batch_size: Number(formData.get('autoencoder-batch-size')),
         learning_rate: Number(formData.get('autoencoder-learning-rate')),
       },
+      umap: {
+        n_neighbors: Number(formData.get('umap-n-neighbors')),
+        min_dist: Number(formData.get('umap-min-dist')),
+      },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
         min_samples: Number(formData.get('hdbscan-min-samples')),
@@ -387,6 +391,75 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+                UMAP (Dimensionality Reduction)
+              </div>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('compressed')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Neighbors</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='umap-n-neighbors'
+                  value={
+                    appState.session.config?.algorithm?.umap?.n_neighbors ?? 15
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'umap',
+                      'n_neighbors',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='1'
+                  min='2'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Min Dist</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='umap-min-dist'
+                  value={
+                    appState.session.config?.algorithm?.umap?.min_dist ?? 0.1
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'umap',
+                      'min_dist',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='0.05'
+                  min='0'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div>
+          </div>
+
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 HDBSCAN (Clustering)
               </div>
               <Tooltip>
@@ -461,11 +534,14 @@ export function FontProcessingForm() {
                     ? `Compressing...`
                     : appState.session.isProcessing &&
                         appState.session.status === 'compressed'
-                      ? 'Clustering...'
-                      : appState.session.status === 'clustered' ||
-                          appState.session.status === 'empty'
-                        ? 'Run'
-                        : 'Continue'}
+                      ? 'Mapping...'
+                      : appState.session.isProcessing &&
+                          appState.session.status === 'mapped'
+                        ? 'Clustering...'
+                        : appState.session.status === 'clustered' ||
+                            appState.session.status === 'empty'
+                          ? 'Run'
+                          : 'Continue'}
               <Show
                 when={appState.session.isProcessing}
                 fallback={<ArrowRightIcon class='absolute right-3' />}
@@ -495,7 +571,7 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='grid grid-cols-4 gap-1'>
+        <div class='grid grid-cols-5 gap-1'>
           <div
             class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
@@ -560,6 +636,29 @@ export function FontProcessingForm() {
                   appState.session.status === 'generated' &&
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'compressed' ||
+                  appState.session.status === 'mapped' ||
+                  appState.session.status === 'clustered') &&
+                  'w-full',
+              )}
+            />
+          </div>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
+            style={{
+              '--progress':
+                appState.session.isProcessing &&
+                appState.session.status === 'compressed'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  : '0%',
+            }}
+          >
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                appState.session.isProcessing &&
+                  appState.session.status === 'compressed' &&
+                  'w-[var(--progress)] animate-pulse',
+                (appState.session.status === 'mapped' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
               )}
@@ -571,7 +670,7 @@ export function FontProcessingForm() {
                 'h-full w-0 rounded-full bg-primary',
                 appState.session.status === 'clustered' && 'w-full',
                 appState.session.isProcessing &&
-                  appState.session.status === 'compressed' &&
+                  appState.session.status === 'mapped' &&
                   'w-full animate-pulse transition-[width] duration-1000',
               )}
             />

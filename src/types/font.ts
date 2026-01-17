@@ -15,6 +15,11 @@ export const WEIGHT_LABELS: Record<
   900: { short: 'Bl', full: 'Black' },
 };
 
+export interface UmapOptions {
+  n_neighbors: number;
+  min_dist: number;
+}
+
 export interface AutoencoderOptions {
   width: number;
   height: number;
@@ -36,6 +41,7 @@ export interface ImageOptions {
 export interface AlgorithmConfig {
   image: ImageOptions | null;
   autoencoder: AutoencoderOptions | null;
+  umap: UmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }
 
@@ -44,6 +50,7 @@ export type ProcessStatus =
   | 'discovered'
   | 'generated'
   | 'compressed'
+  | 'mapped'
   | 'clustered';
 
 export interface SessionConfig {

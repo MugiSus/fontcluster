@@ -1,0 +1,77 @@
+    Checking burn-core v0.15.0
+    Checking burn-train v0.15.0
+    Checking burn v0.15.0
+    Checking fast-umap v0.0.2
+    Checking FontCluster v0.1.2 (/Users/mugisus/Documents/GitHub/fontcluster/src-tauri)
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `annembed`
+ --> src/core/mapper.rs:5:5
+  |
+5 | use annembed::prelude::*;
+  |     ^^^^^^^^ use of unresolved module or unlinked crate `annembed`
+  |
+  = help: if you wanted to use a crate named `annembed`, use `cargo add annembed` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `annembed`
+ --> src/core/mapper.rs:6:5
+  |
+6 | use annembed::fromhnsw::kgraph::kgraph_from_hnsw_all;
+  |     ^^^^^^^^ use of unresolved module or unlinked crate `annembed`
+  |
+  = help: if you wanted to use a crate named `annembed`, use `cargo add annembed` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `hnsw_rs`
+ --> src/core/mapper.rs:7:5
+  |
+7 | use hnsw_rs::prelude::*;
+  |     ^^^^^^^ use of unresolved module or unlinked crate `hnsw_rs`
+  |
+  = help: if you wanted to use a crate named `hnsw_rs`, use `cargo add hnsw_rs` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved imports `annembed::prelude::*`, `annembed::fromhnsw::kgraph::kgraph_from_hnsw_all`, `hnsw_rs::prelude::*`
+ --> src/core/mapper.rs:5:5
+  |
+5 | use annembed::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^^
+6 | use annembed::fromhnsw::kgraph::kgraph_from_hnsw_all;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+7 | use hnsw_rs::prelude::*;
+  |     ^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `DistL2` in this scope
+  --> src/core/mapper.rs:54:32
+   |
+54 |         let hnsw = Hnsw::<f32, DistL2>::new(max_nb_connection, n_samples, nb_layer, ef_c, DistL2 {});
+   |                                ^^^^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+11 | impl<DistL2> Mapper {
+   |     ++++++++
+
+error[E0422]: cannot find struct, variant or union type `DistL2` in this scope
+  --> src/core/mapper.rs:54:91
+   |
+54 |         let hnsw = Hnsw::<f32, DistL2>::new(max_nb_connection, n_samples, nb_layer, ef_c, DistL2 {});
+   |                                                                                           ^^^^^^ not found in this scope
+
+error[E0433]: failed to resolve: use of undeclared type `Hnsw`
+  --> src/core/mapper.rs:54:20
+   |
+54 |         let hnsw = Hnsw::<f32, DistL2>::new(max_nb_connection, n_samples, nb_layer, ef_c, DistL2 {});
+   |                    ^^^^ use of undeclared type `Hnsw`
+
+error[E0433]: failed to resolve: use of undeclared type `EmbedderParams`
+  --> src/core/mapper.rs:62:32
+   |
+62 |         let mut embed_params = EmbedderParams::default();
+   |                                ^^^^^^^^^^^^^^ use of undeclared type `EmbedderParams`
+
+error[E0433]: failed to resolve: use of undeclared type `Embedder`
+  --> src/core/mapper.rs:66:28
+   |
+66 |         let mut embedder = Embedder::new(&kgraph, embed_params);
+   |                            ^^^^^^^^ use of undeclared type `Embedder`
+
+Some errors have detailed explanations: E0412, E0422, E0432, E0433.
+For more information about an error, try `rustc --explain E0412`.
+error: could not compile `FontCluster` (lib) due to 9 previous errors

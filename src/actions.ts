@@ -209,12 +209,12 @@ export function initAppEvents() {
     setAppState('session', 'status', 'generated');
   });
 
-  listen('vectorization_complete', () => {
-    setAppState('session', 'status', 'vectorized');
-  });
-
   listen('compression_complete', () => {
     setAppState('session', 'status', 'compressed');
+  });
+
+  listen('mapping_complete', () => {
+    setAppState('session', 'status', 'mapped');
   });
 
   listen('clustering_complete', (event: { payload: string }) => {

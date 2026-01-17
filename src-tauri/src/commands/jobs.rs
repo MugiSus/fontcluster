@@ -1,4 +1,4 @@
-use crate::core::{AppState, Discoverer, ImageGenerator, Compressor, Clusterer};
+use crate::core::{AppState, Discoverer, ImageGenerator, Compressor, Mapper, Clusterer};
 use crate::config::{AlgorithmConfig, ProcessStatus};
 use crate::error::Result;
 use tauri::{command, State, AppHandle, Emitter};
@@ -61,12 +61,25 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         app.emit("compression_complete", id.clone())?;
     }
 
-    // Step 4: Clustering
+    // Step 3.5: Mapping (UMAP)
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
     if status == ProcessStatus::Compressed {
+        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
+        println!("🗺️ Starting mapping (UMAP)...");
+        app.emit("mapping_start", ())?;
+        Mapper::map_all(&state).await?;
+        app.emit("mapping_complete", id.clone())?;
+    }
+
+    // Step 4: Clustering
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if status == ProcessStatus::Mapped {
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         println!("✨ Starting clustering...");
         app.emit("clustering_start", ())?;

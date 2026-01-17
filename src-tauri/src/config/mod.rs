@@ -25,6 +25,7 @@ pub struct SessionConfig {
 pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
     pub autoencoder: Option<AutoencoderConfig>,
+    pub umap: Option<UmapConfig>,
     pub hdbscan: Option<HdbscanConfig>,
 }
 
@@ -70,6 +71,22 @@ impl Default for AutoencoderConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
+pub struct UmapConfig {
+    pub n_neighbors: usize,
+    pub min_dist: f32,
+}
+
+impl Default for UmapConfig {
+    fn default() -> Self {
+        Self {
+            n_neighbors: 15,
+            min_dist: 0.1,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ImageConfig {
     pub font_size: f32,
 }
@@ -90,6 +107,7 @@ pub enum ProcessStatus {
     Discovered,
     Generated,
     Compressed,
+    Mapped,
     Clustered,
 }
 

@@ -1,13 +1,14 @@
-pub mod clusterer;
-pub mod image_generator;
-pub mod burn_model;
-pub mod compressor;
-pub mod discoverer;
+mod discoverer;
+mod image_generator;
+mod burn_model;
+mod compressor;
+mod mapper;
+mod clusterer;
 pub mod session;
 
-pub use clusterer::*;
-pub use image_generator::*;
-pub use burn_model::*;
-pub use compressor::*;
-pub use discoverer::*;
+pub use discoverer::Discoverer;
+pub use image_generator::ImageGenerator;
+pub use compressor::Compressor;
+pub use mapper::Mapper;
+pub use clusterer::Clusterer;
 pub use session::*;
