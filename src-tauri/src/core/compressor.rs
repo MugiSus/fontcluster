@@ -2,7 +2,7 @@ use crate::error::{Result, AppError};
 use crate::core::AppState;
 use crate::core::session::load_font_metadata;
 use crate::core::burn_model::{ModelConfig, Model};
-use burn::tensor::{Tensor, backend::Backend};
+use burn::tensor::Tensor;
 use burn::optim::{AdamConfig, Optimizer, GradientsParams};
 use burn::module::AutodiffModule;
 use std::fs;

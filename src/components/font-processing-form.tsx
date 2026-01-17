@@ -544,16 +544,25 @@ export function FontProcessingForm() {
               )}
             />
           </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
+            style={{
+              '--progress':
+                appState.session.isProcessing &&
+                appState.session.status === 'generated'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  : '0%',
+            }}
+          >
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-primary',
+                appState.session.isProcessing &&
+                  appState.session.status === 'generated' &&
+                  'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'compressed' ||
                   appState.session.status === 'clustered') &&
                   'w-full',
-                appState.session.isProcessing &&
-                  appState.session.status === 'generated' &&
-                  'w-full animate-pulse transition-[width] duration-1000',
               )}
             />
           </div>
