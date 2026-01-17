@@ -61,7 +61,7 @@ impl Default for AutoencoderConfig {
         Self {
             width: 128,
             height: 128,
-            latent_dim: 2,
+            latent_dim: 16,
             epochs: 100,
             batch_size: 32,
             learning_rate: 1e-3,
