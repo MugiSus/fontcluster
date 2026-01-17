@@ -15,9 +15,8 @@ export const WEIGHT_LABELS: Record<
   900: { short: 'Bl', full: 'Black' },
 };
 
-export interface UmapOptions {
-  n_neighbors: number;
-  min_dist: number;
+export interface PcaOptions {
+  n_components: number;
 }
 
 export interface AutoencoderOptions {
@@ -41,7 +40,7 @@ export interface ImageOptions {
 export interface AlgorithmConfig {
   image: ImageOptions | null;
   autoencoder: AutoencoderOptions | null;
-  umap: UmapOptions | null;
+  pca: PcaOptions | null;
   hdbscan: HdbscanOptions | null;
 }
 

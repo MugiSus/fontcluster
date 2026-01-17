@@ -25,7 +25,7 @@ pub struct SessionConfig {
 pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
     pub autoencoder: Option<AutoencoderConfig>,
-    pub umap: Option<UmapConfig>,
+    pub pca: Option<PcaConfig>,
     pub hdbscan: Option<HdbscanConfig>,
 }
 
@@ -71,16 +71,14 @@ impl Default for AutoencoderConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct UmapConfig {
-    pub n_neighbors: usize,
-    pub min_dist: f32,
+pub struct PcaConfig {
+    pub n_components: usize,
 }
 
-impl Default for UmapConfig {
+impl Default for PcaConfig {
     fn default() -> Self {
         Self {
-            n_neighbors: 15,
-            min_dist: 0.1,
+            n_components: 2,
         }
     }
 }

@@ -68,9 +68,8 @@ export function FontProcessingForm() {
         batch_size: Number(formData.get('autoencoder-batch-size')),
         learning_rate: Number(formData.get('autoencoder-learning-rate')),
       },
-      umap: {
-        n_neighbors: Number(formData.get('umap-n-neighbors')),
-        min_dist: Number(formData.get('umap-min-dist')),
+      pca: {
+        n_components: Number(formData.get('pca-n-components') ?? 2),
       },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
@@ -391,7 +390,7 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                UMAP (Dimensionality Reduction)
+                PCA (Dimensionality Reduction)
               </div>
               <Tooltip>
                 <TooltipTrigger
@@ -409,49 +408,27 @@ export function FontProcessingForm() {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Neighbors</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Components</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='umap-n-neighbors'
+                  name='pca-n-components'
                   value={
-                    appState.session.config?.algorithm?.umap?.n_neighbors ?? 15
+                    appState.session.config?.algorithm?.pca?.n_components ?? 2
                   }
                   onInput={(e) =>
                     setAppState(
                       'session',
                       'config',
                       'algorithm',
-                      'umap',
-                      'n_neighbors',
+                      'pca',
+                      'n_components',
                       Number(e.currentTarget.value),
                     )
                   }
                   step='1'
-                  min='2'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Min Dist</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='umap-min-dist'
-                  value={
-                    appState.session.config?.algorithm?.umap?.min_dist ?? 0.1
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'umap',
-                      'min_dist',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='0.05'
-                  min='0'
-                  class='h-7 text-xs'
+                  min='1'
+                  readOnly
+                  class='h-7 bg-muted/30 text-xs'
                 />
               </TextField>
             </div>
