@@ -47,23 +47,23 @@ impl Compressor {
         type AD = burn::backend::Autodiff<B>;
         let device = burn::backend::wgpu::WgpuDevice::default();
 
-        let model_config = ModelConfig::new(config.latent_dim as usize);
+        let model_config = ModelConfig::new(config.latent_dim as usize, config.width as usize, config.height as usize);
         let model: Model<AD> = model_config.init(&device);
 
         // Load images into a single tensor [N, 1, 128, 128]
         let mut tensors = Vec::new();
         for path in &image_paths {
             let img = image::open(path).map_err(|e| AppError::Image(e.to_string()))?.to_luma8();
-            // Resize to 128x128 if not already
-            let resized = if img.width() != 128 || img.height() != 128 {
-                image::imageops::resize(&img, 128, 128, image::imageops::FilterType::Lanczos3)
+            // Resize to config dimensions if not already
+            let resized = if img.width() != config.width || img.height() != config.height {
+                image::imageops::resize(&img, config.width, config.height, image::imageops::FilterType::Lanczos3)
             } else {
                 img
             };
             let data: Vec<f32> = resized.pixels().map(|p| p[0] as f32 / 255.0).collect();
             // Use B::Device for tensor creation
             let tensor = Tensor::<B, 1>::from_floats(data.as_slice(), &device)
-                .reshape([1, 1, 128, 128]);
+                .reshape([1, 1, config.height as usize, config.width as usize]);
             tensors.push(tensor);
         }
         let batch_input = Tensor::cat(tensors, 0);

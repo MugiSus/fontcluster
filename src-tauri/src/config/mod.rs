@@ -47,6 +47,8 @@ impl Default for HdbscanConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AutoencoderConfig {
+    pub width: u32,
+    pub height: u32,
     pub latent_dim: usize,
     pub epochs: usize,
     pub batch_size: usize,
@@ -56,6 +58,8 @@ pub struct AutoencoderConfig {
 impl Default for AutoencoderConfig {
     fn default() -> Self {
         Self {
+            width: 128,
+            height: 128,
             latent_dim: 2,
             epochs: 100,
             batch_size: 32,
@@ -67,16 +71,12 @@ impl Default for AutoencoderConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ImageConfig {
-    pub width: u32,
-    pub height: u32,
     pub font_size: f32,
 }
 
 impl Default for ImageConfig {
     fn default() -> Self {
         Self {
-            width: 128,
-            height: 128,
             font_size: DEFAULT_FONT_SIZE,
         }
     }

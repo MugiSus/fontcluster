@@ -16,6 +16,8 @@ export const WEIGHT_LABELS: Record<
 };
 
 export interface AutoencoderOptions {
+  width: number;
+  height: number;
   latent_dim: number;
   epochs: number;
   batch_size: number;
@@ -28,8 +30,6 @@ export interface HdbscanOptions {
 }
 
 export interface ImageOptions {
-  width: number;
-  height: number;
   font_size: number;
 }
 

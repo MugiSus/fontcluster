@@ -58,11 +58,11 @@ export function FontProcessingForm() {
 
     const algorithm: AlgorithmConfig = {
       image: {
-        width: Number(formData.get('image-width')),
-        height: Number(formData.get('image-height')),
         font_size: Number(formData.get('image-font-size')),
       },
       autoencoder: {
+        width: Number(formData.get('autoencoder-width')),
+        height: Number(formData.get('autoencoder-height')),
         latent_dim: Number(formData.get('autoencoder-latent-dim')),
         epochs: Number(formData.get('autoencoder-epochs')),
         batch_size: Number(formData.get('autoencoder-batch-size')),
@@ -99,14 +99,13 @@ export function FontProcessingForm() {
 
     if (!appState.session.config) return;
 
-    const newWidth = Math.ceil(met.width / 16) * 16;
-    const newHeight = Math.ceil(met.height / 16) * 16;
+    const newWidth = Math.ceil(met.width / 8) * 8;
+    const newHeight = Math.ceil(met.height / 8) * 8;
 
-    // Only update if values actually changed to avoid unnecessary triggers
-    const current = appState.session.config.algorithm?.image;
+    const current = appState.session.config.algorithm?.autoencoder;
     if (current?.width === newWidth && current?.height === newHeight) return;
 
-    setAppState('session', 'config', 'algorithm', 'image', (prev) => ({
+    setAppState('session', 'config', 'algorithm', 'autoencoder', (prev) => ({
       ...prev,
       width: newWidth,
       height: newHeight,
@@ -215,60 +214,13 @@ export function FontProcessingForm() {
                   class='h-7 text-xs'
                 />
               </TextField>
-              <div />
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-width'
-                  value={
-                    appState.session.config?.algorithm?.image?.width ?? 128
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'image',
-                      'width',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='16'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Height</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-height'
-                  value={
-                    appState.session.config?.algorithm?.image?.height ?? 128
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'image',
-                      'height',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='16'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
             </div>
           </div>
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                Autoencoder (Compression)
+                Autoencoder
               </div>
               <Tooltip>
                 <TooltipTrigger
@@ -285,6 +237,54 @@ export function FontProcessingForm() {
               </Tooltip>
             </div>
             <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='autoencoder-width'
+                  value={
+                    appState.session.config?.algorithm?.autoencoder?.width ??
+                    128
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'autoencoder',
+                      'width',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='8'
+                  min='0'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Height</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='autoencoder-height'
+                  value={
+                    appState.session.config?.algorithm?.autoencoder?.height ??
+                    128
+                  }
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'autoencoder',
+                      'height',
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  step='8'
+                  min='0'
+                  class='h-7 text-xs'
+                />
+              </TextField>
               <TextField class='gap-0.5'>
                 <TextFieldLabel class='text-xxs'>Latent Dim</TextFieldLabel>
                 <TextFieldInput
@@ -306,7 +306,6 @@ export function FontProcessingForm() {
                   }
                   step='1'
                   min='2'
-                  max='2'
                   class='h-7 text-xs'
                 />
               </TextField>
