@@ -59,7 +59,7 @@ const FUSE_OPTIONS = {
       getFn: (item: FontMetadata) => Object.values(item.designers),
     },
   ],
-  threshold: 0.4,
+  threshold: 0.25,
 };
 
 // Define the store with explicit type to avoid circular inference errors
