@@ -22,6 +22,8 @@ impl Vectorizer {
             model_path = std::env::current_dir()?.join("src/resources/resnet50.onnx");
         }
         
+        println!("🚀 Vectorizer: Loading model from {:?}", model_path);
+        
         // Use CoreML for extreme performance on Mac (ANE/GPU)
         let session = Session::builder()
             .map_err(|e| crate::error::AppError::Processing(format!("Failed to create builder: {}", e)))?
@@ -30,6 +32,7 @@ impl Vectorizer {
             .commit_from_file(model_path)
             .map_err(|e| crate::error::AppError::Processing(format!("Failed to load model: {}", e)))?;
         
+        println!("✅ Vectorizer: Session initialized with CoreML acceleration");
         Ok(Self { session: Arc::new(Mutex::new(session)) })
     }
 
@@ -42,6 +45,7 @@ impl Vectorizer {
             .map(|e| e.path())
             .collect();
 
+        println!("🔍 Vectorizer: Found {} images to process in {}", png_files.len(), session_dir.display());
         if png_files.is_empty() {
             return Ok(());
         }
@@ -101,13 +105,13 @@ impl Vectorizer {
         let mut current_batch_paths = Vec::with_capacity(BATCH_SIZE);
         let mut current_batch_tensors = Vec::with_capacity(BATCH_SIZE);
 
+        let mut stream_finished = false;
         loop {
             if state.is_cancelled.load(Ordering::Relaxed) {
                 break;
             }
 
             // Collect a batch or wait for one
-            let mut batch_complete = false;
             while current_batch_paths.len() < BATCH_SIZE {
                 match tokio::time::timeout(std::time::Duration::from_millis(50), tensor_rx.recv()).await {
                     Ok(Some((path, tensor))) => {
@@ -115,19 +119,18 @@ impl Vectorizer {
                         current_batch_tensors.push(tensor);
                     }
                     Ok(None) => {
-                        batch_complete = true;
+                        stream_finished = true;
                         break;
                     }
                     Err(_) => { // Timeout
                         if !current_batch_paths.is_empty() {
-                            batch_complete = true;
                             break;
                         }
                     }
                 }
             }
 
-            if current_batch_paths.is_empty() && batch_complete {
+            if current_batch_paths.is_empty() && stream_finished {
                 break;
             }
 
@@ -163,7 +166,7 @@ impl Vectorizer {
                 current_batch_tensors.clear();
             }
 
-            if batch_complete {
+            if stream_finished {
                 break;
             }
         }
