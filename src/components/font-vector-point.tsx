@@ -1,4 +1,5 @@
-import { Show } from 'solid-js';
+import { Show, createMemo } from 'solid-js';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { type FontWeight } from '../types/font';
 import { getClusterTextColor } from '../lib/cluster-colors';
 
@@ -11,12 +12,20 @@ interface FontVectorPointProps {
   y: number;
   isSelected: boolean;
   isFamilySelected: boolean;
+  sessionDirectory: string;
   visualizerWeights: FontWeight[];
   zoomFactor: number;
   isDisabled?: boolean;
 }
 
 export function FontVectorPoint(props: FontVectorPointProps) {
+  const imgSrc = createMemo(() => {
+    if (!props.sessionDirectory || !props.safeName) return '';
+    return convertFileSrc(
+      `${props.sessionDirectory}/${props.safeName}/sample.png`,
+    );
+  });
+
   return (
     <g
       transform={`translate(${props.x}, ${props.y}) scale(${props.zoomFactor})`}
@@ -99,6 +108,16 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             : props.fontName.substring(0, 16) + '…'}
         </text>
       </Show>
+
+      <image
+        href={imgSrc()}
+        x={-32}
+        y={-16}
+        width={64}
+        height={32}
+        preserveAspectRatio='xMidYMid meet'
+        class='pointer-events-none bg-blend-multiply'
+      />
     </g>
   );
 }

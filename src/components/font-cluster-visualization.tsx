@@ -376,6 +376,7 @@ export function FontClusterVisualization() {
                 y={point.y}
                 isSelected={isSelected(point.key)}
                 isFamilySelected={isFamilySelected(point.metadata.family_name)}
+                sessionDirectory={appState.session.directory}
                 visualizerWeights={visualizerWeights()}
                 zoomFactor={zoomFactor()}
                 isDisabled
@@ -395,6 +396,7 @@ export function FontClusterVisualization() {
               y={point.y}
               isSelected={isSelected(point.key)}
               isFamilySelected={isFamilySelected(point.metadata.family_name)}
+              sessionDirectory={appState.session.directory}
               visualizerWeights={visualizerWeights()}
               zoomFactor={zoomFactor()}
             />
