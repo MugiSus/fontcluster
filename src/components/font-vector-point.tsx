@@ -85,7 +85,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         width={64}
         height={32}
         preserveAspectRatio='xMidYMid meet'
-        class='pointer-events-none'
+        class='pointer-events-none invert dark:invert-0'
       />
 
       <Show when={props.isSelected || props.isFamilySelected}>

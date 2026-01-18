@@ -316,8 +316,8 @@ export function FontClusterVisualization() {
     <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
       <div class='absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
         <ZoomControls
-          onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO)}
-          onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO)}
+          onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO ** 5)}
+          onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO ** 5)}
           onReset={handleReset}
         />
         <WeightSelector

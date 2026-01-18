@@ -41,7 +41,7 @@ export function SearchForm() {
               as={Button<'button'>}
               variant='ghost'
               size='icon'
-              class='absolute left-1 top-1 size-6 rounded-full hover:bg-destructive/10 hover:text-destructive'
+              class='absolute left-1 top-[5px] size-6 rounded-full hover:bg-destructive/10 hover:text-destructive'
               onClick={handleClear}
             >
               <XIcon class='size-3.5' />
@@ -52,7 +52,7 @@ export function SearchForm() {
         <TextFieldInput
           type='text'
           placeholder='Search fonts'
-          class='h-8 px-12 text-center text-xs focus:placeholder:text-transparent focus-visible:placeholder:text-transparent'
+          class='h-8 px-12 text-center text-xs shadow-none focus:placeholder:text-transparent focus-visible:placeholder:text-transparent'
           value={inputValue()}
           onInput={(e) => handleQueryChange(e.currentTarget.value)}
           spellcheck='false'
