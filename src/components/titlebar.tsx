@@ -31,8 +31,8 @@ export function Titlebar() {
         <SearchForm />
       </div>
 
-      <div class='absolute right-3 justify-end'>
-        <div class='flex items-center'>
+      <div class='absolute right-2 justify-end'>
+        <div class='flex items-center gap-px'>
           <Tooltip>
             <TooltipTrigger as='div'>
               <Button
