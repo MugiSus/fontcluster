@@ -33,7 +33,7 @@ export function SearchForm() {
         <Show
           when={isFiltered()}
           fallback={
-            <SearchIcon class='absolute left-2.5 top-1.5 size-4 text-muted-foreground' />
+            <SearchIcon class='absolute left-2.5 top-2 size-4 text-muted-foreground' />
           }
         >
           <Tooltip>
@@ -41,7 +41,7 @@ export function SearchForm() {
               as={Button<'button'>}
               variant='ghost'
               size='icon'
-              class='absolute left-1 top-1 size-6 hover:bg-destructive/10 hover:text-destructive'
+              class='absolute left-1 top-1 size-6 rounded-full hover:bg-destructive/10 hover:text-destructive'
               onClick={handleClear}
             >
               <XIcon class='size-3.5' />
@@ -51,15 +51,15 @@ export function SearchForm() {
         </Show>
         <TextFieldInput
           type='text'
-          placeholder='Search fonts...'
-          class='h-8 pl-8 pr-12 text-xs'
+          placeholder='Search fonts'
+          class='h-8 px-12 text-center text-xs'
           value={inputValue()}
           onInput={(e) => handleQueryChange(e.currentTarget.value)}
           spellcheck='false'
         />
         <Show when={isFiltered()}>
-          <div class='absolute right-2 top-2 flex items-center gap-1 text-xxs text-muted-foreground'>
-            <FunnelIcon class='size-2.5' />
+          <div class='absolute right-3 top-2 flex items-center gap-1 text-xs text-muted-foreground'>
+            <FunnelIcon class='size-3' />
             {filteredCount()}
           </div>
         </Show>

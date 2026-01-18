@@ -106,7 +106,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       >
         <text
           x={0}
-          y={-24}
+          y={-20}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
             props.isSelected ? 'font-bold' : ''

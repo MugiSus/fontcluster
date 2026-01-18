@@ -80,7 +80,7 @@ export function FontClusterVisualization() {
     const svgMouseY =
       vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
 
-    const selectionRadius = 48 * zoomFactor();
+    const selectionRadius = 40 * zoomFactor();
     const activeWeights = visualizerWeights();
     const nearest = fontQuadtree().find(svgMouseX, svgMouseY, selectionRadius);
 
