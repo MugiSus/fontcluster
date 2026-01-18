@@ -9,6 +9,7 @@ import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
 import { type FontWeight, type FontMetadata } from '../types/font';
 import { WeightSelector } from './weight-selector';
+import { ZoomControls } from './zoom-controls';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
 import { appState } from '../store';
@@ -164,16 +165,37 @@ export function FontClusterVisualization() {
     const svgMouseX = x + (mouseX / Math.min(rect.width, rect.height)) * width;
     const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
 
-    const zoomFactor =
+    const zoomStepFactor =
       event.deltaY > 0 ? ZOOM_FACTOR_RATIO : 1 / ZOOM_FACTOR_RATIO;
 
-    const newWidth = width * zoomFactor;
-    const newHeight = height * zoomFactor;
+    const newWidth = width * zoomStepFactor;
+    const newHeight = height * zoomStepFactor;
 
-    const newX = svgMouseX - (svgMouseX - x) * zoomFactor;
-    const newY = svgMouseY - (svgMouseY - y) * zoomFactor;
+    const newX = svgMouseX - (svgMouseX - x) * zoomStepFactor;
+    const newY = svgMouseY - (svgMouseY - y) * zoomStepFactor;
 
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
+  };
+
+  const handleZoom = (factor: number) => {
+    const currentViewBox = viewBox();
+    const { x, y, width, height } = currentViewBox;
+
+    // Zoom from center
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+
+    const newWidth = width * factor;
+    const newHeight = height * factor;
+
+    const newX = centerX - (centerX - x) * factor;
+    const newY = centerY - (centerY - y) * factor;
+
+    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
+  };
+
+  const handleReset = () => {
+    setViewBox(INITIAL_VIEWBOX);
   };
 
   const bounds = createMemo(() => {
@@ -292,7 +314,12 @@ export function FontClusterVisualization() {
 
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
-      <div class='absolute bottom-2.5 right-2.5 z-10 flex items-center justify-between'>
+      <div class='absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
+        <ZoomControls
+          onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO)}
+          onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO)}
+          onReset={handleReset}
+        />
         <WeightSelector
           weights={(appState.session.config?.weights as FontWeight[]) || []}
           selectedWeights={visualizerWeights()}
