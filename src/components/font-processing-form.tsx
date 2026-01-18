@@ -193,6 +193,45 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+                Vectorization (ResNet)
+              </div>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('generated')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
+            </div>
+            {/* <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>
+                  Min Cluster Size
+                </TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hdbscan-min-cluster-size'
+                  value={
+                    appState.session.config?.algorithm?.hdbscan
+                      ?.min_cluster_size ?? 16
+                  }
+                  step='1'
+                  min='0'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+            </div> */}
+          </div>
+
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
                 PaCMAP (D-Reduction)
               </div>
               <Tooltip>
