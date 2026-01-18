@@ -17,7 +17,6 @@ import { setSelectedFontKey } from '../actions';
 const GRAPH_PADDING = 50;
 const GRAPH_SIZE = 1000;
 
-// SVG ViewBox configuration
 const INITIAL_VIEWBOX = {
   x: -GRAPH_PADDING,
   y: -GRAPH_PADDING,
@@ -35,7 +34,6 @@ interface VisualizedPoint {
 }
 
 export function FontClusterVisualization() {
-  // SVG pan and zoom state
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
 
   let svgElement: SVGSVGElement | undefined;
@@ -52,12 +50,10 @@ export function FontClusterVisualization() {
   const [isDragging, setIsDragging] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
 
-  // Internal visualizer weights management
   const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
     400,
   ]);
 
-  // Sync visualizer weights with session weights when they change
   createEffect(() => {
     const sessionWeights =
       (appState.session.config?.weights as FontWeight[]) || [];
@@ -71,8 +67,6 @@ export function FontClusterVisualization() {
 
     const rect = svgElement.getBoundingClientRect();
 
-    // Convert mouse position to SVG coordinates
-    // This logic must match handleWheel's coordinate conversion
     const mouseX =
       event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
     const mouseY =
@@ -86,13 +80,10 @@ export function FontClusterVisualization() {
     const svgMouseY =
       vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
 
-    const selectionRadius = 48; // Radius matching FontVectorPoint's original hit area
+    const selectionRadius = 48 * zoomFactor();
     const activeWeights = visualizerWeights();
-
-    // Use quadtree to find the nearest point within radius
     const nearest = fontQuadtree().find(svgMouseX, svgMouseY, selectionRadius);
 
-    // Only allow selection if the weight is active
     if (
       nearest &&
       activeWeights.includes(nearest.metadata.weight as FontWeight)
@@ -142,19 +133,16 @@ export function FontClusterVisualization() {
 
   const handleMouseDown = (event: MouseEvent) => {
     if (event.button === 2) {
-      // Right click
       event.preventDefault();
       setIsDragging(true);
       setLastMousePos({ x: event.clientX, y: event.clientY });
     } else if (event.button === 0) {
-      // Left click
       selectSelectedFont(event);
     }
   };
 
   const handleMouseUp = (event: MouseEvent) => {
     if (event.button === 2) {
-      // Right click
       setIsDragging(false);
     }
   };
@@ -165,7 +153,6 @@ export function FontClusterVisualization() {
     const svgElement = event.currentTarget as SVGElement;
     const rect = svgElement.getBoundingClientRect();
 
-    // Get mouse position relative to SVG
     const mouseX =
       event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
     const mouseY =
@@ -174,18 +161,15 @@ export function FontClusterVisualization() {
     const currentViewBox = viewBox();
     const { x, y, width, height } = currentViewBox;
 
-    // Convert mouse position to SVG coordinates
     const svgMouseX = x + (mouseX / Math.min(rect.width, rect.height)) * width;
     const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
 
-    // Zoom factor
     const zoomFactor =
       event.deltaY > 0 ? ZOOM_FACTOR_RATIO : 1 / ZOOM_FACTOR_RATIO;
 
     const newWidth = width * zoomFactor;
     const newHeight = height * zoomFactor;
 
-    // Adjust position to zoom around mouse position
     const newX = svgMouseX - (svgMouseX - x) * zoomFactor;
     const newY = svgMouseY - (svgMouseY - y) * zoomFactor;
 
