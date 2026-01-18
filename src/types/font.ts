@@ -22,27 +22,17 @@ export interface PacmapOptions {
   learning_rate: number;
 }
 
-export interface HogOptions {
-  orientations: number;
-  cell_side: number;
-  block_side: number;
-  block_stride: number;
-}
-
 export interface HdbscanOptions {
   min_cluster_size: number;
   min_samples: number;
 }
 
 export interface ImageOptions {
-  width: number;
-  height: number;
   font_size: number;
 }
 
 export interface AlgorithmConfig {
   image: ImageOptions | null;
-  hog: HogOptions | null;
   pacmap: PacmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }

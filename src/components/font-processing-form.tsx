@@ -1,7 +1,6 @@
-import { Show, createEffect, createMemo } from 'solid-js';
+import { Show } from 'solid-js';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
-import { measureText } from '@/lib/text-measurer';
 import {
   ArrowRightIcon,
   StepForwardIcon,
@@ -22,18 +21,6 @@ import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-
-function alignToHogConstraints(
-  measuredSize: number,
-  cellSide: number,
-  blockSide: number,
-  blockStride: number,
-): number {
-  const minCellsRequired = Math.ceil(measuredSize / cellSide);
-  const n = Math.ceil(Math.max(0, minCellsRequired - blockSide) / blockStride);
-  const totalCells = blockSide + n * blockStride;
-  return totalCells * cellSide;
-}
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
@@ -70,15 +57,7 @@ export function FontProcessingForm() {
 
     const algorithm: AlgorithmConfig = {
       image: {
-        width: Number(formData.get('image-width')),
-        height: Number(formData.get('image-height')),
         font_size: Number(formData.get('image-font-size')),
-      },
-      hog: {
-        orientations: Number(formData.get('hog-orientations')),
-        cell_side: Number(formData.get('hog-cell-side')),
-        block_side: Number(formData.get('hog-block-side')),
-        block_stride: Number(formData.get('hog-block-stride')),
       },
       pacmap: {
         mn_phases: Number(formData.get('pacmap-mn-phases')),
@@ -104,43 +83,6 @@ export function FontProcessingForm() {
       setAppState('session', 'isProcessing', false);
     }
   };
-
-  const metrics = createMemo(() =>
-    measureText(
-      appState.ui.sampleText,
-      appState.session.config?.algorithm?.image?.font_size ?? 128,
-    ),
-  );
-
-  createEffect(() => {
-    const met = metrics();
-
-    if (!appState.session.config) return;
-
-    const hog = appState.session.config?.algorithm?.hog;
-    const newWidth = alignToHogConstraints(
-      met.width,
-      hog?.cell_side ?? 16,
-      hog?.block_side ?? 2,
-      hog?.block_stride ?? 2,
-    );
-    const newHeight = alignToHogConstraints(
-      met.height,
-      hog?.cell_side ?? 16,
-      hog?.block_side ?? 2,
-      hog?.block_stride ?? 2,
-    );
-
-    // Only update if values actually changed to avoid unnecessary triggers
-    const current = appState.session.config.algorithm?.image;
-    if (current?.width === newWidth && current?.height === newHeight) return;
-
-    setAppState('session', 'config', 'algorithm', 'image', (prev) => ({
-      ...prev,
-      width: newWidth,
-      height: newHeight,
-    }));
-  });
 
   return (
     <form
@@ -245,167 +187,6 @@ export function FontProcessingForm() {
                 />
               </TextField>
               <div />
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-width'
-                  value={
-                    appState.session.config?.algorithm?.image?.width ?? 128
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'image',
-                      'width',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='16'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Height</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-height'
-                  value={
-                    appState.session.config?.algorithm?.image?.height ?? 128
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'image',
-                      'height',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='16'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                HOG Feature Extraction
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('generated')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Orientations</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-orientations'
-                  value={
-                    appState.session.config?.algorithm?.hog?.orientations ?? 12
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'hog',
-                      'orientations',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='1'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Cell Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-cell-side'
-                  value={
-                    appState.session.config?.algorithm?.hog?.cell_side ?? 16
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'hog',
-                      'cell_side',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Block Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-block-side'
-                  value={
-                    appState.session.config?.algorithm?.hog?.block_side ?? 2
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'hog',
-                      'block_side',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Block Stride</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-block-stride'
-                  value={
-                    appState.session.config?.algorithm?.hog?.block_stride ?? 2
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'hog',
-                      'block_stride',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
             </div>
           </div>
 

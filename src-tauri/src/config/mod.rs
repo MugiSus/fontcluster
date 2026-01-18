@@ -88,16 +88,12 @@ impl Default for HogConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ImageConfig {
-    pub width: u32,
-    pub height: u32,
     pub font_size: f32,
 }
 
 impl Default for ImageConfig {
     fn default() -> Self {
-        Self {
-            width: 128,
-            height: 128,
+                Self {
             font_size: DEFAULT_FONT_SIZE,
         }
     }
