@@ -4,19 +4,20 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::fs;
 use uuid::Uuid;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::AtomicBool;
 
+#[derive(Clone)]
 pub struct AppState {
-    pub current_session: Mutex<Option<SessionConfig>>,
-    pub is_cancelled: AtomicBool,
+    pub current_session: Arc<Mutex<Option<SessionConfig>>>,
+    pub is_cancelled: Arc<AtomicBool>,
 }
 
 impl AppState {
     pub fn new() -> Self {
         Self {
-            current_session: Mutex::new(None),
-            is_cancelled: AtomicBool::new(false),
+            current_session: Arc::new(Mutex::new(None)),
+            is_cancelled: Arc::new(AtomicBool::new(false)),
         }
     }
 
