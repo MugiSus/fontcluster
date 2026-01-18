@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 import { appState } from '@/store';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { SearchForm } from './search-form';
 
 export function Titlebar() {
   const copyCurrentSelectedFont = (event: MouseEvent) => {
@@ -20,60 +21,54 @@ export function Titlebar() {
   return (
     <header
       data-tauri-drag-region
-      class='sticky top-0 z-50 flex h-8 min-h-8 w-full select-none items-center justify-center gap-3'
+      class='sticky top-0 z-50 flex h-10 min-h-10 w-full select-none items-center justify-center px-3'
     >
-      <div class='pointer-events-none flex items-center gap-2'>
-        <div class='size-1 rotate-45 bg-border' />
-        <div class='size-1 rotate-45 bg-border' />
-        <div class='size-1 rotate-45 bg-border' />
-      </div>
-      <h1
-        data-tauri-drag-region
-        class='pointer-events-none mt-[2px] text-sm tracking-widest'
-      >
+      <h1 class='absolute left-20 text-xs font-medium tracking-widest text-muted-foreground'>
         FontCluster
       </h1>
-      <div class='pointer-events-none flex items-center gap-2'>
-        <div class='size-1 rotate-45 bg-border' />
-        <div class='size-1 rotate-45 bg-border' />
-        <div class='size-1 rotate-45 bg-border' />
+
+      <div class='flex w-[400px] justify-center'>
+        <SearchForm />
       </div>
-      <div class='fixed right-1 top-1 mr-0.5 flex items-center'>
-        <Tooltip>
-          <TooltipTrigger as='div'>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={copyCurrentSelectedFont}
-              class='size-6 rounded-full'
-              disabled={!appState.ui.selectedFontKey}
-            >
-              <CopyIcon class='size-6' />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Copy family name</TooltipContent>
-        </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger as='div'>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={showSessions}
-              class='size-6 rounded-full'
-            >
-              <HistoryIcon class='size-6' />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>History</TooltipContent>
-        </Tooltip>
+      <div class='absolute right-2 justify-end'>
+        <div class='flex items-center'>
+          <Tooltip>
+            <TooltipTrigger as='div'>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={copyCurrentSelectedFont}
+                class='size-6 rounded-full'
+                disabled={!appState.ui.selectedFontKey}
+              >
+                <CopyIcon class='size-6' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Copy family name</TooltipContent>
+          </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger as='div'>
-            <ModeToggle class='size-6 rounded-full' />
-          </TooltipTrigger>
-          <TooltipContent>Theme</TooltipContent>
-        </Tooltip>
+          <Tooltip>
+            <TooltipTrigger as='div'>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={showSessions}
+                class='size-6 rounded-full'
+              >
+                <HistoryIcon class='size-6' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>History</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger as='div'>
+              <ModeToggle class='size-6 rounded-full' />
+            </TooltipTrigger>
+            <TooltipContent>Theme</TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </header>
   );

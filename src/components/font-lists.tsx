@@ -1,39 +1,17 @@
-import { createMemo, createSignal, Show } from 'solid-js';
+import { createMemo, Show } from 'solid-js';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
 import { FontMetadataList } from './font-metadata-list';
 import { FontMetadata } from '../types/font';
 import {
   ArrowDownAZ,
   ArrowDownNarrowWide,
-  FunnelIcon,
-  SearchIcon,
   SearchSlashIcon,
-  XIcon,
 } from 'lucide-solid';
-import { TextField, TextFieldInput } from './ui/text-field';
 import { appState } from '../store';
 import { setSelectedFontKey } from '../actions';
-import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
-import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export function FontLists() {
-  const { onQueryChange } = useFilteredFontMetadataKeys({
-    onFontSelect: (key) => setSelectedFontKey(key),
-  });
-
-  const [inputValue, setInputValue] = createSignal(appState.ui.searchQuery);
-
-  const handleQueryChange = (value: string) => {
-    setInputValue(value);
-    onQueryChange(value);
-  };
-
-  const handleClear = () => {
-    setInputValue('');
-    onQueryChange('');
-  };
-
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
   const filteredMetadatas = createMemo(() => {
@@ -72,44 +50,6 @@ export function FontLists() {
 
   return (
     <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col pr-2'>
-      <TextField class='mb-2'>
-        <div class='relative'>
-          <Show
-            when={isFiltered()}
-            fallback={
-              <SearchIcon class='absolute left-3 top-3 size-4 text-muted-foreground' />
-            }
-          >
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                variant='ghost'
-                size='icon'
-                class='absolute left-1.5 top-1.5 size-7 hover:bg-destructive/10 hover:text-destructive'
-                onClick={handleClear}
-              >
-                <XIcon class='size-4' />
-              </TooltipTrigger>
-              <TooltipContent>Clear</TooltipContent>
-            </Tooltip>
-          </Show>
-          <TextFieldInput
-            type='text'
-            placeholder='Search fonts...'
-            class='pl-9'
-            value={inputValue()}
-            onInput={(e) => handleQueryChange(e.currentTarget.value)}
-            spellcheck='false'
-          />
-          <Show when={isFiltered()}>
-            <div class='absolute right-3 top-3 flex items-center gap-1 text-xs text-muted-foreground'>
-              <FunnelIcon class='size-3' />
-              {filteredMetadatas().length}
-            </div>
-          </Show>
-        </div>
-      </TextField>
-
       <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden'>
         <Tooltip>
           <TooltipTrigger as='div' class='w-full'>

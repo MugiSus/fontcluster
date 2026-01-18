@@ -78,6 +78,16 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         />
       </Show>
 
+      <image
+        href={imgSrc()}
+        x={-32}
+        y={-16}
+        width={64}
+        height={32}
+        preserveAspectRatio='xMidYMid meet'
+        class='pointer-events-none'
+      />
+
       <Show when={props.isSelected || props.isFamilySelected}>
         <circle
           cx={0}
@@ -96,7 +106,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       >
         <text
           x={0}
-          y={-12}
+          y={-24}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
             props.isSelected ? 'font-bold' : ''
@@ -108,16 +118,6 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             : props.fontName.substring(0, 16) + '…'}
         </text>
       </Show>
-
-      <image
-        href={imgSrc()}
-        x={-32}
-        y={-16}
-        width={64}
-        height={32}
-        preserveAspectRatio='xMidYMid meet'
-        class='pointer-events-none bg-blend-multiply'
-      />
     </g>
   );
 }
