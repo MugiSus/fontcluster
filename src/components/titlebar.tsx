@@ -21,13 +21,13 @@ export function Titlebar() {
   return (
     <header
       data-tauri-drag-region
-      class='sticky top-0 z-50 flex h-10 min-h-10 w-full select-none items-center justify-center px-3'
+      class='sticky top-0 z-50 flex h-10 min-h-10 w-full select-none items-center justify-center pt-px'
     >
       <h1 class='absolute left-20 text-xs font-medium tracking-widest text-muted-foreground'>
         FontCluster
       </h1>
 
-      <div class='flex w-[400px] justify-center'>
+      <div class='flex w-[480px] justify-center'>
         <SearchForm />
       </div>
 
