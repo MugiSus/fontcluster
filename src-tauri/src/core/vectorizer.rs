@@ -45,6 +45,15 @@ impl Vectorizer {
             .map(|e| e.path())
             .collect();
 
+        let resnet_config = {
+            let guard = state.current_session.lock().map_err(|_| crate::error::AppError::Processing("Lock poisoned".into()))?;
+            guard.as_ref()
+                .and_then(|s| s.algorithm.as_ref())
+                .and_then(|a| a.resnet.clone())
+                .unwrap_or_default()
+        };
+        let padding = resnet_config.padding;
+
         println!("🔍 Vectorizer: Found {} images to process in {}", png_files.len(), session_dir.display());
         if png_files.is_empty() {
             return Ok(());
@@ -67,7 +76,7 @@ impl Vectorizer {
                 if state_clone.is_cancelled.load(Ordering::Relaxed) {
                     return;
                 }
-                match self_clone.preprocess_image(&path) {
+                match self_clone.preprocess_image(&path, padding) {
                     Ok(tensor) => {
                         let _ = tensor_tx.blocking_send((path, tensor));
                     }
@@ -214,12 +223,20 @@ impl Vectorizer {
         Ok(())
     }
 
-    fn preprocess_image(&self, path: &PathBuf) -> Result<Array4<f32>> {
+    fn preprocess_image(&self, path: &PathBuf, padding: f32) -> Result<Array4<f32>> {
         let img = image::open(path).map_err(|e| crate::error::AppError::Image(e.to_string()))?.to_rgb8();
-        let resized = image::imageops::resize(&img, 224, 224, image::imageops::FilterType::Triangle);
         
+        let target_size = (224.0 - padding * 2.0).max(1.0) as u32;
+        let resized = image::imageops::resize(&img, target_size, target_size, image::imageops::FilterType::Triangle);
+        
+        // Create 224x224 white canvas
+        let mut canvas = image::RgbImage::from_pixel(224, 224, image::Rgb([255, 255, 255]));
+        let x = (224 - target_size) / 2;
+        let y = (224 - target_size) / 2;
+        image::imageops::replace(&mut canvas, &resized, x as i64, y as i64);
+
         // Fast SIMD-accelerated conversion using ndarray
-        let raw_data = resized.into_raw();
+        let raw_data = canvas.into_raw();
         let mut array = ndarray::Array3::<u8>::from_shape_vec((224, 224, 3), raw_data)
             .map_err(|e| crate::error::AppError::Processing(e.to_string()))?
             .mapv(|x| x as f32 / 255.0);

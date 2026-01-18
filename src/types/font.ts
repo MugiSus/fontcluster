@@ -27,12 +27,17 @@ export interface HdbscanOptions {
   min_samples: number;
 }
 
+export interface ResnetOptions {
+  padding: number;
+}
+
 export interface ImageOptions {
   font_size: number;
 }
 
 export interface AlgorithmConfig {
   image: ImageOptions | null;
+  resnet: ResnetOptions | null;
   pacmap: PacmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }

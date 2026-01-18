@@ -59,6 +59,9 @@ export function FontProcessingForm() {
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
+      resnet: {
+        padding: Number(formData.get('resnet-padding') ?? 16),
+      },
       pacmap: {
         mn_phases: Number(formData.get('pacmap-mn-phases')),
         nn_phases: Number(formData.get('pacmap-nn-phases')),
@@ -209,24 +212,22 @@ export function FontProcessingForm() {
                 <TooltipContent>Run from this step</TooltipContent>
               </Tooltip>
             </div>
-            {/* <div class='grid grid-cols-2 gap-2'>
+            <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Min Cluster Size
-                </TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Padding</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='hdbscan-min-cluster-size'
+                  name='resnet-padding'
                   value={
-                    appState.session.config?.algorithm?.hdbscan
-                      ?.min_cluster_size ?? 16
+                    appState.session.config?.algorithm?.resnet?.padding ?? 16
                   }
                   step='1'
                   min='0'
+                  max='100'
                   class='h-7 text-xs'
                 />
               </TextField>
-            </div> */}
+            </div>
           </div>
 
           <div class='group/section space-y-1.5'>
