@@ -100,20 +100,19 @@ impl Vectorizer {
             Result::Ok(())
         });
 
-        // --- Stage 3: Batch Inference (Main loop) ---
-        const BATCH_SIZE: usize = 32;
+        // --- Stage 3: Concurrent Batch Inference ---
+        const BATCH_SIZE: usize = 64;
         let mut current_batch_paths = Vec::with_capacity(BATCH_SIZE);
         let mut current_batch_tensors = Vec::with_capacity(BATCH_SIZE);
+        let mut inference_tasks = tokio::task::JoinSet::new();
 
         let mut stream_finished = false;
         loop {
-            if state.is_cancelled.load(Ordering::Relaxed) {
-                break;
-            }
+            if state.is_cancelled.load(Ordering::Relaxed) { break; }
 
-            // Collect a batch or wait for one
+            // 1. Collect a batch or wait for one
             while current_batch_paths.len() < BATCH_SIZE {
-                match tokio::time::timeout(std::time::Duration::from_millis(50), tensor_rx.recv()).await {
+                match tokio::time::timeout(std::time::Duration::from_millis(20), tensor_rx.recv()).await {
                     Ok(Some((path, tensor))) => {
                         current_batch_paths.push(path);
                         current_batch_tensors.push(tensor);
@@ -123,29 +122,41 @@ impl Vectorizer {
                         break;
                     }
                     Err(_) => { // Timeout
-                        if !current_batch_paths.is_empty() {
-                            break;
-                        }
+                        if !current_batch_paths.is_empty() { break; }
                     }
                 }
             }
 
-            if current_batch_paths.is_empty() && stream_finished {
+            // 2. Clear finished inference tasks to feed save channel
+            while let Some(res) = inference_tasks.try_join_next() {
+                if let Ok(Ok(results)) = res {
+                    for (path, features) in results {
+                        let _ = save_tx.send((path, features)).await;
+                    }
+                }
+            }
+
+            if current_batch_paths.is_empty() && stream_finished && inference_tasks.is_empty() {
                 break;
             }
 
+            // 3. Spawn inference if we have a batch
             if !current_batch_paths.is_empty() {
-                let batch_len = current_batch_paths.len();
-                let mut batch_input = Array4::<f32>::zeros((batch_len, 3, 224, 224));
-                for (i, tensor) in current_batch_tensors.iter().enumerate() {
-                    batch_input.slice_mut(ndarray::s![i, .., .., ..]).assign(&tensor.slice(ndarray::s![0, .., .., ..]));
-                }
+                let paths = std::mem::take(&mut current_batch_paths);
+                let tensors = std::mem::take(&mut current_batch_tensors);
+                let session = self.session.clone();
 
-                let input_tensor = ort::value::Value::from_array(([batch_len, 3, 224, 224], batch_input.into_raw_vec_and_offset().0))
-                    .map_err(|e| crate::error::AppError::Processing(e.to_string()))?;
+                inference_tasks.spawn(async move {
+                    let batch_len = paths.len();
+                    let mut batch_input = Array4::<f32>::zeros((batch_len, 3, 224, 224));
+                    for (i, tensor) in tensors.iter().enumerate() {
+                        batch_input.slice_mut(ndarray::s![i, .., .., ..]).assign(&tensor.slice(ndarray::s![0, .., .., ..]));
+                    }
 
-                let res_vecs: Vec<Vec<f32>> = {
-                    let mut guard = self.session.lock().map_err(|e| crate::error::AppError::Processing(format!("Lock failed: {}", e)))?;
+                    let input_tensor = ort::value::Value::from_array(([batch_len, 3, 224, 224], batch_input.into_raw_vec_and_offset().0))
+                        .map_err(|e| crate::error::AppError::Processing(e.to_string()))?;
+
+                    let mut guard = session.lock().map_err(|e| crate::error::AppError::Processing(format!("Lock failed: {}", e)))?;
                     let outputs = guard.run(inputs![input_tensor]).map_err(|e| crate::error::AppError::Processing(e.to_string()))?;
                     let output_val = outputs.values().next()
                         .ok_or_else(|| crate::error::AppError::Processing("No output".into()))?;
@@ -157,17 +168,36 @@ impl Vectorizer {
                     let view = ndarray::ArrayView2::from_shape((batch_len, feat_dim), slice)
                         .map_err(|e| crate::error::AppError::Processing(e.to_string()))?;
                     
-                    (0..batch_len).map(|i| view.slice(ndarray::s![i, ..]).to_vec()).collect()
-                };
-
-                for (path, features) in current_batch_paths.drain(..).zip(res_vecs) {
-                    let _ = save_tx.send((path, features)).await;
-                }
-                current_batch_tensors.clear();
+                    let results: Vec<(PathBuf, Vec<f32>)> = paths.into_iter().enumerate().map(|(i, path)| {
+                        (path, view.slice(ndarray::s![i, ..]).to_vec())
+                    }).collect();
+                    
+                    Result::Ok(results)
+                });
             }
 
-            if stream_finished {
+            // Control spawning rate to not overwhelm hardware
+            if inference_tasks.len() > 4 {
+                if let Some(res) = inference_tasks.join_next().await {
+                    if let Ok(Ok(results)) = res {
+                        for (path, features) in results {
+                            let _ = save_tx.send((path, features)).await;
+                        }
+                    }
+                }
+            }
+
+            if stream_finished && current_batch_paths.is_empty() && inference_tasks.is_empty() {
                 break;
+            }
+        }
+
+        // Wait for remaining tasks
+        while let Some(res) = inference_tasks.join_next().await {
+            if let Ok(Ok(results)) = res {
+                for (path, features) in results {
+                    let _ = save_tx.send((path, features)).await;
+                }
             }
         }
 
@@ -188,15 +218,22 @@ impl Vectorizer {
         let img = image::open(path).map_err(|e| crate::error::AppError::Image(e.to_string()))?.to_rgb8();
         let resized = image::imageops::resize(&img, 224, 224, image::imageops::FilterType::Triangle);
         
-        let mut input = Array4::<f32>::zeros((1, 3, 224, 224));
-        for (x, y, pixel) in resized.enumerate_pixels() {
-            let r = (pixel[0] as f32 / 255.0 - 0.485) / 0.229;
-            let g = (pixel[1] as f32 / 255.0 - 0.456) / 0.224;
-            let b = (pixel[2] as f32 / 255.0 - 0.406) / 0.225;
-            input[[0, 0, y as usize, x as usize]] = r;
-            input[[0, 1, y as usize, x as usize]] = g;
-            input[[0, 2, y as usize, x as usize]] = b;
-        }
-        Ok(input)
+        // Fast SIMD-accelerated conversion using ndarray
+        let raw_data = resized.into_raw();
+        let mut array = ndarray::Array3::<u8>::from_shape_vec((224, 224, 3), raw_data)
+            .map_err(|e| crate::error::AppError::Processing(e.to_string()))?
+            .mapv(|x| x as f32 / 255.0);
+        
+        // Apply ImageNet normalization via vectorized operations
+        let means = ndarray::Array1::from_vec(vec![0.485, 0.456, 0.406]).into_shape_with_order((1, 1, 3)).unwrap();
+        let stds = ndarray::Array1::from_vec(vec![0.229, 0.224, 0.225]).into_shape_with_order((1, 1, 3)).unwrap();
+        
+        // Broadcast subtraction and division
+        array -= &means;
+        array /= &stds;
+        
+        // Final reshape to NCHW (1, 3, 224, 224)
+        let nchw = array.permuted_axes([2, 0, 1]).insert_axis(ndarray::Axis(0));
+        Ok(nchw.to_owned())
     }
 }
