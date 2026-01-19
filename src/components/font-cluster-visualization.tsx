@@ -334,22 +334,28 @@ export function FontClusterVisualization() {
 
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
-      <div class='absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
-        <ImageVisibilityControl
-          showImages={showImages()}
-          onToggle={() => setShowImages(!showImages())}
-        />
-        <ZoomControls
-          onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO ** 5)}
-          onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO ** 5)}
-          onReset={handleReset}
-        />
-        <WeightSelector
-          weights={(appState.session.config?.weights as FontWeight[]) || []}
-          selectedWeights={visualizerWeights()}
-          onWeightChange={setVisualizerWeights}
-          isVertical
-        />
+      <div class='pointer-events-none absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
+        <div class='pointer-events-auto'>
+          <ImageVisibilityControl
+            showImages={showImages()}
+            onToggle={() => setShowImages(!showImages())}
+          />
+        </div>
+        <div class='pointer-events-auto'>
+          <ZoomControls
+            onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO ** 5)}
+            onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO ** 5)}
+            onReset={handleReset}
+          />
+        </div>
+        <div class='pointer-events-auto'>
+          <WeightSelector
+            weights={(appState.session.config?.weights as FontWeight[]) || []}
+            selectedWeights={visualizerWeights()}
+            onWeightChange={setVisualizerWeights}
+            isVertical
+          />
+        </div>
       </div>
       <svg
         ref={(el) => {
