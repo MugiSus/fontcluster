@@ -41,7 +41,7 @@ export function SearchForm() {
               as={Button<'button'>}
               variant='ghost'
               size='icon'
-              class='absolute left-1 top-[5px] size-6 rounded-full hover:bg-destructive/10 hover:text-destructive'
+              class='absolute left-1.5 top-1 size-6 rounded-full pt-px hover:bg-destructive/10 hover:text-destructive'
               onClick={handleClear}
             >
               <XIcon class='size-3.5' />
