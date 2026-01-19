@@ -49,7 +49,20 @@ export function FontClusterVisualization() {
   const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
 
   const [isDragging, setIsDragging] = createSignal(false);
+  const [isInteracting, setIsInteracting] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
+
+  let interactionTimer: number | undefined;
+  const startInteractionTimer = () => {
+    setIsInteracting(true);
+    if (interactionTimer) window.clearTimeout(interactionTimer);
+    interactionTimer = window.setTimeout(() => {
+      setIsInteracting(false);
+      interactionTimer = undefined;
+    }, 250);
+  };
+
+  const isMoving = createMemo(() => isDragging() || isInteracting());
 
   const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
     400,
@@ -144,6 +157,9 @@ export function FontClusterVisualization() {
 
   const handleMouseUp = (event: MouseEvent) => {
     if (event.button === 2) {
+      if (isDragging()) {
+        startInteractionTimer();
+      }
       setIsDragging(false);
     }
   };
@@ -175,6 +191,7 @@ export function FontClusterVisualization() {
     const newY = svgMouseY - (svgMouseY - y) * zoomStepFactor;
 
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
+    startInteractionTimer();
   };
 
   const handleZoom = (factor: number) => {
@@ -192,6 +209,7 @@ export function FontClusterVisualization() {
     const newY = centerY - (centerY - y) * factor;
 
     setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
+    startInteractionTimer();
   };
 
   const handleReset = () => {
@@ -390,6 +408,7 @@ export function FontClusterVisualization() {
                 sessionDirectory={appState.session.directory}
                 visualizerWeights={visualizerWeights()}
                 zoomFactor={zoomFactor()}
+                isMoving={isMoving()}
                 isDisabled
               />
             )}
@@ -410,6 +429,7 @@ export function FontClusterVisualization() {
               sessionDirectory={appState.session.directory}
               visualizerWeights={visualizerWeights()}
               zoomFactor={zoomFactor()}
+              isMoving={isMoving()}
             />
           )}
         </For>

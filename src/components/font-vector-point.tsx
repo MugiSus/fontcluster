@@ -15,6 +15,7 @@ interface FontVectorPointProps {
   sessionDirectory: string;
   visualizerWeights: FontWeight[];
   zoomFactor: number;
+  isMoving: boolean;
   isDisabled?: boolean;
 }
 
@@ -78,15 +79,17 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         />
       </Show>
 
-      <image
-        href={imgSrc()}
-        x={-32}
-        y={-16}
-        width={64}
-        height={32}
-        preserveAspectRatio='xMidYMid meet'
-        class='pointer-events-none invert dark:invert-0'
-      />
+      <Show when={!props.isMoving}>
+        <image
+          href={imgSrc()}
+          x={-32}
+          y={4}
+          width={64}
+          height={32}
+          preserveAspectRatio='xMidYMid meet'
+          class='pointer-events-none invert dark:invert-0'
+        />
+      </Show>
 
       <Show when={props.isSelected || props.isFamilySelected}>
         <circle
@@ -106,7 +109,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       >
         <text
           x={0}
-          y={-20}
+          y={-8}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
             props.isSelected ? 'font-bold' : ''
