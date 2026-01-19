@@ -34,6 +34,16 @@ impl Vectorizer {
             .map_err(|e| crate::error::AppError::Processing(format!("Failed to load model: {}", e)))?;
         
         println!("✅ Vectorizer: Session initialized with CoreML acceleration ({})", model_name);
+        
+        // --- Diagnostic: Print model specs (one-time) ---
+        println!("📊 DINOv2 Model Inputs:");
+        for input in session.inputs() {
+            println!("  - {:?}", input);
+        }
+        println!("📊 DINOv2 Model Outputs:");
+        for output in session.outputs() {
+            println!("  - {:?}", output);
+        }
         Ok(Self { session: Arc::new(Mutex::new(session)) })
     }
 
@@ -108,7 +118,9 @@ impl Vectorizer {
         });
 
         // --- Stage 3: Concurrent Batch Inference ---
-        const BATCH_SIZE: usize = 64;
+        // Throttled for DINOv2 (ViT) to avoid 8GB+ memory spikes.
+        // ViT is much heavier than ResNet, so we use smaller batches and less concurrency.
+        const BATCH_SIZE: usize = 16;
         let mut current_batch_paths = Vec::with_capacity(BATCH_SIZE);
         let mut current_batch_tensors = Vec::with_capacity(BATCH_SIZE);
         let mut inference_tasks = tokio::task::JoinSet::new();
@@ -184,7 +196,8 @@ impl Vectorizer {
             }
 
             // Control spawning rate to not overwhelm hardware
-            if inference_tasks.len() > 4 {
+            // For DINOv2, we strictly limit to 1 active inference task at a time to save memory.
+            if inference_tasks.len() > 1 {
                 if let Some(res) = inference_tasks.join_next().await {
                     if let Ok(Ok(results)) = res {
                         for (path, features) in results {
