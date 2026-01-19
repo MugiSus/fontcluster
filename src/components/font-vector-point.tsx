@@ -16,6 +16,7 @@ interface FontVectorPointProps {
   visualizerWeights: FontWeight[];
   zoomFactor: number;
   isMoving: boolean;
+  showImages: boolean;
   isDisabled?: boolean;
 }
 
@@ -79,7 +80,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         />
       </Show>
 
-      <Show when={!props.isMoving}>
+      <Show when={props.showImages && !props.isMoving}>
         <image
           href={imgSrc()}
           x={-32}

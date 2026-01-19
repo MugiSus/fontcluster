@@ -10,6 +10,7 @@ import { emit } from '@tauri-apps/api/event';
 import { type FontWeight, type FontMetadata } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { ZoomControls } from './zoom-controls';
+import { ImageVisibilityControl } from './image-visibility-control';
 import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
 import { appState } from '../store';
@@ -36,6 +37,7 @@ interface VisualizedPoint {
 
 export function FontClusterVisualization() {
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
+  const [showImages, setShowImages] = createSignal(true);
 
   let svgElement: SVGSVGElement | undefined;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
@@ -333,6 +335,10 @@ export function FontClusterVisualization() {
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
       <div class='absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
+        <ImageVisibilityControl
+          showImages={showImages()}
+          onToggle={() => setShowImages(!showImages())}
+        />
         <ZoomControls
           onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO ** 5)}
           onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO ** 5)}
@@ -409,6 +415,7 @@ export function FontClusterVisualization() {
                 visualizerWeights={visualizerWeights()}
                 zoomFactor={zoomFactor()}
                 isMoving={isMoving()}
+                showImages={showImages()}
                 isDisabled
               />
             )}
@@ -430,6 +437,7 @@ export function FontClusterVisualization() {
               visualizerWeights={visualizerWeights()}
               zoomFactor={zoomFactor()}
               isMoving={isMoving()}
+              showImages={showImages()}
             />
           )}
         </For>
