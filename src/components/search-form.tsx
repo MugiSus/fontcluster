@@ -57,12 +57,12 @@ export function SearchForm() {
           onInput={(e) => handleQueryChange(e.currentTarget.value)}
           spellcheck='false'
         />
-        <Show when={isFiltered()}>
-          <div class='absolute right-3 top-2 flex items-center gap-1 text-xs text-muted-foreground'>
+        <div class='absolute right-3 top-2 flex items-center gap-1 text-xs text-muted-foreground'>
+          <Show when={isFiltered()}>
             <FunnelIcon class='size-3' />
-            {filteredCount()}
-          </div>
-        </Show>
+          </Show>
+          {filteredCount()}
+        </div>
       </div>
     </TextField>
   );
