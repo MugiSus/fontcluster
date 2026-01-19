@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
 use tauri::AppHandle;
+use tauri::Manager;
 use ort::{session::Session, inputs};
 use ort::execution_providers::CoreMLExecutionProvider;
 use ndarray::Array4;
@@ -16,13 +17,15 @@ pub struct Vectorizer {
 }
 
 impl Vectorizer {
-    pub fn new() -> Result<Self> {
-        let mut model_path = std::env::current_dir()?.join("src-tauri/src/resources/resnet50.onnx");
-        if !model_path.exists() {
-            model_path = std::env::current_dir()?.join("src/resources/resnet50.onnx");
-        }
+    pub fn new(app: &AppHandle) -> Result<Self> {
+        let model_path = app.path().resource_dir()?
+            .join("resources/resnet50.onnx");
         
         println!("🚀 Vectorizer: Loading model from {:?}", model_path);
+        
+        if !model_path.exists() {
+            return Err(crate::error::AppError::Processing(format!("Model file not found at {:?}", model_path)));
+        }
         
         // Use CoreML for extreme performance on Mac (ANE/GPU)
         let session = Session::builder()
