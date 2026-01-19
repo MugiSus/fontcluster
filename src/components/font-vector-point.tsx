@@ -42,6 +42,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           height={32}
           preserveAspectRatio='xMidYMid meet'
           class='pointer-events-none invert dark:invert-0'
+          image-rendering='optimizeSpeed'
         />
         <rect
           x={-16}
