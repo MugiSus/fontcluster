@@ -17,9 +17,10 @@ pub struct Vectorizer {
 
 impl Vectorizer {
     pub fn new() -> Result<Self> {
-        let mut model_path = std::env::current_dir()?.join("src-tauri/src/resources/resnet50.onnx");
+        let model_name = "dinov3.onnx";
+        let mut model_path = std::env::current_dir()?.join(format!("src-tauri/src/resources/{}", model_name));
         if !model_path.exists() {
-            model_path = std::env::current_dir()?.join("src/resources/resnet50.onnx");
+            model_path = std::env::current_dir()?.join(format!("src/resources/{}", model_name));
         }
         
         println!("🚀 Vectorizer: Loading model from {:?}", model_path);
@@ -32,7 +33,7 @@ impl Vectorizer {
             .commit_from_file(model_path)
             .map_err(|e| crate::error::AppError::Processing(format!("Failed to load model: {}", e)))?;
         
-        println!("✅ Vectorizer: Session initialized with CoreML acceleration");
+        println!("✅ Vectorizer: Session initialized with CoreML acceleration ({})", model_name);
         Ok(Self { session: Arc::new(Mutex::new(session)) })
     }
 
@@ -45,14 +46,11 @@ impl Vectorizer {
             .map(|e| e.path())
             .collect();
 
-        let resnet_config = {
+        let padding = {
             let guard = state.current_session.lock().map_err(|_| crate::error::AppError::Processing("Lock poisoned".into()))?;
-            guard.as_ref()
-                .and_then(|s| s.algorithm.as_ref())
-                .and_then(|a| a.resnet.clone())
-                .unwrap_or_default()
+            let algorithm = guard.as_ref().and_then(|s| s.algorithm.as_ref());
+            algorithm.and_then(|a| a.vectorizer.as_ref()).map(|v| v.padding).unwrap_or(16.0)
         };
-        let padding = resnet_config.padding;
 
         println!("🔍 Vectorizer: Found {} images to process in {}", png_files.len(), session_dir.display());
         if png_files.is_empty() {

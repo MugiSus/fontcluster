@@ -24,10 +24,24 @@ pub struct SessionConfig {
 #[serde(default)]
 pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
-    pub resnet: Option<ResnetConfig>,
+    pub vectorizer: Option<VectorizerConfig>,
     pub hog: Option<HogConfig>,
     pub pacmap: Option<PacmapConfig>,
     pub hdbscan: Option<HdbscanConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct VectorizerConfig {
+    pub padding: f32,
+}
+
+impl Default for VectorizerConfig {
+    fn default() -> Self {
+        Self {
+            padding: 16.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -27,7 +27,7 @@ export interface HdbscanOptions {
   min_samples: number;
 }
 
-export interface ResnetOptions {
+export interface VectorizerOptions {
   padding: number;
 }
 
@@ -37,7 +37,7 @@ export interface ImageOptions {
 
 export interface AlgorithmConfig {
   image: ImageOptions | null;
-  resnet: ResnetOptions | null;
+  vectorizer: VectorizerOptions | null;
   pacmap: PacmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }

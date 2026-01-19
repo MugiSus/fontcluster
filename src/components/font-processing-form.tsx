@@ -59,8 +59,8 @@ export function FontProcessingForm() {
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
-      resnet: {
-        padding: Number(formData.get('resnet-padding') ?? 16),
+      vectorizer: {
+        padding: Number(formData.get('vectorizer-padding') ?? 16),
       },
       pacmap: {
         mn_phases: Number(formData.get('pacmap-mn-phases')),
@@ -196,7 +196,7 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                Vectorization (ResNet)
+                Vectorization (DINOv3)
               </div>
               <Tooltip>
                 <TooltipTrigger
@@ -217,14 +217,25 @@ export function FontProcessingForm() {
                 <TextFieldLabel class='text-xxs'>Padding</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='resnet-padding'
+                  name='vectorizer-padding'
                   value={
-                    appState.session.config?.algorithm?.resnet?.padding ?? 16
+                    appState.session.config?.algorithm?.vectorizer?.padding ??
+                    16
                   }
                   step='1'
                   min='0'
                   max='100'
                   class='h-7 text-xs'
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'vectorizer',
+                      'padding',
+                      Number(e.currentTarget.value),
+                    )
+                  }
                 />
               </TextField>
             </div>
