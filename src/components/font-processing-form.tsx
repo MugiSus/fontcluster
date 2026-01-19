@@ -196,7 +196,7 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                Vectorization (ResNet)
+                ResNet50 (Vectorization)
               </div>
               <Tooltip>
                 <TooltipTrigger
