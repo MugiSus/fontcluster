@@ -234,8 +234,8 @@ impl Vectorizer {
         
         // Create 224x224 white canvas
         let mut canvas = image::RgbImage::from_pixel(224, 224, image::Rgb([255, 255, 255]));
-        let x = (224 - target_size) / 2;
-        let y = (224 - target_size) / 2;
+        let x = (224 - resized.width()) / 2;
+        let y = (224 - resized.height()) / 2;
         image::imageops::replace(&mut canvas, &resized, x as i64, y as i64);
 
         // Fast SIMD-accelerated conversion using ndarray
