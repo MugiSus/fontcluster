@@ -113,7 +113,7 @@ impl Vectorizer {
         });
 
         // --- Stage 3: Concurrent Batch Inference ---
-        const BATCH_SIZE: usize = 64;
+        const BATCH_SIZE: usize = 1;
         let mut current_batch_paths = Vec::with_capacity(BATCH_SIZE);
         let mut current_batch_tensors = Vec::with_capacity(BATCH_SIZE);
         let mut inference_tasks = tokio::task::JoinSet::new();
