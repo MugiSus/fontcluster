@@ -19,7 +19,7 @@ pub struct Vectorizer {
 impl Vectorizer {
     pub fn new(app: &AppHandle) -> Result<Self> {
         let model_path = app.path().resource_dir()?
-            .join("resources/resnet50.onnx");
+            .join("resources/efficientnet-v2-s.onnx");
         
         println!("🚀 Vectorizer: Loading model from {:?}", model_path);
         

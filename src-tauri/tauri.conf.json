@@ -46,7 +46,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/resnet50.onnx"
+      "resources/efficientnet-v2-s.onnx"
     ]
   }
 }
