@@ -15,6 +15,16 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let refresh = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
     let check_update = MenuItem::with_id(app, "check_update", "Check for Updates...", true, None::<&str>)?;
     
+    let edit_menu = Submenu::with_items(app, "Edit", true, &[
+        &PredefinedMenuItem::undo(app, None)?,
+        &PredefinedMenuItem::redo(app, None)?,
+        &PredefinedMenuItem::separator(app)?,
+        &PredefinedMenuItem::cut(app, None)?,
+        &PredefinedMenuItem::copy(app, None)?,
+        &PredefinedMenuItem::paste(app, None)?,
+        &PredefinedMenuItem::select_all(app, None)?,
+    ])?;
+
     #[cfg(target_os = "macos")]
     {
         let meta = AboutMetadata::default();
@@ -32,16 +42,19 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::quit(app, None)?,
         ])?;
-        let edit_menu = Submenu::with_items(app, "Edit", true, &[
-            &PredefinedMenuItem::undo(app, None)?,
-            &PredefinedMenuItem::redo(app, None)?,
-            &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::cut(app, None)?,
-            &PredefinedMenuItem::copy(app, None)?,
-            &PredefinedMenuItem::paste(app, None)?,
-            &PredefinedMenuItem::select_all(app, None)?,
-        ])?;
         Menu::with_items(app, &[&app_menu, &edit_menu])
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let file_menu = Submenu::with_items(app, "File", true, &[
+            &restore,
+            &refresh,
+            &check_update,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::quit(app, None)?,
+        ])?;
+        Menu::with_items(app, &[&file_menu, &edit_menu])
     }
 }
 

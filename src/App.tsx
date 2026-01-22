@@ -32,7 +32,7 @@ function App() {
             minSize={0.2}
             collapsible={true}
             collapsedSize={0}
-            collapseThreshold={0.1}
+            collapseThreshold={0.05}
             maxSize={0.5}
           >
             <FontProcessingForm />
@@ -66,7 +66,7 @@ function App() {
             minSize={0.2}
             collapsible={true}
             collapsedSize={0}
-            collapseThreshold={0.1}
+            collapseThreshold={0.05}
             maxSize={0.5}
             class='flex min-h-0 min-w-0 flex-col'
           >

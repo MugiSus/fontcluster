@@ -1,6 +1,6 @@
 {
   "name": "fontcluster",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "A font clustering and visualization tool powered by Tauri.",
   "author": "mugisus",
   "homepage": "https://fontcluster.mugisus.me",
