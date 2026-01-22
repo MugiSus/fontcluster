@@ -52,7 +52,7 @@
       "endpoints": [
         "https://github.com/mugisus/fontcluster/releases/latest/download/latest.json"
       ],
-      "pubkey": "SET_YOUR_PUBKEY_HERE"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU0Mjg4QzJCRTNFNjgzMDAKUldRQWcrYmpLNHdvNUdqZGN3MU1xQ1dHR2lEeXVBYytXNWVialozWnl4cWNraklKOEg0SXpkaDQK"
     }
   }
 }
