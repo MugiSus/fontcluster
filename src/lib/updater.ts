@@ -16,7 +16,7 @@ export async function checkForAppUpdates(isManual = false) {
       toast.success('Update installed!', {
         description: 'Update will be applied on the next launch.',
         action: {
-          label: 'Restart Now',
+          label: 'Restart',
           onClick: async () => {
             await relaunch();
           },
