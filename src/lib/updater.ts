@@ -5,6 +5,7 @@ import { toast } from 'solid-sonner';
 export async function checkForAppUpdates(isManual = false) {
   try {
     const update = await check();
+
     if (update) {
       toast.info(`New version ${update.version} is available!`, {
         description: 'Downloading and installing update...',
@@ -12,31 +13,27 @@ export async function checkForAppUpdates(isManual = false) {
       });
 
       await update.downloadAndInstall();
-
-      toast.success('Update installed!', {
-        description: 'The application will now restart.',
-        duration: 3000,
-      });
-
-      // Wait a bit before relaunching to let the toast be seen
-      setTimeout(async () => {
-        await relaunch();
-      }, 3000);
+      await relaunch();
 
       return true;
-    } else if (isManual) {
+    }
+
+    if (isManual) {
       toast.info('You are using the latest version.', {
         duration: 3000,
       });
     }
+
     return false;
   } catch (error) {
     console.error('Failed to check for updates:', error);
+
     if (isManual) {
       toast.error('Failed to check for updates', {
         description: error instanceof Error ? error.message : String(error),
       });
     }
+
     return false;
   }
 }

@@ -2,6 +2,7 @@ import { createResource, untrack, createRoot, createEffect } from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
 import { appState, setAppState } from './store';
 import {
@@ -238,4 +239,11 @@ export function initAppEvents() {
   listen('refresh-requested', () => {
     window.location.reload();
   });
+
+  listen('check-update-requested', () => {
+    checkForAppUpdates(true);
+  });
+
+  // Check for updates automatically on startup
+  checkForAppUpdates();
 }
