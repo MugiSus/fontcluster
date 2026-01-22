@@ -1,6 +1,6 @@
 {
   "name": "fontcluster",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "A font clustering and visualization tool powered by Tauri.",
   "author": "mugisus",
   "homepage": "https://fontcluster.mugisus.me",
@@ -25,8 +25,8 @@
     "@fontsource/noto-sans": "^5.2.10",
     "@kobalte/core": "^0.13.10",
     "@tanstack/solid-virtual": "^3.13.18",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/plugin-opener": "^2.5.3",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.9.0",
     "class-variance-authority": "^0.7.1",
@@ -42,7 +42,7 @@
   "devDependencies": {
     "@eslint/js": "^9.29.0",
     "@tailwindcss/typography": "^0.5.16",
-    "@tauri-apps/cli": "^2",
+    "@tauri-apps/cli": "^2.9.6",
     "@types/d3-quadtree": "^3.0.6",
     "@types/node": "^24.0.8",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
