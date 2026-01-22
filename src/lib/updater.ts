@@ -33,17 +33,6 @@ export async function checkForAppUpdates(isManual = false) {
       });
     }
 
-    toast.success('Update installed!', {
-      description: 'Update will be applied on the next launch.',
-      action: {
-        label: 'Restart Now',
-        onClick: async () => {
-          await relaunch();
-        },
-      },
-      duration: Infinity,
-    });
-
     return false;
   } catch (error) {
     console.error('Failed to check for updates:', error);
