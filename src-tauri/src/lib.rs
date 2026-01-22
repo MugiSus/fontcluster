@@ -13,12 +13,15 @@ use crate::core::AppState;
 fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let restore = MenuItem::with_id(app, "restore_sessions", "Restore Recent Session...", true, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
+    let check_update = MenuItem::with_id(app, "check_update", "Check for Updates...", true, None::<&str>)?;
     
     #[cfg(target_os = "macos")]
     {
         let meta = AboutMetadata::default();
         let app_menu = Submenu::with_items(app, "FontCluster", true, &[
             &PredefinedMenuItem::about(app, Some("About FontCluster"), Some(meta))?,
+            &PredefinedMenuItem::separator(app)?,
+            &check_update,
             &PredefinedMenuItem::separator(app)?,
             &restore,
             &refresh,
@@ -47,6 +50,8 @@ fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
         let _ = app.emit("show_session_selection", ());
     } else if event.id().as_ref() == "refresh" {
         let _ = app.emit("refresh-requested", ());
+    } else if event.id().as_ref() == "check_update" {
+        let _ = app.emit("check-update-requested", ());
     }
 }
 

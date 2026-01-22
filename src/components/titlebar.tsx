@@ -1,10 +1,11 @@
-import { CopyIcon, HistoryIcon } from 'lucide-solid';
+import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { emit } from '@tauri-apps/api/event';
 import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 import { appState } from '@/store';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { SearchForm } from './search-form';
+import { checkForAppUpdates } from '@/lib/updater';
 
 export function Titlebar() {
   const copyCurrentSelectedFont = (event: MouseEvent) => {
@@ -16,6 +17,10 @@ export function Titlebar() {
 
   const showSessions = () => {
     emit('show_session_selection');
+  };
+
+  const handleManualUpdateCheck = () => {
+    checkForAppUpdates(true);
   };
 
   return (
@@ -33,6 +38,20 @@ export function Titlebar() {
 
       <div class='absolute right-2 justify-end'>
         <div class='flex items-center gap-px'>
+          <Tooltip>
+            <TooltipTrigger as='div'>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={handleManualUpdateCheck}
+                class='size-6 rounded-full'
+              >
+                <SparklesIcon class='size-6' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Check for updates</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger as='div'>
               <Button

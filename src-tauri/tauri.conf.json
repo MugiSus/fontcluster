@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FontCluster",
-  "version": "0.1.3",
   "identifier": "me.mugisus.fontcluster",
   "build": {
     "beforeDevCommand": "pnpm dev",
