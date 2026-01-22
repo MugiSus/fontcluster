@@ -24,7 +24,6 @@ pub struct SessionConfig {
 #[serde(default)]
 pub struct AlgorithmConfig {
     pub image: Option<ImageConfig>,
-    pub resnet: Option<ResnetConfig>,
     pub hog: Option<HogConfig>,
     pub pacmap: Option<PacmapConfig>,
     pub hdbscan: Option<HdbscanConfig>,
@@ -73,6 +72,8 @@ pub struct HogConfig {
     pub cell_side: usize,
     pub block_side: usize,
     pub block_stride: usize,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Default for HogConfig {
@@ -82,6 +83,8 @@ impl Default for HogConfig {
             cell_side: 16,
             block_side: 2,
             block_stride: 2,
+            width: 128,
+            height: 64,
         }
     }
 }
@@ -90,14 +93,12 @@ impl Default for HogConfig {
 #[serde(default)]
 pub struct ImageConfig {
     pub font_size: f32,
-    pub padding: f32,
 }
 
 impl Default for ImageConfig {
     fn default() -> Self {
-                Self {
+        Self {
             font_size: DEFAULT_FONT_SIZE,
-            padding: GLYPH_PADDING,
         }
     }
 }
@@ -151,20 +152,6 @@ pub struct FontMetadata {
 impl FontMetadata {
     pub fn generate_safe_name(family: &str, weight: i32) -> String {
         format!("{}_{}", weight, family.replace(' ', "_").replace('/', "_").replace('\\', "_"))
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ResnetConfig {
-    pub padding: f32,
-}
-
-impl Default for ResnetConfig {
-    fn default() -> Self {
-        Self {
-            padding: 16.0,
-        }
     }
 }
 

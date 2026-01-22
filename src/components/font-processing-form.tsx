@@ -59,8 +59,13 @@ export function FontProcessingForm() {
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
-      resnet: {
-        padding: Number(formData.get('resnet-padding') ?? 16),
+      hog: {
+        orientations: Number(formData.get('hog-orientations')),
+        cell_side: Number(formData.get('hog-cell-side')),
+        block_side: Number(formData.get('hog-block-side')),
+        block_stride: Number(formData.get('hog-block-stride')),
+        width: Number(formData.get('hog-width')),
+        height: Number(formData.get('hog-height')),
       },
       pacmap: {
         mn_phases: Number(formData.get('pacmap-mn-phases')),
@@ -196,7 +201,7 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                ResNet50 (Vectorization)
+                HOG (Vectorization)
               </div>
               <Tooltip>
                 <TooltipTrigger
@@ -214,16 +219,76 @@ export function FontProcessingForm() {
             </div>
             <div class='grid grid-cols-2 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Padding</TextFieldLabel>
+                <TextFieldLabel class='text-xxs'>Orientations</TextFieldLabel>
                 <TextFieldInput
                   type='number'
-                  name='resnet-padding'
+                  name='hog-orientations'
                   value={
-                    appState.session.config?.algorithm?.resnet?.padding ?? 16
+                    appState.session.config?.algorithm?.hog?.orientations ?? 12
                   }
                   step='1'
-                  min='0'
-                  max='100'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Cell Side</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-cell-side'
+                  value={
+                    appState.session.config?.algorithm?.hog?.cell_side ?? 16
+                  }
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Block Side</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-block-side'
+                  value={
+                    appState.session.config?.algorithm?.hog?.block_side ?? 2
+                  }
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Block Stride</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-block-stride'
+                  value={
+                    appState.session.config?.algorithm?.hog?.block_stride ?? 2
+                  }
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-width'
+                  value={appState.session.config?.algorithm?.hog?.width ?? 128}
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Height</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='hog-height'
+                  value={appState.session.config?.algorithm?.hog?.height ?? 64}
+                  step='1'
+                  min='1'
                   class='h-7 text-xs'
                 />
               </TextField>

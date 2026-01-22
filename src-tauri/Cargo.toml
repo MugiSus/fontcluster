@@ -31,8 +31,6 @@ strip = true
 "linfa-clustering" = { opt-level = 2 }
 "pacmap" = { opt-level = 2 }
 "hdbscan" = { opt-level = 2 }
-"ort" = { opt-level = 3 }
-"ort-sys" = { opt-level = 3 }
 "mimalloc" = { opt-level = 3 }
 
 [build-dependencies]
@@ -75,5 +73,4 @@ ttf-parser = "0.25.1"
 memmap2 = "0.9"
 rayon = "1.10"
 jwalk = "0.8"
-ort = { version = "=2.0.0-rc.11", features = ["coreml"] }
 mimalloc = "0.1"

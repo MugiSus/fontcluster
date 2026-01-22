@@ -27,17 +27,22 @@ export interface HdbscanOptions {
   min_samples: number;
 }
 
-export interface ResnetOptions {
-  padding: number;
-}
-
 export interface ImageOptions {
   font_size: number;
 }
 
+export interface HogOptions {
+  orientations: number;
+  cell_side: number;
+  block_side: number;
+  block_stride: number;
+  width: number;
+  height: number;
+}
+
 export interface AlgorithmConfig {
   image: ImageOptions | null;
-  resnet: ResnetOptions | null;
+  hog: HogOptions | null;
   pacmap: PacmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }

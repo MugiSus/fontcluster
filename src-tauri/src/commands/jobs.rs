@@ -56,7 +56,7 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         println!("📐 Starting vectorization...");
         app.emit("vectorization_start", ())?;
-        let vec = Vectorizer::new(&app)?;
+        let vec = Vectorizer::new();
         vec.vectorize_all(&app, &state).await?;
         app.emit("vectorization_complete", id.clone())?;
     }
