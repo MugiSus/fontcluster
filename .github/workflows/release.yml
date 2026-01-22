@@ -54,8 +54,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__
-          releaseName: '${{ github.event.repository.name }} v__VERSION__'
+          tagName: ${{ github.ref_name }}
+          releaseName: 'FontCluster ${{ github.ref_name }}'
           releaseBody: 'See the assets to download the latest version.'
           releaseDraft: true
           prerelease: false
