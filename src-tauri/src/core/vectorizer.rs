@@ -72,7 +72,21 @@ impl Vectorizer {
 
     fn process_image(path: PathBuf, h_config: HogConfig) -> Result<()> {
         let img = image::open(&path).map_err(|e| crate::error::AppError::Image(e.to_string()))?.to_luma8();
-        let resized = image::imageops::resize(&img, h_config.width, h_config.height, image::imageops::FilterType::Lanczos3);
+        
+        let target_width = Self::align_to_hog_constraints(
+            h_config.width as f32, 
+            h_config.cell_side, 
+            h_config.block_side, 
+            h_config.block_stride
+        );
+        let target_height = Self::align_to_hog_constraints(
+            h_config.height as f32, 
+            h_config.cell_side, 
+            h_config.block_side, 
+            h_config.block_stride
+        );
+
+        let resized = image::imageops::resize(&img, target_width, target_height, image::imageops::FilterType::Lanczos3);
         let opts = HogOptions { 
             orientations: h_config.orientations, 
             cell_side: h_config.cell_side, 
@@ -86,5 +100,12 @@ impl Vectorizer {
         bin_path.set_file_name("vector.bin");
         std::fs::write(bin_path, bytemuck::cast_slice(&features))?;
         Ok(())
+    }
+
+    fn align_to_hog_constraints(measured_size: f32, cell_side: usize, block_side: usize, block_stride: usize) -> u32 {
+        let min_cells_required = (measured_size / cell_side as f32).ceil() as usize;
+        let n = ((min_cells_required as i32 - block_side as i32).max(0) as f32 / block_stride as f32).ceil() as usize;
+        let total_cells = block_side + n * block_stride;
+        (total_cells * cell_side) as u32
     }
 }

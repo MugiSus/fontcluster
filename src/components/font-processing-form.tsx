@@ -1,4 +1,4 @@
-import { Show } from 'solid-js';
+import { Show, createEffect } from 'solid-js';
 import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { measureText } from '../lib/text-measurer';
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
@@ -28,11 +29,31 @@ export function FontProcessingForm() {
     handleRun();
   };
 
+  createEffect(() => {
+    const metrics = measureText(
+      appState.ui.sampleText,
+      appState.session.config?.algorithm?.image?.font_size ?? 128,
+    );
+
+    if (!appState.session.config?.algorithm?.hog) return;
+
+    const current = appState.session.config.algorithm.hog;
+    if (
+      current.width !== Math.round(metrics.width) ||
+      current.height !== Math.round(metrics.height)
+    ) {
+      setAppState('session', 'config', 'algorithm', 'hog', {
+        ...current,
+        width: Math.round(metrics.width),
+        height: Math.round(metrics.height),
+      });
+    }
+  });
+
   const handleRun = async (targetStatus?: ProcessStatus) => {
     const form = document.querySelector('form');
     if (!form) return;
 
-    // Determine if we should start a fresh session or continue/rerun an existing one
     const isRerun = targetStatus !== undefined;
     const isFinished = appState.session.status === 'clustered';
     const shouldStartNewSession =
@@ -49,7 +70,6 @@ export function FontProcessingForm() {
     const formData = new FormData(form);
     const text = formData.get('preview-text') as string;
 
-    // Get selected font weights
     const selectedWeightsString = formData.get('weights') as string;
     const selectedWeightsArray = (
       selectedWeightsString ? selectedWeightsString.split(',').map(Number) : []
@@ -116,7 +136,7 @@ export function FontProcessingForm() {
           }
           placeholder='Preview Text...'
           spellcheck='false'
-          class='pl-9'
+          class='pl-9 pt-[9px]'
         />
       </TextField>
       <TextField class='grid w-full items-center gap-1'>
