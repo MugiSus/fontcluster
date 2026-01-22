@@ -1,6 +1,6 @@
 [package]
 name = "FontCluster"
-version = "0.2.3"
+version = "0.2.4"
 description = "A font clustering and visualization tool powered by Tauri."
 authors = ["mugisus"]
 edition = "2021"
@@ -76,5 +76,5 @@ rayon = "1.10"
 jwalk = "0.8"
 mimalloc = "0.1"
 
-[target.'cfg(target_os = "windows")'.dependencies]
-intel-mkl-src = { version = "0.8", features = ["mkl-static-lp64-i32"] }
+# [target.'cfg(target_os = "windows")'.dependencies]
+# intel-mkl-src = { version = "0.8", features = ["mkl-static-lp64-iomp"] }
