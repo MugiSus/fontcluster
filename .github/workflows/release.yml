@@ -56,6 +56,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'FontCluster ${{ github.ref_name }}'
+          includeUpdaterJson: true
           releaseBody: 'See the assets to download the latest version.'
           releaseDraft: true
           prerelease: false
