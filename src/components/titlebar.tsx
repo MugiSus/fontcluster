@@ -1,11 +1,11 @@
-import { CopyIcon, HistoryIcon } from 'lucide-solid';
+import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { emit } from '@tauri-apps/api/event';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 import { appState } from '@/store';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { SearchForm } from './search-form';
+import { checkForAppUpdates } from '@/lib/updater';
 
 export function Titlebar() {
   const copyCurrentSelectedFont = (event: MouseEvent) => {
@@ -19,22 +19,17 @@ export function Titlebar() {
     emit('show_session_selection');
   };
 
+  const handleManualUpdateCheck = () => {
+    checkForAppUpdates(true);
+  };
+
   return (
     <header
       data-tauri-drag-region
       class='sticky top-0 z-50 flex h-12 min-h-10 w-full select-none items-center justify-center'
     >
-      <h1 class='absolute left-20 ml-2 text-xs font-medium tracking-widest text-primary'>
-        <a
-          href='https://fontcluster.mugisus.me'
-          onClick={(e) => {
-            e.preventDefault();
-            openUrl('https://fontcluster.mugisus.me');
-          }}
-          class='cursor-pointer transition-colors hover:text-primary/80'
-        >
-          FontCluster (β)
-        </a>
+      <h1 class='absolute left-20 ml-2 text-xs font-medium tracking-widest'>
+        FontCluster (α)
       </h1>
 
       <div class='flex w-[480px] justify-center'>
@@ -43,6 +38,20 @@ export function Titlebar() {
 
       <div class='absolute right-2 justify-end'>
         <div class='flex items-center gap-px'>
+          <Tooltip>
+            <TooltipTrigger as='div'>
+              <Button
+                variant='ghost'
+                size='icon'
+                onClick={handleManualUpdateCheck}
+                class='size-6 rounded-full'
+              >
+                <SparklesIcon class='size-6' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Check for updates</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger as='div'>
               <Button

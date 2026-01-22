@@ -2,6 +2,7 @@ import { createResource, untrack, createRoot, createEffect } from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { toast } from 'solid-sonner';
 import { appState, setAppState } from './store';
 import {
   FontMetadata,
@@ -143,10 +144,12 @@ export const runProcessingJobs = async (
       overrideStatus,
     });
     console.log('Complete pipeline result:', result);
+    toast.success('Clustering completed successfully!');
     await refetchSessionConfig();
     await refetchFontMetadataRecord();
   } catch (error) {
     console.error('Failed to process fonts:', error);
+    toast.error(`Font processing failed: ${error}`);
   }
 };
 

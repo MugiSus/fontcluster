@@ -1,5 +1,6 @@
 import { Show, createEffect } from 'solid-js';
 import { Button } from './ui/button';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
   ArrowRightIcon,
@@ -451,7 +452,7 @@ export function FontProcessingForm() {
         </div>
       </section>
 
-      <div class='mt-auto flex flex-col gap-1.5'>
+      <div class='mt-auto flex flex-col gap-2 pt-1'>
         <div class='flex items-center gap-1'>
           <Tooltip>
             <TooltipTrigger
@@ -462,25 +463,7 @@ export function FontProcessingForm() {
               size='sm'
               class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums hover:shadow-lg hover:shadow-primary/25'
             >
-              {appState.session.isProcessing &&
-              appState.session.status === 'empty'
-                ? `Discovering...`
-                : appState.session.isProcessing &&
-                    appState.session.status === 'discovered'
-                  ? `Generating...`
-                  : appState.session.isProcessing &&
-                      appState.session.status === 'generated'
-                    ? `Vectorizing...`
-                    : appState.session.isProcessing &&
-                        appState.session.status === 'vectorized'
-                      ? 'Compressing...'
-                      : appState.session.isProcessing &&
-                          appState.session.status === 'compressed'
-                        ? 'Clustering...'
-                        : appState.session.status === 'clustered' ||
-                            appState.session.status === 'empty'
-                          ? 'Run'
-                          : 'Continue'}
+              {appState.session.isProcessing ? 'Processing...' : 'Continue'}
               <Show
                 when={appState.session.isProcessing}
                 fallback={<ArrowRightIcon class='absolute right-3' />}
@@ -491,7 +474,7 @@ export function FontProcessingForm() {
             <TooltipContent>
               {appState.session.status === 'clustered' ||
               appState.session.status === 'empty'
-                ? 'Create new session and run'
+                ? 'Create new and run'
                 : 'Continue'}
             </TooltipContent>
           </Tooltip>
@@ -510,102 +493,159 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='grid grid-cols-5 gap-1'>
+        <div class='flex flex-col gap-1'>
+          <div class='grid grid-cols-5 gap-1'>
+            <div
+              class='h-1 overflow-hidden rounded-full bg-primary/30'
+              style={{
+                '--progress':
+                  appState.session.isProcessing &&
+                  appState.session.status === 'empty'
+                    ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                    : '0%',
+              }}
+            >
+              <div
+                class={cn(
+                  'h-full w-0 rounded-full bg-primary',
+                  appState.session.isProcessing &&
+                    appState.session.status === 'empty' &&
+                    'w-[var(--progress)] animate-pulse',
+                  (appState.session.status === 'discovered' ||
+                    appState.session.status === 'generated' ||
+                    appState.session.status === 'vectorized' ||
+                    appState.session.status === 'compressed' ||
+                    appState.session.status === 'clustered') &&
+                    'w-full',
+                )}
+              />
+            </div>
+            <div
+              class='h-1 overflow-hidden rounded-full bg-primary/30'
+              style={{
+                '--progress':
+                  appState.session.isProcessing &&
+                  appState.session.status === 'discovered'
+                    ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                    : '0%',
+              }}
+            >
+              <div
+                class={cn(
+                  'h-full w-0 rounded-full bg-primary',
+                  appState.session.isProcessing &&
+                    appState.session.status === 'discovered' &&
+                    'w-[var(--progress)] animate-pulse',
+                  (appState.session.status === 'generated' ||
+                    appState.session.status === 'vectorized' ||
+                    appState.session.status === 'compressed' ||
+                    appState.session.status === 'clustered') &&
+                    'w-full',
+                )}
+              />
+            </div>
+            <div
+              class='h-1 overflow-hidden rounded-full bg-primary/30'
+              style={{
+                '--progress':
+                  appState.session.isProcessing &&
+                  appState.session.status === 'generated'
+                    ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                    : '0%',
+              }}
+            >
+              <div
+                class={cn(
+                  'h-full w-0 rounded-full bg-primary',
+                  appState.session.isProcessing &&
+                    appState.session.status === 'generated' &&
+                    'w-[var(--progress)] animate-pulse',
+                  (appState.session.status === 'vectorized' ||
+                    appState.session.status === 'compressed' ||
+                    appState.session.status === 'clustered') &&
+                    'w-full',
+                )}
+              />
+            </div>
+            <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
+              <div
+                class={cn(
+                  'h-full w-0 rounded-full bg-primary',
+                  (appState.session.status === 'compressed' ||
+                    appState.session.status === 'clustered') &&
+                    'w-full',
+                  appState.session.isProcessing &&
+                    appState.session.status === 'vectorized' &&
+                    'w-full animate-pulse transition-[width] duration-1000',
+                )}
+              />
+            </div>
+            <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
+              <div
+                class={cn(
+                  'h-full w-0 rounded-full bg-primary',
+                  appState.session.status === 'clustered' && 'w-full',
+                  appState.session.isProcessing &&
+                    appState.session.status === 'compressed' &&
+                    'w-full animate-pulse transition-[width] duration-1000',
+                )}
+              />
+            </div>
+          </div>
+
           <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'empty'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                  : '0%',
-            }}
+            class={cn(
+              'flex items-end justify-between text-xxs font-medium tracking-tighter text-muted-foreground',
+              appState.session.isProcessing && 'animate-pulse',
+            )}
           >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
+            <span>
+              {!appState.session.isProcessing
+                ? 'Completed'
+                : appState.session.status === 'empty'
+                  ? 'Step 1: Discovering'
+                  : appState.session.status === 'discovered'
+                    ? 'Step 2: Generating'
+                    : appState.session.status === 'generated'
+                      ? 'Step 3: Vectorizing'
+                      : appState.session.status === 'vectorized'
+                        ? 'Step 4: Compressing'
+                        : appState.session.status === 'compressed'
+                          ? 'Step 5: Clustering'
+                          : ''}
+            </span>
+            <Show
+              when={
                 appState.session.isProcessing &&
-                  appState.session.status === 'empty' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'discovered' ||
-                  appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
-                  'w-full',
-              )}
-            />
+                (appState.session.status === 'empty' ||
+                  appState.session.status === 'discovered' ||
+                  appState.session.status === 'generated')
+              }
+              fallback={
+                <span class='tabular-nums'>
+                  {Object.keys(appState.fonts.data).length} Fonts
+                </span>
+              }
+            >
+              <span class='tabular-nums'>
+                {appState.progress.numerator}/{appState.progress.denominator}{' '}
+                Fonts
+              </span>
+            </Show>
           </div>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'discovered'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status === 'discovered' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'generated'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status === 'generated' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                (appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
-                  'w-full',
-                appState.session.isProcessing &&
-                  appState.session.status === 'vectorized' &&
-                  'w-full animate-pulse transition-[width] duration-1000',
-              )}
-            />
-          </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.status === 'clustered' && 'w-full',
-                appState.session.isProcessing &&
-                  appState.session.status === 'compressed' &&
-                  'w-full animate-pulse transition-[width] duration-1000',
-              )}
-            />
+
+          <div class='flex items-center justify-between text-[9px] text-muted-foreground/50'>
+            <span>© 2026 mugisus</span>
+            <a
+              href='https://fontcluster.mugisus.me'
+              onClick={(e) => {
+                e.preventDefault();
+                openUrl('https://fontcluster.mugisus.me');
+              }}
+              class='hover:text-primary hover:underline'
+            >
+              fontcluster.mugisus.me
+            </a>
           </div>
         </div>
       </div>
