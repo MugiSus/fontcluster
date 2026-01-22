@@ -122,10 +122,10 @@ export function FontProcessingForm() {
           for='preview-text'
           class='flex items-center gap-1.5 text-xs uppercase'
         >
-          <TypeIcon class='size-3 text-primary' />
+          <TypeIcon class='mb-0.5 size-3 text-primary' />
           Preview Text
         </TextFieldLabel>
-        <TypeIcon class='absolute left-3 top-9 size-4 text-muted-foreground' />
+        <TypeIcon class='absolute left-3 top-8 mt-0.5 size-4 text-muted-foreground' />
         <TextFieldInput
           type='text'
           name='preview-text'
@@ -144,7 +144,7 @@ export function FontProcessingForm() {
           for='weights'
           class='flex items-center gap-1.5 text-xs uppercase'
         >
-          <WeightIcon class='size-3 text-primary' />
+          <WeightIcon class='mb-0.5 size-3 text-primary' />
           Font Weights
         </TextFieldLabel>
         <WeightSelector
