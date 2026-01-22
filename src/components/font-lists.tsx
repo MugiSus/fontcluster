@@ -55,9 +55,9 @@ export function FontLists() {
           <TooltipTrigger as='div' class='w-full'>
             <TabsTrigger
               value='similarity'
-              class='relative flex w-full gap-1 pr-5'
+              class='relative flex w-full gap-2 pr-4'
             >
-              <ArrowDownNarrowWide class='size-4 min-w-4' />
+              <ArrowDownNarrowWide class='size-4 min-w-4 text-muted-foreground' />
               Similarity
             </TabsTrigger>
           </TooltipTrigger>
@@ -65,8 +65,8 @@ export function FontLists() {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger as='div' class='w-full'>
-            <TabsTrigger value='name' class='relative flex w-full gap-1 pr-5'>
-              <ArrowDownAZ class='size-4 min-w-4' />
+            <TabsTrigger value='name' class='relative flex w-full gap-2 pr-4'>
+              <ArrowDownAZ class='size-4 min-w-4 text-muted-foreground' />
               Name
             </TabsTrigger>
           </TooltipTrigger>
