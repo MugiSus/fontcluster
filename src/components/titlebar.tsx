@@ -1,6 +1,5 @@
 import { CopyIcon, HistoryIcon } from 'lucide-solid';
 import { emit } from '@tauri-apps/api/event';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { Button } from './ui/button';
 import { ModeToggle } from './mode-toggle';
 import { appState } from '@/store';
@@ -24,17 +23,8 @@ export function Titlebar() {
       data-tauri-drag-region
       class='sticky top-0 z-50 flex h-12 min-h-10 w-full select-none items-center justify-center'
     >
-      <h1 class='absolute left-20 ml-2 text-xs font-medium tracking-widest text-primary'>
-        <a
-          href='https://fontcluster.mugisus.me'
-          onClick={(e) => {
-            e.preventDefault();
-            openUrl('https://fontcluster.mugisus.me');
-          }}
-          class='cursor-pointer transition-colors hover:text-primary/80'
-        >
-          FontCluster (β)
-        </a>
+      <h1 class='absolute left-20 ml-2 text-xs font-medium tracking-widest'>
+        FontCluster (α)
       </h1>
 
       <div class='flex w-[480px] justify-center'>

@@ -1,7 +1,22 @@
-# Tauri + Solid + Typescript
+# FontCluster
 
-This template should help get you started developing with Tauri, Solid and Typescript in Vite.
+**FontCluster** is a desktop application that helps you explore and organize your system fonts using machine learning. It visualizes font relationships in a 2D space based on their visual characteristics (HOG features and PaCMAP dimensionality reduction).
 
-## Recommended IDE Setup
+![FontCluster Preview](icon.png)
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Features
+
+- 🔍 **Font Discovery**: Automatically scans your system for installed fonts.
+- 📐 **ML-Powered Analysis**: Uses HOG (Histogram of Oriented Gradients) to characterize font styles.
+- 📍 **Interactive Visualization**: Explore your fonts in a cluster map.
+- 📂 **Session Management**: Save and restore your font analysis sessions.
+- 🎨 **Dark Mode Support**: Beautifully crafted UI for both light and dark environments.
+
+## Website
+
+Visit [fontcluster.mugisus.me](https://fontcluster.mugisus.me) for more information.
+
+## License
+
+Copyright © 2026 mugisus. All rights reserved.
+MIT Licensed.
