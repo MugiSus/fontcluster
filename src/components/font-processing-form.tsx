@@ -117,15 +117,15 @@ export function FontProcessingForm() {
       onSubmit={handleSubmit}
       class='flex min-h-0 flex-1 flex-col items-stretch gap-2 pl-2'
     >
-      <TextField class='relative grid w-full items-center gap-1'>
+      <TextField class='relative grid w-full items-center gap-1.5'>
         <TextFieldLabel
           for='preview-text'
-          class='flex items-center gap-1 text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs uppercase'
         >
-          <TypeIcon class='size-3' />
+          <TypeIcon class='size-3 text-primary' />
           Preview Text
         </TextFieldLabel>
-        <TypeIcon class='absolute left-3 top-8 size-4 text-muted-foreground' />
+        <TypeIcon class='absolute left-3 top-9 size-4 text-muted-foreground' />
         <TextFieldInput
           type='text'
           name='preview-text'
@@ -139,12 +139,12 @@ export function FontProcessingForm() {
           class='pl-9 pt-[9px]'
         />
       </TextField>
-      <TextField class='grid w-full items-center gap-1'>
+      <TextField class='grid w-full items-center gap-1.5'>
         <TextFieldLabel
           for='weights'
-          class='flex items-center gap-1 text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs uppercase'
         >
-          <WeightIcon class='size-3' />
+          <WeightIcon class='size-3 text-primary' />
           Font Weights
         </TextFieldLabel>
         <WeightSelector
@@ -155,7 +155,7 @@ export function FontProcessingForm() {
         />
       </TextField>
 
-      <section class='flex min-h-0 flex-col gap-1'>
+      <section class='flex min-h-0 flex-col gap-1.5'>
         <input
           type='checkbox'
           id='advanced-options'
@@ -163,10 +163,10 @@ export function FontProcessingForm() {
           checked
         />
         <label
-          class='flex cursor-pointer items-center gap-1 text-xxs font-medium uppercase text-muted-foreground'
+          class='flex cursor-pointer items-center gap-1 text-xxs font-medium uppercase text-muted-foreground transition-colors duration-100 hover:text-foreground'
           for='advanced-options'
         >
-          <FlaskConicalIcon class='mb-[3px] size-3' />
+          <FlaskConicalIcon class='mb-0.5 size-3 text-primary' />
           Algorithm options (Advanced)
           <ChevronDownIcon class='mb-0.5 size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
         </label>
