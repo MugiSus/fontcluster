@@ -33,26 +33,6 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       transform={`translate(${props.x}, ${props.y}) scale(${props.zoomFactor})`}
       class={getClusterTextColor(props.clusterId)}
     >
-      <Show when={props.showImages && !props.isMoving}>
-        <image
-          href={imgSrc()}
-          x={-32}
-          y={4}
-          width={64}
-          height={32}
-          preserveAspectRatio='xMidYMid meet'
-          class='pointer-events-none invert dark:invert-0'
-          image-rendering='optimizeSpeed'
-        />
-        <rect
-          x={-16}
-          y={4}
-          width={32}
-          height={32}
-          class='pointer-events-none fill-current mix-blend-multiply'
-        />
-      </Show>
-
       <rect
         x={-1.5}
         y={-1.5}
@@ -97,6 +77,26 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           y2={12}
           stroke='currentColor'
           stroke-width={1}
+        />
+      </Show>
+
+      <Show when={props.showImages && !props.isMoving}>
+        <image
+          href={imgSrc()}
+          x={-64}
+          y={4}
+          width={128}
+          height={32}
+          preserveAspectRatio='xMidYMid meet'
+          class='pointer-events-none invert dark:invert-0'
+          image-rendering='optimizeSpeed'
+        />
+        <rect
+          x={-16}
+          y={4}
+          width={32}
+          height={32}
+          class='pointer-events-none fill-current mix-blend-multiply'
         />
       </Show>
 
