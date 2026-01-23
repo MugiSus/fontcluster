@@ -40,6 +40,7 @@ impl AppState {
     pub fn initialize_session(&self, text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>) -> Result<String> {
         let id = Uuid::now_v7().to_string();
         let session = SessionConfig {
+            app_version: env!("CARGO_PKG_VERSION").to_string(),
             id: id.clone(),
             preview_text: text,
             date: chrono::Utc::now(),

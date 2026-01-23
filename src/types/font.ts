@@ -56,6 +56,7 @@ export type ProcessStatus =
   | 'clustered';
 
 export interface SessionConfig {
+  app_version: string;
   session_id: string;
   preview_text: string;
   date: string;

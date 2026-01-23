@@ -9,6 +9,8 @@ pub const GLYPH_PADDING: f32 = 4.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionConfig {
+    #[serde(default = "default_app_version")]
+    pub app_version: String,
     #[serde(rename = "session_id")]
     pub id: String,
     pub preview_text: String,
@@ -18,6 +20,10 @@ pub struct SessionConfig {
     pub algorithm: Option<AlgorithmConfig>,
     #[serde(flatten)]
     pub status: ProcessingStatus,
+}
+
+fn default_app_version() -> String {
+    "0.3.0".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
