@@ -28,10 +28,6 @@ export function Titlebar() {
       data-tauri-drag-region
       class='sticky top-0 z-50 flex h-12 min-h-10 w-full select-none items-center justify-center'
     >
-      <h1 class='absolute left-20 ml-2 text-xs font-medium tracking-widest'>
-        FontCluster (α)
-      </h1>
-
       <div class='flex w-[480px] justify-center'>
         <SearchForm />
       </div>

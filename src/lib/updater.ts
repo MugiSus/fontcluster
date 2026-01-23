@@ -4,12 +4,17 @@ import { toast } from 'solid-sonner';
 
 export async function checkForAppUpdates(isManual = false) {
   try {
+    if (isManual)
+      toast.info('Checking for updates...', {
+        duration: 3000,
+      });
+
     const update = await check();
 
     if (update) {
       toast.info(`New version ${update.version} is available!`, {
         description: 'Downloading and installing update...',
-        duration: 5000,
+        duration: 3000,
       });
 
       await update.downloadAndInstall();
@@ -27,11 +32,10 @@ export async function checkForAppUpdates(isManual = false) {
       return true;
     }
 
-    if (isManual) {
+    if (isManual)
       toast.info('You are using the latest version.', {
         duration: 3000,
       });
-    }
 
     return false;
   } catch (error) {
