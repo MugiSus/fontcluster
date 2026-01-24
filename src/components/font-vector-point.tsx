@@ -21,12 +21,11 @@ interface FontVectorPointProps {
 }
 
 export function FontVectorPoint(props: FontVectorPointProps) {
-  const imgSrc = createMemo(() => {
-    if (!props.sessionDirectory || !props.safeName) return '';
-    return convertFileSrc(
-      `${props.sessionDirectory}/${props.safeName}/sample.png`,
-    );
-  });
+  const imgSrc = createMemo(() =>
+    props.sessionDirectory && props.safeName
+      ? convertFileSrc(`${props.sessionDirectory}/${props.safeName}/sample.png`)
+      : '',
+  );
 
   return (
     <g
