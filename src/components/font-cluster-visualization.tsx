@@ -26,7 +26,7 @@ const INITIAL_VIEWBOX = {
   height: GRAPH_SIZE + GRAPH_PADDING * 2,
 };
 
-const ZOOM_FACTOR_RATIO = 1.04;
+const ZOOM_FACTOR_RATIO = 1.05;
 
 interface VisualizedPoint {
   key: string;
