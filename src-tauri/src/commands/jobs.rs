@@ -30,6 +30,8 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         app.emit("discovery_start", ())?;
         let disc = Discoverer::new();
         disc.discover_fonts(&app, &state).await?;
+        
+        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         app.emit("discovery_complete", id.clone())?;
     }
 
@@ -44,6 +46,8 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         app.emit("font_generation_start", ())?;
         let gen = ImageGenerator::new();
         gen.generate_all(&app, &state).await?;
+
+        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         app.emit("font_generation_complete", id.clone())?;
     }
 
@@ -58,6 +62,8 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         app.emit("vectorization_start", ())?;
         let vec = Vectorizer::new();
         vec.vectorize_all(&app, &state).await?;
+
+        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         app.emit("vectorization_complete", id.clone())?;
     }
 
@@ -71,6 +77,8 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
         println!("📦 Starting compression...");
         app.emit("compression_start", ())?;
         Compressor::compress_all(&state).await?;
+
+        if state.is_cancelled.load(Ordering::Relaxed) { return Ok("Cancelled".into()); }
         app.emit("compression_complete", id.clone())?;
     }
 

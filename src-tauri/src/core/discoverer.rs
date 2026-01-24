@@ -143,10 +143,15 @@ impl Discoverer {
         let preview_text = preview_text.clone();
         let target_weights = target_weights.clone();
         let session_dir = session_dir.clone();
+        let is_cancelled = state.is_cancelled.clone();
 
         let discovered = tokio::task::spawn_blocking(move || -> Result<HashMap<i32, Vec<String>>> {
             let mut results = Vec::new();
             for path in font_files {
+                if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Ok(HashMap::new());
+                }
+
                 let mut local_metas = Vec::new();
                 if let Ok(file) = fs::File::open(&path) {
                     if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
@@ -185,6 +190,10 @@ impl Discoverer {
             let discovered_pairs: Vec<(i32, String)> = families
                 .into_par_iter()
                 .map(|(family_name, family_metas)| {
+                    if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                         return Vec::new();
+                    }
+
                     let mut local_discovered = Vec::new();
                     let available_weights: Vec<String> = family_metas
                         .iter()
@@ -251,6 +260,10 @@ impl Discoverer {
         })
         .await
         .map_err(|e| AppError::Processing(e.to_string()))??;
+
+        if state.is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+            return Ok(discovered);
+        }
 
         let total_discovered: usize = discovered.values().map(|v| v.len()).sum();
         println!(
