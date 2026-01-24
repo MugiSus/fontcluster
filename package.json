@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
   },
-  "license": "MIT",
+  "license": "GPL-2.0-or-later",
   "dependencies": {
     "@corvu/resizable": "^0.2.5",
     "@fontsource-variable/chivo": "^5.2.6",
