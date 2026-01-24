@@ -81,23 +81,25 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       </Show>
 
       <Show when={props.showImages && !props.isMoving}>
-        <image
-          href={imgSrc()}
+        <mask id={`mask-${props.safeName}`}>
+          <image
+            href={imgSrc()}
+            x={-64}
+            y={4}
+            width={128}
+            height={32}
+            preserveAspectRatio='xMidYMid meet'
+            image-rendering='optimizeSpeed'
+          />
+        </mask>
+        <rect
           x={-64}
           y={4}
           width={128}
           height={32}
-          preserveAspectRatio='xMidYMid meet'
-          class='pointer-events-none'
-          image-rendering='optimizeSpeed'
-        />
-        {/* <rect
-          x={-16}
-          y={4}
-          width={32}
-          height={32}
           class='pointer-events-none fill-current'
-        /> */}
+          mask={`url(#mask-${props.safeName})`}
+        />
       </Show>
 
       <Show when={props.isSelected || props.isFamilySelected}>
