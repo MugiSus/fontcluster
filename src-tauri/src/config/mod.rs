@@ -49,7 +49,6 @@ pub enum FontSet {
     GoogleFontsTop100,
     GoogleFontsTop300,
     GoogleFontsTop500,
-    GoogleFontsAll,
 }
 
 impl Default for FontSet {
