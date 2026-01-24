@@ -9,13 +9,13 @@ interface ImageVisibilityControlProps {
 
 export function ImageVisibilityControl(props: ImageVisibilityControlProps) {
   return (
-    <div class='flex rounded-md border bg-background p-1 shadow-sm'>
+    <div class='flex rounded-md border bg-background shadow-sm'>
       <Tooltip>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
           size='icon'
-          class='size-6'
+          class='size-8 rounded-none'
           onClick={() => props.onToggle()}
         >
           {props.showImages ? (

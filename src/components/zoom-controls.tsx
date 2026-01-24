@@ -10,13 +10,13 @@ interface ZoomControlsProps {
 
 export function ZoomControls(props: ZoomControlsProps) {
   return (
-    <div class='flex gap-1 rounded-md border bg-background p-1 shadow-sm'>
+    <div class='flex rounded-md border bg-background shadow-sm'>
       <Tooltip>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
           size='icon'
-          class='size-6'
+          class='size-8 rounded-none'
           onClick={() => props.onZoomIn()}
         >
           <PlusIcon class='size-4' />
@@ -29,7 +29,7 @@ export function ZoomControls(props: ZoomControlsProps) {
           as={Button<'button'>}
           variant='ghost'
           size='icon'
-          class='size-6'
+          class='size-8 rounded-none'
           onClick={() => props.onReset()}
         >
           <MaximizeIcon class='size-4' />
@@ -42,7 +42,7 @@ export function ZoomControls(props: ZoomControlsProps) {
           as={Button<'button'>}
           variant='ghost'
           size='icon'
-          class='size-6'
+          class='size-8 rounded-none'
           onClick={() => props.onZoomOut()}
         >
           <MinusIcon class='size-4' />
