@@ -88,16 +88,16 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           width={128}
           height={32}
           preserveAspectRatio='xMidYMid meet'
-          class='pointer-events-none invert dark:invert-0'
+          class='pointer-events-none'
           image-rendering='optimizeSpeed'
         />
-        <rect
+        {/* <rect
           x={-16}
           y={4}
           width={32}
           height={32}
-          class='pointer-events-none fill-current mix-blend-multiply'
-        />
+          class='pointer-events-none fill-current'
+        /> */}
       </Show>
 
       <Show when={props.isSelected || props.isFamilySelected}>

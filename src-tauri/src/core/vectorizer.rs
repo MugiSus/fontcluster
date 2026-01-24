@@ -90,9 +90,25 @@ impl Vectorizer {
     }
 
     fn process_image(path: PathBuf, h_config: HogConfig) -> Result<()> {
-        let img = image::open(&path)
-            .map_err(|e| crate::error::AppError::Image(e.to_string()))?
-            .to_luma8();
+        let dyn_img = image::open(&path)
+            .map_err(|e| crate::error::AppError::Image(e.to_string()))?;
+        
+        // Handle transparency: composite over black background
+        // The generated images are White (255) + Alpha.
+        // If we just converted to Luma8, the transparent pixels (which are technically White but Alpha 0)
+        // would become White, losing the contrast.
+        let img = if dyn_img.color().has_alpha() {
+            let rgba_img = dyn_img.to_rgba8();
+            let mut canvas = image::RgbaImage::from_pixel(
+                rgba_img.width(),
+                rgba_img.height(),
+                image::Rgba([0, 0, 0, 255]),
+            );
+            image::imageops::overlay(&mut canvas, &rgba_img, 0, 0);
+            image::DynamicImage::ImageRgba8(canvas).to_luma8()
+        } else {
+            dyn_img.to_luma8()
+        };
 
         let target_width = Self::align_to_hog_constraints(
             h_config.width as f32,

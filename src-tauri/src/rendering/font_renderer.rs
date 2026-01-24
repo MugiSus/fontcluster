@@ -53,10 +53,18 @@ impl FontRenderer {
             return Err(AppError::Font("Empty render result (no visible glyphs)".into()));
         }
 
+        // Convert A8 canvas to La8 (Luminance + Alpha) image buffer
+        // Luminance is always 255 (white), Alpha is the canvas pixel value
+        let mut la8_pixels = Vec::with_capacity(canvas.pixels.len() * 2);
+        for &alpha in &canvas.pixels {
+            la8_pixels.push(255); // Luminance
+            la8_pixels.push(alpha); // Alpha
+        }
+
         let path = self.config.output_dir.join(safe_name).join("sample.png");
         let writer = BufWriter::new(File::create(path)?);
         let encoder = image::codecs::png::PngEncoder::new_with_quality(writer, image::codecs::png::CompressionType::Fast, image::codecs::png::FilterType::NoFilter);
-        encoder.write_image(&canvas.pixels, total_width as u32, height as u32, image::ExtendedColorType::L8)?;
+        encoder.write_image(&la8_pixels, total_width as u32, height as u32, image::ExtendedColorType::La8)?;
 
         Ok(())
     }
