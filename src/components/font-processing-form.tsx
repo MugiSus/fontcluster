@@ -452,7 +452,7 @@ export function FontProcessingForm() {
         </div>
       </section>
 
-      <div class='mt-auto flex flex-col gap-2 pt-1'>
+      <div class='mt-auto flex flex-col gap-1.5 pt-1'>
         <div class='flex items-center gap-1'>
           <Tooltip>
             <TooltipTrigger
