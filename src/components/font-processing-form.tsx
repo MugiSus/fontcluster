@@ -124,11 +124,6 @@ export function FontProcessingForm() {
       onSubmit={handleSubmit}
       class='flex min-h-0 flex-1 flex-col items-stretch gap-2 pl-2'
     >
-      <input
-        type='hidden'
-        name='image-font-size'
-        value={appState.session.config?.algorithm?.image?.font_size ?? 128}
-      />
       <TextField class='relative grid w-full items-center gap-1.5'>
         <TextFieldLabel
           for='preview-text'
@@ -233,9 +228,44 @@ export function FontProcessingForm() {
                     <option value='google_fonts_top500'>
                       Google Fonts (Top 500)
                     </option>
-                    <option value='google_fonts_all'>Google Fonts (All)</option>
                   </select>
                 </div>
+              </TextField>
+            </div>
+          </div>
+
+          <div class='group/section space-y-1.5'>
+            <div class='flex items-center gap-1'>
+              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+                Image Generation
+              </div>
+              <Tooltip>
+                <TooltipTrigger
+                  as={Button<'button'>}
+                  variant='ghost'
+                  size='icon'
+                  disabled={appState.session.isProcessing}
+                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                  onClick={() => handleRun('discovered')}
+                >
+                  <StepForwardIcon class='size-3 max-h-3' />
+                </TooltipTrigger>
+                <TooltipContent>Run from this step</TooltipContent>
+              </Tooltip>
+            </div>
+            <div class='grid grid-cols-2 gap-2'>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Font Size</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='image-font-size'
+                  value={
+                    appState.session.config?.algorithm?.image?.font_size ?? 128
+                  }
+                  step='1'
+                  min='1'
+                  class='h-7 text-xs'
+                />
               </TextField>
             </div>
           </div>
