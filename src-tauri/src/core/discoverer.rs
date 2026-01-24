@@ -124,17 +124,30 @@ impl Discoverer {
     }
 
     pub async fn discover_fonts(&self, app: &AppHandle, state: &AppState) -> Result<HashMap<i32, Vec<String>>> {
-        let (preview_text, target_weights, session_id) = {
+        let (preview_text, target_weights, session_id, font_set) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            (s.preview_text.clone(), s.weights.clone(), s.id.clone())
+            let font_set = s.algorithm.as_ref()
+                .and_then(|a| a.discovery.as_ref())
+                .map(|d| d.font_set.clone())
+                .unwrap_or_default();
+            (s.preview_text.clone(), s.weights.clone(), s.id.clone(), font_set)
         };
         let session_dir = AppState::get_base_dir()?.join("Generated").join(&session_id);
 
-        println!("🔍 Scanning system for font files...");
-        let font_files = Self::get_font_files();
+        let font_files = match font_set {
+            crate::config::FontSet::SystemFonts => {
+                println!("🔍 Scanning system for font files...");
+                Self::get_font_files()
+            },
+            _ => {
+                println!("🔍 Fetching Google Fonts subset ({:?})...", font_set);
+                crate::core::google_fonts::fetch_subset_fonts(&font_set, &preview_text, &session_dir, app)?
+            }
+        };
+
         let total_files = font_files.len();
-        println!("🔍 Found {} font files on system", total_files);
+        println!("🔍 Found {} font files", total_files);
         
         progress_events::reset_progress(app);
         progress_events::set_progress_denominator(app, total_files as i32);

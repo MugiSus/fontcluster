@@ -22,6 +22,9 @@ pub enum AppError {
     
     #[error("Tauri error: {0}")]
     Tauri(String),
+
+    #[error("Network error: {0}")]
+    Network(String),
 }
 
 impl Serialize for AppError {

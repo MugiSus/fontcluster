@@ -31,6 +31,17 @@ export interface ImageOptions {
   font_size: number;
 }
 
+export type FontSet =
+  | 'system_fonts'
+  | 'google_fonts_top100'
+  | 'google_fonts_top300'
+  | 'google_fonts_top500'
+  | 'google_fonts_all';
+
+export interface DiscoveryOptions {
+  font_set: FontSet;
+}
+
 export interface HogOptions {
   orientations: number;
   cell_side: number;
@@ -41,6 +52,7 @@ export interface HogOptions {
 }
 
 export interface AlgorithmConfig {
+  discovery: DiscoveryOptions | null;
   image: ImageOptions | null;
   hog: HogOptions | null;
   pacmap: PacmapOptions | null;

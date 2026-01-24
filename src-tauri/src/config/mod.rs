@@ -29,10 +29,33 @@ fn default_app_version() -> String {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct AlgorithmConfig {
+    pub discovery: Option<DiscoveryConfig>,
     pub image: Option<ImageConfig>,
     pub hog: Option<HogConfig>,
     pub pacmap: Option<PacmapConfig>,
     pub hdbscan: Option<HdbscanConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct DiscoveryConfig {
+    pub font_set: FontSet,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum FontSet {
+    SystemFonts,
+    GoogleFontsTop100,
+    GoogleFontsTop300,
+    GoogleFontsTop500,
+    GoogleFontsAll,
+}
+
+impl Default for FontSet {
+    fn default() -> Self {
+        Self::SystemFonts
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

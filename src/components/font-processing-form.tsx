@@ -17,7 +17,9 @@ import {
   type FontWeight,
   type AlgorithmConfig,
   type ProcessStatus,
+  type FontSet,
 } from '../types/font';
+// ...existing imports
 import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
@@ -77,6 +79,10 @@ export function FontProcessingForm() {
     ) as FontWeight[];
 
     const algorithm: AlgorithmConfig = {
+      discovery: {
+        font_set: (appState.session.config?.algorithm?.discovery?.font_set ??
+          'system_fonts') as FontSet,
+      },
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
@@ -175,47 +181,44 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                Image Generation
+                Discovery Mode
               </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('discovered')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
             </div>
-            <div class='grid grid-cols-2 gap-2'>
+            <div class='grid grid-cols-1 gap-2'>
               <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Font Size</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-font-size'
-                  value={
-                    appState.session.config?.algorithm?.image?.font_size ?? 128
-                  }
-                  onInput={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm',
-                      'image',
-                      'font_size',
-                      Number(e.currentTarget.value),
-                    )
-                  }
-                  step='4'
-                  min='0'
-                  class='h-7 text-xs'
-                />
+                <div class='relative'>
+                  <select
+                    class='flex h-7 w-full items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+                    value={
+                      appState.session.config?.algorithm?.discovery?.font_set ??
+                      'system_fonts'
+                    }
+                    onChange={(e) =>
+                      setAppState(
+                        'session',
+                        'config',
+                        'algorithm', // algorithm
+                        'discovery', // discovery
+                        {
+                          font_set: e.currentTarget.value as FontSet,
+                        },
+                      )
+                    }
+                  >
+                    <option value='system_fonts'>System Fonts (Default)</option>
+                    <option value='google_fonts_top100'>
+                      Google Fonts (Top 100)
+                    </option>
+                    <option value='google_fonts_top300'>
+                      Google Fonts (Top 300)
+                    </option>
+                    <option value='google_fonts_top500'>
+                      Google Fonts (Top 500)
+                    </option>
+                    <option value='google_fonts_all'>Google Fonts (All)</option>
+                  </select>
+                </div>
               </TextField>
-              <div />
             </div>
           </div>
 

@@ -5,6 +5,7 @@ pub mod compressor;
 pub mod discoverer;
 pub mod session;
 pub mod inference;
+pub mod google_fonts;
 
 pub use clusterer::*;
 pub use image_generator::*;
