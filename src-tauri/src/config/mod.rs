@@ -36,24 +36,19 @@ pub struct AlgorithmConfig {
     pub hdbscan: Option<HdbscanConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DiscoveryConfig {
-    pub font_set: FontSet,
+    pub use_google_fonts: bool,
+    pub google_fonts_amount: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub enum FontSet {
-    SystemFonts,
-    GoogleFontsTop100,
-    GoogleFontsTop300,
-    GoogleFontsTop500,
-}
-
-impl Default for FontSet {
+impl Default for DiscoveryConfig {
     fn default() -> Self {
-        Self::SystemFonts
+        Self {
+            use_google_fonts: false,
+            google_fonts_amount: 300,
+        }
     }
 }
 

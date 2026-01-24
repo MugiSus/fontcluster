@@ -1,4 +1,3 @@
-use crate::config::FontSet;
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -20,7 +19,7 @@ struct GoogleFontMetadata {
 }
 
 pub fn fetch_subset_fonts(
-    font_set: &FontSet,
+    amount: i32,
     target_text: &str,
     session_dir: &Path,
     target_weights: &[i32],
@@ -44,12 +43,7 @@ pub fn fetch_subset_fonts(
     let all_fonts: Vec<GoogleFontMetadata> = serde_json::from_str(&json_content)
         .map_err(|e| AppError::Processing(format!("Failed to parse google_fonts_popularity.json: {}", e)))?;
 
-    let limit = match font_set {
-        FontSet::SystemFonts => return Ok(Vec::new()), // Should not be called
-        FontSet::GoogleFontsTop100 => 100,
-        FontSet::GoogleFontsTop300 => 300,
-        FontSet::GoogleFontsTop500 => 500,
-    };
+    let limit = amount as usize;
 
     let target_fonts = all_fonts.into_iter().take(limit).collect::<Vec<_>>();
 

@@ -31,14 +31,9 @@ export interface ImageOptions {
   font_size: number;
 }
 
-export type FontSet =
-  | 'system_fonts'
-  | 'google_fonts_top100'
-  | 'google_fonts_top300'
-  | 'google_fonts_top500';
-
 export interface DiscoveryOptions {
-  font_set: FontSet;
+  use_google_fonts: boolean;
+  google_fonts_amount: number;
 }
 
 export interface HogOptions {

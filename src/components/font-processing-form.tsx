@@ -1,5 +1,7 @@
 import { Show, createEffect } from 'solid-js';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
+import { Label } from './ui/label';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
@@ -17,7 +19,6 @@ import {
   type FontWeight,
   type AlgorithmConfig,
   type ProcessStatus,
-  type FontSet,
 } from '../types/font';
 // ...existing imports
 import { cn } from '@/lib/utils';
@@ -80,8 +81,12 @@ export function FontProcessingForm() {
 
     const algorithm: AlgorithmConfig = {
       discovery: {
-        font_set: (appState.session.config?.algorithm?.discovery?.font_set ??
-          'google_fonts_top300') as FontSet,
+        use_google_fonts:
+          appState.session.config?.algorithm?.discovery?.use_google_fonts ??
+          false,
+        google_fonts_amount: Number(
+          formData.get('discovery-google-fonts-amount') ?? 300,
+        ),
       },
       image: {
         font_size: Number(formData.get('image-font-size')),
@@ -197,38 +202,81 @@ export function FontProcessingForm() {
                 <TooltipContent>Run from this step</TooltipContent>
               </Tooltip>
             </div>
-            <div class='grid grid-cols-1 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Font Set</TextFieldLabel>
-                <select
-                  class='flex h-7 w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-                  value={
-                    appState.session.config?.algorithm?.discovery?.font_set ??
-                    'google_fonts_top300'
+            <div class='grid grid-cols-2 gap-2'>
+              <div class='col-span-2 flex items-center gap-1.5'>
+                <Checkbox
+                  id='use-google-fonts'
+                  checked={
+                    appState.session.config?.algorithm?.discovery
+                      ?.use_google_fonts ?? false
                   }
-                  onChange={(e) =>
+                  onChange={(checked) =>
                     setAppState(
                       'session',
                       'config',
-                      'algorithm', // algorithm
-                      'discovery', // discovery
-                      {
-                        font_set: e.currentTarget.value as FontSet,
-                      },
+                      'algorithm',
+                      'discovery',
+                      (prev) => ({
+                        ...prev,
+                        use_google_fonts: checked,
+                        google_fonts_amount: prev?.google_fonts_amount ?? 300,
+                      }),
+                    )
+                  }
+                />
+                <Label
+                  for='use-google-fonts'
+                  class='text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+                  onClick={() =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'discovery',
+                      (prev) => ({
+                        ...prev,
+                        use_google_fonts: !prev?.use_google_fonts,
+                        google_fonts_amount: prev?.google_fonts_amount ?? 300,
+                      }),
                     )
                   }
                 >
-                  <option value='system_fonts'>Installed Fonts</option>
-                  <option value='google_fonts_top100'>
-                    Google Fonts (Popular 100)
-                  </option>
-                  <option value='google_fonts_top300'>
-                    Google Fonts (Popular 300)
-                  </option>
-                  <option value='google_fonts_top500'>
-                    Google Fonts (Popular 500)
-                  </option>
-                </select>
+                  Google Fonts
+                </Label>
+              </div>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Fonts Amount</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='discovery-google-fonts-amount'
+                  value={
+                    appState.session.config?.algorithm?.discovery
+                      ?.google_fonts_amount ?? 300
+                  }
+                  step='100'
+                  min='100'
+                  max='1000'
+                  disabled={
+                    !(
+                      appState.session.config?.algorithm?.discovery
+                        ?.use_google_fonts ?? false
+                    )
+                  }
+                  class='h-7 text-xs'
+                  onInput={(e) =>
+                    setAppState(
+                      'session',
+                      'config',
+                      'algorithm',
+                      'discovery',
+                      (prev) => ({
+                        ...prev,
+                        use_google_fonts: prev?.use_google_fonts ?? false,
+                        google_fonts_amount: Number(e.currentTarget.value),
+                      }),
+                    )
+                  }
+                />
               </TextField>
             </div>
           </div>

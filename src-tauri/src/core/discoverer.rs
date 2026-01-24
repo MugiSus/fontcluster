@@ -124,35 +124,31 @@ impl Discoverer {
     }
 
     pub async fn discover_fonts(&self, app: &AppHandle, state: &AppState) -> Result<HashMap<i32, Vec<String>>> {
-        let (preview_text, target_weights, session_id, font_set) = {
+        let (preview_text, target_weights, session_id, discovery) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            let font_set = s.algorithm.as_ref()
-                .and_then(|a| a.discovery.as_ref())
-                .map(|d| d.font_set.clone())
+            let discovery = s.algorithm.as_ref()
+                .and_then(|a| a.discovery.clone())
                 .unwrap_or_default();
-            (s.preview_text.clone(), s.weights.clone(), s.id.clone(), font_set)
+            (s.preview_text.clone(), s.weights.clone(), s.id.clone(), discovery)
         };
         let session_dir = AppState::get_base_dir()?.join("Generated").join(&session_id);
 
-        let font_files = match font_set {
-            crate::config::FontSet::SystemFonts => {
-                println!("🔍 Scanning system for font files...");
-                Self::get_font_files()
-            },
-            _ => {
-                println!("🔍 Fetching Google Fonts subset ({:?})...", font_set);
-                let font_set = font_set.clone();
-                let preview_text = preview_text.clone();
-                let session_dir = session_dir.clone();
-                let app = app.clone();
-                
-                let target_weights = target_weights.clone();
-                
-                tokio::task::spawn_blocking(move || {
-                    crate::core::google_fonts::fetch_subset_fonts(&font_set, &preview_text, &session_dir, &target_weights, &app)
-                }).await.map_err(|e| AppError::Processing(e.to_string()))??
-            }
+        let font_files = if discovery.use_google_fonts {
+            println!("🔍 Fetching Google Fonts subset (Top {})...", discovery.google_fonts_amount);
+            let amount = discovery.google_fonts_amount;
+            let preview_text = preview_text.clone();
+            let session_dir = session_dir.clone();
+            let app = app.clone();
+            
+            let target_weights = target_weights.clone();
+            
+            tokio::task::spawn_blocking(move || {
+                crate::core::google_fonts::fetch_subset_fonts(amount, &preview_text, &session_dir, &target_weights, &app)
+            }).await.map_err(|e| AppError::Processing(e.to_string()))??
+        } else {
+            println!("🔍 Scanning system for font files...");
+            Self::get_font_files()
         };
 
         let total_files = font_files.len();

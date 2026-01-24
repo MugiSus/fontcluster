@@ -15,7 +15,7 @@ const Checkbox = <T extends ValidComponent = 'div'>(
   const [local, others] = splitProps(props as CheckboxRootProps, ['class']);
   return (
     <CheckboxPrimitive.Root
-      class={cn('items-top group relative flex space-x-2', local.class)}
+      class={cn('items-top group relative flex', local.class)}
       {...others}
     >
       <CheckboxPrimitive.Input class='peer' />
