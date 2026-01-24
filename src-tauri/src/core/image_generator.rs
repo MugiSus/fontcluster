@@ -73,13 +73,17 @@ impl ImageGenerator {
                         .path
                         .ok_or_else(|| AppError::Processing("No path in metadata".into()))?;
 
-                    let file = std::fs::File::open(path)?;
-                    let mmap = unsafe { memmap2::Mmap::map(&file)? };
+                    let file = std::fs::File::open(&path)
+                        .map_err(|e| AppError::Io(format!("Failed to open font file {}: {}", path.display(), e)))?;
+                    let mmap = unsafe { 
+                        memmap2::Mmap::map(&file)
+                            .map_err(|e| AppError::Io(format!("Failed to mmap font file {}: {}", path.display(), e)))? 
+                    };
                     let font = font_kit::font::Font::from_bytes(
                         Arc::new(mmap.to_vec()),
                         meta.font_index,
                     )
-                    .map_err(|e| AppError::Font(format!("Failed to load font from bytes: {}", e)))?;
+                    .map_err(|e| AppError::Font(format!("Failed to load font from bytes {}: {}", path.display(), e)))?;
 
                     let renderer = FontRenderer::new(Arc::clone(&render_config));
                     renderer.render_sample(&font, &safe_name)?;

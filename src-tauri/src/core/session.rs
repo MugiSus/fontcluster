@@ -32,7 +32,7 @@ impl AppState {
         let session = guard.as_ref().ok_or_else(|| crate::error::AppError::Processing("No active session".into()))?;
         let path = Self::get_base_dir()?.join("Generated").join(&session.id);
         if !path.exists() {
-            std::fs::create_dir_all(&path)?;
+            std::fs::create_dir_all(&path).map_err(|e| crate::error::AppError::Io(format!("Failed to create session dir {}: {}", path.display(), e)))?;
         }
         Ok(path)
     }
@@ -52,10 +52,10 @@ impl AppState {
 
         let base_dir = Self::get_base_dir()?;
         let session_dir = base_dir.join("Generated").join(&id);
-        fs::create_dir_all(&session_dir)?;
+        fs::create_dir_all(&session_dir).map_err(|e| crate::error::AppError::Io(format!("Failed to create session dir {}: {}", session_dir.display(), e)))?;
         
         let config_path = session_dir.join("config.json");
-        fs::write(config_path, serde_json::to_string_pretty(&session)?)?;
+        fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to write session config {}: {}", config_path.display(), e)))?;
 
         let mut guard = self.current_session.lock().unwrap();
         *guard = Some(session);
@@ -70,7 +70,7 @@ impl AppState {
     pub fn load_session(&self, id: &str) -> Result<()> {
         let session_dir = Self::get_base_dir()?.join("Generated").join(id);
         let config_path = session_dir.join("config.json");
-        let session: SessionConfig = serde_json::from_str(&fs::read_to_string(config_path)?)?;
+        let session: SessionConfig = serde_json::from_str(&fs::read_to_string(&config_path).map_err(|e| crate::error::AppError::Io(format!("Failed to read session config {}: {}", config_path.display(), e)))?)?;
         
         let mut guard = self.current_session.lock().unwrap();
         *guard = Some(session);
@@ -83,7 +83,8 @@ impl AppState {
         if let Some(session) = guard.as_mut() {
             f(&mut session.status);
             let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
-            fs::write(session_dir.join("config.json"), serde_json::to_string_pretty(&session)?)?;
+            let config_path = session_dir.join("config.json");
+            fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to update status in {}: {}", config_path.display(), e)))?;
         }
         Ok(())
     }
@@ -98,7 +99,8 @@ impl AppState {
                 session.status.process_status = s;
             }
             let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
-            fs::write(session_dir.join("config.json"), serde_json::to_string_pretty(&session)?)?;
+            let config_path = session_dir.join("config.json");
+            fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to update session config in {}: {}", config_path.display(), e)))?;
         }
         Ok(())
     }
@@ -106,12 +108,13 @@ impl AppState {
 
 pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()> {
     let font_dir = session_dir.join(&meta.safe_name);
-    fs::create_dir_all(&font_dir)?;
-    fs::write(font_dir.join("meta.json"), serde_json::to_string_pretty(meta)?)?;
+    fs::create_dir_all(&font_dir).map_err(|e| crate::error::AppError::Io(format!("Failed to create font dir {}: {}", font_dir.display(), e)))?;
+    let meta_path = font_dir.join("meta.json");
+    fs::write(&meta_path, serde_json::to_string_pretty(meta)?).map_err(|e| crate::error::AppError::Io(format!("Failed to save font metadata {}: {}", meta_path.display(), e)))?;
     Ok(())
 }
 
 pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMetadata> {
     let path = session_dir.join(safe_name).join("meta.json");
-    Ok(serde_json::from_str(&fs::read_to_string(path)?)?)
+    Ok(serde_json::from_str(&fs::read_to_string(&path).map_err(|e| crate::error::AppError::Io(format!("Failed to load font metadata {}: {}", path.display(), e)))?)?)
 }

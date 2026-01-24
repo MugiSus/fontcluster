@@ -91,7 +91,7 @@ impl Vectorizer {
 
     fn process_image(path: PathBuf, h_config: HogConfig) -> Result<()> {
         let dyn_img = image::open(&path)
-            .map_err(|e| crate::error::AppError::Image(e.to_string()))?;
+            .map_err(|e| crate::error::AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
         
         // Handle transparency: composite over black background
         // The generated images are White (255) + Alpha.
@@ -139,9 +139,10 @@ impl Vectorizer {
         let features =
             hog(&resized, opts).map_err(|e| crate::error::AppError::Processing(e.to_string()))?;
 
-        let mut bin_path = path;
+        let mut bin_path = path.clone();
         bin_path.set_file_name("vector.bin");
-        std::fs::write(bin_path, bytemuck::cast_slice(&features))?;
+        std::fs::write(&bin_path, bytemuck::cast_slice(&features))
+            .map_err(|e| crate::error::AppError::Io(format!("Failed to write vector bin {}: {}", bin_path.display(), e)))?;
         Ok(())
     }
 

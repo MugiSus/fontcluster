@@ -266,10 +266,11 @@ impl Discoverer {
         if let Some(session) = guard.as_mut() {
             session.discovered_fonts = discovered.clone();
             let session_dir_final = AppState::get_base_dir()?.join("Generated").join(&session.id);
+            let config_path = session_dir_final.join("config.json");
             fs::write(
-                session_dir_final.join("config.json"),
+                &config_path,
                 serde_json::to_string_pretty(&session)?,
-            )?;
+            ).map_err(|e| AppError::Io(format!("Failed to write session config in discoverer {}: {}", config_path.display(), e)))?;
         }
 
         Ok(discovered)
