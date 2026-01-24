@@ -463,7 +463,11 @@ export function FontProcessingForm() {
               size='sm'
               class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums hover:shadow-lg hover:shadow-primary/25'
             >
-              {appState.session.isProcessing ? 'Processing...' : 'Continue'}
+              {appState.session.isProcessing
+                ? 'Processing...'
+                : appState.session.status === 'clustered'
+                  ? 'Run'
+                  : 'Continue'}
               <Show
                 when={appState.session.isProcessing}
                 fallback={<ArrowRightIcon class='absolute right-3' />}
@@ -472,8 +476,7 @@ export function FontProcessingForm() {
               </Show>
             </TooltipTrigger>
             <TooltipContent>
-              {appState.session.status === 'clustered' ||
-              appState.session.status === 'empty'
+              {appState.session.status === 'clustered'
                 ? 'Create new and run'
                 : 'Continue'}
             </TooltipContent>
