@@ -142,7 +142,16 @@ impl Discoverer {
             },
             _ => {
                 println!("🔍 Fetching Google Fonts subset ({:?})...", font_set);
-                crate::core::google_fonts::fetch_subset_fonts(&font_set, &preview_text, &session_dir, app)?
+                let font_set = font_set.clone();
+                let preview_text = preview_text.clone();
+                let session_dir = session_dir.clone();
+                let app = app.clone();
+                
+                let target_weights = target_weights.clone();
+                
+                tokio::task::spawn_blocking(move || {
+                    crate::core::google_fonts::fetch_subset_fonts(&font_set, &preview_text, &session_dir, &target_weights, &app)
+                }).await.map_err(|e| AppError::Processing(e.to_string()))??
             }
         };
 
