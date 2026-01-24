@@ -1,6 +1,6 @@
 [package]
 name = "FontCluster"
-version = "0.3.1"
+version = "0.3.2"
 description = "A font clustering and visualization tool powered by Tauri."
 authors = ["mugisus"]
 edition = "2021"
@@ -53,11 +53,9 @@ tokio = { version = "1", features = ["full"] }
 futures = "0.3.31"
 thiserror = "1.0"
 imageproc = "0.24"
-ndarray = { version = "0.16", features = ["blas"] }
+ndarray = { version = "0.16" }
 # PCA implementation without LAPACK dependency
 nalgebra = "0.33"
-# Randomized SVD / PCA (BLAS/LAPACK via OpenBLAS system library)
-ndarray-linalg = { version = "0.17", default-features = false, features = ["openblas-system"] }
 # PaCMAP for dimensionality reduction
 pacmap = "0.2"
 # Random number generation for K-means
