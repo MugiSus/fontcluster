@@ -181,7 +181,7 @@ export function FontProcessingForm() {
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
-                Discovery Mode
+                Discovery
               </div>
               <Tooltip>
                 <TooltipTrigger
@@ -199,9 +199,10 @@ export function FontProcessingForm() {
             </div>
             <div class='grid grid-cols-1 gap-2'>
               <TextField class='gap-0.5'>
-                <div class='relative'>
+                <TextFieldLabel class='text-xxs'>Font Set</TextFieldLabel>
+                <div>
                   <select
-                    class='flex h-7 w-full items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
+                    class='flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-xs shadow-md ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50'
                     value={
                       appState.session.config?.algorithm?.discovery?.font_set ??
                       'google_fonts_top300'
@@ -218,15 +219,15 @@ export function FontProcessingForm() {
                       )
                     }
                   >
-                    <option value='system_fonts'>System Fonts (Default)</option>
+                    <option value='system_fonts'>Installed Fonts</option>
                     <option value='google_fonts_top100'>
-                      Google Fonts (Top 100)
+                      Google Fonts (Popular 100)
                     </option>
                     <option value='google_fonts_top300'>
-                      Google Fonts (Top 300)
+                      Google Fonts (Popular 300)
                     </option>
                     <option value='google_fonts_top500'>
-                      Google Fonts (Top 500)
+                      Google Fonts (Popular 500)
                     </option>
                   </select>
                 </div>
