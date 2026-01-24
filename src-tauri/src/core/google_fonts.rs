@@ -28,21 +28,21 @@ pub fn fetch_subset_fonts(
 ) -> Result<Vec<PathBuf>> {
     let resource_path = app_handle
         .path()
-        .resolve("resources/google_fonts.json", tauri::path::BaseDirectory::Resource)
-        .map_err(|e| AppError::Io(format!("Failed to resolve google_fonts.json: {}", e)))?;
+        .resolve("resources/google_fonts_popularity.json", tauri::path::BaseDirectory::Resource)
+        .map_err(|e| AppError::Io(format!("Failed to resolve google_fonts_popularity.json: {}", e)))?;
 
     // Fallback for dev environment if resource not found (optional, but helpful)
     let json_content = if resource_path.exists() {
         fs::read_to_string(&resource_path)
-            .map_err(|e| AppError::Io(format!("Failed to read google_fonts.json: {}", e)))?
+            .map_err(|e| AppError::Io(format!("Failed to read google_fonts_popularity.json: {}", e)))?
     } else {
         // Try relative path for dev
-        fs::read_to_string("resources/google_fonts.json")
-            .map_err(|e| AppError::Io(format!("Failed to read google_fonts.json (dev): {}", e)))?
+        fs::read_to_string("resources/google_fonts_popularity.json")
+            .map_err(|e| AppError::Io(format!("Failed to read google_fonts_popularity.json (dev): {}", e)))?
     };
 
     let all_fonts: Vec<GoogleFontMetadata> = serde_json::from_str(&json_content)
-        .map_err(|e| AppError::Processing(format!("Failed to parse google_fonts.json: {}", e)))?;
+        .map_err(|e| AppError::Processing(format!("Failed to parse google_fonts_popularity.json: {}", e)))?;
 
     let limit = match font_set {
         FontSet::SystemFonts => return Ok(Vec::new()), // Should not be called

@@ -45,7 +45,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [],
+    "resources": [
+      "resources/google_fonts_popularity.json"
+    ],
     "macOS": {
       "signingIdentity": "-"
     }
