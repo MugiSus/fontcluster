@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
-pub const PREVIEW_TEXT: &str = "ü";
+pub const PREVIEW_TEXT: &str = "font";
 pub const DEFAULT_FONT_SIZE: f32 = 128.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
@@ -14,7 +14,9 @@ pub struct SessionConfig {
     #[serde(rename = "session_id")]
     pub id: String,
     pub preview_text: String,
-    pub date: DateTime<Utc>,
+    #[serde(alias = "date")]
+    pub created_at: DateTime<Utc>,
+    pub modified_at: DateTime<Utc>,
     pub weights: Vec<i32>,
     pub discovered_fonts: HashMap<i32, Vec<String>>,
     pub algorithm: Option<AlgorithmConfig>,

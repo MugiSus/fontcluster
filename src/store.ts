@@ -65,8 +65,9 @@ const FUSE_OPTIONS = {
 export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   app_version: '0.3.0',
   session_id: '',
-  preview_text: 'ü',
-  date: new Date().toISOString(),
+  preview_text: 'font',
+  created_at: new Date().toISOString(),
+  modified_at: new Date().toISOString(),
   process_status: 'empty',
   clusters_amount: 0,
   samples_amount: 0,
@@ -124,7 +125,7 @@ export const [appState, setAppState] = createStore<AppState>({
     },
     selectedWeights: [400],
     searchQuery: '',
-    sampleText: 'ü',
+    sampleText: 'font',
   },
 });
 

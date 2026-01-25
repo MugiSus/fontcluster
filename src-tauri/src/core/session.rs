@@ -43,7 +43,8 @@ impl AppState {
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             id: id.clone(),
             preview_text: text,
-            date: chrono::Utc::now(),
+            created_at: chrono::Utc::now(),
+            modified_at: chrono::Utc::now(),
             weights,
             discovered_fonts: HashMap::new(),
             algorithm,
@@ -82,6 +83,7 @@ impl AppState {
         let mut guard = self.current_session.lock().unwrap();
         if let Some(session) = guard.as_mut() {
             f(&mut session.status);
+            session.modified_at = chrono::Utc::now();
             let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
             let config_path = session_dir.join("config.json");
             fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to update status in {}: {}", config_path.display(), e)))?;
@@ -98,6 +100,7 @@ impl AppState {
             if let Some(s) = status {
                 session.status.process_status = s;
             }
+            session.modified_at = chrono::Utc::now();
             let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
             let config_path = session_dir.join("config.json");
             fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to update session config in {}: {}", config_path.display(), e)))?;

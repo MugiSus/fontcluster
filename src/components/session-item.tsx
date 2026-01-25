@@ -74,10 +74,12 @@ export function SessionItem(props: SessionItemProps) {
             {badge().text}
           </Badge>
           <time class='ml-1 text-xs tabular-nums text-muted-foreground'>
-            {new Date(props.session.date).toLocaleString('ja-JP', {
+            {new Date(props.session.modified_at).toLocaleString('ja-JP', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
             })}
           </time>
           <WeightIcon class='ml-1 size-3 text-muted-foreground' />

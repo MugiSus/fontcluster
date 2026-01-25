@@ -73,7 +73,8 @@ export interface SessionConfig {
   app_version: string;
   session_id: string;
   preview_text: string;
-  date: string;
+  created_at: string;
+  modified_at: string;
   process_status: ProcessStatus;
   clusters_amount: number;
   samples_amount: number;
