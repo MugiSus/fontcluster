@@ -46,10 +46,11 @@ pub struct DiscoveryConfig {
 #[serde(rename_all = "snake_case")]
 pub enum FontSet {
     SystemFonts,
-    GoogleFontsTop100,
-    GoogleFontsTop300,
-    GoogleFontsTop500,
-    GoogleFontsTop1000,
+    GoogleFontsPopular100,
+    GoogleFontsPopular200,
+    GoogleFontsPopular300,
+    GoogleFontsPopular500,
+    GoogleFontsPopular1000,
 }
 
 impl Default for FontSet {

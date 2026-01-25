@@ -81,7 +81,7 @@ export function FontProcessingForm() {
     const algorithm: AlgorithmConfig = {
       discovery: {
         font_set: (appState.session.config?.algorithm?.discovery?.font_set ??
-          'google_fonts_top300') as FontSet,
+          'google_fonts_popular300') as FontSet,
       },
       image: {
         font_size: Number(formData.get('image-font-size')),
@@ -204,7 +204,7 @@ export function FontProcessingForm() {
                   class='flex h-7 w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
                   value={
                     appState.session.config?.algorithm?.discovery?.font_set ??
-                    'google_fonts_top300'
+                    'google_fonts_popular300'
                   }
                   onChange={(e) =>
                     setAppState(
@@ -220,16 +220,19 @@ export function FontProcessingForm() {
                 >
                   <option value='system_fonts'>Installed Fonts</option>
                   <hr />
-                  <option value='google_fonts_top100'>
+                  <option value='google_fonts_popular100'>
                     Google Fonts Popular 100
                   </option>
-                  <option value='google_fonts_top300'>
+                  <option value='google_fonts_popular200'>
+                    Google Fonts Popular 200
+                  </option>
+                  <option value='google_fonts_popular300'>
                     Google Fonts Popular 300
                   </option>
-                  <option value='google_fonts_top500'>
+                  <option value='google_fonts_popular500'>
                     Google Fonts Popular 500
                   </option>
-                  <option value='google_fonts_top1000'>
+                  <option value='google_fonts_popular1000'>
                     Google Fonts Popular 1000
                   </option>
                 </select>

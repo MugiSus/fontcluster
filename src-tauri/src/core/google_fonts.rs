@@ -46,10 +46,11 @@ pub fn fetch_subset_fonts(
 
     let limit = match font_set {
         FontSet::SystemFonts => return Ok(Vec::new()), // Should not be called
-        FontSet::GoogleFontsTop100 => 100,
-        FontSet::GoogleFontsTop300 => 300,
-        FontSet::GoogleFontsTop500 => 500,
-        FontSet::GoogleFontsTop1000 => 1000,
+        FontSet::GoogleFontsPopular100 => 100,
+        FontSet::GoogleFontsPopular200 => 200,
+        FontSet::GoogleFontsPopular300 => 300,
+        FontSet::GoogleFontsPopular500 => 500,
+        FontSet::GoogleFontsPopular1000 => 1000,
     };
 
     let target_fonts = all_fonts.into_iter().take(limit).collect::<Vec<_>>();

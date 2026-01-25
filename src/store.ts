@@ -73,7 +73,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   weights: [400],
   discovered_fonts: {},
   algorithm: {
-    discovery: { font_set: 'google_fonts_top300' },
+    discovery: { font_set: 'google_fonts_popular300' },
     image: { font_size: 128 },
     hog: {
       orientations: 12,
