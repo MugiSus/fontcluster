@@ -86,7 +86,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
             x={-64}
             y={4}
             width={128}
-            height={32}
+            height={28}
             preserveAspectRatio='xMidYMid meet'
             image-rendering='optimizeSpeed'
           />
@@ -95,7 +95,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
           x={-64}
           y={4}
           width={128}
-          height={32}
+          height={28}
           class='pointer-events-none fill-current'
           mask={`url(#mask-${props.safeName})`}
         />
