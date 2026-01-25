@@ -145,7 +145,9 @@ export const runProcessingJobs = async (
       overrideStatus,
     });
     console.log('Complete pipeline result:', result);
-    toast.success('Clustering completed successfully!');
+    if (result === 'Success') {
+      toast.success('Clustering completed successfully!');
+    }
     await refetchSessionConfig();
     await refetchFontMetadataRecord();
   } catch (error) {

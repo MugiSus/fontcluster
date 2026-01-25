@@ -1,17 +1,15 @@
-import { Show, onMount } from 'solid-js';
+import { onMount } from 'solid-js';
 import { FontLists } from './components/font-lists';
 import { SessionSelector } from './components/session-selector';
-import { FontClusterVisualization } from './components/font-cluster-visualization';
+import { ClusterVisualizer } from './components/cluster-visualizer';
 import { FontProcessingForm } from './components/font-processing-form';
 import { ClipboardManager } from './components/clipboard-manager';
 import { initAppEvents } from './actions';
-import { appState } from './store';
 import {
   Resizable,
   ResizableHandle,
   ResizablePanel,
 } from './components/ui/resizable';
-import { CircleSlash2Icon } from 'lucide-solid';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -45,18 +43,7 @@ function App() {
             minSize={0.2}
             initialSize={0.6}
           >
-            <Show
-              when={appState.session.status === 'clustered'}
-              fallback={
-                <div class='flex size-full flex-col items-center justify-center rounded-md border bg-muted text-sm font-light text-muted-foreground'>
-                  <CircleSlash2Icon class='mb-4 size-6' />
-                  <h2>No results found</h2>
-                  <p class='text-xs'>Complete processing to see results</p>
-                </div>
-              }
-            >
-              <FontClusterVisualization />
-            </Show>
+            <ClusterVisualizer />
           </ResizablePanel>
 
           <ResizableHandle withHandle class='bg-transparent px-[3px]' />

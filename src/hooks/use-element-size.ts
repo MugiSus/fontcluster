@@ -1,11 +1,12 @@
-import { createSignal, onMount, onCleanup } from 'solid-js';
+import { createSignal, createEffect, onCleanup } from 'solid-js';
 
 export function useElementSize<T extends Element>() {
   const [size, setSize] = createSignal({ width: 0, height: 0 });
-  let elRef: T | undefined;
+  const [el, setEl] = createSignal<T | undefined>();
 
-  onMount(() => {
-    if (!elRef) return;
+  createEffect(() => {
+    const element = el();
+    if (!element) return;
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -16,18 +17,16 @@ export function useElementSize<T extends Element>() {
       }
     });
 
-    observer.observe(elRef);
+    observer.observe(element);
 
-    const rect = elRef.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
     setSize({ width: rect.width, height: rect.height });
 
     onCleanup(() => observer.disconnect());
   });
 
   return {
-    ref: (el: T) => {
-      elRef = el;
-    },
+    ref: (node: T) => setEl(() => node),
     size,
   };
 }
