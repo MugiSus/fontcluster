@@ -11,9 +11,7 @@ pub async fn run_jobs(app: AppHandle, text: String, weights: Vec<i32>, algorithm
     // Initialize or load session
     let id = if let Some(sid) = session_id {
         state.load_session(&sid)?;
-        if let Some(ovr) = override_status {
-            state.update_session_config(algorithm, Some(ovr))?;
-        }
+        state.update_session_config(algorithm, override_status)?;
         sid
     } else {
         state.initialize_session(text, weights, algorithm)?

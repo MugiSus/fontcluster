@@ -32,7 +32,7 @@ impl Vectorizer {
         let session_dir_display = session_dir.display().to_string();
         let png_files = tokio::task::spawn_blocking(move || {
             let mut png_files = Vec::new();
-            for entry in jwalk::WalkDir::new(&session_dir)
+            for entry in jwalk::WalkDir::new(session_dir.join("samples"))
                 .into_iter()
                 .filter_map(|e| e.ok())
             {

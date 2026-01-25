@@ -10,6 +10,7 @@ pub const GLYPH_PADDING: f32 = 4.0;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionConfig {
     pub app_version: String,
+    pub modified_app_version: String,
     #[serde(rename = "session_id")]
     pub id: String,
     pub preview_text: String,
@@ -65,8 +66,8 @@ pub struct HdbscanConfig {
 impl Default for HdbscanConfig {
     fn default() -> Self {
         Self {
-            min_cluster_size: 16,
-            min_samples: 16,
+            min_cluster_size: 12,
+            min_samples: 12,
         }
     }
 }

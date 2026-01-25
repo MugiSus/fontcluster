@@ -41,6 +41,7 @@ impl AppState {
         let id = Uuid::now_v7().to_string();
         let session = SessionConfig {
             app_version: env!("CARGO_PKG_VERSION").to_string(),
+            modified_app_version: env!("CARGO_PKG_VERSION").to_string(),
             id: id.clone(),
             preview_text: text,
             created_at: chrono::Utc::now(),
@@ -80,37 +81,43 @@ impl AppState {
 
     pub fn update_status<F>(&self, f: F) -> Result<()> 
     where F: FnOnce(&mut ProcessingStatus) {
-        let mut guard = self.current_session.lock().unwrap();
-        if let Some(session) = guard.as_mut() {
+        self.update_session(|session| {
             f(&mut session.status);
-            session.modified_at = chrono::Utc::now();
-            let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
-            let config_path = session_dir.join("config.json");
-            fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to update status in {}: {}", config_path.display(), e)))?;
-        }
-        Ok(())
+        })
     }
 
     pub fn update_session_config(&self, algorithm: Option<AlgorithmConfig>, status: Option<ProcessStatus>) -> Result<()> {
-        let mut guard = self.current_session.lock().unwrap();
-        if let Some(session) = guard.as_mut() {
+        self.update_session(|session| {
             if let Some(alg) = algorithm {
                 session.algorithm = Some(alg);
             }
             if let Some(s) = status {
                 session.status.process_status = s;
             }
+        })
+    }
+
+    pub fn update_session<F>(&self, f: F) -> Result<()>
+    where F: FnOnce(&mut SessionConfig) {
+        let mut guard = self.current_session.lock().unwrap();
+        if let Some(session) = guard.as_mut() {
+            f(session);
             session.modified_at = chrono::Utc::now();
-            let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
-            let config_path = session_dir.join("config.json");
-            fs::write(&config_path, serde_json::to_string_pretty(&session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to update session config in {}: {}", config_path.display(), e)))?;
+            session.modified_app_version = env!("CARGO_PKG_VERSION").to_string();
+            self.save_session(session)?;
         }
         Ok(())
+    }
+
+    fn save_session(&self, session: &SessionConfig) -> Result<()> {
+        let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
+        let config_path = session_dir.join("config.json");
+        fs::write(&config_path, serde_json::to_string_pretty(session)?).map_err(|e| crate::error::AppError::Io(format!("Failed to write session config {}: {}", config_path.display(), e)))
     }
 }
 
 pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()> {
-    let font_dir = session_dir.join(&meta.safe_name);
+    let font_dir = session_dir.join("samples").join(&meta.safe_name);
     fs::create_dir_all(&font_dir).map_err(|e| crate::error::AppError::Io(format!("Failed to create font dir {}: {}", font_dir.display(), e)))?;
     let meta_path = font_dir.join("meta.json");
     fs::write(&meta_path, serde_json::to_string_pretty(meta)?).map_err(|e| crate::error::AppError::Io(format!("Failed to save font metadata {}: {}", meta_path.display(), e)))?;
@@ -118,6 +125,6 @@ pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()>
 }
 
 pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMetadata> {
-    let path = session_dir.join(safe_name).join("meta.json");
+    let path = session_dir.join("samples").join(safe_name).join("meta.json");
     Ok(serde_json::from_str(&fs::read_to_string(&path).map_err(|e| crate::error::AppError::Io(format!("Failed to load font metadata {}: {}", path.display(), e)))?)?)
 }

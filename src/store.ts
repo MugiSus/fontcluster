@@ -63,7 +63,8 @@ const FUSE_OPTIONS = {
 };
 
 export const DEFAULT_SESSION_CONFIG: SessionConfig = {
-  app_version: '0.3.0',
+  app_version: '0.5.0',
+  modified_app_version: '0.5.0',
   session_id: '',
   preview_text: 'font',
   created_at: new Date().toISOString(),
@@ -91,7 +92,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
       learning_rate: 1.0,
       n_neighbors: 32,
     },
-    hdbscan: { min_cluster_size: 16, min_samples: 16 },
+    hdbscan: { min_cluster_size: 12, min_samples: 12 },
   },
 };
 

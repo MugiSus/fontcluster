@@ -7,13 +7,14 @@ use std::fs;
 #[allow(non_snake_case)]
 pub async fn get_compressed_vectors(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
     let session_dir = AppState::get_base_dir()?.join("Generated").join(sessionId);
+    let samples_dir = session_dir.join("samples");
     let mut map = std::collections::HashMap::new();
     
-    if session_dir.exists() {
-        for entry in fs::read_dir(session_dir)? {
+    if samples_dir.exists() {
+        for entry in fs::read_dir(samples_dir)? {
             let path = entry?.path();
             if path.is_dir() {
-                if let Ok(meta) = load_font_metadata(&path.parent().unwrap(), path.file_name().unwrap().to_str().unwrap()) {
+                if let Ok(meta) = load_font_metadata(&session_dir, path.file_name().unwrap().to_str().unwrap()) {
                     map.insert(meta.safe_name.clone(), meta);
                 }
             }

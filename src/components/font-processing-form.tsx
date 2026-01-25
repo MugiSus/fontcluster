@@ -498,7 +498,7 @@ export function FontProcessingForm() {
                   name='hdbscan-min-cluster-size'
                   value={
                     appState.session.config?.algorithm?.hdbscan
-                      ?.min_cluster_size ?? 16
+                      ?.min_cluster_size ?? 12
                   }
                   step='1'
                   min='0'
@@ -512,7 +512,7 @@ export function FontProcessingForm() {
                   name='hdbscan-min-samples'
                   value={
                     appState.session.config?.algorithm?.hdbscan?.min_samples ??
-                    16
+                    12
                   }
                   step='1'
                   min='0'
