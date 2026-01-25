@@ -122,7 +122,7 @@ export function FontProcessingForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex min-h-0 flex-1 flex-col items-stretch gap-2 pl-2'
+      class='flex min-h-0 flex-1 flex-col items-stretch gap-2 pl-1.5'
     >
       <TextField class='relative grid w-full items-center gap-1.5'>
         <TextFieldLabel

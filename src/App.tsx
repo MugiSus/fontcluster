@@ -24,8 +24,8 @@ function App() {
       <Toaster position='bottom-right' />
       <ClipboardManager />
       <SessionSelector />
-      <div class='m-2 mt-0 h-full min-h-0'>
-        <Resizable class='min-h-0 overflow-hidden rounded-lg border border-border bg-gradient-to-b from-slate-100 to-slate-200 py-2 dark:from-zinc-850 dark:to-zinc-900'>
+      <div class='m-1.5 mt-0 h-full min-h-0'>
+        <Resizable class='min-h-0 overflow-hidden rounded-xl border border-border bg-gradient-to-b from-slate-100 to-slate-200 py-1.5 dark:from-zinc-850 dark:to-zinc-800'>
           <ResizablePanel
             class='flex min-w-0 flex-col gap-3 overflow-hidden'
             initialSize={0.2}
@@ -38,7 +38,7 @@ function App() {
             <FontProcessingForm />
           </ResizablePanel>
 
-          <ResizableHandle withHandle class='bg-transparent px-1' />
+          <ResizableHandle withHandle class='bg-transparent px-[3px]' />
 
           <ResizablePanel
             class='flex min-h-0 min-w-0'
@@ -59,7 +59,7 @@ function App() {
             </Show>
           </ResizablePanel>
 
-          <ResizableHandle withHandle class='bg-transparent px-1' />
+          <ResizableHandle withHandle class='bg-transparent px-[3px]' />
 
           <ResizablePanel
             initialSize={0.2}

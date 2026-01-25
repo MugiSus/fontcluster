@@ -20,7 +20,7 @@ function Root() {
     <>
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
-        <div class='flex h-screen flex-col overflow-auto overscroll-none bg-gradient-to-b from-slate-20 to-slate-50 dark:from-zinc-900 dark:to-zinc-920'>
+        <div class='flex h-screen flex-col overflow-auto overscroll-none bg-gradient-to-b from-slate-20 to-slate-50 dark:from-zinc-900 dark:to-zinc-850'>
           <Titlebar />
           <App />
         </div>

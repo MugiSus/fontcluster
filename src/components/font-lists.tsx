@@ -49,7 +49,7 @@ export function FontLists() {
   );
 
   return (
-    <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col pr-2'>
+    <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col pr-1.5'>
       <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden'>
         <Tooltip>
           <TooltipTrigger as='div' class='w-full'>
