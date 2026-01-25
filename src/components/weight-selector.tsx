@@ -26,14 +26,8 @@ export function WeightSelector(props: WeightSelectorProps) {
   return (
     <div
       class={cn(
-        'grid w-full items-center overflow-hidden rounded-md border bg-background shadow-sm',
-        props.isVertical
-          ? props.isCompact
-            ? 'grid-rows-9'
-            : 'grid-rows-10'
-          : props.isCompact
-            ? 'grid-cols-9'
-            : 'grid-cols-10',
+        'flex items-stretch overflow-hidden rounded-md border bg-background shadow-sm',
+        props.isVertical ? 'flex-col' : 'flex-row',
       )}
     >
       <input
@@ -42,11 +36,11 @@ export function WeightSelector(props: WeightSelectorProps) {
         value={props.selectedWeights.join(',')}
       />
       <Show when={!props.isCompact}>
-        <div class='flex items-center justify-center'>
+        <div class='flex size-8 items-center justify-center'>
           <WeightIcon class='size-3 text-muted-foreground' />
         </div>
       </Show>
-      <For each={[100, 200, 300, 400, 500, 600, 700, 800, 900] as FontWeight[]}>
+      <For each={props.weights}>
         {(weight) => {
           const isSelected = () => props.selectedWeights.includes(weight);
           const isSelectable = () => props.weights.includes(weight);
@@ -58,7 +52,7 @@ export function WeightSelector(props: WeightSelectorProps) {
                 type='button'
                 variant={isSelected() ? 'default' : 'ghost'}
                 size='sm'
-                class='h-8 rounded-none px-2 shadow-none'
+                class='relative size-8 grow rounded-none px-2 shadow-none'
                 style={{ 'font-weight': weight }}
                 onClick={() => handleWeightToggle(weight)}
                 data-checked={isSelected()}

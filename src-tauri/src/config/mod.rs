@@ -92,7 +92,7 @@ impl Default for PacmapConfig {
             nn_phases: 100,
             fp_phases: 100,
             learning_rate: 1.0,
-            n_neighbors: 10,
+            n_neighbors: 32,
         }
     }
 }

@@ -99,7 +99,7 @@ export function FontProcessingForm() {
         nn_phases: Number(formData.get('pacmap-nn-phases')),
         fp_phases: Number(formData.get('pacmap-fp-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
-        n_neighbors: Number(formData.get('pacmap-n-neighbors')) || 10,
+        n_neighbors: Number(formData.get('pacmap-n-neighbors')) || 32,
       },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
@@ -459,7 +459,7 @@ export function FontProcessingForm() {
                   name='pacmap-n-neighbors'
                   value={
                     appState.session.config?.algorithm?.pacmap?.n_neighbors ??
-                    10
+                    32
                   }
                   step='1'
                   min='1'

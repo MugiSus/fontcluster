@@ -79,12 +79,12 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         />
       </Show>
 
-      <Show when={props.showImages && !props.isMoving}>
+      <Show when={props.isSelected || (props.showImages && !props.isMoving)}>
         <mask id={`mask-${props.safeName}`}>
           <image
             href={imgSrc()}
             x={-64}
-            y={4}
+            y={6}
             width={128}
             height={28}
             preserveAspectRatio='xMidYMid meet'
@@ -93,7 +93,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
         </mask>
         <rect
           x={-64}
-          y={4}
+          y={6}
           width={128}
           height={28}
           class='pointer-events-none fill-current'
@@ -119,7 +119,7 @@ export function FontVectorPoint(props: FontVectorPointProps) {
       >
         <text
           x={0}
-          y={-8}
+          y={-10}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
             props.isSelected ? 'font-bold' : ''
