@@ -3,27 +3,24 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 
-pub const PREVIEW_TEXT: &str = "ü";
+pub const PREVIEW_TEXT: &str = "font";
 pub const DEFAULT_FONT_SIZE: f32 = 128.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionConfig {
-    #[serde(default = "default_app_version")]
     pub app_version: String,
+    pub modified_app_version: String,
     #[serde(rename = "session_id")]
     pub id: String,
     pub preview_text: String,
-    pub date: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub modified_at: DateTime<Utc>,
     pub weights: Vec<i32>,
     pub discovered_fonts: HashMap<i32, Vec<String>>,
     pub algorithm: Option<AlgorithmConfig>,
     #[serde(flatten)]
     pub status: ProcessingStatus,
-}
-
-fn default_app_version() -> String {
-    "0.3.0".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -69,8 +66,8 @@ pub struct HdbscanConfig {
 impl Default for HdbscanConfig {
     fn default() -> Self {
         Self {
-            min_cluster_size: 16,
-            min_samples: 16,
+            min_cluster_size: 12,
+            min_samples: 12,
         }
     }
 }
@@ -92,7 +89,7 @@ impl Default for PacmapConfig {
             nn_phases: 100,
             fp_phases: 100,
             learning_rate: 1.0,
-            n_neighbors: 10,
+            n_neighbors: 32,
         }
     }
 }

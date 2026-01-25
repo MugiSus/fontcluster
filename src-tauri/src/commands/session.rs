@@ -39,7 +39,7 @@ pub async fn get_available_sessions() -> Result<String> {
             }
         }
     }
-    sessions.sort_by(|a, b| b.date.cmp(&a.date));
+    sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     Ok(serde_json::to_string(&sessions)?)
 }
 
@@ -54,8 +54,9 @@ pub async fn get_latest_session_id() -> Result<Option<String>> {
         if path.is_dir() {
             let config_path = path.join("config.json");
             if let Ok(s) = serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?) {
-                if latest.is_none() || s.date > latest.as_ref().unwrap().0 {
-                    latest = Some((s.date, s.id));
+                let current_time = s.modified_at;
+                if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
+                    latest = Some((current_time, s.id));
                 }
             }
         }

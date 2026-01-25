@@ -1,4 +1,4 @@
-use crate::core::session::load_font_metadata;
+use crate::core::session::{load_font_metadata, save_font_metadata};
 use crate::core::{AppState, EmbeddingEngine};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
@@ -27,7 +27,7 @@ impl Compressor {
             let mut vectors = Vec::new();
             let mut font_ids = Vec::new();
 
-            let mut entries: Vec<_> = fs::read_dir(&session_dir)?
+            let mut entries: Vec<_> = fs::read_dir(session_dir.join("samples"))?
                 .filter_map(|e| e.ok())
                 .collect();
             entries.sort_by_key(|e| e.path());
@@ -66,11 +66,7 @@ impl Compressor {
                     vector: [embedding[[i, 0]], embedding[[i, 1]]],
                     k,
                 });
-                let font_dir = session_dir.join(id);
-                fs::write(
-                    font_dir.join("meta.json"),
-                    serde_json::to_string_pretty(&meta)?,
-                )?;
+                save_font_metadata(&session_dir, &meta)?;
             }
 
             Ok(())

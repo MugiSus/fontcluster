@@ -63,10 +63,12 @@ const FUSE_OPTIONS = {
 };
 
 export const DEFAULT_SESSION_CONFIG: SessionConfig = {
-  app_version: '0.3.0',
+  app_version: '0.5.0',
+  modified_app_version: '0.5.0',
   session_id: '',
-  preview_text: 'ü',
-  date: new Date().toISOString(),
+  preview_text: 'font',
+  created_at: new Date().toISOString(),
+  modified_at: new Date().toISOString(),
   process_status: 'empty',
   clusters_amount: 0,
   samples_amount: 0,
@@ -88,9 +90,9 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
       nn_phases: 100,
       fp_phases: 100,
       learning_rate: 1.0,
-      n_neighbors: 10,
+      n_neighbors: 32,
     },
-    hdbscan: { min_cluster_size: 16, min_samples: 16 },
+    hdbscan: { min_cluster_size: 12, min_samples: 12 },
   },
 };
 
@@ -124,7 +126,7 @@ export const [appState, setAppState] = createStore<AppState>({
     },
     selectedWeights: [400],
     searchQuery: '',
-    sampleText: 'ü',
+    sampleText: 'font',
   },
 });
 

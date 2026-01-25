@@ -99,7 +99,7 @@ export function FontProcessingForm() {
         nn_phases: Number(formData.get('pacmap-nn-phases')),
         fp_phases: Number(formData.get('pacmap-fp-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
-        n_neighbors: Number(formData.get('pacmap-n-neighbors')) || 10,
+        n_neighbors: Number(formData.get('pacmap-n-neighbors')) || 32,
       },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
@@ -128,7 +128,7 @@ export function FontProcessingForm() {
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
-          class='flex items-center gap-1.5 text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs font-normal uppercase text-muted-foreground'
         >
           <TypeIcon class='mb-0.5 size-3 text-primary' />
           Preview Text
@@ -150,7 +150,7 @@ export function FontProcessingForm() {
       <TextField class='grid w-full items-center gap-1'>
         <TextFieldLabel
           for='weights'
-          class='flex items-center gap-1.5 text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs font-normal uppercase text-muted-foreground'
         >
           <WeightIcon class='mb-0.5 size-3 text-primary' />
           Weights
@@ -459,7 +459,7 @@ export function FontProcessingForm() {
                   name='pacmap-n-neighbors'
                   value={
                     appState.session.config?.algorithm?.pacmap?.n_neighbors ??
-                    10
+                    32
                   }
                   step='1'
                   min='1'
@@ -498,7 +498,7 @@ export function FontProcessingForm() {
                   name='hdbscan-min-cluster-size'
                   value={
                     appState.session.config?.algorithm?.hdbscan
-                      ?.min_cluster_size ?? 16
+                      ?.min_cluster_size ?? 12
                   }
                   step='1'
                   min='0'
@@ -512,7 +512,7 @@ export function FontProcessingForm() {
                   name='hdbscan-min-samples'
                   value={
                     appState.session.config?.algorithm?.hdbscan?.min_samples ??
-                    16
+                    12
                   }
                   step='1'
                   min='0'

@@ -104,7 +104,7 @@ export function FontMetadataList(props: FontMetadataListProps) {
               <img
                 class='block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
                 src={convertFileSrc(
-                  `${props.sessionDirectory}/${metadata.safe_name}/sample.png`,
+                  `${props.sessionDirectory}/samples/${metadata.safe_name}/sample.png`,
                 )}
                 alt={`Font preview for ${metadata.font_name}`}
                 decoding='sync'

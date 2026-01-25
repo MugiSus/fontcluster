@@ -42,7 +42,7 @@ export function FontLists() {
   });
 
   const NoResultsFound = () => (
-    <div class='sticky inset-x-0 flex flex-col items-center gap-1 border-b border-dashed py-4 text-center text-sm text-muted-foreground'>
+    <div class='inset-x-0 flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
       <SearchSlashIcon />
       No results found
     </div>

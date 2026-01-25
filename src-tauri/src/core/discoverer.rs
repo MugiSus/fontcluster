@@ -296,17 +296,10 @@ impl Discoverer {
             println!("   Weight {}: {} families", w, list.len());
         }
 
-        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Discovered)?;
-        let mut guard = state.current_session.lock().unwrap();
-        if let Some(session) = guard.as_mut() {
+        state.update_session(|session| {
+            session.status.process_status = crate::config::ProcessStatus::Discovered;
             session.discovered_fonts = discovered.clone();
-            let session_dir_final = AppState::get_base_dir()?.join("Generated").join(&session.id);
-            let config_path = session_dir_final.join("config.json");
-            fs::write(
-                &config_path,
-                serde_json::to_string_pretty(&session)?,
-            ).map_err(|e| AppError::Io(format!("Failed to write session config in discoverer {}: {}", config_path.display(), e)))?;
-        }
+        })?;
 
         Ok(discovered)
     }

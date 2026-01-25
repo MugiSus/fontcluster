@@ -1,4 +1,4 @@
-use crate::core::session::load_font_metadata;
+use crate::core::session::{load_font_metadata, save_font_metadata};
 use crate::core::{AppState, ClusteringEngine};
 use crate::error::{AppError, Result};
 use std::fs;
@@ -27,7 +27,7 @@ impl Clusterer {
             let mut points = Vec::new();
             let mut ids = Vec::new();
 
-            let mut entries: Vec<_> = fs::read_dir(&session_dir_for_first)?
+            let mut entries: Vec<_> = fs::read_dir(session_dir_for_first.join("samples"))?
                 .filter_map(|e| e.ok())
                 .collect();
             entries.sort_by_key(|e| e.path());
@@ -71,10 +71,7 @@ impl Clusterer {
                 if let Some(comp) = meta.computed.as_mut() {
                     comp.k = label;
                 }
-                fs::write(
-                    session_dir_for_second.join(id).join("meta.json"),
-                    serde_json::to_string_pretty(&meta)?,
-                )?;
+                save_font_metadata(&session_dir_for_second, &meta)?;
             }
             Ok((max_cluster + 1) as usize)
         })

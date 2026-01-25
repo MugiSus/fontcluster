@@ -61,7 +61,7 @@ impl FontRenderer {
             la8_pixels.push(alpha); // Alpha
         }
 
-        let path = self.config.output_dir.join(safe_name).join("sample.png");
+        let path = self.config.output_dir.join("samples").join(safe_name).join("sample.png");
         let writer = BufWriter::new(File::create(path)?);
         let encoder = image::codecs::png::PngEncoder::new_with_quality(writer, image::codecs::png::CompressionType::Fast, image::codecs::png::FilterType::NoFilter);
         encoder.write_image(&la8_pixels, total_width as u32, height as u32, image::ExtendedColorType::La8)?;
