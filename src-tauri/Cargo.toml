@@ -1,6 +1,6 @@
 [package]
 name = "FontCluster"
-version = "0.5.1"
+version = "0.5.2"
 description = "A font clustering and visualization tool powered by Tauri."
 authors = ["mugisus"]
 edition = "2021"
