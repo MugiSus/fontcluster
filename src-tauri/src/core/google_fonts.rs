@@ -85,43 +85,43 @@ pub fn fetch_subset_fonts(
 
         // Iterate over requested weights
         for &req_weight in target_weights_refs {
-             // Map requested weight (e.g. 700) to possible variants (e.g. "700", "bold", "700italic"?)
-             // Simple mapping: 
-             // 400 -> "regular", "400"
-             // 700 -> "bold", "700"
-             // others -> string of number
-             
-             let candidates = if req_weight == 400 {
-                 vec!["regular".to_string(), "400".to_string()]
-             } else if req_weight == 700 {
-                 vec!["bold".to_string(), "700".to_string()]
-             } else {
-                 vec![req_weight.to_string()]
-             };
-             
-             // Check if font supports this weight
-             let matched_variant = candidates.iter().find(|c| font.variants.contains(c));
-             
-             if let Some(variant) = matched_variant {
-                 // Convert to numeric string for API (Google API wants "400", not "regular" or "bold")
-                 let api_weight = if variant == "regular" {
-                     "400".to_string()
-                 } else if variant == "bold" {
-                     "700".to_string()
-                 } else {
-                      let digits: String = variant.chars().filter(|c| c.is_ascii_digit()).collect();
-                      if digits.is_empty() { "400".to_string() } else { digits }
-                 };
-                 
-                 // Construct URL
-                 let url = format!(
+            // Map requested weight (e.g. 700) to possible variants (e.g. "700", "bold", "700italic"?)
+            // Simple mapping: 
+            // 400 -> "regular", "400"
+            // 700 -> "bold", "700"
+            // others -> string of number
+            
+            let candidates = if req_weight == 400 {
+                vec!["regular".to_string(), "400".to_string()]
+            } else if req_weight == 700 {
+                vec!["bold".to_string(), "700".to_string()]
+            } else {
+                vec![req_weight.to_string()]
+            };
+            
+            // Check if font supports this weight
+            let matched_variant = candidates.iter().find(|c| font.variants.contains(c));
+            
+            if let Some(variant) = matched_variant {
+                // Convert to numeric string for API (Google API wants "400", not "regular" or "bold")
+                let api_weight = if variant == "regular" {
+                    "400".to_string()
+                } else if variant == "bold" {
+                    "700".to_string()
+                } else {
+                    let digits: String = variant.chars().filter(|c| c.is_ascii_digit()).collect();
+                    if digits.is_empty() { "400".to_string() } else { digits }
+                };
+                
+                // Construct URL
+                let url = format!(
                     "https://fonts.googleapis.com/css2?family={}:wght@{}&text={}",
                     safe_family, api_weight, encoded_text
-                 );
-                 
-                 // Fetch (Logic duplicated from before, but inside loop)
-                 let css_res = (|| -> Result<Vec<u8>> {
-                    let resp = client.get(&url).send()
+                );
+                
+                // Fetch (Logic duplicated from before, but inside loop)
+                let css_res = (|| -> Result<Vec<u8>> {
+                let resp = client.get(&url).send()
                         .map_err(|e| AppError::Network(format!("Failed to fetch CSS for {} weight {}: {}", font.family, req_weight, e)))?;
                     
                     if !resp.status().is_success() {
@@ -140,7 +140,7 @@ pub fn fetch_subset_fonts(
                         .map_err(|e| AppError::Network(format!("Failed to fetch WOFF2: {}", e)))?;
                         
                     if !woff2_resp.status().is_success() {
-                         return Err(AppError::Network(format!("WOFF2 fetch failed {} ({}): {}", font.family, req_weight, woff2_resp.status())));
+                        return Err(AppError::Network(format!("WOFF2 fetch failed {} ({}): {}", font.family, req_weight, woff2_resp.status())));
                     }
 
                     let woff2_data = woff2_resp.bytes()
@@ -150,15 +150,15 @@ pub fn fetch_subset_fonts(
                     let magic = &woff2_data[0..4];
                     let ttf_data = if magic == [0x77, 0x4F, 0x46, 0x32] {
                         // It is WOFF2, decompress
-                         wuff::decompress_woff2(&woff2_data)
+                        wuff::decompress_woff2(&woff2_data)
                             .map_err(|_| {
-                                 AppError::Processing(format!("wuff decompression failed. Size: {}", woff2_data.len()))
+                                AppError::Processing(format!("wuff decompression failed. Size: {}", woff2_data.len()))
                             })?
                     } else if magic == [0x00, 0x01, 0x00, 0x00] || magic == [0x4F, 0x54, 0x54, 0x4F] {
                         // It is already TTF/OTF, just use it
                         woff2_data.to_vec()
                     } else {
-                         return Err(AppError::Processing(format!("Unknown font format. Header: {:02X?} {:02X?} {:02X?} {:02X?}", 
+                        return Err(AppError::Processing(format!("Unknown font format. Header: {:02X?} {:02X?} {:02X?} {:02X?}", 
                             magic[0], magic[1], magic[2], magic[3])));
                     };
 
@@ -180,7 +180,7 @@ pub fn fetch_subset_fonts(
                         eprintln!("Error processing {} ({}): {}", font.family, req_weight, e);
                     }
                 }
-             }
+            }
         }
     });
 
