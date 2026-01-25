@@ -27,6 +27,7 @@ fn pacmap_embedding(data: Array2<f32>, config: &PacmapConfig) -> Result<Array2<f
         .seed(42)
         .num_iters((config.mn_phases, config.nn_phases, config.fp_phases))
         .learning_rate(config.learning_rate)
+        .override_neighbors(config.n_neighbors)
         .build();
 
     let (embedding, _) = fit_transform(data.view(), pacmap_config)

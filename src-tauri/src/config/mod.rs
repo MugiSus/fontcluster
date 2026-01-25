@@ -82,6 +82,7 @@ pub struct PacmapConfig {
     pub nn_phases: usize,
     pub fp_phases: usize,
     pub learning_rate: f32,
+    pub n_neighbors: usize,
 }
 
 impl Default for PacmapConfig {
@@ -91,6 +92,7 @@ impl Default for PacmapConfig {
             nn_phases: 100,
             fp_phases: 100,
             learning_rate: 1.0,
+            n_neighbors: 10,
         }
     }
 }

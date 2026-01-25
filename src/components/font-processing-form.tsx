@@ -99,6 +99,7 @@ export function FontProcessingForm() {
         nn_phases: Number(formData.get('pacmap-nn-phases')),
         fp_phases: Number(formData.get('pacmap-fp-phases')),
         learning_rate: Number(formData.get('pacmap-learning-rate')),
+        n_neighbors: Number(formData.get('pacmap-n-neighbors')) || 10,
       },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
@@ -127,7 +128,7 @@ export function FontProcessingForm() {
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
-          class='flex items-center gap-1.5 text-xs uppercase'
+          class='flex items-center gap-1.5 text-xs uppercase text-muted-foreground'
         >
           <TypeIcon class='mb-0.5 size-3 text-primary' />
           Preview Text
@@ -149,10 +150,10 @@ export function FontProcessingForm() {
       <TextField class='grid w-full items-center gap-1'>
         <TextFieldLabel
           for='weights'
-          class='flex items-center gap-1.5 text-xs uppercase'
+          class='flex items-center gap-1.5 text-xs uppercase text-muted-foreground'
         >
           <WeightIcon class='mb-0.5 size-3 text-primary' />
-          Font Weights
+          Weights
         </TextFieldLabel>
         <WeightSelector
           weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
@@ -448,6 +449,20 @@ export function FontProcessingForm() {
                     1.0
                   }
                   step='0.1'
+                  class='h-7 text-xs'
+                />
+              </TextField>
+              <TextField class='gap-0.5'>
+                <TextFieldLabel class='text-xxs'>Neighbors</TextFieldLabel>
+                <TextFieldInput
+                  type='number'
+                  name='pacmap-n-neighbors'
+                  value={
+                    appState.session.config?.algorithm?.pacmap?.n_neighbors ??
+                    10
+                  }
+                  step='1'
+                  min='1'
                   class='h-7 text-xs'
                 />
               </TextField>

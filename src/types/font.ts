@@ -20,6 +20,7 @@ export interface PacmapOptions {
   nn_phases: number;
   fp_phases: number;
   learning_rate: number;
+  n_neighbors: number;
 }
 
 export interface HdbscanOptions {
