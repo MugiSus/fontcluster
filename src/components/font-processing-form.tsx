@@ -219,17 +219,18 @@ export function FontProcessingForm() {
                   }
                 >
                   <option value='system_fonts'>Installed Fonts</option>
+                  <hr />
                   <option value='google_fonts_top100'>
-                    Google Fonts (Popular 100)
+                    Google Fonts Popular 100
                   </option>
                   <option value='google_fonts_top300'>
-                    Google Fonts (Popular 300)
+                    Google Fonts Popular 300
                   </option>
                   <option value='google_fonts_top500'>
-                    Google Fonts (Popular 500)
+                    Google Fonts Popular 500
                   </option>
                   <option value='google_fonts_top1000'>
-                    Google Fonts (Popular 1000)
+                    Google Fonts Popular 1000
                   </option>
                 </select>
               </TextField>
