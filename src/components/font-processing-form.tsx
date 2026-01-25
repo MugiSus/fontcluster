@@ -132,7 +132,7 @@ export function FontProcessingForm() {
           <TypeIcon class='mb-0.5 size-3 text-primary' />
           Preview Text
         </TextFieldLabel>
-        <TypeIcon class='absolute left-3 top-8 mt-0.5 size-4 text-muted-foreground' />
+        <TypeIcon class='absolute left-3 top-8 size-4 text-muted-foreground' />
         <TextFieldInput
           type='text'
           name='preview-text'
@@ -143,7 +143,7 @@ export function FontProcessingForm() {
           }
           placeholder='Preview Text...'
           spellcheck='false'
-          class='pl-9 pt-[9px]'
+          class='pl-9 pt-2'
         />
       </TextField>
       <TextField class='grid w-full items-center gap-1'>
