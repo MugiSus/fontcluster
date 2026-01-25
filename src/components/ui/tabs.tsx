@@ -95,7 +95,7 @@ export const TabsContent: ParentComponent<TabsContentProps> = (props) => {
 
   return (
     <div
-      class={`mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+      class={`mt-1.5 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
         isActive() ? 'block' : 'hidden'
       } ${props.class || ''}`}
     >
