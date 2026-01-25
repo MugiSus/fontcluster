@@ -49,6 +49,7 @@ pub fn fetch_subset_fonts(
         FontSet::GoogleFontsTop100 => 100,
         FontSet::GoogleFontsTop300 => 300,
         FontSet::GoogleFontsTop500 => 500,
+        FontSet::GoogleFontsTop1000 => 1000,
     };
 
     let target_fonts = all_fonts.into_iter().take(limit).collect::<Vec<_>>();

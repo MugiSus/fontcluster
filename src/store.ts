@@ -11,7 +11,7 @@ import {
 export interface AppState {
   session: {
     id: string;
-    config: SessionConfig | null;
+    config: SessionConfig;
     directory: string;
     status: ProcessStatus;
     isProcessing: boolean;
@@ -62,11 +62,42 @@ const FUSE_OPTIONS = {
   threshold: 0.25,
 };
 
+export const DEFAULT_SESSION_CONFIG: SessionConfig = {
+  app_version: '0.3.0',
+  session_id: '',
+  preview_text: 'ü',
+  date: new Date().toISOString(),
+  process_status: 'empty',
+  clusters_amount: 0,
+  samples_amount: 0,
+  weights: [400],
+  discovered_fonts: {},
+  algorithm: {
+    discovery: { font_set: 'google_fonts_top300' },
+    image: { font_size: 128 },
+    hog: {
+      orientations: 12,
+      cell_side: 16,
+      block_side: 2,
+      block_stride: 2,
+      width: 128,
+      height: 64,
+    },
+    pacmap: {
+      mn_phases: 100,
+      nn_phases: 100,
+      fp_phases: 100,
+      learning_rate: 1.0,
+    },
+    hdbscan: { min_cluster_size: 16, min_samples: 16 },
+  },
+};
+
 // Define the store with explicit type to avoid circular inference errors
 export const [appState, setAppState] = createStore<AppState>({
   session: {
     id: '',
-    config: null,
+    config: DEFAULT_SESSION_CONFIG,
     directory: '',
     status: 'empty',
     isProcessing: false,

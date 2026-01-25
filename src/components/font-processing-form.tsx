@@ -228,6 +228,9 @@ export function FontProcessingForm() {
                   <option value='google_fonts_top500'>
                     Google Fonts (Popular 500)
                   </option>
+                  <option value='google_fonts_top1000'>
+                    Google Fonts (Popular 1000)
+                  </option>
                 </select>
               </TextField>
             </div>

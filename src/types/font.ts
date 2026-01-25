@@ -35,7 +35,8 @@ export type FontSet =
   | 'system_fonts'
   | 'google_fonts_top100'
   | 'google_fonts_top300'
-  | 'google_fonts_top500';
+  | 'google_fonts_top500'
+  | 'google_fonts_top1000';
 
 export interface DiscoveryOptions {
   font_set: FontSet;
