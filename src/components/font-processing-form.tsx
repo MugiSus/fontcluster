@@ -128,7 +128,7 @@ export function FontProcessingForm() {
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
-          class='flex items-center gap-1.5 text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs font-normal uppercase text-muted-foreground'
         >
           <TypeIcon class='mb-0.5 size-3 text-primary' />
           Preview Text
@@ -150,7 +150,7 @@ export function FontProcessingForm() {
       <TextField class='grid w-full items-center gap-1'>
         <TextFieldLabel
           for='weights'
-          class='flex items-center gap-1.5 text-xs uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs font-normal uppercase text-muted-foreground'
         >
           <WeightIcon class='mb-0.5 size-3 text-primary' />
           Weights
