@@ -46,7 +46,8 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/google_fonts_popularity.json"
+      "resources/google_fonts_popularity.json",
+      "resources/example/019bf61b-37d4-70a1-ace5-b4aaded78fab.zip"
     ],
     "macOS": {
       "signingIdentity": "-"

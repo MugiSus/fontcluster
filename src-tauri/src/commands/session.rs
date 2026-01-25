@@ -44,23 +44,34 @@ pub async fn get_available_sessions() -> Result<String> {
 }
 
 #[command]
-pub async fn get_latest_session_id() -> Result<Option<String>> {
+pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<String>> {
     let base = AppState::get_base_dir()?.join("Generated");
-    if !base.exists() { return Ok(None); }
     
     let mut latest: Option<(DateTime<Utc>, String)> = None;
-    for entry in fs::read_dir(base)? {
-        let path = entry?.path();
-        if path.is_dir() {
-            let config_path = path.join("config.json");
-            if let Ok(s) = serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?) {
-                let current_time = s.modified_at;
-                if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
-                    latest = Some((current_time, s.id));
+    if base.exists() {
+        if let Ok(entries) = fs::read_dir(&base) {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.is_dir() {
+                    let config_path = path.join("config.json");
+                    if let Ok(content) = fs::read_to_string(&config_path) {
+                        if let Ok(s) = serde_json::from_str::<SessionConfig>(&content) {
+                            let current_time = s.modified_at;
+                            if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
+                                latest = Some((current_time, s.id));
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+
+    if latest.is_none() {
+        println!("✨ No existing sessions found. Attempting to extract example session...");
+        return crate::core::extract_example_session(&app);
+    }
+    
     Ok(latest.map(|(_, id)| id))
 }
 
