@@ -124,7 +124,7 @@ export function FontProcessingForm() {
       onSubmit={handleSubmit}
       class='flex min-h-0 flex-1 flex-col items-stretch gap-1.5 pl-1.5'
     >
-      <TextField class='relative grid w-full items-center gap-1.5'>
+      <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
           class='flex items-center gap-1.5 text-xs uppercase'
@@ -146,7 +146,7 @@ export function FontProcessingForm() {
           class='pl-9 pt-[9px]'
         />
       </TextField>
-      <TextField class='grid w-full items-center gap-1.5'>
+      <TextField class='grid w-full items-center gap-1'>
         <TextFieldLabel
           for='weights'
           class='flex items-center gap-1.5 text-xs uppercase'
@@ -162,7 +162,7 @@ export function FontProcessingForm() {
         />
       </TextField>
 
-      <section class='flex min-h-0 flex-col gap-1.5'>
+      <section class='flex min-h-0 flex-col gap-1'>
         <input
           type='checkbox'
           id='advanced-options'
@@ -506,8 +506,8 @@ export function FontProcessingForm() {
         </div>
       </section>
 
-      <div class='mt-auto flex flex-col gap-1.5 pt-1'>
-        <div class='flex items-center gap-1'>
+      <div class='mt-auto flex flex-col gap-0.5'>
+        <div class='flex items-center gap-1 py-1 pb-1.5'>
           <Tooltip>
             <TooltipTrigger
               as={Button<'button'>}
@@ -550,7 +550,7 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='flex flex-col gap-1'>
+        <div class='flex flex-col gap-0.5'>
           <div class='grid grid-cols-5 gap-1'>
             <div
               class='h-1 overflow-hidden rounded-full bg-primary/30'
@@ -690,20 +690,20 @@ export function FontProcessingForm() {
               </span>
             </Show>
           </div>
+        </div>
 
-          <div class='flex items-center justify-between text-[9px] text-muted-foreground/50'>
-            <span>© 2026 mugisus</span>
-            <a
-              href='https://fontcluster.mugisus.me'
-              onClick={(e) => {
-                e.preventDefault();
-                openUrl('https://fontcluster.mugisus.me');
-              }}
-              class='hover:text-primary hover:underline'
-            >
-              fontcluster.mugisus.me
-            </a>
-          </div>
+        <div class='flex items-center justify-between text-[9px] text-muted-foreground/50'>
+          <span>© 2026 mugisus</span>
+          <a
+            href='https://fontcluster.mugisus.me'
+            onClick={(e) => {
+              e.preventDefault();
+              openUrl('https://fontcluster.mugisus.me');
+            }}
+            class='hover:text-primary hover:underline'
+          >
+            fontcluster.mugisus.me
+          </a>
         </div>
       </div>
     </form>
