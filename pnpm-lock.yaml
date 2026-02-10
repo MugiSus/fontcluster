@@ -11,9 +11,9 @@ importers:
       '@corvu/resizable':
         specifier: ^0.2.5
         version: 0.2.5(solid-js@1.9.7)
-      '@fontsource-variable/chivo':
-        specifier: ^5.2.6
-        version: 5.2.6
+      '@fontsource-variable/geist':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@fontsource/noto-sans':
         specifier: ^5.2.10
         version: 5.2.10
@@ -425,8 +425,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@fontsource-variable/chivo@5.2.6':
-    resolution: {integrity: sha512-5T6/Zx3EtzrMTqO8pUlficJFyFuVxu/ssVEtrbF6WmDJGmdBZsHazR9sGiG3Z5+QHHuowHIDJHBshmqrCGA52g==}
+  '@fontsource-variable/geist@5.2.8':
+    resolution: {integrity: sha512-cJ6m9e+8MQ5dCYJsLylfZrgBh6KkG4bOLckB35Tr9J/EqdkEM6QllH5PxqP1dhTvFup+HtMRPuz9xOjxXJggxw==}
 
   '@fontsource/noto-sans@5.2.10':
     resolution: {integrity: sha512-J58RVfS/C0Z2VBF+PoU260Tx8cdRGYuS+e3yQe4hYaIYDl0sEVn5CzlLo5zVRvQD0HaIUTV8AZMfqR7rtdEpqQ==}
@@ -2199,7 +2199,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@fontsource-variable/chivo@5.2.6': {}
+  '@fontsource-variable/geist@5.2.8': {}
 
   '@fontsource/noto-sans@5.2.10': {}
 

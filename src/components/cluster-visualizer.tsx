@@ -339,7 +339,7 @@ export function ClusterVisualizer() {
       <Show
         when={allPoints().length > 0}
         fallback={
-          <div class='flex size-full flex-col items-center justify-center rounded-md bg-muted text-sm font-light text-muted-foreground'>
+          <div class='flex size-full flex-col items-center justify-center rounded-md bg-muted text-sm text-muted-foreground'>
             <CircleSlash2Icon class='mb-4 size-6' />
             <h2>No results found</h2>
             <p class='text-xs'>Complete processing to see results</p>

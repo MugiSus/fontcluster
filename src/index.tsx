@@ -7,7 +7,7 @@ import {
 } from '@kobalte/core';
 
 import '@fontsource/noto-sans/400.css';
-import '@fontsource-variable/chivo';
+import '@fontsource-variable/geist';
 
 import App from './App';
 import './index.css';

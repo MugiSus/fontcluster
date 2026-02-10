@@ -181,7 +181,7 @@ export function FontProcessingForm() {
         <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-muted p-2 text-muted-foreground shadow-sm peer-checked:block'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase text-muted-foreground'>
                 Discovery
               </div>
               <Tooltip>
@@ -243,7 +243,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase text-muted-foreground'>
                 Image Generation
               </div>
               <Tooltip>
@@ -279,7 +279,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase text-muted-foreground'>
                 HOG (Vectorization)
               </div>
               <Tooltip>
@@ -376,7 +376,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase text-muted-foreground'>
                 PaCMAP (D-Reduction)
               </div>
               <Tooltip>
@@ -471,7 +471,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase tracking-wider text-muted-foreground'>
+              <div class='text-xxs font-medium uppercase text-muted-foreground'>
                 HDBSCAN (Clustering)
               </div>
               <Tooltip>
@@ -670,7 +670,7 @@ export function FontProcessingForm() {
 
           <div
             class={cn(
-              'flex items-end justify-between text-xxs font-medium tracking-tighter text-muted-foreground',
+              'flex items-end justify-between text-xxs font-medium text-muted-foreground',
               appState.session.isProcessing && 'animate-pulse',
             )}
           >

@@ -21,7 +21,7 @@
   "license": "GPL-2.0-or-later",
   "dependencies": {
     "@corvu/resizable": "^0.2.5",
-    "@fontsource-variable/chivo": "^5.2.6",
+    "@fontsource-variable/geist": "^5.2.8",
     "@fontsource/noto-sans": "^5.2.10",
     "@kobalte/core": "^0.13.10",
     "@tanstack/solid-virtual": "^3.13.18",

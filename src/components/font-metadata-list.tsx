@@ -90,14 +90,14 @@ export function FontMetadataList(props: FontMetadataListProps) {
                     class={`mb-0.5 size-4 ${getClusterTextColor(metadata.computed?.k)}`}
                   />
                 </Show>
-                <div class='text-sm font-light text-foreground'>
+                <div class='text-sm text-foreground'>
                   {
                     WEIGHT_LABELS[
                       (Math.round(metadata.weight / 100) * 100) as FontWeight
                     ].short
                   }
                 </div>
-                <div class='text-nowrap text-sm font-light text-muted-foreground'>
+                <div class='text-nowrap text-sm text-muted-foreground'>
                   {metadata.font_name}
                 </div>
               </div>
