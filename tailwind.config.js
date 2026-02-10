@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        'chivo': ['Chivo Variable', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'sans-serif'],
-        'sans': ['Chivo Variable', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'sans-serif'],
+        'geist': ['Geist Variable', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'sans-serif'],
+        'sans': ['Geist Variable', 'Noto Sans JP', 'Hiragino Kaku Gothic Pro', 'Yu Gothic', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",

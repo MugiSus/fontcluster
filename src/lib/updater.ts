@@ -33,7 +33,7 @@ export async function checkForAppUpdates(isManual = false) {
     }
 
     if (isManual)
-      toast.info('You are using the latest version.', {
+      toast.info("You're using the latest version. All set!", {
         duration: 3000,
       });
 
