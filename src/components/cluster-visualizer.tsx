@@ -4,7 +4,6 @@ import {
   createMemo,
   createSignal,
   onCleanup,
-  untrack,
 } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -49,14 +48,12 @@ const SELECTED_POINT_RADIUS = 4.5;
 const LABEL_FONT_SIZE = 13;
 const LABEL_OFFSET_Y = 12;
 const LABEL_MIN_SCALE = 1.75;
-const MAX_VISIBLE_LABELS = 40;
 const MAX_RENDERER_RESOLUTION = 2;
 const POINT_TEXTURE_SIZE = 16;
 const VIEWPORT_EASE = 'easeOutSine';
 
 export function ClusterVisualizer() {
   const [showImages, setShowImages] = createSignal(true);
-  const [isMoving, setIsMoving] = createSignal(false);
   const [rendererResolution, setRendererResolution] = createSignal(1);
   const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
     400,
@@ -77,7 +74,6 @@ export function ClusterVisualizer() {
   let pointTexture: Texture | undefined;
   let pointTextureResolution = 0;
 
-  let interactionTimer: number | undefined;
   let hasInitializedViewport = false;
   let isInitializing = false;
   let lastAutoCenteredKey: string | null = null;
@@ -472,7 +468,7 @@ export function ClusterVisualizer() {
     const selectedKey = appState.ui.selectedFontKey;
     const activeWeights = new Set(visualizerWeights());
     const filteredKeys = appState.fonts.filteredKeys;
-    const allowImages = showImages() && !isMoving();
+    const allowImages = showImages();
     const scale = pointScale();
     const imageTint = getTextColor();
     const visibleKeys = new Set<string>();
@@ -516,7 +512,7 @@ export function ClusterVisualizer() {
     const scale = pointScale();
     const visibleKeys = new Set<string>();
     const labelTint = getTextColor();
-    const allowVisibleLabels = !isMoving() && scale >= LABEL_MIN_SCALE;
+    const allowVisibleLabels = scale >= LABEL_MIN_SCALE;
 
     const syncLabelSprite = (point: VisualizedPoint) => {
       const label = ensureLabelSprite(point);
@@ -534,18 +530,14 @@ export function ClusterVisualizer() {
       const selectedPoint = pointsMap().get(selectedKey);
       if (
         selectedPoint &&
-        activeWeights.has(selectedPoint.metadata.weight as FontWeight) &&
-        isPointInsideVisibleBounds(selectedPoint, 120)
+        activeWeights.has(selectedPoint.metadata.weight as FontWeight)
       ) {
         syncLabelSprite(selectedPoint);
       }
     }
 
     if (allowVisibleLabels) {
-      let rendered = visibleKeys.size;
-
       for (const key of appState.fonts.filteredKeys) {
-        if (rendered >= MAX_VISIBLE_LABELS) break;
         if (key === selectedKey) continue;
 
         const point = pointsMap().get(key);
@@ -553,10 +545,8 @@ export function ClusterVisualizer() {
         if (!activeWeights.has(point.metadata.weight as FontWeight)) {
           continue;
         }
-        if (!isPointInsideVisibleBounds(point, 96)) continue;
 
         syncLabelSprite(point);
-        rendered += 1;
       }
     }
 
@@ -594,32 +584,17 @@ export function ClusterVisualizer() {
     });
   };
 
-  const scheduleInteractionEnd = () => {
-    if (interactionTimer) window.clearTimeout(interactionTimer);
-
-    interactionTimer = window.setTimeout(() => {
-      untrack(() => {
-        setIsMoving(false);
-        syncImageLayer();
-        syncLabelLayer();
-      });
-      interactionTimer = undefined;
-    }, 180);
-  };
-
   const handleViewportMove = () => {
-    setIsMoving(true);
     syncImageLayer();
-    scheduleInteractionEnd();
+    syncLabelLayer();
   };
 
   const handleViewportZoom = () => {
-    setIsMoving(true);
     updatePointParticleScales();
     redrawGuide();
     redrawSelection();
     syncImageLayer();
-    scheduleInteractionEnd();
+    syncLabelLayer();
   };
 
   const selectPointAtScreenPosition = (
@@ -722,12 +697,6 @@ export function ClusterVisualizer() {
       imagesVisible: showImages(),
     };
     void tracked;
-    syncImageLayer();
-  });
-
-  createEffect(() => {
-    const moving = isMoving();
-    void moving;
     syncImageLayer();
   });
 
@@ -864,9 +833,6 @@ export function ClusterVisualizer() {
 
         viewport.on('moved', handleViewportMove);
         viewport.on('zoomed', handleViewportZoom);
-        viewport.on('moved-end', scheduleInteractionEnd);
-        viewport.on('zoomed-end', scheduleInteractionEnd);
-
         app.canvas.addEventListener('pointerdown', (event) => {
           if (event.button !== 0) return;
 
@@ -910,8 +876,6 @@ export function ClusterVisualizer() {
   });
 
   onCleanup(() => {
-    if (interactionTimer) window.clearTimeout(interactionTimer);
-
     clearTransientLayers();
     pointTexture?.destroy(true);
     viewport?.destroy();
