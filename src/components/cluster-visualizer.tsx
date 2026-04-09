@@ -8,7 +8,12 @@ import {
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
-import { type FontWeight, type FontMetadata } from '../types/font';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import {
+  type FontWeight,
+  type FontMetadata,
+  WEIGHT_LABELS,
+} from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { ZoomControls } from './zoom-controls';
 import { ImageVisibilityControl } from './image-visibility-control';
@@ -334,6 +339,37 @@ export function ClusterVisualizer() {
     return { visibleFilteredPoints, visibleUnfilteredPoints };
   });
 
+  const nearestSuggestions = createMemo(() => {
+    const selectedKey = appState.ui.selectedFontKey;
+    if (!selectedKey) return [];
+
+    const selectedPoint = pointsMap().get(selectedKey);
+    if (!selectedPoint) return [];
+
+    const activeWeights = new Set(visualizerWeights());
+    const maxDistance = 100 * zoomFactor();
+
+    return allPoints()
+      .filter((point) => {
+        return (
+          point.key !== selectedKey &&
+          activeWeights.has(point.metadata.weight as FontWeight) &&
+          appState.fonts.filteredKeys.has(point.key)
+        );
+      })
+      .map((point) => {
+        const dx = point.x - selectedPoint.x;
+        const dy = point.y - selectedPoint.y;
+        return {
+          ...point,
+          distance: Math.hypot(dx, dy),
+        };
+      })
+      .filter((point) => point.distance <= maxDistance)
+      .toSorted((a, b) => a.distance - b.distance)
+      .slice(0, 4);
+  });
+
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
       <Show
@@ -369,6 +405,44 @@ export function ClusterVisualizer() {
             />
           </div>
         </div>
+        <Show when={nearestSuggestions().length > 0}>
+          <div class='pointer-events-none absolute bottom-2.5 left-1/2 z-10 flex -translate-x-1/2 items-end gap-2'>
+            <For each={nearestSuggestions()}>
+              {(suggestion) => {
+                const weight = (Math.round(suggestion.metadata.weight / 100) *
+                  100) as FontWeight;
+                return (
+                  <button
+                    type='button'
+                    class='pointer-events-auto flex h-16 w-40 flex-col items-start justify-center rounded-md border bg-background/95 px-3 text-left shadow-sm backdrop-blur transition-colors hover:bg-muted'
+                    onClick={() => setSelectedFontKey(suggestion.key)}
+                    title={`${suggestion.metadata.font_name} (${Math.round(
+                      suggestion.distance / zoomFactor(),
+                    )}px)`}
+                  >
+                    <div class='mb-1 flex w-full items-center justify-between gap-2 text-xs text-muted-foreground'>
+                      <span class='truncate'>
+                        {WEIGHT_LABELS[weight]?.short ??
+                          suggestion.metadata.weight}
+                      </span>
+                      <span>
+                        {Math.round(suggestion.distance / zoomFactor())}px
+                      </span>
+                    </div>
+                    <img
+                      class='h-7 w-full max-w-none object-contain mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
+                      src={convertFileSrc(
+                        `${appState.session.directory}/samples/${suggestion.metadata.safe_name}/sample.png`,
+                      )}
+                      alt={`Suggestion for ${suggestion.metadata.font_name}`}
+                      decoding='sync'
+                    />
+                  </button>
+                );
+              }}
+            </For>
+          </div>
+        </Show>
         <svg
           ref={(el) => {
             svgElement = el;
