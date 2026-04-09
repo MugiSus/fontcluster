@@ -298,6 +298,18 @@ export function ClusterVisualizer() {
       .addAll(activePoints);
   });
 
+  const activeWeightQuadtree = createMemo(() => {
+    const activeWeights = new Set(visualizerWeights());
+    const activePoints = allPoints().filter((point) =>
+      activeWeights.has(point.metadata.weight as FontWeight),
+    );
+
+    return quadtree<VisualizedPoint>()
+      .x((d) => d.x)
+      .y((d) => d.y)
+      .addAll(activePoints);
+  });
+
   const visiblePoints = createMemo(() => {
     const vb = viewBox();
     const size = svgSize();
@@ -346,28 +358,39 @@ export function ClusterVisualizer() {
     const selectedPoint = pointsMap().get(selectedKey);
     if (!selectedPoint) return [];
 
-    const activeWeights = new Set(visualizerWeights());
     const maxDistance = 100 * zoomFactor();
+    const nearbyPoints: Array<VisualizedPoint & { distance: number }> = [];
 
-    return allPoints()
-      .filter((point) => {
-        return (
-          point.key !== selectedKey &&
-          activeWeights.has(point.metadata.weight as FontWeight) &&
-          appState.fonts.filteredKeys.has(point.key)
-        );
-      })
-      .map((point) => {
-        const dx = point.x - selectedPoint.x;
-        const dy = point.y - selectedPoint.y;
-        return {
-          ...point,
-          distance: Math.hypot(dx, dy),
-        };
-      })
-      .filter((point) => point.distance <= maxDistance)
-      .toSorted((a, b) => a.distance - b.distance)
-      .slice(0, 4);
+    activeWeightQuadtree().visit((node, x0, y0, x1, y1) => {
+      if (
+        x0 > selectedPoint.x + maxDistance ||
+        x1 < selectedPoint.x - maxDistance ||
+        y0 > selectedPoint.y + maxDistance ||
+        y1 < selectedPoint.y - maxDistance
+      ) {
+        return true;
+      }
+
+      if (!node.length) {
+        let leaf = node;
+        do {
+          const data = leaf.data;
+          if (data && data.key !== selectedKey) {
+            const dx = data.x - selectedPoint.x;
+            const dy = data.y - selectedPoint.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance <= maxDistance) {
+              nearbyPoints.push({ ...data, distance });
+            }
+          }
+          leaf = leaf.next as typeof leaf;
+        } while (leaf);
+      }
+
+      return false;
+    });
+
+    return nearbyPoints.toSorted((a, b) => a.distance - b.distance).slice(0, 4);
   });
 
   return (
