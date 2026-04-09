@@ -10,6 +10,8 @@ import { emit } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import {
   Application,
+  Assets,
+  BitmapText,
   Container,
   Graphics,
   Particle,
@@ -44,8 +46,13 @@ const IMAGE_OFFSET_Y = 6;
 const BASE_POINT_SIZE = 3;
 const FAMILY_POINT_RADIUS = 3;
 const SELECTED_POINT_RADIUS = 4.5;
+const LABEL_FONT_SIZE = 13;
+const LABEL_OFFSET_Y = 12;
+const LABEL_MIN_SCALE = 1.75;
+const MAX_VISIBLE_LABELS = 40;
 const MAX_RENDERER_RESOLUTION = 2;
 const POINT_TEXTURE_SIZE = 16;
+const VIEWPORT_EASE = 'easeOutSine';
 
 export function ClusterVisualizer() {
   const [showImages, setShowImages] = createSignal(true);
@@ -66,6 +73,7 @@ export function ClusterVisualizer() {
   let activePointLayer: ParticleContainer<Particle> | undefined;
   let selectionGraphics: Graphics | undefined;
   let imageLayer: Container | undefined;
+  let labelLayer: Container | undefined;
   let pointTexture: Texture | undefined;
   let pointTextureResolution = 0;
 
@@ -75,7 +83,9 @@ export function ClusterVisualizer() {
   let lastAutoCenteredKey: string | null = null;
 
   const imageSprites = new Map<string, Sprite>();
+  const labelSprites = new Map<string, BitmapText>();
   const imageTextureCache = new Map<string, Texture>();
+  const imageTextureLoads = new Map<string, Promise<Texture | null>>();
 
   const allPoints = createMemo(() =>
     buildVisualizedPoints(appState.fonts.data),
@@ -128,6 +138,9 @@ export function ClusterVisualizer() {
   const getGuideColor = () =>
     document.documentElement.classList.contains('dark') ? 0x3f3f46 : 0xd4d4d8;
 
+  const getTextColor = () =>
+    document.documentElement.classList.contains('dark') ? 0xf5f5f5 : 0x18181b;
+
   const getImageSource = (point: VisualizedPoint) => {
     if (!appState.session.directory) return '';
 
@@ -143,9 +156,28 @@ export function ClusterVisualizer() {
     const cached = imageTextureCache.get(src);
     if (cached) return cached;
 
-    const texture = Texture.from(src);
-    imageTextureCache.set(src, texture);
-    return texture;
+    const loading = imageTextureLoads.get(src);
+    if (!loading) {
+      const nextLoad = (Assets.load(src) as Promise<Texture>)
+        .then((texture) => {
+          imageTextureCache.set(src, texture);
+          imageTextureLoads.delete(src);
+
+          if (imageLayer) {
+            syncImageLayer();
+          }
+
+          return texture;
+        })
+        .catch(() => {
+          imageTextureLoads.delete(src);
+          return null;
+        });
+
+      imageTextureLoads.set(src, nextLoad);
+    }
+
+    return null;
   };
 
   const clearTransientLayers = () => {
@@ -154,8 +186,16 @@ export function ClusterVisualizer() {
     }
     imageSprites.clear();
 
+    for (const label of labelSprites.values()) {
+      label.destroy();
+    }
+    labelSprites.clear();
+
     if (imageLayer) {
       imageLayer.removeChildren();
+    }
+    if (labelLayer) {
+      labelLayer.removeChildren();
     }
   };
 
@@ -170,12 +210,12 @@ export function ClusterVisualizer() {
     graphics.circle(x, y, radius).fill({ color, alpha });
   };
 
-  const createPointTexture = () => {
-    if (!app) return;
+  const createPointTexture = (): Texture | undefined => {
+    if (!app) return undefined;
 
     const resolution = rendererResolution();
     if (pointTexture && pointTextureResolution === resolution) {
-      return;
+      return pointTexture;
     }
 
     const pointGraphic = new Graphics()
@@ -205,6 +245,7 @@ export function ClusterVisualizer() {
 
     pointGraphic.destroy();
     previousTexture?.destroy(true);
+    return nextTexture;
   };
 
   const redrawGuide = () => {
@@ -240,6 +281,7 @@ export function ClusterVisualizer() {
 
     const activeWeights = new Set(visualizerWeights());
     const filteredKeys = appState.fonts.filteredKeys;
+    const particleScale = BASE_POINT_SIZE / POINT_TEXTURE_SIZE / pointScale();
 
     inactivePointLayer.removeParticles();
     activePointLayer.removeParticles();
@@ -255,8 +297,8 @@ export function ClusterVisualizer() {
         y: point.y,
         anchorX: 0.5,
         anchorY: 0.5,
-        scaleX: BASE_POINT_SIZE / POINT_TEXTURE_SIZE,
-        scaleY: BASE_POINT_SIZE / POINT_TEXTURE_SIZE,
+        scaleX: particleScale,
+        scaleY: particleScale,
         tint: getClusterTintColor(point.metadata.computed?.k),
         alpha: filteredKeys.has(point.key) ? 1 : 0.2,
       });
@@ -273,6 +315,26 @@ export function ClusterVisualizer() {
 
     inactivePointLayer.update();
     activePointLayer.update();
+  };
+
+  const updatePointParticleScales = () => {
+    const particleScale = BASE_POINT_SIZE / POINT_TEXTURE_SIZE / pointScale();
+
+    if (inactivePointLayer) {
+      for (const particle of inactivePointLayer.particleChildren) {
+        particle.scaleX = particleScale;
+        particle.scaleY = particleScale;
+      }
+      inactivePointLayer.update();
+    }
+
+    if (activePointLayer) {
+      for (const particle of activePointLayer.particleChildren) {
+        particle.scaleX = particleScale;
+        particle.scaleY = particleScale;
+      }
+      activePointLayer.update();
+    }
   };
 
   const redrawSelection = () => {
@@ -382,14 +444,37 @@ export function ClusterVisualizer() {
     return sprite;
   };
 
+  const ensureLabelSprite = (point: VisualizedPoint) => {
+    const existing = labelSprites.get(point.key);
+    if (existing) return existing;
+
+    const label = new BitmapText({
+      text: point.metadata.font_name,
+      anchor: { x: 0.5, y: 1 },
+      roundPixels: true,
+      style: {
+        fontFamily: 'sans-serif',
+        fontSize: LABEL_FONT_SIZE,
+        fill: 0xffffff,
+        align: 'center',
+      },
+    });
+
+    label.eventMode = 'none';
+    labelLayer?.addChild(label);
+    labelSprites.set(point.key, label);
+    return label;
+  };
+
   const syncImageLayer = () => {
-    if (!viewport) return;
+    if (!viewport || !imageLayer) return;
 
     const selectedKey = appState.ui.selectedFontKey;
     const activeWeights = new Set(visualizerWeights());
     const filteredKeys = appState.fonts.filteredKeys;
     const allowImages = showImages() && !isMoving();
     const scale = pointScale();
+    const imageTint = getTextColor();
     const visibleKeys = new Set<string>();
 
     for (const point of allPoints()) {
@@ -409,7 +494,7 @@ export function ClusterVisualizer() {
       const sprite = ensureImageSprite(point);
       if (!sprite) continue;
 
-      sprite.tint = getClusterTintColor(point.metadata.computed?.k);
+      sprite.tint = imageTint;
       sprite.alpha = filteredKeys.has(point.key) ? 1 : 0.2;
       sprite.position.set(point.x, point.y + IMAGE_OFFSET_Y / scale);
       sprite.width = IMAGE_WIDTH / scale;
@@ -424,7 +509,60 @@ export function ClusterVisualizer() {
   };
 
   const syncLabelLayer = () => {
-    // Text labels are temporarily disabled.
+    if (!viewport || !labelLayer) return;
+
+    const selectedKey = appState.ui.selectedFontKey;
+    const activeWeights = new Set(visualizerWeights());
+    const scale = pointScale();
+    const visibleKeys = new Set<string>();
+    const labelTint = getTextColor();
+    const allowVisibleLabels = !isMoving() && scale >= LABEL_MIN_SCALE;
+
+    const syncLabelSprite = (point: VisualizedPoint) => {
+      const label = ensureLabelSprite(point);
+
+      label.text = point.metadata.font_name;
+      label.tint = labelTint;
+      label.alpha = 0.92;
+      label.position.set(point.x, point.y - LABEL_OFFSET_Y / scale);
+      label.scale.set(1 / scale);
+      label.visible = true;
+      visibleKeys.add(point.key);
+    };
+
+    if (selectedKey) {
+      const selectedPoint = pointsMap().get(selectedKey);
+      if (
+        selectedPoint &&
+        activeWeights.has(selectedPoint.metadata.weight as FontWeight) &&
+        isPointInsideVisibleBounds(selectedPoint, 120)
+      ) {
+        syncLabelSprite(selectedPoint);
+      }
+    }
+
+    if (allowVisibleLabels) {
+      let rendered = visibleKeys.size;
+
+      for (const key of appState.fonts.filteredKeys) {
+        if (rendered >= MAX_VISIBLE_LABELS) break;
+        if (key === selectedKey) continue;
+
+        const point = pointsMap().get(key);
+        if (!point) continue;
+        if (!activeWeights.has(point.metadata.weight as FontWeight)) {
+          continue;
+        }
+        if (!isPointInsideVisibleBounds(point, 96)) continue;
+
+        syncLabelSprite(point);
+        rendered += 1;
+      }
+    }
+
+    for (const [key, label] of labelSprites) {
+      label.visible = visibleKeys.has(key);
+    }
   };
 
   const syncOverlays = () => {
@@ -451,6 +589,7 @@ export function ClusterVisualizer() {
     viewport.animate({
       position: { x: point.x, y: point.y },
       time: 240,
+      ease: VIEWPORT_EASE,
       removeOnInterrupt: true,
     });
   };
@@ -476,6 +615,7 @@ export function ClusterVisualizer() {
 
   const handleViewportZoom = () => {
     setIsMoving(true);
+    updatePointParticleScales();
     redrawGuide();
     redrawSelection();
     syncImageLayer();
@@ -526,6 +666,7 @@ export function ClusterVisualizer() {
       position: { x: viewport.center.x, y: viewport.center.y },
       scale: viewport.scale.x / factor,
       time: 160,
+      ease: VIEWPORT_EASE,
       removeOnInterrupt: true,
     });
   };
@@ -538,6 +679,7 @@ export function ClusterVisualizer() {
       width: WORLD_SIZE,
       height: WORLD_SIZE,
       time: 200,
+      ease: VIEWPORT_EASE,
       removeOnInterrupt: true,
     });
   };
@@ -605,6 +747,7 @@ export function ClusterVisualizer() {
     if (app) {
       createPointTexture();
       rebuildPointLayers();
+      updatePointParticleScales();
     }
     syncOverlays();
   });
@@ -656,11 +799,14 @@ export function ClusterVisualizer() {
           passiveWheel: false,
         });
 
-        createPointTexture();
+        const basePointTexture = createPointTexture();
+        if (!basePointTexture) {
+          return;
+        }
 
         viewport
           .drag({ mouseButtons: 'right' })
-          .wheel()
+          .wheel({ smooth: 12, interrupt: true })
           .pinch()
           .decelerate()
           .clamp({ direction: 'all' })
@@ -680,7 +826,7 @@ export function ClusterVisualizer() {
             uvs: false,
             color: false,
           },
-          texture: pointTexture,
+          texture: basePointTexture,
         });
         activePointLayer = new ParticleContainer({
           dynamicProperties: {
@@ -690,7 +836,7 @@ export function ClusterVisualizer() {
             uvs: false,
             color: false,
           },
-          texture: pointTexture,
+          texture: basePointTexture,
         });
         inactivePointLayer.boundsArea = new Rectangle(
           0,
@@ -705,12 +851,14 @@ export function ClusterVisualizer() {
           WORLD_SIZE,
         );
         imageLayer = new Container();
+        labelLayer = new Container();
         selectionGraphics = new Graphics();
 
         viewport.addChild(guideGraphics);
         viewport.addChild(inactivePointLayer);
         viewport.addChild(activePointLayer);
         viewport.addChild(imageLayer);
+        viewport.addChild(labelLayer);
         viewport.addChild(selectionGraphics);
         app.stage.addChild(viewport);
 
