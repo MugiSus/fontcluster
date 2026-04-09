@@ -5,6 +5,7 @@ import {
   createEffect,
   createMemo,
   createSelector,
+  onCleanup,
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
@@ -29,6 +30,9 @@ const INITIAL_VIEWBOX = {
 };
 
 const ZOOM_FACTOR_RATIO = 1.05;
+const PAN_INERTIA_FRICTION = 0.9;
+const PAN_INERTIA_MIN_SPEED = 0.05;
+const PAN_INERTIA_MAX_FRAME_DELTA_MS = 32;
 
 interface VisualizedPoint {
   key: string;
@@ -53,8 +57,13 @@ export function ClusterVisualizer() {
   const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
 
   const [isDragging, setIsDragging] = createSignal(false);
+  const [isInertiaPanning, setIsInertiaPanning] = createSignal(false);
   const [isInteracting, setIsInteracting] = createSignal(false);
-  const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
+
+  let lastMousePos = { x: 0, y: 0 };
+  let lastPanTimestamp = 0;
+  let panVelocity = { x: 0, y: 0 };
+  let inertiaFrameId: number | undefined;
 
   let interactionTimer: number | undefined;
   const startInteractionTimer = () => {
@@ -66,7 +75,95 @@ export function ClusterVisualizer() {
     }, 250);
   };
 
-  const isMoving = createMemo(() => isDragging() || isInteracting());
+  const stopPanInertia = (resetVelocity = true) => {
+    if (inertiaFrameId) {
+      window.cancelAnimationFrame(inertiaFrameId);
+      inertiaFrameId = undefined;
+    }
+    if (resetVelocity) {
+      panVelocity = { x: 0, y: 0 };
+    }
+    setIsInertiaPanning(false);
+  };
+
+  const getPanScale = (currentViewBox: typeof INITIAL_VIEWBOX) => {
+    const size = svgSize();
+    const minSide =
+      Math.min(size.width, size.height) ||
+      (svgElement
+        ? Math.min(
+            svgElement.getBoundingClientRect().width,
+            svgElement.getBoundingClientRect().height,
+          )
+        : 0) ||
+      1;
+
+    return {
+      scaleX: currentViewBox.width / minSide,
+      scaleY: currentViewBox.height / minSide,
+    };
+  };
+
+  const startPanInertia = () => {
+    stopPanInertia(false);
+
+    if (Math.hypot(panVelocity.x, panVelocity.y) < PAN_INERTIA_MIN_SPEED) {
+      panVelocity = { x: 0, y: 0 };
+      startInteractionTimer();
+      return;
+    }
+
+    setIsInertiaPanning(true);
+
+    let previousTimestamp: number | undefined;
+    const step = (timestamp: number) => {
+      const currentViewBox = viewBox();
+
+      if (previousTimestamp === undefined) {
+        previousTimestamp = timestamp;
+        inertiaFrameId = window.requestAnimationFrame(step);
+        return;
+      }
+
+      const frameDelta = Math.min(
+        timestamp - previousTimestamp,
+        PAN_INERTIA_MAX_FRAME_DELTA_MS,
+      );
+      previousTimestamp = timestamp;
+
+      setViewBox({
+        ...currentViewBox,
+        x: currentViewBox.x + panVelocity.x * frameDelta,
+        y: currentViewBox.y + panVelocity.y * frameDelta,
+      });
+
+      const frameDecay = PAN_INERTIA_FRICTION ** (frameDelta / (1000 / 60));
+      panVelocity = {
+        x: panVelocity.x * frameDecay,
+        y: panVelocity.y * frameDecay,
+      };
+
+      if (Math.hypot(panVelocity.x, panVelocity.y) < PAN_INERTIA_MIN_SPEED) {
+        stopPanInertia();
+        return;
+      }
+
+      inertiaFrameId = window.requestAnimationFrame(step);
+    };
+
+    inertiaFrameId = window.requestAnimationFrame(step);
+  };
+
+  const finishPanDrag = () => {
+    if (!isDragging()) return;
+
+    setIsDragging(false);
+    startPanInertia();
+  };
+
+  const isMoving = createMemo(
+    () => isDragging() || isInertiaPanning() || isInteracting(),
+  );
 
   const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
     400,
@@ -77,6 +174,21 @@ export function ClusterVisualizer() {
       (appState.session.config?.weights as FontWeight[]) || [];
     if (sessionWeights && sessionWeights.length > 0) {
       setVisualizerWeights(sessionWeights);
+    }
+  });
+
+  const handleWindowMouseUp = (event: MouseEvent) => {
+    if (event.button === 2) {
+      finishPanDrag();
+    }
+  };
+
+  window.addEventListener('mouseup', handleWindowMouseUp);
+  onCleanup(() => {
+    window.removeEventListener('mouseup', handleWindowMouseUp);
+    stopPanInertia();
+    if (interactionTimer) {
+      window.clearTimeout(interactionTimer);
     }
   });
 
@@ -123,24 +235,36 @@ export function ClusterVisualizer() {
 
   const handleMouseMove = (event: MouseEvent) => {
     // Handle pan dragging
-    if (isDragging() && event.buttons === 2) {
-      const deltaX = event.clientX - lastMousePos().x;
-      const deltaY = event.clientY - lastMousePos().y;
+    if (isDragging()) {
+      if (event.buttons !== 2) {
+        finishPanDrag();
+        return;
+      }
+
+      const deltaX = event.clientX - lastMousePos.x;
+      const deltaY = event.clientY - lastMousePos.y;
 
       const currentViewBox = viewBox();
       const { x, y, width, height } = currentViewBox;
-
-      // Convert screen delta to SVG coordinates
-      const svgElement = event.currentTarget as SVGElement;
-      const rect = svgElement.getBoundingClientRect();
-      const scaleX = width / Math.min(rect.width, rect.height);
-      const scaleY = height / Math.min(rect.width, rect.height);
+      const { scaleX, scaleY } = getPanScale(currentViewBox);
 
       const newX = x - deltaX * scaleX;
       const newY = y - deltaY * scaleY;
 
+      const deltaTime = Math.max(event.timeStamp - lastPanTimestamp, 1);
+      const nextVelocity = {
+        x: (-deltaX * scaleX) / deltaTime,
+        y: (-deltaY * scaleY) / deltaTime,
+      };
+
+      panVelocity = {
+        x: panVelocity.x * 0.2 + nextVelocity.x * 0.8,
+        y: panVelocity.y * 0.2 + nextVelocity.y * 0.8,
+      };
+
       setViewBox({ x: newX, y: newY, width, height });
-      setLastMousePos({ x: event.clientX, y: event.clientY });
+      lastMousePos = { x: event.clientX, y: event.clientY };
+      lastPanTimestamp = event.timeStamp;
       return;
     }
 
@@ -152,24 +276,26 @@ export function ClusterVisualizer() {
   const handleMouseDown = (event: MouseEvent) => {
     if (event.button === 2) {
       event.preventDefault();
+      stopPanInertia();
       setIsDragging(true);
-      setLastMousePos({ x: event.clientX, y: event.clientY });
+      lastMousePos = { x: event.clientX, y: event.clientY };
+      lastPanTimestamp = event.timeStamp;
+      panVelocity = { x: 0, y: 0 };
     } else if (event.button === 0) {
+      stopPanInertia();
       selectSelectedFont(event);
     }
   };
 
   const handleMouseUp = (event: MouseEvent) => {
     if (event.button === 2) {
-      if (isDragging()) {
-        startInteractionTimer();
-      }
-      setIsDragging(false);
+      finishPanDrag();
     }
   };
 
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
+    stopPanInertia();
 
     const svgElement = event.currentTarget as SVGElement;
     const rect = svgElement.getBoundingClientRect();
@@ -199,6 +325,7 @@ export function ClusterVisualizer() {
   };
 
   const handleZoom = (factor: number) => {
+    stopPanInertia();
     const currentViewBox = viewBox();
     const { x, y, width, height } = currentViewBox;
 
@@ -217,6 +344,7 @@ export function ClusterVisualizer() {
   };
 
   const handleReset = () => {
+    stopPanInertia();
     setViewBox(INITIAL_VIEWBOX);
   };
 
