@@ -37,6 +37,7 @@ const ZOOM_FACTOR_RATIO = 1.05;
 
 interface VisualizedPoint {
   key: string;
+  safeName: string;
   metadata: FontMetadata;
   x: number;
   y: number;
@@ -111,9 +112,11 @@ export function ClusterVisualizer() {
       nearest &&
       activeWeights.includes(nearest.metadata.weight as FontWeight)
     ) {
-      const metadata = appState.fonts.data[nearest.key];
+      const metadata =
+        appState.fonts.data[nearest.key] ||
+        appState.fonts.data[nearest.safeName];
       if (metadata) {
-        setSelectedFontKey(nearest.key);
+        setSelectedFontKey(nearest.safeName);
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
           emit('copy_family_name', {
             toast: false,
@@ -264,6 +267,7 @@ export function ClusterVisualizer() {
         const y = ((vy - minY) / rangeY) * GRAPH_SIZE;
         return {
           key: metadata.safe_name,
+          safeName: metadata.safe_name,
           metadata,
           x,
           y,
@@ -275,6 +279,7 @@ export function ClusterVisualizer() {
     const map = new Map<string, VisualizedPoint>();
     for (const p of allPoints()) {
       map.set(p.key, p);
+      map.set(p.safeName, p);
     }
     return map;
   });
@@ -375,7 +380,11 @@ export function ClusterVisualizer() {
         let leaf = node;
         do {
           const data = leaf.data;
-          if (data && data.key !== selectedKey) {
+          if (
+            data &&
+            data.key !== selectedKey &&
+            data.safeName !== selectedKey
+          ) {
             const dx = data.x - selectedPoint.x;
             const dy = data.y - selectedPoint.y;
             const distance = Math.hypot(dx, dy);
@@ -438,7 +447,7 @@ export function ClusterVisualizer() {
                   <button
                     type='button'
                     class='pointer-events-auto flex h-16 w-40 flex-col items-start justify-center rounded-md border bg-background/95 px-3 text-left shadow-sm backdrop-blur transition-colors hover:bg-muted'
-                    onClick={() => setSelectedFontKey(suggestion.key)}
+                    onClick={() => setSelectedFontKey(suggestion.safeName)}
                     title={`${suggestion.metadata.font_name} (${Math.round(
                       suggestion.distance / zoomFactor(),
                     )}px)`}
@@ -524,7 +533,9 @@ export function ClusterVisualizer() {
                   safeName={point.metadata.safe_name}
                   x={point.x}
                   y={point.y}
-                  isSelected={isSelected(point.key)}
+                  isSelected={
+                    isSelected(point.key) || isSelected(point.safeName)
+                  }
                   isFamilySelected={isFamilySelected(
                     point.metadata.family_name,
                   )}
@@ -548,7 +559,7 @@ export function ClusterVisualizer() {
                 safeName={point.metadata.safe_name}
                 x={point.x}
                 y={point.y}
-                isSelected={isSelected(point.key)}
+                isSelected={isSelected(point.key) || isSelected(point.safeName)}
                 isFamilySelected={isFamilySelected(point.metadata.family_name)}
                 sessionDirectory={appState.session.directory}
                 visualizerWeights={visualizerWeights()}
