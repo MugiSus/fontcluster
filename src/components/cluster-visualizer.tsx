@@ -1,351 +1,805 @@
 import {
-  For,
   Show,
-  createSignal,
   createEffect,
   createMemo,
-  createSelector,
+  createSignal,
+  onCleanup,
+  untrack,
 } from 'solid-js';
-import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
-import { type FontWeight, type FontMetadata } from '../types/font';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import {
+  Application,
+  Container,
+  Graphics,
+  Particle,
+  ParticleContainer,
+  Rectangle,
+  Sprite,
+  Texture,
+} from 'pixi.js';
+import { Viewport } from 'pixi-viewport';
+import { CircleSlash2Icon } from 'lucide-solid';
+import { type FontWeight } from '../types/font';
 import { WeightSelector } from './weight-selector';
 import { ZoomControls } from './zoom-controls';
 import { ImageVisibilityControl } from './image-visibility-control';
-import { CircleSlash2Icon } from 'lucide-solid';
-import { FontVectorPoint } from './font-vector-point';
 import { useElementSize } from '../hooks/use-element-size';
 import { appState } from '../store';
 import { setSelectedFontKey } from '../actions';
-
-const GRAPH_PADDING = 50;
-const GRAPH_SIZE = 1000;
-
-const INITIAL_VIEWBOX = {
-  x: -GRAPH_PADDING,
-  y: -GRAPH_PADDING,
-  width: GRAPH_SIZE + GRAPH_PADDING * 2,
-  height: GRAPH_SIZE + GRAPH_PADDING * 2,
-};
+import { getClusterTintColor } from '../lib/cluster-colors-pixi';
+import {
+  GRAPH_CENTER,
+  WORLD_SIZE,
+  buildFontQuadtree,
+  buildPointsMap,
+  buildVisualizedPoints,
+  type VisualizedPoint,
+} from '../lib/visualizer-points';
 
 const ZOOM_FACTOR_RATIO = 1.05;
-
-interface VisualizedPoint {
-  key: string;
-  metadata: FontMetadata;
-  x: number;
-  y: number;
-}
+const IMAGE_WIDTH = 128;
+const IMAGE_HEIGHT = 28;
+const IMAGE_OFFSET_Y = 6;
+const BASE_POINT_SIZE = 3;
+const FAMILY_POINT_RADIUS = 3;
+const SELECTED_POINT_RADIUS = 4.5;
+const MAX_RENDERER_RESOLUTION = 2;
+const POINT_TEXTURE_SIZE = 16;
 
 export function ClusterVisualizer() {
-  const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
   const [showImages, setShowImages] = createSignal(true);
-
-  let svgElement: SVGSVGElement | undefined;
-  const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
-
-  const zoomFactor = createMemo(() => {
-    const minSide = Math.min(svgSize().width, svgSize().height);
-    return viewBox().width / (minSide || INITIAL_VIEWBOX.width);
-  });
-
-  const isSelected = createSelector(() => appState.ui.selectedFontKey);
-  const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
-
-  const [isDragging, setIsDragging] = createSignal(false);
-  const [isInteracting, setIsInteracting] = createSignal(false);
-  const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
-
-  let interactionTimer: number | undefined;
-  const startInteractionTimer = () => {
-    setIsInteracting(true);
-    if (interactionTimer) window.clearTimeout(interactionTimer);
-    interactionTimer = window.setTimeout(() => {
-      setIsInteracting(false);
-      interactionTimer = undefined;
-    }, 250);
-  };
-
-  const isMoving = createMemo(() => isDragging() || isInteracting());
-
+  const [isMoving, setIsMoving] = createSignal(false);
+  const [rendererResolution, setRendererResolution] = createSignal(1);
   const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
     400,
   ]);
 
+  const { ref: setHostSizeRef, size: hostSize } =
+    useElementSize<HTMLDivElement>();
+
+  let hostElement: HTMLDivElement | undefined;
+  let app: Application | undefined;
+  let viewport: Viewport | undefined;
+  let guideGraphics: Graphics | undefined;
+  let inactivePointLayer: ParticleContainer<Particle> | undefined;
+  let activePointLayer: ParticleContainer<Particle> | undefined;
+  let selectionGraphics: Graphics | undefined;
+  let imageLayer: Container | undefined;
+  let pointTexture: Texture | undefined;
+  let pointTextureResolution = 0;
+
+  let interactionTimer: number | undefined;
+  let hasInitializedViewport = false;
+  let isInitializing = false;
+  let lastAutoCenteredKey: string | null = null;
+
+  const imageSprites = new Map<string, Sprite>();
+  const imageTextureCache = new Map<string, Texture>();
+
+  const allPoints = createMemo(() =>
+    buildVisualizedPoints(appState.fonts.data),
+  );
+
+  const pointsMap = createMemo(() => buildPointsMap(allPoints()));
+
+  const familyPointsMap = createMemo(() => {
+    const map = new Map<string, VisualizedPoint[]>();
+
+    for (const point of allPoints()) {
+      const familyPoints = map.get(point.metadata.family_name);
+      if (familyPoints) {
+        familyPoints.push(point);
+      } else {
+        map.set(point.metadata.family_name, [point]);
+      }
+    }
+
+    return map;
+  });
+
+  const fontQuadtree = createMemo(() =>
+    buildFontQuadtree(
+      pointsMap(),
+      appState.fonts.filteredKeys,
+      visualizerWeights(),
+    ),
+  );
+
   createEffect(() => {
     const sessionWeights =
       (appState.session.config?.weights as FontWeight[]) || [];
-    if (sessionWeights && sessionWeights.length > 0) {
+    if (sessionWeights.length > 0) {
       setVisualizerWeights(sessionWeights);
     }
   });
 
-  const selectSelectedFont = (event: MouseEvent) => {
-    if (!svgElement) return;
+  const pointScale = () => {
+    if (!viewport) return 1;
+    return Math.max(viewport.scale.x || 1, 0.0001);
+  };
 
-    const rect = svgElement.getBoundingClientRect();
+  const getPreferredRendererResolution = () => {
+    if (typeof window === 'undefined') return 1;
 
-    const mouseX =
-      event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
-    const mouseY =
-      event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
+    return Math.min(window.devicePixelRatio || 1, MAX_RENDERER_RESOLUTION);
+  };
 
-    const currentViewBox = viewBox();
-    const { x: vX, y: vY, width: vWidth, height: vHeight } = currentViewBox;
+  const getGuideColor = () =>
+    document.documentElement.classList.contains('dark') ? 0x3f3f46 : 0xd4d4d8;
 
-    const svgMouseX =
-      vX + (mouseX / Math.min(rect.width, rect.height)) * vWidth;
-    const svgMouseY =
-      vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
+  const getImageSource = (point: VisualizedPoint) => {
+    if (!appState.session.directory) return '';
 
-    const selectionRadius = 40 * zoomFactor();
-    const activeWeights = visualizerWeights();
-    const nearest = fontQuadtree().find(svgMouseX, svgMouseY, selectionRadius);
+    return convertFileSrc(
+      `${appState.session.directory}/samples/${point.key}/sample.png`,
+    );
+  };
+
+  const getImageTexture = (point: VisualizedPoint) => {
+    const src = getImageSource(point);
+    if (!src) return null;
+
+    const cached = imageTextureCache.get(src);
+    if (cached) return cached;
+
+    const texture = Texture.from(src);
+    imageTextureCache.set(src, texture);
+    return texture;
+  };
+
+  const clearTransientLayers = () => {
+    for (const sprite of imageSprites.values()) {
+      sprite.destroy();
+    }
+    imageSprites.clear();
+
+    if (imageLayer) {
+      imageLayer.removeChildren();
+    }
+  };
+
+  const drawPoint = (
+    graphics: Graphics,
+    x: number,
+    y: number,
+    radius: number,
+    color: number,
+    alpha: number,
+  ) => {
+    graphics.circle(x, y, radius).fill({ color, alpha });
+  };
+
+  const createPointTexture = () => {
+    if (!app) return;
+
+    const resolution = rendererResolution();
+    if (pointTexture && pointTextureResolution === resolution) {
+      return;
+    }
+
+    const pointGraphic = new Graphics()
+      .circle(
+        POINT_TEXTURE_SIZE / 2,
+        POINT_TEXTURE_SIZE / 2,
+        POINT_TEXTURE_SIZE / 2,
+      )
+      .fill({ color: 0xffffff });
+
+    const nextTexture = app.renderer.generateTexture({
+      target: pointGraphic,
+      resolution,
+      antialias: true,
+    });
+
+    const previousTexture = pointTexture;
+    pointTexture = nextTexture;
+    pointTextureResolution = resolution;
+
+    if (inactivePointLayer) {
+      inactivePointLayer.texture = nextTexture;
+    }
+    if (activePointLayer) {
+      activePointLayer.texture = nextTexture;
+    }
+
+    pointGraphic.destroy();
+    previousTexture?.destroy(true);
+  };
+
+  const redrawGuide = () => {
+    if (!guideGraphics) return;
+
+    const strokeWidth = 1 / pointScale();
+    const color = getGuideColor();
+
+    guideGraphics.clear();
+    guideGraphics.alpha = 0.5;
+    guideGraphics
+      .moveTo(GRAPH_CENTER - 10, GRAPH_CENTER - 10)
+      .lineTo(GRAPH_CENTER + 10, GRAPH_CENTER + 10)
+      .moveTo(GRAPH_CENTER + 10, GRAPH_CENTER - 10)
+      .lineTo(GRAPH_CENTER - 10, GRAPH_CENTER + 10)
+      .stroke({ color, width: strokeWidth });
+    guideGraphics.circle(GRAPH_CENTER, GRAPH_CENTER, 200).stroke({
+      color,
+      width: strokeWidth,
+    });
+    guideGraphics.circle(GRAPH_CENTER, GRAPH_CENTER, 400).stroke({
+      color,
+      width: strokeWidth,
+    });
+    guideGraphics.circle(GRAPH_CENTER, GRAPH_CENTER, 600).stroke({
+      color,
+      width: strokeWidth,
+    });
+  };
+
+  const rebuildPointLayers = () => {
+    if (!inactivePointLayer || !activePointLayer || !pointTexture) return;
+
+    const activeWeights = new Set(visualizerWeights());
+    const filteredKeys = appState.fonts.filteredKeys;
+
+    inactivePointLayer.removeParticles();
+    activePointLayer.removeParticles();
+
+    for (const point of allPoints()) {
+      if (!activeWeights.has(point.metadata.weight as FontWeight)) {
+        continue;
+      }
+
+      const particle = new Particle({
+        texture: pointTexture,
+        x: point.x,
+        y: point.y,
+        anchorX: 0.5,
+        anchorY: 0.5,
+        scaleX: BASE_POINT_SIZE / POINT_TEXTURE_SIZE,
+        scaleY: BASE_POINT_SIZE / POINT_TEXTURE_SIZE,
+        tint: getClusterTintColor(point.metadata.computed?.k),
+        alpha: filteredKeys.has(point.key) ? 1 : 0.2,
+      });
+
+      const color = getClusterTintColor(point.metadata.computed?.k);
+      if (filteredKeys.has(point.key)) {
+        particle.tint = color;
+        activePointLayer.addParticle(particle);
+      } else {
+        particle.tint = color;
+        inactivePointLayer.addParticle(particle);
+      }
+    }
+
+    inactivePointLayer.update();
+    activePointLayer.update();
+  };
+
+  const redrawSelection = () => {
+    if (!selectionGraphics) return;
+
+    const selectedKey = appState.ui.selectedFontKey;
+    const selectedFamily = appState.ui.selectedFontFamily;
+    const selectedPoint = selectedKey
+      ? pointsMap().get(selectedKey)
+      : undefined;
+    const familyPoints = selectedFamily
+      ? (familyPointsMap().get(selectedFamily) ?? [])
+      : [];
+    const activeWeights = new Set(visualizerWeights());
+    const strokeWidth = 1.5 / pointScale();
+
+    selectionGraphics.clear();
+
+    for (const point of familyPoints) {
+      if (
+        point.key === selectedKey ||
+        !activeWeights.has(point.metadata.weight as FontWeight)
+      ) {
+        continue;
+      }
+
+      const color = getClusterTintColor(point.metadata.computed?.k);
+
+      drawPoint(
+        selectionGraphics,
+        point.x,
+        point.y,
+        FAMILY_POINT_RADIUS / pointScale(),
+        color,
+        1,
+      );
+      selectionGraphics
+        .moveTo(point.x - 8 / pointScale(), point.y)
+        .lineTo(point.x + 8 / pointScale(), point.y)
+        .moveTo(point.x, point.y - 12 / pointScale())
+        .lineTo(point.x, point.y + 12 / pointScale())
+        .stroke({ color, width: strokeWidth });
+      selectionGraphics.circle(point.x, point.y, 20 / pointScale()).stroke({
+        color,
+        width: strokeWidth,
+      });
+    }
 
     if (
-      nearest &&
-      activeWeights.includes(nearest.metadata.weight as FontWeight)
+      selectedPoint &&
+      activeWeights.has(selectedPoint.metadata.weight as FontWeight)
     ) {
-      const metadata = appState.fonts.data[nearest.key];
-      if (metadata) {
-        setSelectedFontKey(nearest.key);
-        if (event.shiftKey || event.ctrlKey || event.metaKey) {
-          emit('copy_family_name', {
-            toast: false,
-            isFontName: event.ctrlKey || event.metaKey,
-          });
-        }
+      const color = getClusterTintColor(selectedPoint.metadata.computed?.k);
+
+      drawPoint(
+        selectionGraphics,
+        selectedPoint.x,
+        selectedPoint.y,
+        SELECTED_POINT_RADIUS / pointScale(),
+        color,
+        1,
+      );
+      selectionGraphics
+        .moveTo(selectedPoint.x - 10 / pointScale(), selectedPoint.y)
+        .lineTo(selectedPoint.x + 10 / pointScale(), selectedPoint.y)
+        .moveTo(selectedPoint.x, selectedPoint.y - 15 / pointScale())
+        .lineTo(selectedPoint.x, selectedPoint.y + 15 / pointScale())
+        .stroke({ color, width: strokeWidth });
+      selectionGraphics
+        .circle(selectedPoint.x, selectedPoint.y, 40 / pointScale())
+        .stroke({
+          color,
+          width: strokeWidth,
+        });
+    }
+  };
+
+  const isPointInsideVisibleBounds = (
+    point: VisualizedPoint,
+    paddingPixels = 0,
+  ) => {
+    if (!viewport) return false;
+
+    const bounds = viewport.getVisibleBounds();
+    const padding = paddingPixels / pointScale();
+
+    return (
+      point.x >= bounds.x - padding &&
+      point.x <= bounds.x + bounds.width + padding &&
+      point.y >= bounds.y - padding &&
+      point.y <= bounds.y + bounds.height + padding
+    );
+  };
+
+  const ensureImageSprite = (point: VisualizedPoint) => {
+    const existing = imageSprites.get(point.key);
+    if (existing) return existing;
+
+    const texture = getImageTexture(point);
+    if (!texture) return null;
+
+    const sprite = new Sprite(texture);
+    sprite.anchor.set(0.5, 0);
+    sprite.eventMode = 'none';
+    imageLayer?.addChild(sprite);
+    imageSprites.set(point.key, sprite);
+    return sprite;
+  };
+
+  const syncImageLayer = () => {
+    if (!viewport) return;
+
+    const selectedKey = appState.ui.selectedFontKey;
+    const activeWeights = new Set(visualizerWeights());
+    const filteredKeys = appState.fonts.filteredKeys;
+    const allowImages = showImages() && !isMoving();
+    const scale = pointScale();
+    const visibleKeys = new Set<string>();
+
+    for (const point of allPoints()) {
+      if (!activeWeights.has(point.metadata.weight as FontWeight)) {
+        continue;
       }
-    } else {
+
+      const isSelected = point.key === selectedKey;
+      const shouldRenderImage =
+        isPointInsideVisibleBounds(point, IMAGE_WIDTH) &&
+        (allowImages || isSelected);
+
+      if (!shouldRenderImage) {
+        continue;
+      }
+
+      const sprite = ensureImageSprite(point);
+      if (!sprite) continue;
+
+      sprite.tint = getClusterTintColor(point.metadata.computed?.k);
+      sprite.alpha = filteredKeys.has(point.key) ? 1 : 0.2;
+      sprite.position.set(point.x, point.y + IMAGE_OFFSET_Y / scale);
+      sprite.width = IMAGE_WIDTH / scale;
+      sprite.height = IMAGE_HEIGHT / scale;
+      sprite.visible = true;
+      visibleKeys.add(point.key);
+    }
+
+    for (const [key, sprite] of imageSprites) {
+      sprite.visible = visibleKeys.has(key);
+    }
+  };
+
+  const syncLabelLayer = () => {
+    // Text labels are temporarily disabled.
+  };
+
+  const syncOverlays = () => {
+    redrawGuide();
+    redrawSelection();
+    syncImageLayer();
+    syncLabelLayer();
+  };
+
+  const centerPointIfNeeded = (
+    point: VisualizedPoint,
+    activeWeights: Set<FontWeight>,
+  ) => {
+    if (!viewport) return;
+
+    if (!activeWeights.has(point.metadata.weight as FontWeight)) {
+      return;
+    }
+
+    if (isPointInsideVisibleBounds(point, 120)) {
+      return;
+    }
+
+    viewport.animate({
+      position: { x: point.x, y: point.y },
+      time: 240,
+      removeOnInterrupt: true,
+    });
+  };
+
+  const scheduleInteractionEnd = () => {
+    if (interactionTimer) window.clearTimeout(interactionTimer);
+
+    interactionTimer = window.setTimeout(() => {
+      untrack(() => {
+        setIsMoving(false);
+        syncImageLayer();
+        syncLabelLayer();
+      });
+      interactionTimer = undefined;
+    }, 180);
+  };
+
+  const handleViewportMove = () => {
+    setIsMoving(true);
+    syncImageLayer();
+    scheduleInteractionEnd();
+  };
+
+  const handleViewportZoom = () => {
+    setIsMoving(true);
+    redrawGuide();
+    redrawSelection();
+    syncImageLayer();
+    scheduleInteractionEnd();
+  };
+
+  const selectPointAtClientPosition = async (
+    clientX: number,
+    clientY: number,
+    modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+    options?: { allowCopy?: boolean },
+  ) => {
+    if (!viewport || !app?.canvas) return;
+
+    const rect = app.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    const worldPoint = viewport.toWorld({ x, y });
+    const selectionRadius = 40 / pointScale();
+    const nearest = fontQuadtree().find(
+      worldPoint.x,
+      worldPoint.y,
+      selectionRadius,
+    );
+    const nextSelectedKey = nearest?.key ?? null;
+    const currentSelectedKey = appState.ui.selectedFontKey;
+
+    if (nearest) {
+      if (nextSelectedKey !== currentSelectedKey) {
+        setSelectedFontKey(nextSelectedKey);
+      }
+      if (
+        options?.allowCopy !== false &&
+        nextSelectedKey !== currentSelectedKey &&
+        (modifiers.shiftKey || modifiers.ctrlKey || modifiers.metaKey)
+      ) {
+        await emit('copy_family_name', {
+          toast: false,
+          isFontName: modifiers.ctrlKey || modifiers.metaKey,
+        });
+      }
+      return;
+    }
+
+    if (currentSelectedKey !== null) {
       setSelectedFontKey(null);
     }
   };
 
-  const handleMouseMove = (event: MouseEvent) => {
-    // Handle pan dragging
-    if (isDragging() && event.buttons === 2) {
-      const deltaX = event.clientX - lastMousePos().x;
-      const deltaY = event.clientY - lastMousePos().y;
-
-      const currentViewBox = viewBox();
-      const { x, y, width, height } = currentViewBox;
-
-      // Convert screen delta to SVG coordinates
-      const svgElement = event.currentTarget as SVGElement;
-      const rect = svgElement.getBoundingClientRect();
-      const scaleX = width / Math.min(rect.width, rect.height);
-      const scaleY = height / Math.min(rect.width, rect.height);
-
-      const newX = x - deltaX * scaleX;
-      const newY = y - deltaY * scaleY;
-
-      setViewBox({ x: newX, y: newY, width, height });
-      setLastMousePos({ x: event.clientX, y: event.clientY });
-      return;
-    }
-
-    if (event.buttons === 0) return;
-
-    selectSelectedFont(event);
-  };
-
-  const handleMouseDown = (event: MouseEvent) => {
-    if (event.button === 2) {
-      event.preventDefault();
-      setIsDragging(true);
-      setLastMousePos({ x: event.clientX, y: event.clientY });
-    } else if (event.button === 0) {
-      selectSelectedFont(event);
-    }
-  };
-
-  const handleMouseUp = (event: MouseEvent) => {
-    if (event.button === 2) {
-      if (isDragging()) {
-        startInteractionTimer();
-      }
-      setIsDragging(false);
-    }
-  };
-
-  const handleWheel = (event: WheelEvent) => {
-    event.preventDefault();
-
-    const svgElement = event.currentTarget as SVGElement;
-    const rect = svgElement.getBoundingClientRect();
-
-    const mouseX =
-      event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
-    const mouseY =
-      event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
-
-    const currentViewBox = viewBox();
-    const { x, y, width, height } = currentViewBox;
-
-    const svgMouseX = x + (mouseX / Math.min(rect.width, rect.height)) * width;
-    const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
-
-    const zoomStepFactor =
-      event.deltaY > 0 ? ZOOM_FACTOR_RATIO : 1 / ZOOM_FACTOR_RATIO;
-
-    const newWidth = width * zoomStepFactor;
-    const newHeight = height * zoomStepFactor;
-
-    const newX = svgMouseX - (svgMouseX - x) * zoomStepFactor;
-    const newY = svgMouseY - (svgMouseY - y) * zoomStepFactor;
-
-    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
-    startInteractionTimer();
-  };
-
   const handleZoom = (factor: number) => {
-    const currentViewBox = viewBox();
-    const { x, y, width, height } = currentViewBox;
+    if (!viewport) return;
 
-    // Zoom from center
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-
-    const newWidth = width * factor;
-    const newHeight = height * factor;
-
-    const newX = centerX - (centerX - x) * factor;
-    const newY = centerY - (centerY - y) * factor;
-
-    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
-    startInteractionTimer();
+    viewport.animate({
+      position: { x: viewport.center.x, y: viewport.center.y },
+      scale: viewport.scale.x / factor,
+      time: 160,
+      removeOnInterrupt: true,
+    });
   };
 
   const handleReset = () => {
-    setViewBox(INITIAL_VIEWBOX);
+    if (!viewport) return;
+
+    viewport.animate({
+      position: { x: GRAPH_CENTER, y: GRAPH_CENTER },
+      width: WORLD_SIZE,
+      height: WORLD_SIZE,
+      time: 200,
+      removeOnInterrupt: true,
+    });
   };
 
-  const bounds = createMemo(() => {
-    const vecs = Object.values(appState.fonts.data).filter(
-      (v) => v.computed?.vector,
-    );
-    if (vecs.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-
-    const [minX, maxX] = vecs.reduce<[number, number]>(
-      ([min, max], v) => {
-        const x = v.computed!.vector[0] ?? 0;
-        return [Math.min(min, x), Math.max(max, x)];
-      },
-      [Infinity, -Infinity],
-    );
-    const [minY, maxY] = vecs.reduce<[number, number]>(
-      ([min, max], v) => {
-        const y = v.computed!.vector[1] ?? 0;
-        return [Math.min(min, y), Math.max(max, y)];
-      },
-      [Infinity, -Infinity],
-    );
-
-    return { minX, maxX, minY, maxY };
-  });
-
-  const allPoints = createMemo(() => {
-    const vecs = Object.values(appState.fonts.data);
-    const { minX, maxX, minY, maxY } = bounds();
-    const rangeX = maxX - minX || 1;
-    const rangeY = maxY - minY || 1;
-
-    return vecs
-      .filter((metadata) => metadata.computed?.vector)
-      .map((metadata) => {
-        const vx = metadata.computed!.vector[0] ?? 0;
-        const vy = metadata.computed!.vector[1] ?? 0;
-        const x = ((vx - minX) / rangeX) * GRAPH_SIZE;
-        const y = ((vy - minY) / rangeY) * GRAPH_SIZE;
-        return {
-          key: metadata.safe_name,
-          metadata,
-          x,
-          y,
-        } satisfies VisualizedPoint;
-      });
-  });
-
-  const pointsMap = createMemo(() => {
-    const map = new Map<string, VisualizedPoint>();
-    for (const p of allPoints()) {
-      map.set(p.key, p);
-    }
-    return map;
-  });
-
-  const fontQuadtree = createMemo(() => {
-    const map = pointsMap();
-    const activeWeights = visualizerWeights();
-    const filteredKeys = appState.fonts.filteredKeys;
-
-    const activePoints = [];
-    for (const key of filteredKeys) {
-      const p = map.get(key);
-      if (p && activeWeights.includes(p.metadata.weight as FontWeight)) {
-        activePoints.push(p);
-      }
+  createEffect(() => {
+    const currentPoints = allPoints();
+    if (!currentPoints.length) {
+      clearTransientLayers();
+      lastAutoCenteredKey = null;
+      return;
     }
 
-    return quadtree<VisualizedPoint>()
-      .x((d) => d.x)
-      .y((d) => d.y)
-      .addAll(activePoints);
+    clearTransientLayers();
+    rebuildPointLayers();
+    syncOverlays();
   });
 
-  const visiblePoints = createMemo(() => {
-    const vb = viewBox();
-    const size = svgSize();
-    const scale = zoomFactor();
+  createEffect(() => {
+    const tracked = {
+      weights: visualizerWeights(),
+      filteredKeys: appState.fonts.filteredKeys,
+    };
+    void tracked;
+    rebuildPointLayers();
+    syncOverlays();
+  });
 
-    const visibleWidth = size.width * scale;
-    const visibleHeight = size.height * scale;
+  createEffect(() => {
+    const tracked = {
+      selectedFontKey: appState.ui.selectedFontKey,
+      selectedFontFamily: appState.ui.selectedFontFamily,
+    };
+    void tracked;
+    redrawSelection();
+  });
 
-    const padding = 50 * scale;
-    const minVisibleX = vb.x + vb.width / 2 - visibleWidth / 2 - padding;
-    const maxVisibleX = vb.x + vb.width / 2 + visibleWidth / 2 + padding;
-    const minVisibleY = vb.y + vb.height / 2 - visibleHeight / 2 - padding;
-    const maxVisibleY = vb.y + vb.height / 2 + visibleHeight / 2 + padding;
+  createEffect(() => {
+    const tracked = {
+      sessionDirectory: appState.session.directory,
+      imagesVisible: showImages(),
+    };
+    void tracked;
+    syncImageLayer();
+  });
 
-    const filteredKeys = appState.fonts.filteredKeys;
+  createEffect(() => {
+    const moving = isMoving();
+    void moving;
+    syncImageLayer();
+  });
+
+  createEffect(() => {
+    const size = hostSize();
+    const resolution = rendererResolution();
+    if (!app || !viewport || size.width <= 0 || size.height <= 0) return;
+
+    app.renderer.resize(size.width, size.height, resolution);
+    viewport.resize(size.width, size.height, WORLD_SIZE, WORLD_SIZE);
+
+    if (!hasInitializedViewport) {
+      viewport.fitWorld(true);
+      hasInitializedViewport = true;
+    }
+
+    if (app) {
+      createPointTexture();
+      rebuildPointLayers();
+    }
+    syncOverlays();
+  });
+
+  createEffect(() => {
+    const selectedKey = appState.ui.selectedFontKey;
     const activeWeights = new Set(visualizerWeights());
-    const visibleFilteredPoints = [];
-    const visibleUnfilteredPoints = [];
-
-    for (const point of allPoints()) {
-      const isWeightIncluded = activeWeights.has(
-        point.metadata.weight as FontWeight,
-      );
-      const isVisible =
-        point.x >= minVisibleX &&
-        point.x <= maxVisibleX &&
-        point.y >= minVisibleY &&
-        point.y <= maxVisibleY;
-
-      if (isWeightIncluded && isVisible) {
-        if (filteredKeys.has(point.key)) {
-          visibleFilteredPoints.push(point);
-        } else {
-          visibleUnfilteredPoints.push(point);
-        }
-      }
+    if (!selectedKey) {
+      lastAutoCenteredKey = null;
+      return;
     }
 
-    return { visibleFilteredPoints, visibleUnfilteredPoints };
+    const point = pointsMap().get(selectedKey);
+    if (!point || selectedKey === lastAutoCenteredKey) return;
+
+    centerPointIfNeeded(point, activeWeights);
+    lastAutoCenteredKey = selectedKey;
+  });
+
+  createEffect(() => {
+    if (!hostElement || app || isInitializing) return;
+
+    const initialize = async () => {
+      isInitializing = true;
+      try {
+        setRendererResolution(getPreferredRendererResolution());
+        app = new Application();
+        await app.init({
+          width: Math.max(hostSize().width, 1),
+          height: Math.max(hostSize().height, 1),
+          antialias: true,
+          autoDensity: true,
+          backgroundAlpha: 0,
+          preference: 'webgl',
+          resolution: rendererResolution(),
+        });
+        app.ticker.maxFPS = 0;
+
+        app.canvas.className = 'size-full';
+        hostElement?.appendChild(app.canvas);
+
+        viewport = new Viewport({
+          screenWidth: Math.max(hostSize().width, 1),
+          screenHeight: Math.max(hostSize().height, 1),
+          worldWidth: WORLD_SIZE,
+          worldHeight: WORLD_SIZE,
+          events: app.renderer.events,
+          disableOnContextMenu: true,
+          passiveWheel: false,
+        });
+
+        createPointTexture();
+
+        viewport
+          .drag({ mouseButtons: 'right' })
+          .wheel()
+          .pinch()
+          .decelerate()
+          .clamp({ direction: 'all' })
+          .clampZoom({
+            minWidth: 120,
+            minHeight: 120,
+            maxWidth: WORLD_SIZE * 2,
+            maxHeight: WORLD_SIZE * 2,
+          });
+
+        guideGraphics = new Graphics();
+        inactivePointLayer = new ParticleContainer({
+          dynamicProperties: {
+            position: false,
+            rotation: false,
+            vertex: false,
+            uvs: false,
+            color: false,
+          },
+          texture: pointTexture,
+        });
+        activePointLayer = new ParticleContainer({
+          dynamicProperties: {
+            position: false,
+            rotation: false,
+            vertex: false,
+            uvs: false,
+            color: false,
+          },
+          texture: pointTexture,
+        });
+        inactivePointLayer.boundsArea = new Rectangle(
+          0,
+          0,
+          WORLD_SIZE,
+          WORLD_SIZE,
+        );
+        activePointLayer.boundsArea = new Rectangle(
+          0,
+          0,
+          WORLD_SIZE,
+          WORLD_SIZE,
+        );
+        imageLayer = new Container();
+        selectionGraphics = new Graphics();
+
+        viewport.addChild(guideGraphics);
+        viewport.addChild(inactivePointLayer);
+        viewport.addChild(activePointLayer);
+        viewport.addChild(imageLayer);
+        viewport.addChild(selectionGraphics);
+        app.stage.addChild(viewport);
+
+        viewport.on('moved', handleViewportMove);
+        viewport.on('zoomed', handleViewportZoom);
+        viewport.on('moved-end', scheduleInteractionEnd);
+        viewport.on('zoomed-end', scheduleInteractionEnd);
+
+        app.canvas.addEventListener('pointerdown', (event) => {
+          if (event.button !== 0) return;
+
+          void selectPointAtClientPosition(
+            event.clientX,
+            event.clientY,
+            {
+              shiftKey: event.shiftKey,
+              ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey,
+            },
+            { allowCopy: true },
+          );
+        });
+
+        app.canvas.addEventListener('pointermove', (event) => {
+          if ((event.buttons & 1) === 0) return;
+
+          void selectPointAtClientPosition(
+            event.clientX,
+            event.clientY,
+            {
+              shiftKey: event.shiftKey,
+              ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey,
+            },
+            { allowCopy: false },
+          );
+        });
+
+        viewport.fitWorld(true);
+        hasInitializedViewport = true;
+        rebuildPointLayers();
+        syncOverlays();
+      } finally {
+        isInitializing = false;
+      }
+    };
+
+    void initialize();
+  });
+
+  onCleanup(() => {
+    if (interactionTimer) window.clearTimeout(interactionTimer);
+
+    clearTransientLayers();
+    pointTexture?.destroy(true);
+    viewport?.destroy();
+    app?.destroy(true, { children: true });
+    viewport = undefined;
+    app = undefined;
+    pointTexture = undefined;
+    pointTextureResolution = 0;
+    isInitializing = false;
+  });
+
+  createEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updateResolution = () => {
+      setRendererResolution(getPreferredRendererResolution());
+    };
+
+    updateResolution();
+    window.addEventListener('resize', updateResolution);
+
+    onCleanup(() => {
+      window.removeEventListener('resize', updateResolution);
+    });
   });
 
   return (
     <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
-      <Show
-        when={allPoints().length > 0}
-        fallback={
-          <div class='flex size-full flex-col items-center justify-center rounded-md bg-muted text-sm text-muted-foreground'>
-            <CircleSlash2Icon class='mb-4 size-6' />
-            <h2>No results found</h2>
-            <p class='text-xs'>Complete processing to see results</p>
-          </div>
-        }
-      >
+      <Show when={allPoints().length > 0}>
         <div class='pointer-events-none absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
           <div class='pointer-events-auto'>
             <ImageVisibilityControl
@@ -369,99 +823,22 @@ export function ClusterVisualizer() {
             />
           </div>
         </div>
-        <svg
-          ref={(el) => {
-            svgElement = el;
-            setSvgRef(el);
-          }}
-          class='size-full select-none'
-          viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
-          xmlns='http://www.w3.org/2000/svg'
-          text-rendering='optimizeSpeed'
-          onMouseMove={handleMouseMove}
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          <g opacity={0.5}>
-            <path
-              d='M 490 490 L 510 510 M 510 490 L 490 510'
-              fill='none'
-              stroke-width={zoomFactor() * 1}
-              class='pointer-events-none stroke-border'
-            />
-            <circle
-              cx='500'
-              cy='500'
-              r='200'
-              fill='none'
-              stroke-width={zoomFactor() * 1}
-              class='pointer-events-none stroke-border'
-            />
-            <circle
-              cx='500'
-              cy='500'
-              r='400'
-              fill='none'
-              stroke-width={zoomFactor() * 1}
-              class='pointer-events-none stroke-border'
-            />
-            <circle
-              cx='500'
-              cy='500'
-              r='600'
-              fill='none'
-              stroke-width={zoomFactor() * 1}
-              class='pointer-events-none stroke-border'
-            />
-          </g>
+      </Show>
 
-          <g opacity={0.2}>
-            <For each={visiblePoints().visibleUnfilteredPoints}>
-              {(point) => (
-                <FontVectorPoint
-                  fontName={point.metadata.font_name}
-                  weight={point.metadata.weight}
-                  clusterId={point.metadata.computed?.k}
-                  safeName={point.metadata.safe_name}
-                  x={point.x}
-                  y={point.y}
-                  isSelected={isSelected(point.key)}
-                  isFamilySelected={isFamilySelected(
-                    point.metadata.family_name,
-                  )}
-                  sessionDirectory={appState.session.directory}
-                  visualizerWeights={visualizerWeights()}
-                  zoomFactor={zoomFactor()}
-                  isMoving={isMoving()}
-                  showImages={showImages()}
-                  isDisabled
-                />
-              )}
-            </For>
-          </g>
+      <div
+        ref={(el) => {
+          hostElement = el;
+          setHostSizeRef(el);
+        }}
+        class='size-full overflow-hidden rounded-md'
+      />
 
-          <For each={visiblePoints().visibleFilteredPoints}>
-            {(point) => (
-              <FontVectorPoint
-                fontName={point.metadata.font_name}
-                weight={point.metadata.weight}
-                clusterId={point.metadata.computed?.k}
-                safeName={point.metadata.safe_name}
-                x={point.x}
-                y={point.y}
-                isSelected={isSelected(point.key)}
-                isFamilySelected={isFamilySelected(point.metadata.family_name)}
-                sessionDirectory={appState.session.directory}
-                visualizerWeights={visualizerWeights()}
-                zoomFactor={zoomFactor()}
-                isMoving={isMoving()}
-                showImages={showImages()}
-              />
-            )}
-          </For>
-        </svg>
+      <Show when={allPoints().length === 0}>
+        <div class='absolute inset-0 flex size-full flex-col items-center justify-center rounded-md bg-muted text-sm text-muted-foreground'>
+          <CircleSlash2Icon class='mb-4 size-6' />
+          <h2>No results found</h2>
+          <p class='text-xs'>Complete processing to see results</p>
+        </div>
       </Show>
     </div>
   );
