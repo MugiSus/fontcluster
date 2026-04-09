@@ -128,7 +128,7 @@ export function FontProcessingForm() {
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
           for='preview-text'
-          class='flex items-center gap-1.5 text-xs font-normal uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs text-muted-foreground'
         >
           <TypeIcon class='mb-0.5 size-3 text-primary' />
           Preview Text
@@ -144,13 +144,13 @@ export function FontProcessingForm() {
           }
           placeholder='Preview Text...'
           spellcheck='false'
-          class='pl-9 pt-2'
+          class='pl-9'
         />
       </TextField>
       <TextField class='grid w-full items-center gap-1'>
         <TextFieldLabel
           for='weights'
-          class='flex items-center gap-1.5 text-xs font-normal uppercase text-muted-foreground'
+          class='flex items-center gap-1.5 text-xs text-muted-foreground'
         >
           <WeightIcon class='mb-0.5 size-3 text-primary' />
           Weights
@@ -163,7 +163,7 @@ export function FontProcessingForm() {
         />
       </TextField>
 
-      <section class='flex min-h-0 flex-col gap-1'>
+      <section class='flex min-h-0 flex-col gap-1.5'>
         <input
           type='checkbox'
           id='advanced-options'
@@ -171,17 +171,17 @@ export function FontProcessingForm() {
           checked
         />
         <label
-          class='flex cursor-pointer items-center gap-1 text-xxs font-medium uppercase text-muted-foreground transition-colors duration-100 hover:text-foreground'
+          class='flex cursor-pointer items-center gap-1 text-xxs font-medium text-muted-foreground transition-colors duration-100 hover:text-foreground'
           for='advanced-options'
         >
-          <FlaskConicalIcon class='mb-0.5 size-3 text-primary' />
+          <FlaskConicalIcon class='size-3 text-primary' />
           Algorithm options (Advanced)
-          <ChevronDownIcon class='mb-0.5 size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
+          <ChevronDownIcon class='size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
         </label>
         <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-muted p-2 text-muted-foreground shadow-sm peer-checked:block'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase text-muted-foreground'>
+              <div class='text-xxs font-medium text-muted-foreground'>
                 Discovery
               </div>
               <Tooltip>
@@ -243,7 +243,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase text-muted-foreground'>
+              <div class='text-xxs font-medium text-muted-foreground'>
                 Image Generation
               </div>
               <Tooltip>
@@ -279,7 +279,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase text-muted-foreground'>
+              <div class='text-xxs font-medium text-muted-foreground'>
                 HOG (Vectorization)
               </div>
               <Tooltip>
@@ -376,7 +376,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase text-muted-foreground'>
+              <div class='text-xxs font-medium text-muted-foreground'>
                 PaCMAP (D-Reduction)
               </div>
               <Tooltip>
@@ -471,7 +471,7 @@ export function FontProcessingForm() {
 
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium uppercase text-muted-foreground'>
+              <div class='text-xxs font-medium text-muted-foreground'>
                 HDBSCAN (Clustering)
               </div>
               <Tooltip>
