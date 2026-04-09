@@ -482,25 +482,18 @@ export function ClusterVisualizer() {
     scheduleInteractionEnd();
   };
 
-  const selectPointAtClientPosition = async (
-    clientX: number,
-    clientY: number,
+  const selectPointAtScreenPosition = (
+    screenX: number,
+    screenY: number,
     modifiers: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
     options?: { allowCopy?: boolean },
   ) => {
-    if (!viewport || !app?.canvas) return;
+    if (!viewport) return;
 
-    const rect = app.canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    const worldPoint = viewport.toWorld({ x, y });
+    const worldX = (screenX - viewport.x) / viewport.scale.x;
+    const worldY = (screenY - viewport.y) / viewport.scale.y;
     const selectionRadius = 40 / pointScale();
-    const nearest = fontQuadtree().find(
-      worldPoint.x,
-      worldPoint.y,
-      selectionRadius,
-    );
+    const nearest = fontQuadtree().find(worldX, worldY, selectionRadius);
     const nextSelectedKey = nearest?.key ?? null;
     const currentSelectedKey = appState.ui.selectedFontKey;
 
@@ -513,7 +506,7 @@ export function ClusterVisualizer() {
         nextSelectedKey !== currentSelectedKey &&
         (modifiers.shiftKey || modifiers.ctrlKey || modifiers.metaKey)
       ) {
-        await emit('copy_family_name', {
+        void emit('copy_family_name', {
           toast: false,
           isFontName: modifiers.ctrlKey || modifiers.metaKey,
         });
@@ -729,9 +722,9 @@ export function ClusterVisualizer() {
         app.canvas.addEventListener('pointerdown', (event) => {
           if (event.button !== 0) return;
 
-          void selectPointAtClientPosition(
-            event.clientX,
-            event.clientY,
+          selectPointAtScreenPosition(
+            event.offsetX,
+            event.offsetY,
             {
               shiftKey: event.shiftKey,
               ctrlKey: event.ctrlKey,
@@ -744,9 +737,9 @@ export function ClusterVisualizer() {
         app.canvas.addEventListener('pointermove', (event) => {
           if ((event.buttons & 1) === 0) return;
 
-          void selectPointAtClientPosition(
-            event.clientX,
-            event.clientY,
+          selectPointAtScreenPosition(
+            event.offsetX,
+            event.offsetY,
             {
               shiftKey: event.shiftKey,
               ctrlKey: event.ctrlKey,
