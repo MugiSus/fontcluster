@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "serve": "vite preview",
+    "release": "cargo release --manifest-path src-tauri/Cargo.toml",
     "tauri": "tauri",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",

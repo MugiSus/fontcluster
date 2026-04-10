@@ -6,7 +6,7 @@ authors = ["mugisus"]
 edition = "2021"
 
 [package.metadata.release]
-disable-publish = true
+publish = false
 tag-name = "v{{version}}"
 tag-message = "{{date}} FontCluster v{{version}}"
 pre-release-commit-message = "release {{version}}"
