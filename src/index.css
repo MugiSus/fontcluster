@@ -9,11 +9,11 @@
 
 @layer base {
   :root {
-    --background: 210 50% 99.4%;
+    --background: 210 50% 100%;
     --foreground: 222 47% 11.2%;
 
     --muted: 214 32% 91%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215.3 19.3% 34.5%;
 
     --popover: 210 40% 98%;
     --popover-foreground: 222 47% 11.2%;
@@ -104,6 +104,12 @@
   * {
     @apply border-border;
   }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    margin-left: 0.6rem;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings:

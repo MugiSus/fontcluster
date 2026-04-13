@@ -8,9 +8,7 @@ import {
   LoaderCircleIcon,
   PauseIcon,
   TypeIcon,
-  FlaskConicalIcon,
   WeightIcon,
-  ChevronDownIcon,
 } from 'lucide-solid';
 import { WeightSelector } from './weight-selector';
 import {
@@ -123,7 +121,7 @@ export function FontProcessingForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex min-h-0 flex-1 flex-col items-stretch gap-1.5 pl-1.5'
+      class='flex min-h-0 flex-1 flex-col items-stretch gap-1.5'
     >
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
@@ -163,366 +161,342 @@ export function FontProcessingForm() {
         />
       </TextField>
 
-      <section class='flex min-h-0 flex-col gap-1.5'>
-        <input
-          type='checkbox'
-          id='advanced-options'
-          class='peer sr-only'
-          checked
-        />
-        <label
-          class='flex cursor-pointer items-center gap-1 text-xxs font-medium text-muted-foreground transition-colors duration-100 hover:text-foreground'
-          for='advanced-options'
-        >
-          <FlaskConicalIcon class='size-3 text-primary' />
-          Algorithm options (Advanced)
-          <ChevronDownIcon class='size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
-        </label>
-        <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border bg-muted p-2 text-muted-foreground shadow-sm peer-checked:block'>
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium text-muted-foreground'>
-                Discovery
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('empty')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
+      <div class='flex min-h-0 flex-1 grow flex-col gap-2 space-y-3 overflow-y-scroll'>
+        <div class='group/section space-y-1.5'>
+          <div class='flex items-center gap-1'>
+            <div class='text-xs font-medium text-muted-foreground'>
+              Discovery
             </div>
-            <div class='grid grid-cols-1 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Font Set</TextFieldLabel>
-                <select
-                  class='flex h-7 w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-                  value={
-                    appState.session.config?.algorithm?.discovery?.font_set ??
-                    'google_fonts_popular300'
-                  }
-                  onChange={(e) =>
-                    setAppState(
-                      'session',
-                      'config',
-                      'algorithm', // algorithm
-                      'discovery', // discovery
-                      {
-                        font_set: e.currentTarget.value as FontSet,
-                      },
-                    )
-                  }
-                >
-                  <option value='system_fonts'>Installed Fonts</option>
-                  <hr />
-                  <option value='google_fonts_popular100'>
-                    Google Fonts Popular 100
-                  </option>
-                  <option value='google_fonts_popular200'>
-                    Google Fonts Popular 200
-                  </option>
-                  <option value='google_fonts_popular300'>
-                    Google Fonts Popular 300
-                  </option>
-                  <option value='google_fonts_popular500'>
-                    Google Fonts Popular 500
-                  </option>
-                  <option value='google_fonts_popular1000'>
-                    Google Fonts Popular 1000
-                  </option>
-                </select>
-              </TextField>
-            </div>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                variant='ghost'
+                size='icon'
+                disabled={appState.session.isProcessing}
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('empty')}
+              >
+                <StepForwardIcon class='size-3 max-h-3' />
+              </TooltipTrigger>
+              <TooltipContent>Run from this step</TooltipContent>
+            </Tooltip>
           </div>
-
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium text-muted-foreground'>
-                Image Generation
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('discovered')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Font Size</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='image-font-size'
-                  value={
-                    appState.session.config?.algorithm?.image?.font_size ?? 128
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium text-muted-foreground'>
-                HOG (Vectorization)
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('generated')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Orientations</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-orientations'
-                  value={
-                    appState.session.config?.algorithm?.hog?.orientations ?? 12
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Cell Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-cell-side'
-                  value={
-                    appState.session.config?.algorithm?.hog?.cell_side ?? 16
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Block Side</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-block-side'
-                  value={
-                    appState.session.config?.algorithm?.hog?.block_side ?? 2
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Block Stride</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-block-stride'
-                  value={
-                    appState.session.config?.algorithm?.hog?.block_stride ?? 2
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Width</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-width'
-                  value={appState.session.config?.algorithm?.hog?.width ?? 128}
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Height</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hog-height'
-                  value={appState.session.config?.algorithm?.hog?.height ?? 64}
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium text-muted-foreground'>
-                PaCMAP (D-Reduction)
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('vectorized')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Global Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-mn-phases'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100
-                  }
-                  step='10'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Attraction Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-nn-phases'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100
-                  }
-                  step='10'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Repulsion Iterations
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-fp-phases'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100
-                  }
-                  step='10'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Learning rate</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-learning-rate'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.learning_rate ??
-                    1.0
-                  }
-                  step='0.1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Neighbors</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='pacmap-n-neighbors'
-                  value={
-                    appState.session.config?.algorithm?.pacmap?.n_neighbors ??
-                    32
-                  }
-                  step='1'
-                  min='1'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
-          </div>
-
-          <div class='group/section space-y-1.5'>
-            <div class='flex items-center gap-1'>
-              <div class='text-xxs font-medium text-muted-foreground'>
-                HDBSCAN (Clustering)
-              </div>
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  variant='ghost'
-                  size='icon'
-                  disabled={appState.session.isProcessing}
-                  class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                  onClick={() => handleRun('compressed')}
-                >
-                  <StepForwardIcon class='size-3 max-h-3' />
-                </TooltipTrigger>
-                <TooltipContent>Run from this step</TooltipContent>
-              </Tooltip>
-            </div>
-            <div class='grid grid-cols-2 gap-2'>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>
-                  Min Cluster Size
-                </TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hdbscan-min-cluster-size'
-                  value={
-                    appState.session.config?.algorithm?.hdbscan
-                      ?.min_cluster_size ?? 12
-                  }
-                  step='1'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-              <TextField class='gap-0.5'>
-                <TextFieldLabel class='text-xxs'>Min Samples</TextFieldLabel>
-                <TextFieldInput
-                  type='number'
-                  name='hdbscan-min-samples'
-                  value={
-                    appState.session.config?.algorithm?.hdbscan?.min_samples ??
-                    12
-                  }
-                  step='1'
-                  min='0'
-                  class='h-7 text-xs'
-                />
-              </TextField>
-            </div>
+          <div class='grid grid-cols-1 gap-2'>
+            <TextField class='gap-0.5'>
+              <TextFieldLabel class='text-xs'>Font Set</TextFieldLabel>
+              <select
+                class='flex h-7 w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+                value={
+                  appState.session.config?.algorithm?.discovery?.font_set ??
+                  'google_fonts_popular300'
+                }
+                onChange={(e) =>
+                  setAppState(
+                    'session',
+                    'config',
+                    'algorithm', // algorithm
+                    'discovery', // discovery
+                    {
+                      font_set: e.currentTarget.value as FontSet,
+                    },
+                  )
+                }
+              >
+                <option value='system_fonts'>Installed Fonts</option>
+                <hr />
+                <option value='google_fonts_popular100'>
+                  Google Fonts Popular 100
+                </option>
+                <option value='google_fonts_popular200'>
+                  Google Fonts Popular 200
+                </option>
+                <option value='google_fonts_popular300'>
+                  Google Fonts Popular 300
+                </option>
+                <option value='google_fonts_popular500'>
+                  Google Fonts Popular 500
+                </option>
+                <option value='google_fonts_popular1000'>
+                  Google Fonts Popular 1000
+                </option>
+              </select>
+            </TextField>
           </div>
         </div>
-      </section>
+
+        <div class='group/section flex flex-col gap-2'>
+          <div class='flex items-center gap-1'>
+            <div class='text-sm font-medium'>Image Generation</div>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                variant='ghost'
+                size='icon'
+                disabled={appState.session.isProcessing}
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('discovered')}
+              >
+                <StepForwardIcon class='size-3 max-h-3' />
+              </TooltipTrigger>
+              <TooltipContent>Run from this step</TooltipContent>
+            </Tooltip>
+          </div>
+          <div class='flex flex-col'>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Font Size
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='image-font-size'
+                value={
+                  appState.session.config?.algorithm?.image?.font_size ?? 128
+                }
+                step='1'
+                min='1'
+              />
+            </TextField>
+          </div>
+        </div>
+
+        <div class='group/section flex flex-col gap-2'>
+          <div class='flex items-center gap-1'>
+            <div class='text-sm font-medium'>HOG (Vectorization)</div>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                variant='ghost'
+                size='icon'
+                disabled={appState.session.isProcessing}
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('generated')}
+              >
+                <StepForwardIcon class='size-3 max-h-3' />
+              </TooltipTrigger>
+              <TooltipContent>Run from this step</TooltipContent>
+            </Tooltip>
+          </div>
+          <div class='flex flex-col'>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Orientations
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hog-orientations'
+                value={
+                  appState.session.config?.algorithm?.hog?.orientations ?? 12
+                }
+                step='1'
+                min='1'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Cell Side
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hog-cell-side'
+                value={appState.session.config?.algorithm?.hog?.cell_side ?? 16}
+                step='1'
+                min='1'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Block Side
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hog-block-side'
+                value={appState.session.config?.algorithm?.hog?.block_side ?? 2}
+                step='1'
+                min='1'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Block Stride
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hog-block-stride'
+                value={
+                  appState.session.config?.algorithm?.hog?.block_stride ?? 2
+                }
+                step='1'
+                min='1'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Width
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hog-width'
+                value={appState.session.config?.algorithm?.hog?.width ?? 128}
+                step='1'
+                min='1'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Height
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hog-height'
+                value={appState.session.config?.algorithm?.hog?.height ?? 64}
+                step='1'
+                min='1'
+              />
+            </TextField>
+          </div>
+        </div>
+
+        <div class='group/section flex flex-col gap-2'>
+          <div class='flex items-center gap-1'>
+            <div class='text-sm font-medium'>PaCMAP (D-Reduction)</div>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                variant='ghost'
+                size='icon'
+                disabled={appState.session.isProcessing}
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('vectorized')}
+              >
+                <StepForwardIcon class='size-3 max-h-3' />
+              </TooltipTrigger>
+              <TooltipContent>Run from this step</TooltipContent>
+            </Tooltip>
+          </div>
+          <div class='flex flex-col'>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Global Iterations
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='pacmap-mn-phases'
+                value={
+                  appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100
+                }
+                step='10'
+                min='0'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Attraction Iterations
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='pacmap-nn-phases'
+                value={
+                  appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100
+                }
+                step='10'
+                min='0'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Repulsion Iterations
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='pacmap-fp-phases'
+                value={
+                  appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100
+                }
+                step='10'
+                min='0'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Learning rate
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='pacmap-learning-rate'
+                value={
+                  appState.session.config?.algorithm?.pacmap?.learning_rate ??
+                  1.0
+                }
+                step='0.1'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Neighbors
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='pacmap-n-neighbors'
+                value={
+                  appState.session.config?.algorithm?.pacmap?.n_neighbors ?? 32
+                }
+                step='1'
+                min='1'
+              />
+            </TextField>
+          </div>
+        </div>
+
+        <div class='group/section flex flex-col gap-2'>
+          <div class='flex items-center gap-1'>
+            <div class='text-sm font-medium'>HDBSCAN (Clustering)</div>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                variant='ghost'
+                size='icon'
+                disabled={appState.session.isProcessing}
+                class='invisible mb-px size-4 text-xs group-hover/section:visible'
+                onClick={() => handleRun('compressed')}
+              >
+                <StepForwardIcon class='size-3 max-h-3' />
+              </TooltipTrigger>
+              <TooltipContent>Run from this step</TooltipContent>
+            </Tooltip>
+          </div>
+          <div class='flex flex-col'>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Min Cluster Size
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hdbscan-min-cluster-size'
+                value={
+                  appState.session.config?.algorithm?.hdbscan
+                    ?.min_cluster_size ?? 12
+                }
+                step='1'
+                min='0'
+              />
+            </TextField>
+            <TextField class='relative'>
+              <TextFieldLabel class='absolute inset-y-0 left-0 flex items-center'>
+                Min Samples
+              </TextFieldLabel>
+              <TextFieldInput
+                type='number'
+                name='hdbscan-min-samples'
+                value={
+                  appState.session.config?.algorithm?.hdbscan?.min_samples ?? 12
+                }
+                step='1'
+                min='0'
+              />
+            </TextField>
+          </div>
+        </div>
+      </div>
 
       <div class='mt-auto flex flex-col gap-0.5'>
         <div class='flex items-center gap-1 py-1 pb-1.5'>
@@ -670,7 +644,7 @@ export function FontProcessingForm() {
 
           <div
             class={cn(
-              'flex items-end justify-between text-xxs font-medium text-muted-foreground',
+              'flex items-end justify-between text-xs font-medium text-muted-foreground',
               appState.session.isProcessing && 'animate-pulse',
             )}
           >

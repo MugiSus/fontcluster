@@ -67,7 +67,7 @@ const TextFieldInput = <T extends ValidComponent = 'input'>(
     <TextFieldPrimitive.Input
       type={local.type}
       class={cn(
-        'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
+        'flex h-10 w-full rounded-md bg-transparent py-2 text-right text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
         local.class,
       )}
       {...others}
@@ -87,7 +87,7 @@ const TextFieldTextArea = <T extends ValidComponent = 'textarea'>(
   return (
     <TextFieldPrimitive.TextArea
       class={cn(
-        'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
+        'flex min-h-[80px] w-full rounded-md bg-background py-2 text-right text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
         local.class,
       )}
       {...others}
@@ -96,11 +96,11 @@ const TextFieldTextArea = <T extends ValidComponent = 'textarea'>(
 };
 
 const labelVariants = cva(
-  'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+  'text-xs font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
   {
     variants: {
       variant: {
-        label: 'data-[invalid]:text-destructive',
+        label: 'text-muted-foreground data-[invalid]:text-destructive',
         description: 'font-normal text-muted-foreground',
         error: 'text-xs text-destructive',
       },
