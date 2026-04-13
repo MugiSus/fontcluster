@@ -335,7 +335,7 @@ export function ClusterVisualizer() {
   });
 
   return (
-    <div class='relative flex size-full items-center justify-center rounded-md border bg-background shadow-sm'>
+    <div class='relative flex size-full items-center justify-center rounded-md border bg-background'>
       <Show
         when={allPoints().length > 0}
         fallback={
