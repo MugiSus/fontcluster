@@ -40,7 +40,7 @@ export function WeightSelector(props: WeightSelectorProps) {
           <WeightIcon class='size-3 text-muted-foreground' />
         </div>
       </Show>
-      <For each={props.weights}>
+      <For each={props.weights.toSorted()}>
         {(weight) => {
           const isSelected = () => props.selectedWeights.includes(weight);
           const isSelectable = () => props.weights.includes(weight);

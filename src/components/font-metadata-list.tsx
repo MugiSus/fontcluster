@@ -67,8 +67,8 @@ export function FontMetadataList(props: FontMetadataListProps) {
             <li
               class={`absolute left-0 top-0 flex w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 ${
                 isSelected(metadata.safe_name)
-                  ? 'bg-slate-300 dark:bg-zinc-700'
-                  : 'bg-slate-100 dark:bg-zinc-900'
+                  ? 'bg-slate-200 dark:bg-zinc-800'
+                  : 'bg-background'
               }`}
               style={{
                 height: `${virtualItem.size}px`,
