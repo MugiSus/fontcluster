@@ -22,8 +22,8 @@ function App() {
       <Toaster position='bottom-right' />
       <ClipboardManager />
       <SessionSelector />
-      <div class='m-1.5 mt-0 h-full min-h-0'>
-        <Resizable class='min-h-0 overflow-hidden rounded-xl border border-border bg-gradient-to-b from-slate-100 to-slate-200 py-1.5 dark:from-zinc-850 dark:to-zinc-800'>
+      <div class='mt-0 h-full min-h-0'>
+        <Resizable class='min-h-0 overflow-hidden rounded-xl bg-background pb-1.5'>
           <ResizablePanel
             class='flex min-w-0 flex-col gap-3 overflow-hidden'
             initialSize={0.2}
