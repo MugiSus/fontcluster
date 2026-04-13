@@ -178,7 +178,7 @@ export function FontProcessingForm() {
           Algorithm options (Advanced)
           <ChevronDownIcon class='size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
         </label>
-        <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground shadow-sm peer-checked:block'>
+        <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground peer-checked:block'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium text-muted-foreground'>
@@ -202,7 +202,7 @@ export function FontProcessingForm() {
               <TextField class='gap-0.5'>
                 <TextFieldLabel class='text-xxs'>Font Set</TextFieldLabel>
                 <select
-                  class='flex h-7 w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+                  class='flex h-7 w-full rounded-md border border-input bg-background px-3 py-2 text-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
                   value={
                     appState.session.config?.algorithm?.discovery?.font_set ??
                     'google_fonts_popular300'

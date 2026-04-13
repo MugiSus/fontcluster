@@ -48,7 +48,7 @@ interface TabsListProps {
 export const TabsList: ParentComponent<TabsListProps> = (props) => {
   return (
     <div
-      class={`inline-flex h-8 items-center justify-center rounded-md border border-input bg-slate-200 text-muted-foreground dark:bg-zinc-900 ${props.class || ''}`}
+      class={`inline-flex h-9 justify-center rounded-md border border-input bg-slate-100 text-muted-foreground dark:bg-zinc-900 ${props.class || ''}`}
     >
       {props.children}
     </div>
@@ -69,7 +69,7 @@ export const TabsTrigger: ParentComponent<TabsTriggerProps> = (props) => {
 
   return (
     <button
-      class={`inline-flex h-8 items-center justify-center whitespace-nowrap px-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+      class={`inline-flex h-full items-center justify-center whitespace-nowrap px-3 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
         isActive()
           ? 'bg-background text-foreground shadow-sm'
           : 'hover:bg-slate-200 hover:text-foreground dark:hover:bg-zinc-800'

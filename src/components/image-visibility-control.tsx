@@ -9,7 +9,7 @@ interface ImageVisibilityControlProps {
 
 export function ImageVisibilityControl(props: ImageVisibilityControlProps) {
   return (
-    <div class='flex rounded-md border bg-background shadow-sm'>
+    <div class='flex rounded-md border bg-background'>
       <Tooltip>
         <TooltipTrigger
           as={Button<'button'>}

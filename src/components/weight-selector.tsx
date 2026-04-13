@@ -26,7 +26,7 @@ export function WeightSelector(props: WeightSelectorProps) {
   return (
     <div
       class={cn(
-        'flex items-stretch overflow-hidden rounded-md border bg-background shadow-sm',
+        'flex items-stretch overflow-hidden rounded-md border bg-background',
         props.isVertical ? 'flex-col' : 'flex-row',
       )}
     >

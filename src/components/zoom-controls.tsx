@@ -10,7 +10,7 @@ interface ZoomControlsProps {
 
 export function ZoomControls(props: ZoomControlsProps) {
   return (
-    <div class='flex rounded-md border bg-background shadow-sm'>
+    <div class='flex rounded-md border bg-background'>
       <Tooltip>
         <TooltipTrigger
           as={Button<'button'>}
