@@ -1,7 +1,5 @@
 # FontCluster
 
-![FontCluster Preview](icon.png)
-
 Install [fontcluster.mugisus.me](https://fontcluster.mugisus.me)
 
 ## License
