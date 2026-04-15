@@ -3,6 +3,7 @@ import { For } from 'solid-js';
 import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
+import { cn } from '@/lib/utils';
 import { ModeToggle } from './mode-toggle';
 import { SearchForm } from './search-form';
 import { Button } from './ui/button';
@@ -18,6 +19,7 @@ interface CollapsedPanel {
 interface GraphToolbarProps {
   collapsedPanels: CollapsedPanel[];
   onReopenPanel: (panel: CollapsiblePanelKey) => void;
+  isLeftInset?: boolean | undefined;
 }
 
 export function GraphToolbar(props: GraphToolbarProps) {
@@ -38,7 +40,12 @@ export function GraphToolbar(props: GraphToolbarProps) {
 
   return (
     <div class='flex h-10 shrink-0 items-stretch gap-4 border-b border-border/70 px-1.5'>
-      <div class='flex min-w-0 flex-1 items-center gap-1.5'>
+      <div
+        class={cn(
+          'flex min-w-0 flex-1 items-center gap-0.5',
+          props.isLeftInset && 'pl-20',
+        )}
+      >
         <For each={props.collapsedPanels}>
           {(panel) => (
             <Button

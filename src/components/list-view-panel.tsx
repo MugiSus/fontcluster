@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 interface ListViewPanelProps {
   onClose: () => void;
+  isLeftInset?: boolean | undefined;
 }
 
 const SORT_OPTIONS: Array<{
@@ -45,6 +46,7 @@ export function ListViewPanel(props: ListViewPanelProps) {
     <AppShellPanel
       title='List'
       class='w-[300px] shrink-0'
+      isLeftInset={props.isLeftInset}
       onClose={props.onClose}
       actions={
         <Tooltip>

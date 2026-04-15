@@ -7,6 +7,7 @@ interface FontGraphViewPanelProps {
     label: string;
   }>;
   onReopenPanel: (panel: CollapsiblePanelKey) => void;
+  isLeftInset?: boolean | undefined;
 }
 
 export function FontGraphViewPanel(props: FontGraphViewPanelProps) {
@@ -15,6 +16,7 @@ export function FontGraphViewPanel(props: FontGraphViewPanelProps) {
       <GraphToolbar
         collapsedPanels={props.collapsedPanels}
         onReopenPanel={props.onReopenPanel}
+        isLeftInset={props.isLeftInset}
       />
       <div class='min-h-0 flex-1 overflow-hidden'>
         <ClusterVisualizer />

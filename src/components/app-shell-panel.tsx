@@ -6,10 +6,11 @@ import { cn } from '@/lib/utils';
 interface AppShellPanelProps {
   title: string;
   children: JSX.Element;
-  class?: string;
-  bodyClass?: string;
-  actions?: JSX.Element;
-  onClose?: () => void;
+  class?: string | undefined;
+  bodyClass?: string | undefined;
+  actions?: JSX.Element | undefined;
+  isLeftInset?: boolean | undefined;
+  onClose?: (() => void) | undefined;
 }
 
 export function AppShellPanel(props: AppShellPanelProps) {
@@ -23,7 +24,10 @@ export function AppShellPanel(props: AppShellPanelProps) {
       <div class='flex h-10 shrink-0 items-center gap-0 border-b border-border/70 pl-4 pr-1.5'>
         <div
           data-tauri-drag-region
-          class='flex h-full min-w-0 flex-1 items-center text-xs'
+          class={cn(
+            'flex h-full min-w-0 flex-1 items-center text-xs',
+            props.isLeftInset && 'ml-20',
+          )}
         >
           {props.title}
         </div>

@@ -34,6 +34,13 @@ function App() {
     COLLAPSIBLE_PANELS.filter((panel) => !panelState[panel.key]),
   );
 
+  const leftmostVisiblePanel = createMemo<CollapsiblePanelKey | 'graph'>(() => {
+    if (panelState.control) return 'control';
+    if (panelState.list) return 'list';
+    if (panelState.chat) return 'chat';
+    return 'graph';
+  });
+
   const closePanel = (panel: CollapsiblePanelKey) => {
     setPanelState(panel, false);
   };
@@ -52,6 +59,7 @@ function App() {
           <AppShellPanel
             title='Control'
             class='w-[300px] shrink-0'
+            isLeftInset={leftmostVisiblePanel() === 'control'}
             onClose={() => closePanel('control')}
           >
             <FontProcessingForm />
@@ -59,13 +67,17 @@ function App() {
         </Show>
 
         <Show when={panelState.list}>
-          <ListViewPanel onClose={() => closePanel('list')} />
+          <ListViewPanel
+            onClose={() => closePanel('list')}
+            isLeftInset={leftmostVisiblePanel() === 'list'}
+          />
         </Show>
 
         <Show when={panelState.chat}>
           <AppShellPanel
             title='Chat'
             class='w-[300px] shrink-0'
+            isLeftInset={leftmostVisiblePanel() === 'chat'}
             onClose={() => closePanel('chat')}
           >
             <ChatViewPanel />
@@ -75,6 +87,7 @@ function App() {
         <FontGraphViewPanel
           collapsedPanels={collapsedPanels()}
           onReopenPanel={openPanel}
+          isLeftInset={leftmostVisiblePanel() === 'graph'}
         />
       </div>
     </>
