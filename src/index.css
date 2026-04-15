@@ -8,6 +8,12 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   :root {
     --background: 210 50% 99.4%;
     --foreground: 222 47% 11.2%;
@@ -105,10 +111,15 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top left, hsl(202 89% 96%) 0, transparent 28%),
+      radial-gradient(circle at top right, hsl(221 83% 97%) 0, transparent 30%),
+      linear-gradient(180deg, hsl(var(--background)), hsl(210 33% 97.2%));
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+    overflow: hidden;
   }
 }
 
