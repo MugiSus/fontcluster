@@ -14,15 +14,15 @@
         "title": "",
         "width": 1920,
         "height": 1080,
-        "minWidth": 1080,
-        "minHeight": 600,
+        "minWidth": 1280,
+        "minHeight": 720,
         "resizable": true,
         "maximizable": true,
         "decorations": true,
         "titleBarStyle": "Overlay",
         "trafficLightPosition": {
           "x": 16,
-          "y": 19
+          "y": 18
         }
       }
     ],
