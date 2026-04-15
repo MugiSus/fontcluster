@@ -10,6 +10,7 @@ import { ChatViewPanel } from './components/chat-view-panel';
 import { type CollapsiblePanelKey } from './components/graph-toolbar';
 import { FontGraphViewPanel } from './components/font-graph-view-panel';
 import { ListViewPanel } from './components/list-view-panel';
+import { cn } from './lib/utils';
 
 const COLLAPSIBLE_PANELS = [
   { key: 'control', label: 'Control' },
@@ -66,12 +67,12 @@ function App() {
           </AppShellPanel>
         </Show>
 
-        <Show when={panelState.list}>
+        <div class={cn('flex min-h-0 shrink-0', !panelState.list && 'hidden')}>
           <ListViewPanel
             onClose={() => closePanel('list')}
             isLeftInset={leftmostVisiblePanel() === 'list'}
           />
-        </Show>
+        </div>
 
         <Show when={panelState.chat}>
           <AppShellPanel
