@@ -20,10 +20,10 @@ export function AppShellPanel(props: AppShellPanelProps) {
         props.class,
       )}
     >
-      <div class='flex h-10 shrink-0 items-stretch gap-2 border-b border-border/70 pl-4 pr-2'>
+      <div class='flex h-10 shrink-0 items-stretch gap-2 border-b border-border/70 pl-4 pr-1.5'>
         <div
           data-tauri-drag-region
-          class='flex h-full min-w-0 flex-1 items-center text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground'
+          class='flex h-full min-w-0 flex-1 items-center text-xs'
         >
           {props.title}
         </div>
