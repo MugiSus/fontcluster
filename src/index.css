@@ -110,6 +110,12 @@
   * {
     @apply border-border;
   }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    margin-left: 0.6rem;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings:

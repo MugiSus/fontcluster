@@ -1,5 +1,5 @@
 import { emit } from '@tauri-apps/api/event';
-import { For } from 'solid-js';
+import { For, Show } from 'solid-js';
 import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
@@ -39,36 +39,38 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='flex h-10 shrink-0 items-stretch gap-4 border-b border-border/70 px-1.5'>
-      <div
-        class={cn(
-          'flex min-w-0 flex-1 items-center gap-0.5',
-          props.isLeftInset && 'pl-20',
-        )}
-      >
-        <For each={props.collapsedPanels}>
-          {(panel) => (
-            <Button
-              variant='ghost'
-              size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-              onClick={() => props.onReopenPanel(panel.key)}
-            >
-              {panel.label}
-            </Button>
-          )}
-        </For>
-        <div data-tauri-drag-region class='h-full flex-1' />
-      </div>
+    <div
+      class={cn(
+        'flex h-10 shrink-0 items-stretch gap-1 border-b border-border/70 px-1.5',
+        props.isLeftInset && 'ml-1.5 pl-20',
+      )}
+    >
+      <Show when={props.collapsedPanels.length > 0}>
+        <div class='flex items-center gap-0.5'>
+          <For each={props.collapsedPanels}>
+            {(panel) => (
+              <Button
+                variant='ghost'
+                size='sm'
+                class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                onClick={() => props.onReopenPanel(panel.key)}
+              >
+                {panel.label}
+              </Button>
+            )}
+          </For>
+        </div>
+      </Show>
 
-      <div class='flex min-w-0 max-w-xl flex-1 items-center'>
-        <div class='w-full max-w-xl'>
+      <div class='flex grow items-center justify-center'>
+        <div class='h-full flex-1' data-tauri-drag-region />
+        <div class='w-full max-w-lg'>
           <SearchForm />
         </div>
+        <div class='h-full flex-1' data-tauri-drag-region />
       </div>
 
-      <div class='flex min-w-0 flex-1 items-center justify-end gap-0'>
-        <div data-tauri-drag-region class='h-full flex-1' />
+      <div class='flex items-center justify-end gap-0'>
         <Tooltip>
           <TooltipTrigger as='div'>
             <Button

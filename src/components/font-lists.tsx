@@ -68,7 +68,7 @@ export function FontLists(props: FontListsProps) {
   );
 
   return (
-    <div class='h-full flex-1 overflow-scroll overscroll-x-none'>
+    <div class='h-full flex-1 overflow-scroll py-1'>
       <Show when={filteredMetadatas().length > 0} fallback={<NoResultsFound />}>
         <FontMetadataList
           fontMetadatas={sortedMetadatas()}

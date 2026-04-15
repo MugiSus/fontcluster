@@ -52,7 +52,7 @@ export function SearchForm() {
         <TextFieldInput
           type='text'
           placeholder='Filter fonts...'
-          class='h-7 px-12 pt-2 text-center text-xs shadow-none focus:placeholder:text-transparent focus-visible:placeholder:text-transparent'
+          class='h-7 border px-12 text-center text-xs shadow-none hover:bg-background focus:bg-background focus:placeholder:text-transparent focus-visible:bg-background focus-visible:placeholder:text-transparent'
           value={inputValue()}
           onInput={(e) => handleQueryChange(e.currentTarget.value)}
           spellcheck='false'
