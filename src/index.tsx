@@ -19,7 +19,7 @@ function Root() {
     <>
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
-        <div class='flex h-screen flex-col overflow-hidden overscroll-none bg-background font-sans'>
+        <div class='flex h-screen flex-col overflow-hidden overscroll-none border bg-background font-sans'>
           <App />
         </div>
       </ColorModeProvider>

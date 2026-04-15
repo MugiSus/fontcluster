@@ -12,7 +12,7 @@ interface FontGraphViewPanelProps {
 
 export function FontGraphViewPanel(props: FontGraphViewPanelProps) {
   return (
-    <section class='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background'>
+    <section class='relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background'>
       <GraphToolbar
         collapsedPanels={props.collapsedPanels}
         onReopenPanel={props.onReopenPanel}

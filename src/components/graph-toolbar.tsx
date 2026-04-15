@@ -41,7 +41,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   return (
     <div
       class={cn(
-        'flex h-10 shrink-0 items-stretch gap-1 border-b border-border/70 px-1.5',
+        'absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b border-border/70 bg-background/60 px-1.5 backdrop-blur-[2px]',
         props.isLeftInset && 'ml-1.5 pl-20',
       )}
     >
@@ -77,7 +77,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
               variant='ghost'
               size='icon'
               onClick={handleManualUpdateCheck}
-              class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             >
               <SparklesIcon class='size-4' />
             </Button>
@@ -91,7 +91,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
               variant='ghost'
               size='icon'
               onClick={copyCurrentSelectedFont}
-              class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               disabled={!appState.ui.selectedFontKey}
             >
               <CopyIcon class='size-4' />
@@ -106,7 +106,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
               variant='ghost'
               size='icon'
               onClick={showSessions}
-              class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             >
               <HistoryIcon class='size-4' />
             </Button>
@@ -116,7 +116,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
 
         <Tooltip>
           <TooltipTrigger as='div'>
-            <ModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+            <ModeToggle class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
           </TooltipTrigger>
           <TooltipContent>Theme</TooltipContent>
         </Tooltip>

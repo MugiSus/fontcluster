@@ -67,7 +67,7 @@ const TextFieldInput = <T extends ValidComponent = 'input'>(
     <TextFieldPrimitive.Input
       type={local.type}
       class={cn(
-        'flex h-8 w-full rounded-md bg-transparent px-2 text-right text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus:bg-muted/75 focus:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
+        'flex h-8 w-full rounded-md bg-transparent px-1.5 text-right text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus:bg-muted/75 focus:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
         local.class,
       )}
       {...others}
@@ -87,7 +87,7 @@ const TextFieldTextArea = <T extends ValidComponent = 'textarea'>(
   return (
     <TextFieldPrimitive.TextArea
       class={cn(
-        'flex min-h-[80px] w-full rounded-md bg-background px-2.5 text-right text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+        'flex min-h-[80px] w-full rounded-md bg-background px-2 text-right text-sm ring-offset-background placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
         local.class,
       )}
       {...others}
