@@ -150,7 +150,7 @@ export function FontProcessingForm() {
         </TextField>
       </div>
 
-      <div class='flex min-h-0 flex-1 grow flex-col gap-2 space-y-3 overflow-y-scroll p-4'>
+      <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
         <div class='group/section space-y-1.5'>
           <div class='flex items-center gap-1'>
             <div class='text-xs font-medium'>Discovery</div>

@@ -346,7 +346,7 @@ export function ClusterVisualizer() {
           </div>
         }
       >
-        <div class='pointer-events-none absolute bottom-2.5 right-2.5 z-10 flex items-end gap-2.5'>
+        <div class='pointer-events-none absolute bottom-4 right-4 z-10 flex items-end gap-3'>
           <div class='pointer-events-auto'>
             <ImageVisibilityControl
               showImages={showImages()}
