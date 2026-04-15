@@ -123,7 +123,7 @@ export function FontProcessingForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      class='flex min-h-0 flex-1 flex-col items-stretch gap-1.5 pl-1.5'
+      class='flex min-h-0 flex-1 flex-col items-stretch gap-1.5 p-4'
     >
       <TextField class='relative grid w-full items-center gap-1'>
         <TextFieldLabel
@@ -178,7 +178,7 @@ export function FontProcessingForm() {
           Algorithm options (Advanced)
           <ChevronDownIcon class='size-3 transition-transform duration-200 [.peer:checked~label_&]:rotate-180' />
         </label>
-        <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll rounded-md border p-2 text-muted-foreground peer-checked:block'>
+        <div class='hidden min-h-0 flex-1 grow space-y-3 overflow-y-scroll border-y border-border/70 px-4 py-3 text-muted-foreground peer-checked:block'>
           <div class='group/section space-y-1.5'>
             <div class='flex items-center gap-1'>
               <div class='text-xxs font-medium text-muted-foreground'>

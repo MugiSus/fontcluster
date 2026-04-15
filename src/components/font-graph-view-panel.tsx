@@ -11,12 +11,12 @@ interface FontGraphViewPanelProps {
 
 export function FontGraphViewPanel(props: FontGraphViewPanelProps) {
   return (
-    <section class='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-border/70 bg-background/90 shadow-[0_32px_100px_-60px_rgba(15,23,42,0.55)] backdrop-blur-sm'>
+    <section class='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background'>
       <GraphToolbar
         collapsedPanels={props.collapsedPanels}
         onReopenPanel={props.onReopenPanel}
       />
-      <div class='min-h-0 flex-1 overflow-hidden px-3 pb-3 pt-2'>
+      <div class='min-h-0 flex-1 overflow-hidden'>
         <ClusterVisualizer />
       </div>
     </section>

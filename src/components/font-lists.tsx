@@ -49,13 +49,13 @@ export function FontLists() {
   );
 
   return (
-    <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col pr-1.5'>
-      <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden'>
+    <Tabs value='similarity' class='flex min-h-0 flex-1 flex-col'>
+      <TabsList class='grid w-full shrink-0 grid-cols-2 overflow-hidden rounded-none border-b border-border/70 bg-transparent p-0'>
         <Tooltip>
           <TooltipTrigger as='div' class='w-full'>
             <TabsTrigger
               value='similarity'
-              class='relative flex w-full gap-2 pr-4'
+              class='relative flex w-full gap-2 rounded-none border-r border-border/70 pr-4'
             >
               <ArrowDownNarrowWide class='size-4 min-w-4 text-muted-foreground' />
               Similarity
@@ -65,7 +65,10 @@ export function FontLists() {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger as='div' class='w-full'>
-            <TabsTrigger value='name' class='relative flex w-full gap-2 pr-4'>
+            <TabsTrigger
+              value='name'
+              class='relative flex w-full gap-2 rounded-none pr-4'
+            >
               <ArrowDownAZ class='size-4 min-w-4 text-muted-foreground' />
               Name
             </TabsTrigger>
@@ -76,7 +79,7 @@ export function FontLists() {
 
       <TabsContent
         value='similarity'
-        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none'
       >
         <Show
           when={filteredMetadatas().length > 0}
@@ -94,7 +97,7 @@ export function FontLists() {
 
       <TabsContent
         value='name'
-        class='min-h-0 flex-1 overflow-scroll overscroll-x-none rounded-md border'
+        class='min-h-0 flex-1 overflow-scroll overscroll-x-none'
       >
         <Show
           when={filteredMetadatas().length > 0}

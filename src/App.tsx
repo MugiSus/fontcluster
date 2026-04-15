@@ -47,12 +47,11 @@ function App() {
       <Toaster position='bottom-right' />
       <ClipboardManager />
       <SessionSelector />
-      <div class='flex h-full min-h-0 gap-3 p-3'>
+      <div class='flex h-full min-h-0'>
         <Show when={panelState.control}>
           <AppShellPanel
             title='Control'
             class='w-[300px] shrink-0'
-            bodyClass='p-3'
             onClose={() => closePanel('control')}
           >
             <FontProcessingForm />
@@ -63,7 +62,6 @@ function App() {
           <AppShellPanel
             title='List'
             class='w-[300px] shrink-0'
-            bodyClass='p-3'
             onClose={() => closePanel('list')}
           >
             <FontLists />
@@ -74,7 +72,6 @@ function App() {
           <AppShellPanel
             title='Chat'
             class='w-[300px] shrink-0'
-            bodyClass='p-3'
             onClose={() => closePanel('chat')}
           >
             <ChatViewPanel />
