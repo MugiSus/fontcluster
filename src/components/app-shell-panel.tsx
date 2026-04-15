@@ -40,9 +40,7 @@ export function AppShellPanel(props: AppShellPanelProps) {
           </Button>
         </Show>
       </div>
-      <div class={cn('min-h-0 flex-1 overflow-hidden', props.bodyClass)}>
-        {props.children}
-      </div>
+      <div class={cn('min-h-0 flex-1', props.bodyClass)}>{props.children}</div>
     </section>
   );
 }
