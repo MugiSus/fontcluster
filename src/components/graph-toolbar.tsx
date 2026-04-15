@@ -1,11 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
 import { For } from 'solid-js';
-import {
-  CopyIcon,
-  HistoryIcon,
-  ChevronRightIcon,
-  SparklesIcon,
-} from 'lucide-solid';
+import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
 import { ModeToggle } from './mode-toggle';
@@ -42,17 +37,16 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='flex h-10 shrink-0 items-stretch gap-4 border-b border-border/70 px-2'>
+    <div class='flex h-10 shrink-0 items-stretch gap-4 border-b border-border/70 px-1.5'>
       <div class='flex min-w-0 flex-1 items-center gap-1.5'>
         <For each={props.collapsedPanels}>
           {(panel) => (
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 rounded-full border border-border/70 bg-background px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel(panel.key)}
             >
-              <ChevronRightIcon class='size-3' />
               {panel.label}
             </Button>
           )}
@@ -66,7 +60,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
         </div>
       </div>
 
-      <div class='flex min-w-0 flex-1 items-center justify-end gap-1'>
+      <div class='flex min-w-0 flex-1 items-center justify-end gap-0'>
         <div data-tauri-drag-region class='h-full flex-1' />
         <Tooltip>
           <TooltipTrigger as='div'>

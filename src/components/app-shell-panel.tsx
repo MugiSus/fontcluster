@@ -20,7 +20,7 @@ export function AppShellPanel(props: AppShellPanelProps) {
         props.class,
       )}
     >
-      <div class='flex h-10 shrink-0 items-stretch gap-2 border-b border-border/70 pl-4 pr-1.5'>
+      <div class='flex h-10 shrink-0 items-center gap-0 border-b border-border/70 pl-4 pr-1.5'>
         <div
           data-tauri-drag-region
           class='flex h-full min-w-0 flex-1 items-center text-xs'
@@ -32,7 +32,7 @@ export function AppShellPanel(props: AppShellPanelProps) {
           <Button
             variant='ghost'
             size='icon'
-            class='size-7 self-center rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onClose?.()}
             aria-label={`Close ${props.title} panel`}
           >

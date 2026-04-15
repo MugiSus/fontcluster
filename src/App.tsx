@@ -1,6 +1,5 @@
 import { Show, createMemo, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { FontLists } from './components/font-lists';
 import { SessionSelector } from './components/session-selector';
 import { FontProcessingForm } from './components/font-processing-form';
 import { ClipboardManager } from './components/clipboard-manager';
@@ -10,6 +9,7 @@ import { AppShellPanel } from './components/app-shell-panel';
 import { ChatViewPanel } from './components/chat-view-panel';
 import { type CollapsiblePanelKey } from './components/graph-toolbar';
 import { FontGraphViewPanel } from './components/font-graph-view-panel';
+import { ListViewPanel } from './components/list-view-panel';
 
 const COLLAPSIBLE_PANELS = [
   { key: 'control', label: 'Control' },
@@ -59,13 +59,7 @@ function App() {
         </Show>
 
         <Show when={panelState.list}>
-          <AppShellPanel
-            title='List'
-            class='w-[300px] shrink-0'
-            onClose={() => closePanel('list')}
-          >
-            <FontLists />
-          </AppShellPanel>
+          <ListViewPanel onClose={() => closePanel('list')} />
         </Show>
 
         <Show when={panelState.chat}>
