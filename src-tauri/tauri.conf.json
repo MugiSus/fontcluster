@@ -17,7 +17,7 @@
         "minWidth": 1080,
         "minHeight": 600,
         "resizable": true,
-        "maximizable": false,
+        "maximizable": true,
         "decorations": true,
         "titleBarStyle": "Overlay",
         "trafficLightPosition": {
