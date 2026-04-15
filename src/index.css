@@ -8,6 +8,12 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   :root {
     --background: 210 50% 99.4%;
     --foreground: 222 47% 11.2%;
@@ -104,11 +110,18 @@
   * {
     @apply border-border;
   }
+
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    margin-left: 0.6rem;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+    overflow: hidden;
   }
 }
 

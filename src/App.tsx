@@ -1,65 +1,95 @@
-import { onMount } from 'solid-js';
-import { FontLists } from './components/font-lists';
+import { Show, createMemo, onMount } from 'solid-js';
+import { createStore } from 'solid-js/store';
 import { SessionSelector } from './components/session-selector';
-import { ClusterVisualizer } from './components/cluster-visualizer';
 import { FontProcessingForm } from './components/font-processing-form';
 import { ClipboardManager } from './components/clipboard-manager';
 import { initAppEvents } from './actions';
-import {
-  Resizable,
-  ResizableHandle,
-  ResizablePanel,
-} from './components/ui/resizable';
 import { Toaster } from './components/ui/sonner';
+import { AppShellPanel } from './components/app-shell-panel';
+import { ChatViewPanel } from './components/chat-view-panel';
+import { type CollapsiblePanelKey } from './components/graph-toolbar';
+import { FontGraphViewPanel } from './components/font-graph-view-panel';
+import { ListViewPanel } from './components/list-view-panel';
+import { cn } from './lib/utils';
+
+const COLLAPSIBLE_PANELS = [
+  { key: 'control', label: 'Control' },
+  { key: 'list', label: 'List' },
+  { key: 'chat', label: 'Chat' },
+] as const satisfies Array<{ key: CollapsiblePanelKey; label: string }>;
 
 function App() {
+  const [panelState, setPanelState] = createStore<
+    Record<CollapsiblePanelKey, boolean>
+  >({
+    control: true,
+    list: true,
+    chat: false,
+  });
+
   onMount(() => {
     initAppEvents();
   });
+
+  const collapsedPanels = createMemo(() =>
+    COLLAPSIBLE_PANELS.filter((panel) => !panelState[panel.key]),
+  );
+
+  const leftmostVisiblePanel = createMemo<CollapsiblePanelKey | 'graph'>(() => {
+    if (panelState.control) return 'control';
+    if (panelState.list) return 'list';
+    if (panelState.chat) return 'chat';
+    return 'graph';
+  });
+
+  const closePanel = (panel: CollapsiblePanelKey) => {
+    setPanelState(panel, false);
+  };
+
+  const openPanel = (panel: CollapsiblePanelKey) => {
+    setPanelState(panel, true);
+  };
 
   return (
     <>
       <Toaster position='bottom-right' />
       <ClipboardManager />
       <SessionSelector />
-      <div class='mt-0 h-full min-h-0'>
-        <Resizable class='min-h-0 overflow-hidden rounded-xl bg-background pb-1.5'>
-          <ResizablePanel
-            class='flex min-w-0 flex-col gap-3 overflow-hidden'
-            initialSize={0.2}
-            minSize={0.2}
-            collapsible={true}
-            collapsedSize={0}
-            collapseThreshold={0.05}
-            maxSize={0.5}
+      <div class='flex h-full min-h-0'>
+        <Show when={panelState.control}>
+          <AppShellPanel
+            title='Control'
+            class='w-[300px] shrink-0'
+            isLeftInset={leftmostVisiblePanel() === 'control'}
+            onClose={() => closePanel('control')}
           >
             <FontProcessingForm />
-          </ResizablePanel>
+          </AppShellPanel>
+        </Show>
 
-          <ResizableHandle withHandle class='bg-transparent px-[3px]' />
+        <div class={cn('flex min-h-0 shrink-0', !panelState.list && 'hidden')}>
+          <ListViewPanel
+            onClose={() => closePanel('list')}
+            isLeftInset={leftmostVisiblePanel() === 'list'}
+          />
+        </div>
 
-          <ResizablePanel
-            class='flex min-h-0 min-w-0'
-            minSize={0.2}
-            initialSize={0.6}
+        <Show when={panelState.chat}>
+          <AppShellPanel
+            title='Chat'
+            class='w-[300px] shrink-0'
+            isLeftInset={leftmostVisiblePanel() === 'chat'}
+            onClose={() => closePanel('chat')}
           >
-            <ClusterVisualizer />
-          </ResizablePanel>
+            <ChatViewPanel />
+          </AppShellPanel>
+        </Show>
 
-          <ResizableHandle withHandle class='bg-transparent px-[3px]' />
-
-          <ResizablePanel
-            initialSize={0.2}
-            minSize={0.2}
-            collapsible={true}
-            collapsedSize={0}
-            collapseThreshold={0.05}
-            maxSize={0.5}
-            class='flex min-h-0 min-w-0 flex-col'
-          >
-            <FontLists />
-          </ResizablePanel>
-        </Resizable>
+        <FontGraphViewPanel
+          collapsedPanels={collapsedPanels()}
+          onReopenPanel={openPanel}
+          isLeftInset={leftmostVisiblePanel() === 'graph'}
+        />
       </div>
     </>
   );

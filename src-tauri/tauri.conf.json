@@ -12,17 +12,17 @@
     "windows": [
       {
         "title": "",
-        "width": 1440,
-        "height": 720,
+        "width": 1920,
+        "height": 1080,
         "minWidth": 1080,
         "minHeight": 600,
         "resizable": true,
-        "maximizable": false,
+        "maximizable": true,
         "decorations": true,
         "titleBarStyle": "Overlay",
         "trafficLightPosition": {
           "x": 16,
-          "y": 24
+          "y": 22
         }
       }
     ],

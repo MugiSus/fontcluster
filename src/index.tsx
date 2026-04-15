@@ -11,7 +11,6 @@ import '@fontsource-variable/geist';
 
 import App from './App';
 import './index.css';
-import { Titlebar } from './components/titlebar';
 
 function Root() {
   const storageManager = createLocalStorageManager('vite-ui-theme');
@@ -20,8 +19,7 @@ function Root() {
     <>
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
-        <div class='flex h-screen flex-col overflow-auto overscroll-none bg-background'>
-          <Titlebar />
+        <div class='flex h-screen flex-col overflow-hidden overscroll-none bg-background font-sans'>
           <App />
         </div>
       </ColorModeProvider>
