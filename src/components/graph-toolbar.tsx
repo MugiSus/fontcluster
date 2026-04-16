@@ -44,11 +44,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
         <div
           class={cn(
             'z-10 flex items-center gap-0.5',
-            props.isLeftInset && 'pl-[78px]',
-            !props.panelState.control &&
-              !props.panelState.list &&
-              !props.panelState.chat &&
-              'w-32',
+            props.isLeftInset && 'pl-[72px]',
           )}
           data-tauri-drag-region
         >
