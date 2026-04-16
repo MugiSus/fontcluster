@@ -17,11 +17,11 @@ export function AppShellPanel(props: AppShellPanelProps) {
   return (
     <section
       class={cn(
-        'flex min-h-0 flex-col overflow-hidden border-r border-border/70 bg-background',
+        'flex min-h-0 flex-col overflow-hidden border-r bg-background',
         props.class,
       )}
     >
-      <div class='flex h-10 shrink-0 items-center gap-0 border-b border-border/70 pl-4 pr-1.5'>
+      <div class='flex h-10 shrink-0 items-center gap-0 border-b pl-4 pr-1.5'>
         <div
           data-tauri-drag-region
           class={cn(
