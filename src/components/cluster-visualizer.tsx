@@ -384,7 +384,7 @@ export function ClusterVisualizer() {
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <g opacity={0.5}>
+          <g opacity={0.7}>
             <path
               d='M 490 490 L 510 510 M 510 490 L 490 510'
               fill='none'
