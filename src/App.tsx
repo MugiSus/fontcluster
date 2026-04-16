@@ -11,8 +11,10 @@ import { FontGraphViewPanel } from './components/font-graph-view-panel';
 import { ListViewPanel } from './components/list-view-panel';
 import { cn } from './lib/utils';
 import { CollapsiblePanelKey, PanelState } from './types/panels';
+import { useIsFullscreen } from './hooks/use-is-fullscreen';
 
 function App() {
+  const isFullscreen = useIsFullscreen();
   const [panelState, setPanelState] = createStore<PanelState>({
     control: true,
     list: true,
@@ -41,7 +43,7 @@ function App() {
           <AppShellPanel
             title='Control'
             class='w-[300px] shrink-0'
-            isLeftInset={true}
+            isLeftInset={!isFullscreen()}
             onClose={() => closePanel('control')}
           >
             <FontProcessingForm />
@@ -51,7 +53,7 @@ function App() {
         <div class={cn('flex min-h-0 shrink-0', !panelState.list && 'hidden')}>
           <ListViewPanel
             onClose={() => closePanel('list')}
-            isLeftInset={!panelState.control}
+            isLeftInset={!isFullscreen() && !panelState.control}
           />
         </div>
 
@@ -59,7 +61,9 @@ function App() {
           <AppShellPanel
             title='Chat'
             class='w-[300px] shrink-0'
-            isLeftInset={!panelState.control && !panelState.list}
+            isLeftInset={
+              !isFullscreen() && !panelState.control && !panelState.list
+            }
             onClose={() => closePanel('chat')}
           >
             <ChatViewPanel />
@@ -70,7 +74,10 @@ function App() {
           panelState={panelState}
           onReopenPanel={openPanel}
           isLeftInset={
-            !panelState.control && !panelState.list && !panelState.chat
+            !isFullscreen() &&
+            !panelState.control &&
+            !panelState.list &&
+            !panelState.chat
           }
         />
       </div>
