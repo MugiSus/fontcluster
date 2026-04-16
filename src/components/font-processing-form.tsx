@@ -171,7 +171,7 @@ export function FontProcessingForm() {
           <div class='grid grid-cols-1 gap-2'>
             <TextField class='relative mr-1 gap-0.5'>
               <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                From
+                Source
               </TextFieldLabel>
               <select
                 class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
@@ -194,19 +194,19 @@ export function FontProcessingForm() {
                 <option value='system_fonts'>Installed Fonts</option>
                 <hr />
                 <option value='google_fonts_popular100'>
-                  Google Fonts Top 100
+                  Google Fonts top 100
                 </option>
                 <option value='google_fonts_popular200'>
-                  Google Fonts Top 200
+                  Google Fonts top 200
                 </option>
                 <option value='google_fonts_popular300'>
-                  Google Fonts Top 300
+                  Google Fonts top 300
                 </option>
                 <option value='google_fonts_popular500'>
-                  Google Fonts Top 500
+                  Google Fonts top 500
                 </option>
                 <option value='google_fonts_popular1000'>
-                  Google Fonts Top 1000
+                  Google Fonts top 1000
                 </option>
               </select>
             </TextField>
