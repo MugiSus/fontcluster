@@ -1,5 +1,5 @@
 import { emit } from '@tauri-apps/api/event';
-import { For, Show } from 'solid-js';
+import { Show } from 'solid-js';
 import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
@@ -8,16 +8,10 @@ import { ModeToggle } from './mode-toggle';
 import { SearchForm } from './search-form';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-
-export type CollapsiblePanelKey = 'control' | 'list' | 'chat';
-
-interface CollapsedPanel {
-  key: CollapsiblePanelKey;
-  label: string;
-}
+import { CollapsiblePanelKey, PanelState } from '../types/panels';
 
 interface GraphToolbarProps {
-  collapsedPanels: CollapsedPanel[];
+  panelState: PanelState;
   onReopenPanel: (panel: CollapsiblePanelKey) => void;
   isLeftInset?: boolean | undefined;
 }
@@ -45,20 +39,44 @@ export function GraphToolbar(props: GraphToolbarProps) {
         props.isLeftInset && 'pl-[78px]',
       )}
     >
-      <Show when={props.collapsedPanels.length > 0}>
+      <Show
+        when={
+          !props.panelState.control ||
+          !props.panelState.list ||
+          !props.panelState.chat
+        }
+      >
         <div class='flex items-center gap-0.5'>
-          <For each={props.collapsedPanels}>
-            {(panel) => (
-              <Button
-                variant='ghost'
-                size='sm'
-                class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-                onClick={() => props.onReopenPanel(panel.key)}
-              >
-                {panel.label}
-              </Button>
-            )}
-          </For>
+          <Show when={!props.panelState.control}>
+            <Button
+              variant='ghost'
+              size='sm'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              onClick={() => props.onReopenPanel('control')}
+            >
+              Control
+            </Button>
+          </Show>
+          <Show when={!props.panelState.list}>
+            <Button
+              variant='ghost'
+              size='sm'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              onClick={() => props.onReopenPanel('list')}
+            >
+              List
+            </Button>
+          </Show>
+          <Show when={!props.panelState.chat}>
+            <Button
+              variant='ghost'
+              size='sm'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              onClick={() => props.onReopenPanel('chat')}
+            >
+              Chat
+            </Button>
+          </Show>
         </div>
       </Show>
 

@@ -1,4 +1,4 @@
-import { Show, createMemo, onMount } from 'solid-js';
+import { Show, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { SessionSelector } from './components/session-selector';
 import { FontProcessingForm } from './components/font-processing-form';
@@ -7,21 +7,13 @@ import { initAppEvents } from './actions';
 import { Toaster } from './components/ui/sonner';
 import { AppShellPanel } from './components/app-shell-panel';
 import { ChatViewPanel } from './components/chat-view-panel';
-import { type CollapsiblePanelKey } from './components/graph-toolbar';
 import { FontGraphViewPanel } from './components/font-graph-view-panel';
 import { ListViewPanel } from './components/list-view-panel';
 import { cn } from './lib/utils';
-
-const COLLAPSIBLE_PANELS = [
-  { key: 'control', label: 'Control' },
-  { key: 'list', label: 'List' },
-  { key: 'chat', label: 'Chat' },
-] as const satisfies Array<{ key: CollapsiblePanelKey; label: string }>;
+import { CollapsiblePanelKey, PanelState } from './types/panels';
 
 function App() {
-  const [panelState, setPanelState] = createStore<
-    Record<CollapsiblePanelKey, boolean>
-  >({
+  const [panelState, setPanelState] = createStore<PanelState>({
     control: true,
     list: true,
     chat: false,
@@ -29,17 +21,6 @@ function App() {
 
   onMount(() => {
     initAppEvents();
-  });
-
-  const collapsedPanels = createMemo(() =>
-    COLLAPSIBLE_PANELS.filter((panel) => !panelState[panel.key]),
-  );
-
-  const leftmostVisiblePanel = createMemo<CollapsiblePanelKey | 'graph'>(() => {
-    if (panelState.control) return 'control';
-    if (panelState.list) return 'list';
-    if (panelState.chat) return 'chat';
-    return 'graph';
   });
 
   const closePanel = (panel: CollapsiblePanelKey) => {
@@ -60,7 +41,7 @@ function App() {
           <AppShellPanel
             title='Control'
             class='w-[300px] shrink-0'
-            isLeftInset={leftmostVisiblePanel() === 'control'}
+            isLeftInset={true}
             onClose={() => closePanel('control')}
           >
             <FontProcessingForm />
@@ -70,7 +51,7 @@ function App() {
         <div class={cn('flex min-h-0 shrink-0', !panelState.list && 'hidden')}>
           <ListViewPanel
             onClose={() => closePanel('list')}
-            isLeftInset={leftmostVisiblePanel() === 'list'}
+            isLeftInset={!panelState.control}
           />
         </div>
 
@@ -78,7 +59,7 @@ function App() {
           <AppShellPanel
             title='Chat'
             class='w-[300px] shrink-0'
-            isLeftInset={leftmostVisiblePanel() === 'chat'}
+            isLeftInset={!panelState.control && !panelState.list}
             onClose={() => closePanel('chat')}
           >
             <ChatViewPanel />
@@ -86,9 +67,11 @@ function App() {
         </Show>
 
         <FontGraphViewPanel
-          collapsedPanels={collapsedPanels()}
+          panelState={panelState}
           onReopenPanel={openPanel}
-          isLeftInset={leftmostVisiblePanel() === 'graph'}
+          isLeftInset={
+            !panelState.control && !panelState.list && !panelState.chat
+          }
         />
       </div>
     </>

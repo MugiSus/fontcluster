@@ -1,11 +1,9 @@
 import { ClusterVisualizer } from './cluster-visualizer';
-import { type CollapsiblePanelKey, GraphToolbar } from './graph-toolbar';
+import { GraphToolbar } from './graph-toolbar';
+import { CollapsiblePanelKey, PanelState } from '../types/panels';
 
 interface FontGraphViewPanelProps {
-  collapsedPanels: Array<{
-    key: CollapsiblePanelKey;
-    label: string;
-  }>;
+  panelState: PanelState;
   onReopenPanel: (panel: CollapsiblePanelKey) => void;
   isLeftInset?: boolean | undefined;
 }
@@ -14,7 +12,7 @@ export function FontGraphViewPanel(props: FontGraphViewPanelProps) {
   return (
     <section class='relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background'>
       <GraphToolbar
-        collapsedPanels={props.collapsedPanels}
+        panelState={props.panelState}
         onReopenPanel={props.onReopenPanel}
         isLeftInset={props.isLeftInset}
       />
