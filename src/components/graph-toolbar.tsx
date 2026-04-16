@@ -33,12 +33,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div
-      class={cn(
-        'absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b border-border/70 bg-background/60 px-1.5 backdrop-blur-[2px]',
-        props.isLeftInset && 'pl-[78px]',
-      )}
-    >
+    <div class='absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b border-border/70 bg-background/60 px-1.5 backdrop-blur-[2px]'>
       <Show
         when={
           !props.panelState.control ||
@@ -46,7 +41,17 @@ export function GraphToolbar(props: GraphToolbarProps) {
           !props.panelState.chat
         }
       >
-        <div class='flex items-center gap-0.5'>
+        <div
+          class={cn(
+            'z-10 flex items-center gap-0.5',
+            props.isLeftInset && 'pl-[78px]',
+            !props.panelState.control &&
+              !props.panelState.list &&
+              !props.panelState.chat &&
+              'w-32',
+          )}
+          data-tauri-drag-region
+        >
           <Show when={!props.panelState.control}>
             <Button
               variant='ghost'
@@ -80,15 +85,13 @@ export function GraphToolbar(props: GraphToolbarProps) {
         </div>
       </Show>
 
-      <div class='flex grow items-center justify-center'>
-        <div class='h-full flex-1' data-tauri-drag-region />
+      <div class='flex grow items-center justify-center' data-tauri-drag-region>
         <div class='w-full max-w-lg'>
           <SearchForm />
         </div>
-        <div class='h-full flex-1' data-tauri-drag-region />
       </div>
 
-      <div class='flex items-center justify-end gap-0'>
+      <div class='flex items-center justify-end gap-0' data-tauri-drag-region>
         <Tooltip>
           <TooltipTrigger as='div'>
             <Button
