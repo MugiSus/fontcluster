@@ -46,8 +46,8 @@ export function VirtualizedItems(props: VirtualizedItemsProps) {
     >
       <For each={virtualizer.getVirtualItems()}>
         {(virtualItem) => {
-          const metadata = props.fontMetadatas[virtualItem.index];
-          if (!metadata) return null;
+          const metadata = () => props.fontMetadatas[virtualItem.index];
+          if (!metadata()) return null;
 
           return (
             <ListItem
