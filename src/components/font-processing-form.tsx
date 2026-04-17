@@ -3,7 +3,6 @@ import { Button } from './ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
 import {
   ArrowRightIcon,
-  StepForwardIcon,
   LoaderCircleIcon,
   PauseIcon,
   TypeIcon,
@@ -21,6 +20,8 @@ import { appState, setAppState } from '../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { measureText } from '../lib/text-measurer';
+import { ControlProperty } from './control-property';
+import { ControlPropertySection } from './control-property-section';
 
 export function FontProcessingForm() {
   const handleSubmit = (e: Event) => {
@@ -122,9 +123,9 @@ export function FontProcessingForm() {
         <TextField class='relative grid w-full items-center gap-1'>
           <TextFieldLabel
             for='preview-text'
-            class='absolute inset-y-0 left-2 flex items-center gap-2'
+            class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
           >
-            <TypeIcon class='mb-0.5 size-3 text-primary' />
+            <TypeIcon class='mb-0.5 size-3.5' />
             Text
           </TextFieldLabel>
           <TextFieldInput
@@ -135,9 +136,9 @@ export function FontProcessingForm() {
             onInput={(e) =>
               setAppState('ui', 'sampleText', e.currentTarget.value)
             }
-            placeholder='Preview Text...'
+            placeholder='Font'
             spellcheck='false'
-            class='h-9 text-base'
+            class='h-9 text-[15px]'
           />
         </TextField>
         <TextField class='grid w-full items-center gap-1'>
@@ -151,344 +152,198 @@ export function FontProcessingForm() {
       </div>
 
       <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
-        <div class='group/section space-y-1.5'>
-          <div class='flex items-center gap-1'>
-            <div class='text-xs font-medium'>Discovery</div>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('empty')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </TooltipTrigger>
-              <TooltipContent>Run from this step</TooltipContent>
-            </Tooltip>
-          </div>
-          <div class='grid grid-cols-1 gap-2'>
-            <TextField class='relative mr-1 gap-0.5'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Source
-              </TextFieldLabel>
-              <select
-                class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-                value={
-                  appState.session.config?.algorithm?.discovery?.font_set ??
-                  'google_fonts_popular300'
-                }
-                onChange={(e) =>
-                  setAppState(
-                    'session',
-                    'config',
-                    'algorithm', // algorithm
-                    'discovery', // discovery
-                    {
-                      font_set: e.currentTarget.value as FontSet,
-                    },
-                  )
-                }
-              >
-                <option value='system_fonts'>Installed Fonts</option>
-                <hr />
-                <option value='google_fonts_popular100'>
-                  Google Fonts top 100
-                </option>
-                <option value='google_fonts_popular200'>
-                  Google Fonts top 200
-                </option>
-                <option value='google_fonts_popular300'>
-                  Google Fonts top 300
-                </option>
-                <option value='google_fonts_popular500'>
-                  Google Fonts top 500
-                </option>
-                <option value='google_fonts_popular1000'>
-                  Google Fonts top 1000
-                </option>
-              </select>
-            </TextField>
-          </div>
-        </div>
+        <ControlPropertySection
+          title='Discovery'
+          disabled={appState.session.isProcessing}
+          onStepRun={() => handleRun('empty')}
+          class='group/section space-y-1.5'
+          contentClass='grid grid-cols-1 gap-2'
+        >
+          <ControlProperty label='Source' class='mr-1 gap-0.5'>
+            <select
+              class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+              value={
+                appState.session.config?.algorithm?.discovery?.font_set ??
+                'google_fonts_popular300'
+              }
+              onChange={(e) =>
+                setAppState('session', 'config', 'algorithm', 'discovery', {
+                  font_set: e.currentTarget.value as FontSet,
+                })
+              }
+            >
+              <option value='system_fonts'>Installed Fonts</option>
+              <hr />
+              <option value='google_fonts_popular100'>
+                Google Fonts top 100
+              </option>
+              <option value='google_fonts_popular200'>
+                Google Fonts top 200
+              </option>
+              <option value='google_fonts_popular300'>
+                Google Fonts top 300
+              </option>
+              <option value='google_fonts_popular500'>
+                Google Fonts top 500
+              </option>
+              <option value='google_fonts_popular1000'>
+                Google Fonts top 1000
+              </option>
+            </select>
+          </ControlProperty>
+        </ControlPropertySection>
 
-        <div class='group/section flex flex-col gap-2'>
-          <div class='flex items-center gap-1'>
-            <div class='text-xs font-medium'>Image Generation</div>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('discovered')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </TooltipTrigger>
-              <TooltipContent>Run from this step</TooltipContent>
-            </Tooltip>
-          </div>
-          <div class='flex flex-col gap-0.5'>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Font Size
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='image-font-size'
-                value={
-                  appState.session.config?.algorithm?.image?.font_size ?? 128
-                }
-                step='1'
-                min='1'
-              />
-            </TextField>
-          </div>
-        </div>
+        <ControlPropertySection
+          title='Image Generation'
+          disabled={appState.session.isProcessing}
+          onStepRun={() => handleRun('discovered')}
+        >
+          <ControlProperty
+            label='Font Size'
+            type='number'
+            name='image-font-size'
+            value={appState.session.config?.algorithm?.image?.font_size ?? 128}
+            step='1'
+            min='1'
+          />
+        </ControlPropertySection>
 
-        <div class='group/section flex flex-col gap-2'>
-          <div class='flex items-center gap-1'>
-            <div class='text-xs font-medium'>HOG (Vectorization)</div>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('generated')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </TooltipTrigger>
-              <TooltipContent>Run from this step</TooltipContent>
-            </Tooltip>
-          </div>
-          <div class='flex flex-col gap-0.5'>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Orientations
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hog-orientations'
-                value={
-                  appState.session.config?.algorithm?.hog?.orientations ?? 12
-                }
-                step='1'
-                min='1'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Cell Side
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hog-cell-side'
-                value={appState.session.config?.algorithm?.hog?.cell_side ?? 16}
-                step='1'
-                min='1'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Block Side
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hog-block-side'
-                value={appState.session.config?.algorithm?.hog?.block_side ?? 2}
-                step='1'
-                min='1'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Block Stride
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hog-block-stride'
-                value={
-                  appState.session.config?.algorithm?.hog?.block_stride ?? 2
-                }
-                step='1'
-                min='1'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Width
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hog-width'
-                value={appState.session.config?.algorithm?.hog?.width ?? 128}
-                step='1'
-                min='1'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Height
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hog-height'
-                value={appState.session.config?.algorithm?.hog?.height ?? 64}
-                step='1'
-                min='1'
-              />
-            </TextField>
-          </div>
-        </div>
+        <ControlPropertySection
+          title='HOG (Vectorization)'
+          disabled={appState.session.isProcessing}
+          onStepRun={() => handleRun('generated')}
+        >
+          <ControlProperty
+            label='Orientations'
+            type='number'
+            name='hog-orientations'
+            value={appState.session.config?.algorithm?.hog?.orientations ?? 12}
+            step='1'
+            min='1'
+          />
+          <ControlProperty
+            label='Cell Side'
+            type='number'
+            name='hog-cell-side'
+            value={appState.session.config?.algorithm?.hog?.cell_side ?? 16}
+            step='1'
+            min='1'
+          />
+          <ControlProperty
+            label='Block Side'
+            type='number'
+            name='hog-block-side'
+            value={appState.session.config?.algorithm?.hog?.block_side ?? 2}
+            step='1'
+            min='1'
+          />
+          <ControlProperty
+            label='Block Stride'
+            type='number'
+            name='hog-block-stride'
+            value={appState.session.config?.algorithm?.hog?.block_stride ?? 2}
+            step='1'
+            min='1'
+          />
+          <ControlProperty
+            label='Width'
+            type='number'
+            name='hog-width'
+            value={appState.session.config?.algorithm?.hog?.width ?? 128}
+            step='1'
+            min='1'
+          />
+          <ControlProperty
+            label='Height'
+            type='number'
+            name='hog-height'
+            value={appState.session.config?.algorithm?.hog?.height ?? 64}
+            step='1'
+            min='1'
+          />
+        </ControlPropertySection>
 
-        <div class='group/section flex flex-col gap-2'>
-          <div class='flex items-center gap-1'>
-            <div class='text-xs font-medium'>PaCMAP (D-Reduction)</div>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('vectorized')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </TooltipTrigger>
-              <TooltipContent>Run from this step</TooltipContent>
-            </Tooltip>
-          </div>
-          <div class='flex flex-col gap-0.5'>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Global Iterations
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='pacmap-mn-phases'
-                value={
-                  appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100
-                }
-                step='10'
-                min='0'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Attraction Iterations
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='pacmap-nn-phases'
-                value={
-                  appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100
-                }
-                step='10'
-                min='0'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Repulsion Iterations
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='pacmap-fp-phases'
-                value={
-                  appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100
-                }
-                step='10'
-                min='0'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Learning rate
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='pacmap-learning-rate'
-                value={
-                  appState.session.config?.algorithm?.pacmap?.learning_rate ??
-                  1.0
-                }
-                step='0.1'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Neighbors
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='pacmap-n-neighbors'
-                value={
-                  appState.session.config?.algorithm?.pacmap?.n_neighbors ?? 32
-                }
-                step='1'
-                min='1'
-              />
-            </TextField>
-          </div>
-        </div>
+        <ControlPropertySection
+          title='PaCMAP (D-Reduction)'
+          disabled={appState.session.isProcessing}
+          onStepRun={() => handleRun('vectorized')}
+        >
+          <ControlProperty
+            label='Global Iterations'
+            type='number'
+            name='pacmap-mn-phases'
+            value={appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100}
+            step='10'
+            min='0'
+          />
+          <ControlProperty
+            label='Attraction Iterations'
+            type='number'
+            name='pacmap-nn-phases'
+            value={appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100}
+            step='10'
+            min='0'
+          />
+          <ControlProperty
+            label='Repulsion Iterations'
+            type='number'
+            name='pacmap-fp-phases'
+            value={appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100}
+            step='10'
+            min='0'
+          />
+          <ControlProperty
+            label='Learning rate'
+            type='number'
+            name='pacmap-learning-rate'
+            value={
+              appState.session.config?.algorithm?.pacmap?.learning_rate ?? 1.0
+            }
+            step='0.1'
+          />
+          <ControlProperty
+            label='Neighbors'
+            type='number'
+            name='pacmap-n-neighbors'
+            value={
+              appState.session.config?.algorithm?.pacmap?.n_neighbors ?? 32
+            }
+            step='1'
+            min='1'
+          />
+        </ControlPropertySection>
 
-        <div class='group/section flex flex-col gap-2'>
-          <div class='flex items-center gap-1'>
-            <div class='text-xs font-medium'>HDBSCAN (Clustering)</div>
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                variant='ghost'
-                size='icon'
-                disabled={appState.session.isProcessing}
-                class='invisible mb-px size-4 text-xs group-hover/section:visible'
-                onClick={() => handleRun('compressed')}
-              >
-                <StepForwardIcon class='size-3 max-h-3' />
-              </TooltipTrigger>
-              <TooltipContent>Run from this step</TooltipContent>
-            </Tooltip>
-          </div>
-          <div class='flex flex-col gap-0.5'>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Min Cluster Size
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hdbscan-min-cluster-size'
-                value={
-                  appState.session.config?.algorithm?.hdbscan
-                    ?.min_cluster_size ?? 12
-                }
-                step='1'
-                min='0'
-              />
-            </TextField>
-            <TextField class='relative'>
-              <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center'>
-                Min Samples
-              </TextFieldLabel>
-              <TextFieldInput
-                type='number'
-                name='hdbscan-min-samples'
-                value={
-                  appState.session.config?.algorithm?.hdbscan?.min_samples ?? 12
-                }
-                step='1'
-                min='0'
-              />
-            </TextField>
-          </div>
-        </div>
+        <ControlPropertySection
+          title='HDBSCAN (Clustering)'
+          disabled={appState.session.isProcessing}
+          onStepRun={() => handleRun('compressed')}
+        >
+          <ControlProperty
+            label='Min Cluster Size'
+            type='number'
+            name='hdbscan-min-cluster-size'
+            value={
+              appState.session.config?.algorithm?.hdbscan?.min_cluster_size ??
+              12
+            }
+            step='1'
+            min='0'
+          />
+          <ControlProperty
+            label='Min Samples'
+            type='number'
+            name='hdbscan-min-samples'
+            value={
+              appState.session.config?.algorithm?.hdbscan?.min_samples ?? 12
+            }
+            step='1'
+            min='0'
+          />
+        </ControlPropertySection>
       </div>
 
-      <div class='flex flex-col border-t p-4 py-3'>
-        <div class='flex items-center gap-1 py-1 pb-1.5'>
+      <div class='flex flex-col gap-1 border-t p-4'>
+        <div class='mb-1 flex items-center gap-1'>
           <Tooltip>
             <TooltipTrigger
               as={Button<'button'>}
@@ -496,7 +351,7 @@ export function FontProcessingForm() {
               disabled={appState.session.isProcessing}
               variant='default'
               size='sm'
-              class='relative flex flex-1 items-center gap-2 rounded-full text-sm tabular-nums hover:shadow-lg hover:shadow-primary/25'
+              class='relative flex flex-1 items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
             >
               {appState.session.isProcessing
                 ? 'Processing...'
@@ -531,146 +386,144 @@ export function FontProcessingForm() {
           </Show>
         </div>
 
-        <div class='flex flex-col gap-0.5'>
-          <div class='grid grid-cols-5 gap-1'>
-            <div
-              class='h-1 overflow-hidden rounded-full bg-primary/30'
-              style={{
-                '--progress':
-                  appState.session.isProcessing &&
-                  appState.session.status === 'empty'
-                    ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                    : '0%',
-              }}
-            >
-              <div
-                class={cn(
-                  'h-full w-0 rounded-full bg-primary',
-                  appState.session.isProcessing &&
-                    appState.session.status === 'empty' &&
-                    'w-[var(--progress)] animate-pulse',
-                  (appState.session.status === 'discovered' ||
-                    appState.session.status === 'generated' ||
-                    appState.session.status === 'vectorized' ||
-                    appState.session.status === 'compressed' ||
-                    appState.session.status === 'clustered') &&
-                    'w-full',
-                )}
-              />
-            </div>
-            <div
-              class='h-1 overflow-hidden rounded-full bg-primary/30'
-              style={{
-                '--progress':
-                  appState.session.isProcessing &&
-                  appState.session.status === 'discovered'
-                    ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                    : '0%',
-              }}
-            >
-              <div
-                class={cn(
-                  'h-full w-0 rounded-full bg-primary',
-                  appState.session.isProcessing &&
-                    appState.session.status === 'discovered' &&
-                    'w-[var(--progress)] animate-pulse',
-                  (appState.session.status === 'generated' ||
-                    appState.session.status === 'vectorized' ||
-                    appState.session.status === 'compressed' ||
-                    appState.session.status === 'clustered') &&
-                    'w-full',
-                )}
-              />
-            </div>
-            <div
-              class='h-1 overflow-hidden rounded-full bg-primary/30'
-              style={{
-                '--progress':
-                  appState.session.isProcessing &&
-                  appState.session.status === 'generated'
-                    ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
-                    : '0%',
-              }}
-            >
-              <div
-                class={cn(
-                  'h-full w-0 rounded-full bg-primary',
-                  appState.session.isProcessing &&
-                    appState.session.status === 'generated' &&
-                    'w-[var(--progress)] animate-pulse',
-                  (appState.session.status === 'vectorized' ||
-                    appState.session.status === 'compressed' ||
-                    appState.session.status === 'clustered') &&
-                    'w-full',
-                )}
-              />
-            </div>
-            <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
-              <div
-                class={cn(
-                  'h-full w-0 rounded-full bg-primary',
-                  (appState.session.status === 'compressed' ||
-                    appState.session.status === 'clustered') &&
-                    'w-full',
-                  appState.session.isProcessing &&
-                    appState.session.status === 'vectorized' &&
-                    'w-full animate-pulse transition-[width] duration-1000',
-                )}
-              />
-            </div>
-            <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
-              <div
-                class={cn(
-                  'h-full w-0 rounded-full bg-primary',
-                  appState.session.status === 'clustered' && 'w-full',
-                  appState.session.isProcessing &&
-                    appState.session.status === 'compressed' &&
-                    'w-full animate-pulse transition-[width] duration-1000',
-                )}
-              />
-            </div>
-          </div>
-
+        <div class='grid grid-cols-5 gap-1'>
           <div
-            class={cn(
-              'flex items-end justify-between text-xs font-medium text-muted-foreground',
-              appState.session.isProcessing && 'animate-pulse',
-            )}
-          >
-            <span>
-              {!appState.session.isProcessing
-                ? 'Completed'
-                : appState.session.status === 'empty'
-                  ? 'Step 1: Discovering'
-                  : appState.session.status === 'discovered'
-                    ? 'Step 2: Generating'
-                    : appState.session.status === 'generated'
-                      ? 'Step 3: Vectorizing'
-                      : appState.session.status === 'vectorized'
-                        ? 'Step 4: Compressing'
-                        : appState.session.status === 'compressed'
-                          ? 'Step 5: Clustering'
-                          : ''}
-            </span>
-            <Show
-              when={
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
+            style={{
+              '--progress':
                 appState.session.isProcessing &&
-                (appState.session.status === 'empty' ||
-                  appState.session.status === 'discovered' ||
-                  appState.session.status === 'generated')
-              }
-              fallback={
-                <span class='tabular-nums'>
-                  {Object.keys(appState.fonts.data).length} Fonts
-                </span>
-              }
-            >
-              <span class='tabular-nums'>
-                {appState.progress.numerator}/{appState.progress.denominator}{' '}
-                Fonts
-              </span>
-            </Show>
+                appState.session.status === 'empty'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  : '0%',
+            }}
+          >
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                appState.session.isProcessing &&
+                  appState.session.status === 'empty' &&
+                  'w-[var(--progress)] animate-pulse',
+                (appState.session.status === 'discovered' ||
+                  appState.session.status === 'generated' ||
+                  appState.session.status === 'vectorized' ||
+                  appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
+                  'w-full',
+              )}
+            />
           </div>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
+            style={{
+              '--progress':
+                appState.session.isProcessing &&
+                appState.session.status === 'discovered'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  : '0%',
+            }}
+          >
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                appState.session.isProcessing &&
+                  appState.session.status === 'discovered' &&
+                  'w-[var(--progress)] animate-pulse',
+                (appState.session.status === 'generated' ||
+                  appState.session.status === 'vectorized' ||
+                  appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
+                  'w-full',
+              )}
+            />
+          </div>
+          <div
+            class='h-1 overflow-hidden rounded-full bg-primary/30'
+            style={{
+              '--progress':
+                appState.session.isProcessing &&
+                appState.session.status === 'generated'
+                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  : '0%',
+            }}
+          >
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                appState.session.isProcessing &&
+                  appState.session.status === 'generated' &&
+                  'w-[var(--progress)] animate-pulse',
+                (appState.session.status === 'vectorized' ||
+                  appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
+                  'w-full',
+              )}
+            />
+          </div>
+          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                (appState.session.status === 'compressed' ||
+                  appState.session.status === 'clustered') &&
+                  'w-full',
+                appState.session.isProcessing &&
+                  appState.session.status === 'vectorized' &&
+                  'w-full animate-pulse transition-[width] duration-1000',
+              )}
+            />
+          </div>
+          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
+            <div
+              class={cn(
+                'h-full w-0 rounded-full bg-primary',
+                appState.session.status === 'clustered' && 'w-full',
+                appState.session.isProcessing &&
+                  appState.session.status === 'compressed' &&
+                  'w-full animate-pulse transition-[width] duration-1000',
+              )}
+            />
+          </div>
+        </div>
+
+        <div
+          class={cn(
+            'flex items-end justify-between text-xs font-semibold text-muted-foreground',
+            appState.session.isProcessing && 'animate-pulse',
+          )}
+        >
+          <span>
+            {!appState.session.isProcessing
+              ? 'Completed'
+              : appState.session.status === 'empty'
+                ? 'Step 1: Discovering'
+                : appState.session.status === 'discovered'
+                  ? 'Step 2: Generating'
+                  : appState.session.status === 'generated'
+                    ? 'Step 3: Vectorizing'
+                    : appState.session.status === 'vectorized'
+                      ? 'Step 4: Compressing'
+                      : appState.session.status === 'compressed'
+                        ? 'Step 5: Clustering'
+                        : ''}
+          </span>
+          <Show
+            when={
+              appState.session.isProcessing &&
+              (appState.session.status === 'empty' ||
+                appState.session.status === 'discovered' ||
+                appState.session.status === 'generated')
+            }
+            fallback={
+              <span class='tabular-nums'>
+                {Object.keys(appState.fonts.data).length} Fonts
+              </span>
+            }
+          >
+            <span class='tabular-nums'>
+              {appState.progress.numerator}/{appState.progress.denominator}{' '}
+              Fonts
+            </span>
+          </Show>
         </div>
       </div>
     </form>

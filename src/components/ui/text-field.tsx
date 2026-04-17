@@ -172,3 +172,4 @@ export {
   TextFieldDescription,
   TextFieldErrorMessage,
 };
+export type { TextFieldInputProps };

@@ -77,12 +77,12 @@ export function FontMetadataList(props: FontMetadataListProps) {
               data-font-name={metadata.safe_name}
               onClick={() => props.onFontSelect(metadata.safe_name)}
             >
-              <div class='flex items-center gap-2 px-4'>
+              <div class='flex items-center gap-2 px-4 font-semibold'>
                 <Show
                   when={props.isSearchResult}
                   fallback={
                     <div
-                      class={`mb-0.5 h-3.5 w-1 rounded-full ${getClusterBackgroundColor(metadata.computed?.k)}`}
+                      class={`h-3.5 w-1 rounded-full ${getClusterBackgroundColor(metadata.computed?.k)}`}
                     />
                   }
                 >

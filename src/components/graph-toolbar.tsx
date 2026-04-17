@@ -52,7 +52,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('control')}
             >
               Control
@@ -62,7 +62,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('list')}
             >
               List
@@ -72,7 +72,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs font-normal text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('chat')}
             >
               Chat

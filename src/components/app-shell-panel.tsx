@@ -7,7 +7,6 @@ interface AppShellPanelProps {
   title: string;
   children: JSX.Element;
   class?: string | undefined;
-  bodyClass?: string | undefined;
   actions?: JSX.Element | undefined;
   isLeftInset?: boolean | undefined;
   onClose?: (() => void) | undefined;
@@ -25,7 +24,7 @@ export function AppShellPanel(props: AppShellPanelProps) {
         <div
           data-tauri-drag-region
           class={cn(
-            'flex h-full min-w-0 flex-1 items-center text-xs',
+            'flex h-full min-w-0 flex-1 items-center text-xs font-medium',
             props.isLeftInset && 'pl-[72px]',
           )}
         >
@@ -44,7 +43,7 @@ export function AppShellPanel(props: AppShellPanelProps) {
           </Button>
         </Show>
       </div>
-      <div class={cn('min-h-0 flex-1', props.bodyClass)}>{props.children}</div>
+      <div class='min-h-0 flex-1'>{props.children}</div>
     </section>
   );
 }
