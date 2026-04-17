@@ -1,13 +1,13 @@
 import { createMemo, createSignal, Show } from 'solid-js';
 import { FunnelIcon, SearchIcon, XIcon } from 'lucide-solid';
-import { TextField, TextFieldInput } from './ui/text-field';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { appState } from '../store';
-import { setSelectedFontKey } from '../actions';
-import { useFilteredFontMetadataKeys } from '../hooks/use-filtered-font-metadata-keys';
+import { TextField, TextFieldInput } from '../ui/text-field';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { appState } from '../../store';
+import { setSelectedFontKey } from '../../actions';
+import { useFilteredFontMetadataKeys } from '../../hooks/use-filtered-font-metadata-keys';
 
-export function SearchForm() {
+export function GraphSearchField() {
   const { onQueryChange } = useFilteredFontMetadataKeys({
     onFontSelect: (key) => setSelectedFontKey(key),
   });

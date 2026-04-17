@@ -1,29 +1,33 @@
 import { Show, createEffect } from 'solid-js';
-import { Button } from './ui/button';
-import { TextField, TextFieldInput, TextFieldLabel } from './ui/text-field';
+import { Button } from '../ui/button';
+import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
 import {
   ArrowRightIcon,
   LoaderCircleIcon,
   PauseIcon,
   TypeIcon,
 } from 'lucide-solid';
-import { WeightSelector } from './weight-selector';
+import { WeightSelector } from '../weight-selector';
 import {
   type FontWeight,
   type AlgorithmConfig,
   type ProcessStatus,
   type FontSet,
-} from '../types/font';
+} from '../../types/font';
 // ...existing imports
 import { cn } from '@/lib/utils';
-import { appState, setAppState } from '../store';
-import { runProcessingJobs, stopJobs, setSelectedWeights } from '../actions';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { measureText } from '../lib/text-measurer';
-import { ControlProperty } from './control-property';
-import { ControlPropertySection } from './control-property-section';
+import { appState, setAppState } from '../../store';
+import {
+  runProcessingJobs,
+  stopJobs,
+  setSelectedWeights,
+} from '../../actions';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { measureText } from '../../lib/text-measurer';
+import { ControlProperty } from './property';
+import { ControlPropertySection } from './property-section';
 
-export function FontProcessingForm() {
+export function ControlContent() {
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     handleRun();

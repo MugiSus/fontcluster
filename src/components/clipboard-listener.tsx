@@ -4,7 +4,7 @@ import { toast } from 'solid-sonner';
 import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
 import { appState } from '../store';
 
-export function ClipboardManager() {
+export function ClipboardListener() {
   const promise = listen<{ toast?: boolean; isFontName?: boolean }>(
     'copy_family_name',
     (event) => {

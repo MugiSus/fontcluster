@@ -1,24 +1,24 @@
 import { For, Show, createSignal } from 'solid-js';
 import { ArrowDownAZ, ArrowDownNarrowWide, ArrowDownZA } from 'lucide-solid';
-import { FontLists, type FontListSortMode } from './font-lists';
-import { AppShellPanel } from './app-shell-panel';
-import { Button } from './ui/button';
+import { ListContent, type ListSortMode } from './content';
+import { AppShellPanel } from '../app-shell-panel';
+import { Button } from '../ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+} from '../ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
-interface ListViewPanelProps {
+interface ListPanelProps {
   onClose: () => void;
   isLeftInset?: boolean | undefined;
 }
 
 const SORT_OPTIONS: Array<{
-  value: FontListSortMode;
+  value: ListSortMode;
   label: string;
   icon: typeof ArrowDownAZ;
 }> = [
@@ -39,8 +39,8 @@ const SORT_OPTIONS: Array<{
   },
 ];
 
-export function ListViewPanel(props: ListViewPanelProps) {
-  const [sortMode, setSortMode] = createSignal<FontListSortMode>('similarity');
+export function ListPanel(props: ListPanelProps) {
+  const [sortMode, setSortMode] = createSignal<ListSortMode>('similarity');
 
   return (
     <AppShellPanel
@@ -70,7 +70,7 @@ export function ListViewPanel(props: ListViewPanelProps) {
               <DropdownMenuContent>
                 <DropdownMenuRadioGroup
                   value={sortMode()}
-                  onChange={(value) => setSortMode(value as FontListSortMode)}
+                  onChange={(value) => setSortMode(value as ListSortMode)}
                 >
                   <For each={SORT_OPTIONS}>
                     {(option) => (
@@ -91,7 +91,7 @@ export function ListViewPanel(props: ListViewPanelProps) {
         </Tooltip>
       }
     >
-      <FontLists sortMode={sortMode()} />
+      <ListContent sortMode={sortMode()} />
     </AppShellPanel>
   );
 }

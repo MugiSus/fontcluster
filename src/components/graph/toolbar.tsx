@@ -4,11 +4,11 @@ import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
 import { cn } from '@/lib/utils';
-import { ModeToggle } from './mode-toggle';
-import { SearchForm } from './search-form';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { CollapsiblePanelKey, PanelState } from '../types/panels';
+import { ThemeModeToggle } from '../theme-mode-toggle';
+import { GraphSearchField } from './search-field';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { CollapsiblePanelKey, PanelState } from '../../types/panels';
 
 interface GraphToolbarProps {
   panelState: PanelState;
@@ -83,7 +83,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
 
       <div class='flex grow items-center justify-center' data-tauri-drag-region>
         <div class='w-full max-w-lg'>
-          <SearchForm />
+          <GraphSearchField />
         </div>
       </div>
 
@@ -133,7 +133,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
 
         <Tooltip>
           <TooltipTrigger as='div'>
-            <ModeToggle class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+            <ThemeModeToggle class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
           </TooltipTrigger>
           <TooltipContent>Theme</TooltipContent>
         </Tooltip>

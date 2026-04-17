@@ -1,13 +1,13 @@
 import { ImageIcon, ImageOffIcon } from 'lucide-solid';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
-interface ImageVisibilityControlProps {
+interface ImageVisibilityToggleProps {
   showImages: boolean;
   onToggle: () => void;
 }
 
-export function ImageVisibilityControl(props: ImageVisibilityControlProps) {
+export function ImageVisibilityToggle(props: ImageVisibilityToggleProps) {
   return (
     <div class='flex rounded-md border bg-background'>
       <Tooltip>

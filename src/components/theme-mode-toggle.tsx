@@ -10,7 +10,7 @@ import {
 } from './ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
-export function ModeToggle(props: { class?: string }) {
+export function ThemeModeToggle(props: { class?: string }) {
   const { setColorMode } = useColorMode();
 
   return (

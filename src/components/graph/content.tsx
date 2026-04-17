@@ -8,15 +8,15 @@ import {
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
-import { type FontWeight, type FontMetadata } from '../types/font';
-import { WeightSelector } from './weight-selector';
-import { ZoomControls } from './zoom-controls';
-import { ImageVisibilityControl } from './image-visibility-control';
+import { type FontWeight, type FontMetadata } from '../../types/font';
+import { WeightSelector } from '../weight-selector';
+import { ImageVisibilityToggle } from './image-visibility-toggle';
 import { CircleSlash2Icon } from 'lucide-solid';
-import { FontVectorPoint } from './font-vector-point';
-import { useElementSize } from '../hooks/use-element-size';
-import { appState } from '../store';
-import { setSelectedFontKey } from '../actions';
+import { GraphPoint } from './point';
+import { ZoomControls } from './zoom-controls';
+import { useElementSize } from '../../hooks/use-element-size';
+import { appState } from '../../store';
+import { setSelectedFontKey } from '../../actions';
 
 const GRAPH_PADDING = 50;
 const GRAPH_SIZE = 1000;
@@ -30,14 +30,14 @@ const INITIAL_VIEWBOX = {
 
 const ZOOM_FACTOR_RATIO = 1.05;
 
-interface VisualizedPoint {
+interface GraphPointData {
   key: string;
   metadata: FontMetadata;
   x: number;
   y: number;
 }
 
-export function ClusterVisualizer() {
+export function GraphContent() {
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
   const [showImages, setShowImages] = createSignal(true);
 
@@ -68,15 +68,13 @@ export function ClusterVisualizer() {
 
   const isMoving = createMemo(() => isDragging() || isInteracting());
 
-  const [visualizerWeights, setVisualizerWeights] = createSignal<FontWeight[]>([
-    400,
-  ]);
+  const [graphWeights, setGraphWeights] = createSignal<FontWeight[]>([400]);
 
   createEffect(() => {
     const sessionWeights =
       (appState.session.config?.weights as FontWeight[]) || [];
     if (sessionWeights && sessionWeights.length > 0) {
-      setVisualizerWeights(sessionWeights);
+      setGraphWeights(sessionWeights);
     }
   });
 
@@ -99,7 +97,7 @@ export function ClusterVisualizer() {
       vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
 
     const selectionRadius = 40 * zoomFactor();
-    const activeWeights = visualizerWeights();
+    const activeWeights = graphWeights();
     const nearest = fontQuadtree().find(svgMouseX, svgMouseY, selectionRadius);
 
     if (
@@ -262,12 +260,12 @@ export function ClusterVisualizer() {
           metadata,
           x,
           y,
-        } satisfies VisualizedPoint;
+        } satisfies GraphPointData;
       });
   });
 
   const pointsMap = createMemo(() => {
-    const map = new Map<string, VisualizedPoint>();
+    const map = new Map<string, GraphPointData>();
     for (const p of allPoints()) {
       map.set(p.key, p);
     }
@@ -276,7 +274,7 @@ export function ClusterVisualizer() {
 
   const fontQuadtree = createMemo(() => {
     const map = pointsMap();
-    const activeWeights = visualizerWeights();
+    const activeWeights = graphWeights();
     const filteredKeys = appState.fonts.filteredKeys;
 
     const activePoints = [];
@@ -287,7 +285,7 @@ export function ClusterVisualizer() {
       }
     }
 
-    return quadtree<VisualizedPoint>()
+    return quadtree<GraphPointData>()
       .x((d) => d.x)
       .y((d) => d.y)
       .addAll(activePoints);
@@ -308,7 +306,7 @@ export function ClusterVisualizer() {
     const maxVisibleY = vb.y + vb.height / 2 + visibleHeight / 2 + padding;
 
     const filteredKeys = appState.fonts.filteredKeys;
-    const activeWeights = new Set(visualizerWeights());
+    const activeWeights = new Set(graphWeights());
     const visibleFilteredPoints = [];
     const visibleUnfilteredPoints = [];
 
@@ -348,7 +346,7 @@ export function ClusterVisualizer() {
       >
         <div class='pointer-events-none absolute bottom-4 right-4 z-10 flex items-end gap-3'>
           <div class='pointer-events-auto'>
-            <ImageVisibilityControl
+            <ImageVisibilityToggle
               showImages={showImages()}
               onToggle={() => setShowImages(!showImages())}
             />
@@ -363,8 +361,8 @@ export function ClusterVisualizer() {
           <div class='pointer-events-auto'>
             <WeightSelector
               weights={(appState.session.config?.weights as FontWeight[]) || []}
-              selectedWeights={visualizerWeights()}
-              onWeightChange={setVisualizerWeights}
+              selectedWeights={graphWeights()}
+              onWeightChange={setGraphWeights}
               isVertical
             />
           </div>
@@ -420,7 +418,7 @@ export function ClusterVisualizer() {
           <g opacity={0.2}>
             <For each={visiblePoints().visibleUnfilteredPoints}>
               {(point) => (
-                <FontVectorPoint
+                <GraphPoint
                   fontName={point.metadata.font_name}
                   weight={point.metadata.weight}
                   clusterId={point.metadata.computed?.k}
@@ -432,7 +430,6 @@ export function ClusterVisualizer() {
                     point.metadata.family_name,
                   )}
                   sessionDirectory={appState.session.directory}
-                  visualizerWeights={visualizerWeights()}
                   zoomFactor={zoomFactor()}
                   isMoving={isMoving()}
                   showImages={showImages()}
@@ -444,7 +441,7 @@ export function ClusterVisualizer() {
 
           <For each={visiblePoints().visibleFilteredPoints}>
             {(point) => (
-              <FontVectorPoint
+              <GraphPoint
                 fontName={point.metadata.font_name}
                 weight={point.metadata.weight}
                 clusterId={point.metadata.computed?.k}
@@ -454,7 +451,6 @@ export function ClusterVisualizer() {
                 isSelected={isSelected(point.key)}
                 isFamilySelected={isFamilySelected(point.metadata.family_name)}
                 sessionDirectory={appState.session.directory}
-                visualizerWeights={visualizerWeights()}
                 zoomFactor={zoomFactor()}
                 isMoving={isMoving()}
                 showImages={showImages()}

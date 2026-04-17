@@ -1,9 +1,8 @@
 import { Show, createMemo } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { type FontWeight } from '../types/font';
-import { getClusterTextColor } from '../lib/cluster-colors';
+import { getClusterTextColor } from '../../lib/cluster-colors';
 
-interface FontVectorPointProps {
+interface GraphPointProps {
   fontName: string;
   weight: number;
   clusterId: number | undefined;
@@ -13,14 +12,13 @@ interface FontVectorPointProps {
   isSelected: boolean;
   isFamilySelected: boolean;
   sessionDirectory: string;
-  visualizerWeights: FontWeight[];
   zoomFactor: number;
   isMoving: boolean;
   showImages: boolean;
   isDisabled?: boolean;
 }
 
-export function FontVectorPoint(props: FontVectorPointProps) {
+export function GraphPoint(props: GraphPointProps) {
   const imgSrc = createMemo(() =>
     props.sessionDirectory && props.safeName
       ? convertFileSrc(

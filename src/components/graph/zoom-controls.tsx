@@ -1,6 +1,6 @@
 import { PlusIcon, MinusIcon, MaximizeIcon } from 'lucide-solid';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface ZoomControlsProps {
   onZoomIn: () => void;

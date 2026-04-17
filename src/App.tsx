@@ -1,14 +1,13 @@
 import { Show, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { SessionSelector } from './components/session-selector';
-import { FontProcessingForm } from './components/font-processing-form';
-import { ClipboardManager } from './components/clipboard-manager';
+import { SessionPickerDialog } from './components/session-picker-dialog';
+import { ClipboardListener } from './components/clipboard-listener';
 import { initAppEvents } from './actions';
 import { Toaster } from './components/ui/sonner';
-import { AppShellPanel } from './components/app-shell-panel';
-import { ChatViewPanel } from './components/chat-view-panel';
-import { FontGraphViewPanel } from './components/font-graph-view-panel';
-import { ListViewPanel } from './components/list-view-panel';
+import { ChatPanel } from './components/chat/panel';
+import { ControlPanel } from './components/control/panel';
+import { GraphPanel } from './components/graph/panel';
+import { ListPanel } from './components/list/panel';
 import { cn } from './lib/utils';
 import { CollapsiblePanelKey, PanelState } from './types/panels';
 import { useIsFullscreen } from './hooks/use-is-fullscreen';
@@ -36,41 +35,33 @@ function App() {
   return (
     <>
       <Toaster position='bottom-right' />
-      <ClipboardManager />
-      <SessionSelector />
+      <ClipboardListener />
+      <SessionPickerDialog />
       <div class='flex h-full min-h-0'>
         <Show when={panelState.control}>
-          <AppShellPanel
-            title='Control'
-            class='w-[300px] shrink-0'
+          <ControlPanel
             isLeftInset={!isFullscreen()}
             onClose={() => closePanel('control')}
-          >
-            <FontProcessingForm />
-          </AppShellPanel>
+          />
         </Show>
 
         <div class={cn('flex min-h-0 shrink-0', !panelState.list && 'hidden')}>
-          <ListViewPanel
+          <ListPanel
             onClose={() => closePanel('list')}
             isLeftInset={!isFullscreen() && !panelState.control}
           />
         </div>
 
         <Show when={panelState.chat}>
-          <AppShellPanel
-            title='Chat'
-            class='w-[300px] shrink-0'
+          <ChatPanel
             isLeftInset={
               !isFullscreen() && !panelState.control && !panelState.list
             }
             onClose={() => closePanel('chat')}
-          >
-            <ChatViewPanel />
-          </AppShellPanel>
+          />
         </Show>
 
-        <FontGraphViewPanel
+        <GraphPanel
           panelState={panelState}
           onReopenPanel={openPanel}
           isLeftInset={

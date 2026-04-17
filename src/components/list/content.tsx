@@ -1,17 +1,16 @@
 import { createMemo, Show } from 'solid-js';
-import { FontMetadataList } from './font-metadata-list';
-import { FontMetadata } from '../types/font';
+import { FontMetadata } from '../../types/font';
 import { SearchSlashIcon } from 'lucide-solid';
-import { appState } from '../store';
-import { setSelectedFontKey } from '../actions';
+import { appState } from '../../store';
+import { VirtualizedItems } from './virtualized-items';
 
-export type FontListSortMode = 'similarity' | 'name-asc' | 'name-desc';
+export type ListSortMode = 'similarity' | 'name-asc' | 'name-desc';
 
-interface FontListsProps {
-  sortMode: FontListSortMode;
+interface ListProps {
+  sortMode: ListSortMode;
 }
 
-export function FontLists(props: FontListsProps) {
+export function ListContent(props: ListProps) {
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
   const filteredMetadatas = createMemo(() => {
@@ -70,11 +69,8 @@ export function FontLists(props: FontListsProps) {
   return (
     <div class='h-full flex-1 overflow-scroll py-1'>
       <Show when={filteredMetadatas().length > 0} fallback={<NoResultsFound />}>
-        <FontMetadataList
+        <VirtualizedItems
           fontMetadatas={sortedMetadatas()}
-          sessionDirectory={appState.session.directory}
-          selectedFontKey={appState.ui.selectedFontKey}
-          onFontSelect={setSelectedFontKey}
           isSearchResult={isFiltered()}
         />
       </Show>

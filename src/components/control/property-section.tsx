@@ -2,8 +2,8 @@ import type { JSX } from 'solid-js';
 
 import { StepForwardIcon } from 'lucide-solid';
 
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 type ControlPropertySectionProps = {
   title: string;

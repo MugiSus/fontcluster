@@ -16,7 +16,7 @@ import { setCurrentSessionId } from '../actions';
 
 // Constants
 
-export function SessionSelector() {
+export function SessionPickerDialog() {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
   const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(

@@ -5,7 +5,7 @@ import {
   TextFieldInput,
   TextFieldLabel,
   type TextFieldInputProps,
-} from './ui/text-field';
+} from '../ui/text-field';
 
 type ControlPropertyProps = {
   label: string;
