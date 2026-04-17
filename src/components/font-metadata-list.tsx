@@ -87,7 +87,8 @@ export function FontMetadataList(props: FontMetadataListProps) {
                   }
                 >
                   <SearchIcon
-                    class={`mb-0.5 size-4 ${getClusterTextColor(metadata.computed?.k)}`}
+                    class={`mb-px size-4 ${getClusterTextColor(metadata.computed?.k)}`}
+                    strokeWidth={3}
                   />
                 </Show>
                 <div class='text-sm text-foreground'>
