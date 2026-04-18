@@ -23,33 +23,34 @@ impl Clusterer {
         let engine = ClusteringEngine::from_hdbscan(config);
         let session_dir_for_first = session_dir.clone();
 
-        let (points, ids) = tokio::task::spawn_blocking(move || -> Result<(Vec<Vec<f32>>, Vec<String>)> {
-            let mut points = Vec::new();
-            let mut ids = Vec::new();
+        let (points, ids) =
+            tokio::task::spawn_blocking(move || -> Result<(Vec<Vec<f32>>, Vec<String>)> {
+                let mut points = Vec::new();
+                let mut ids = Vec::new();
 
-            let mut entries: Vec<_> = fs::read_dir(session_dir_for_first.join("samples"))?
-                .filter_map(|e| e.ok())
-                .collect();
-            entries.sort_by_key(|e| e.path());
+                let mut entries: Vec<_> = fs::read_dir(session_dir_for_first.join("samples"))?
+                    .filter_map(|e| e.ok())
+                    .collect();
+                entries.sort_by_key(|e| e.path());
 
-            for entry in entries {
-                let path = entry.path();
-                if path.is_dir() {
-                    if let Ok(meta) = load_font_metadata(
-                        &session_dir_for_first,
-                        path.file_name().unwrap().to_str().unwrap(),
-                    ) {
-                        if let Some(comp) = meta.computed {
-                            points.push(vec![comp.vector[0], comp.vector[1]]);
-                            ids.push(meta.safe_name);
+                for entry in entries {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        if let Ok(meta) = load_font_metadata(
+                            &session_dir_for_first,
+                            path.file_name().unwrap().to_str().unwrap(),
+                        ) {
+                            if let Some(comp) = meta.computed {
+                                points.push(vec![comp.vector[0], comp.vector[1]]);
+                                ids.push(meta.safe_name);
+                            }
                         }
                     }
                 }
-            }
-            Ok((points, ids))
-        })
-        .await
-        .map_err(|e| AppError::Processing(e.to_string()))??;
+                Ok((points, ids))
+            })
+            .await
+            .map_err(|e| AppError::Processing(e.to_string()))??;
 
         if points.is_empty() {
             return Ok(());

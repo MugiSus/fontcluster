@@ -7,19 +7,19 @@ pub type Result<T> = std::result::Result<T, AppError>;
 pub enum AppError {
     #[error("IO error: {0}")]
     Io(String),
-    
+
     #[error("Font error: {0}")]
     Font(String),
-    
+
     #[error("Image error: {0}")]
     Image(String),
-    
+
     #[error("Processing error: {0}")]
     Processing(String),
-    
+
     #[error("Serialization error: {0}")]
     Serialization(String),
-    
+
     #[error("Tauri error: {0}")]
     Tauri(String),
 

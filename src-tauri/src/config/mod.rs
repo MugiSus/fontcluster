@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::collections::HashMap;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 pub const PREVIEW_TEXT: &str = "font";
 pub const DEFAULT_FONT_SIZE: f32 = 128.0;
@@ -28,7 +28,6 @@ pub struct SessionConfig {
 pub struct AlgorithmConfig {
     pub discovery: Option<DiscoveryConfig>,
     pub image: Option<ImageConfig>,
-    pub hog: Option<HogConfig>,
     pub pacmap: Option<PacmapConfig>,
     pub hdbscan: Option<HdbscanConfig>,
 }
@@ -96,30 +95,6 @@ impl Default for PacmapConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct HogConfig {
-    pub orientations: usize,
-    pub cell_side: usize,
-    pub block_side: usize,
-    pub block_stride: usize,
-    pub width: u32,
-    pub height: u32,
-}
-
-impl Default for HogConfig {
-    fn default() -> Self {
-        Self {
-            orientations: 12,
-            cell_side: 16,
-            block_side: 2,
-            block_stride: 2,
-            width: 128,
-            height: 64,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct ImageConfig {
     pub font_size: f32,
 }
@@ -180,7 +155,14 @@ pub struct FontMetadata {
 
 impl FontMetadata {
     pub fn generate_safe_name(family: &str, weight: i32) -> String {
-        format!("{}_{}", weight, family.replace(' ', "_").replace('/', "_").replace('\\', "_"))
+        format!(
+            "{}_{}",
+            weight,
+            family
+                .replace(' ', "_")
+                .replace('/', "_")
+                .replace('\\', "_")
+        )
     }
 }
 

@@ -1,39 +1,53 @@
+use crate::config::{AlgorithmConfig, SessionConfig};
 use crate::core::AppState;
 use crate::error::Result;
-use tauri::{command, State};
-use crate::config::{SessionConfig, AlgorithmConfig};
-use std::fs;
 use chrono::{DateTime, Utc};
+use std::fs;
 use std::path::PathBuf;
+use tauri::{command, State};
 
 #[command]
-pub async fn create_new_session(text: String, weights: Vec<i32>, algorithm: Option<AlgorithmConfig>, state: State<'_, AppState>) -> Result<String> {
+pub async fn create_new_session(
+    text: String,
+    weights: Vec<i32>,
+    algorithm: Option<AlgorithmConfig>,
+    state: State<'_, AppState>,
+) -> Result<String> {
     state.initialize_session(text, weights, algorithm)
 }
 
 #[command]
 #[allow(non_snake_case)]
-pub async fn get_session_info(sessionId: Option<String>, state: State<'_, AppState>) -> Result<String> {
+pub async fn get_session_info(
+    sessionId: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String> {
     if let Some(id) = sessionId {
         state.load_session(&id)?;
     }
     let guard = state.current_session.lock().unwrap();
-    let session = guard.as_ref().ok_or_else(|| crate::error::AppError::Processing("No session".into()))?;
+    let session = guard
+        .as_ref()
+        .ok_or_else(|| crate::error::AppError::Processing("No session".into()))?;
     Ok(serde_json::to_string(session)?)
 }
 
 #[command]
 pub async fn get_available_sessions() -> Result<String> {
     let base = AppState::get_base_dir()?.join("Generated");
-    if !base.exists() { return Ok("[]".into()); }
-    
+    if !base.exists() {
+        return Ok("[]".into());
+    }
+
     let mut sessions = Vec::new();
     for entry in fs::read_dir(base)? {
         let path = entry?.path();
         if path.is_dir() {
             let config_path = path.join("config.json");
             if config_path.exists() {
-                if let Ok(s) = serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?) {
+                if let Ok(s) =
+                    serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?)
+                {
                     sessions.push(s);
                 }
             }
@@ -46,7 +60,7 @@ pub async fn get_available_sessions() -> Result<String> {
 #[command]
 pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<String>> {
     let base = AppState::get_base_dir()?.join("Generated");
-    
+
     let mut latest: Option<(DateTime<Utc>, String)> = None;
     if base.exists() {
         if let Ok(entries) = fs::read_dir(&base) {
@@ -71,7 +85,7 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
         println!("✨ No existing sessions found. Attempting to extract example session...");
         return crate::core::extract_example_session(&app);
     }
-    
+
     Ok(latest.map(|(_, id)| id))
 }
 
@@ -84,7 +98,9 @@ pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
 #[command]
 #[allow(non_snake_case)]
 pub async fn delete_session(sessionUuid: String) -> Result<bool> {
-    let path = AppState::get_base_dir()?.join("Generated").join(sessionUuid);
+    let path = AppState::get_base_dir()?
+        .join("Generated")
+        .join(sessionUuid);
     if path.exists() {
         fs::remove_dir_all(path)?;
         Ok(true)

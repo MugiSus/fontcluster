@@ -1,59 +1,86 @@
-pub mod error;
-pub mod config;
 pub mod commands;
+pub mod config;
 pub mod core;
+pub mod error;
 pub mod rendering;
 
-use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, AboutMetadata}, 
-    AppHandle, Emitter
-};
 use crate::core::AppState;
+use tauri::{
+    menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu},
+    AppHandle, Emitter,
+};
 
 fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
-    let restore = MenuItem::with_id(app, "restore_sessions", "Restore Recent Session...", true, None::<&str>)?;
+    let restore = MenuItem::with_id(
+        app,
+        "restore_sessions",
+        "Restore Recent Session...",
+        true,
+        None::<&str>,
+    )?;
     let refresh = MenuItem::with_id(app, "refresh", "Refresh", true, Some("CmdOrCtrl+R"))?;
-    let check_update = MenuItem::with_id(app, "check_update", "Check for Updates...", true, None::<&str>)?;
-    
-    let edit_menu = Submenu::with_items(app, "Edit", true, &[
-        &PredefinedMenuItem::undo(app, None)?,
-        &PredefinedMenuItem::redo(app, None)?,
-        &PredefinedMenuItem::separator(app)?,
-        &PredefinedMenuItem::cut(app, None)?,
-        &PredefinedMenuItem::copy(app, None)?,
-        &PredefinedMenuItem::paste(app, None)?,
-        &PredefinedMenuItem::select_all(app, None)?,
-    ])?;
+    let check_update = MenuItem::with_id(
+        app,
+        "check_update",
+        "Check for Updates...",
+        true,
+        None::<&str>,
+    )?;
+
+    let edit_menu = Submenu::with_items(
+        app,
+        "Edit",
+        true,
+        &[
+            &PredefinedMenuItem::undo(app, None)?,
+            &PredefinedMenuItem::redo(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::cut(app, None)?,
+            &PredefinedMenuItem::copy(app, None)?,
+            &PredefinedMenuItem::paste(app, None)?,
+            &PredefinedMenuItem::select_all(app, None)?,
+        ],
+    )?;
 
     #[cfg(target_os = "macos")]
     {
         let meta = AboutMetadata::default();
-        let app_menu = Submenu::with_items(app, "FontCluster", true, &[
-            &PredefinedMenuItem::about(app, Some("About FontCluster"), Some(meta))?,
-            &PredefinedMenuItem::separator(app)?,
-            &check_update,
-            &PredefinedMenuItem::separator(app)?,
-            &restore,
-            &refresh,
-            &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::hide(app, None)?,
-            &PredefinedMenuItem::hide_others(app, None)?,
-            &PredefinedMenuItem::show_all(app, None)?,
-            &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::quit(app, None)?,
-        ])?;
+        let app_menu = Submenu::with_items(
+            app,
+            "FontCluster",
+            true,
+            &[
+                &PredefinedMenuItem::about(app, Some("About FontCluster"), Some(meta))?,
+                &PredefinedMenuItem::separator(app)?,
+                &check_update,
+                &PredefinedMenuItem::separator(app)?,
+                &restore,
+                &refresh,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::hide(app, None)?,
+                &PredefinedMenuItem::hide_others(app, None)?,
+                &PredefinedMenuItem::show_all(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::quit(app, None)?,
+            ],
+        )?;
         Menu::with_items(app, &[&app_menu, &edit_menu])
     }
 
     #[cfg(not(target_os = "macos"))]
     {
-        let file_menu = Submenu::with_items(app, "File", true, &[
-            &restore,
-            &refresh,
-            &check_update,
-            &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::quit(app, None)?,
-        ])?;
+        let file_menu = Submenu::with_items(
+            app,
+            "File",
+            true,
+            &[
+                &restore,
+                &refresh,
+                &check_update,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::quit(app, None)?,
+            ],
+        )?;
         Menu::with_items(app, &[&file_menu, &edit_menu])
     }
 }

@@ -34,7 +34,7 @@ function App() {
 
   return (
     <>
-      <Toaster position='bottom-right' />
+      <Toaster position='bottom-center' />
       <ClipboardListener />
       <SessionPickerDialog />
       <div class='flex h-full min-h-0'>
