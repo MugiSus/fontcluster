@@ -1,20 +1,25 @@
-use crate::core::{AppState, session::load_font_metadata};
+use crate::core::{session::load_font_metadata, AppState};
 use crate::error::Result;
-use tauri::{command, State};
 use std::fs;
+use tauri::{command, State};
 
 #[command]
 #[allow(non_snake_case)]
-pub async fn get_compressed_vectors(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
+pub async fn get_compressed_vectors(
+    sessionId: String,
+    _state: State<'_, AppState>,
+) -> Result<String> {
     let session_dir = AppState::get_base_dir()?.join("Generated").join(sessionId);
     let samples_dir = session_dir.join("samples");
     let mut map = std::collections::HashMap::new();
-    
+
     if samples_dir.exists() {
         for entry in fs::read_dir(samples_dir)? {
             let path = entry?.path();
             if path.is_dir() {
-                if let Ok(meta) = load_font_metadata(&session_dir, path.file_name().unwrap().to_str().unwrap()) {
+                if let Ok(meta) =
+                    load_font_metadata(&session_dir, path.file_name().unwrap().to_str().unwrap())
+                {
                     map.insert(meta.safe_name.clone(), meta);
                 }
             }
@@ -27,7 +32,8 @@ pub async fn get_compressed_vectors(sessionId: String, _state: State<'_, AppStat
 pub async fn get_system_fonts() -> Result<Vec<String>> {
     let source = font_kit::source::SystemSource::new();
     let families = source.all_families()?;
-    let mut fonts: Vec<String> = families.into_iter()
+    let mut fonts: Vec<String> = families
+        .into_iter()
         .filter(|f| !f.to_lowercase().contains("emoji") && !f.to_lowercase().contains("icon"))
         .collect();
     fonts.sort();

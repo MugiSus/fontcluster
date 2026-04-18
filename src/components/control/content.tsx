@@ -1,4 +1,4 @@
-import { Show, createEffect } from 'solid-js';
+import { Show } from 'solid-js';
 import { Button } from '../ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
 import {
@@ -14,16 +14,10 @@ import {
   type ProcessStatus,
   type FontSet,
 } from '../../types/font';
-// ...existing imports
 import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../../store';
-import {
-  runProcessingJobs,
-  stopJobs,
-  setSelectedWeights,
-} from '../../actions';
+import { runProcessingJobs, stopJobs, setSelectedWeights } from '../../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { measureText } from '../../lib/text-measurer';
 import { ControlProperty } from './property';
 import { ControlPropertySection } from './property-section';
 
@@ -32,27 +26,6 @@ export function ControlContent() {
     e.preventDefault();
     handleRun();
   };
-
-  createEffect(() => {
-    const metrics = measureText(
-      appState.ui.sampleText,
-      appState.session.config?.algorithm?.image?.font_size ?? 128,
-    );
-
-    if (!appState.session.config?.algorithm?.hog) return;
-
-    const current = appState.session.config.algorithm.hog;
-    if (
-      current.width !== Math.round(metrics.width) ||
-      current.height !== Math.round(metrics.height)
-    ) {
-      setAppState('session', 'config', 'algorithm', 'hog', {
-        ...current,
-        width: Math.round(metrics.width),
-        height: Math.round(metrics.height),
-      });
-    }
-  });
 
   const handleRun = async (targetStatus?: ProcessStatus) => {
     const form = document.querySelector('form');
@@ -86,14 +59,6 @@ export function ControlContent() {
       },
       image: {
         font_size: Number(formData.get('image-font-size')),
-      },
-      hog: {
-        orientations: Number(formData.get('hog-orientations')),
-        cell_side: Number(formData.get('hog-cell-side')),
-        block_side: Number(formData.get('hog-block-side')),
-        block_stride: Number(formData.get('hog-block-stride')),
-        width: Number(formData.get('hog-width')),
-        height: Number(formData.get('hog-height')),
       },
       pacmap: {
         mn_phases: Number(formData.get('pacmap-mn-phases')),
@@ -213,58 +178,13 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='HOG (Vectorization)'
+          title='Vectorization'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('generated')}
         >
-          <ControlProperty
-            label='Orientations'
-            type='number'
-            name='hog-orientations'
-            value={appState.session.config?.algorithm?.hog?.orientations ?? 12}
-            step='1'
-            min='1'
-          />
-          <ControlProperty
-            label='Cell Side'
-            type='number'
-            name='hog-cell-side'
-            value={appState.session.config?.algorithm?.hog?.cell_side ?? 16}
-            step='1'
-            min='1'
-          />
-          <ControlProperty
-            label='Block Side'
-            type='number'
-            name='hog-block-side'
-            value={appState.session.config?.algorithm?.hog?.block_side ?? 2}
-            step='1'
-            min='1'
-          />
-          <ControlProperty
-            label='Block Stride'
-            type='number'
-            name='hog-block-stride'
-            value={appState.session.config?.algorithm?.hog?.block_stride ?? 2}
-            step='1'
-            min='1'
-          />
-          <ControlProperty
-            label='Width'
-            type='number'
-            name='hog-width'
-            value={appState.session.config?.algorithm?.hog?.width ?? 128}
-            step='1'
-            min='1'
-          />
-          <ControlProperty
-            label='Height'
-            type='number'
-            name='hog-height'
-            value={appState.session.config?.algorithm?.hog?.height ?? 64}
-            step='1'
-            min='1'
-          />
+          <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
+            DINOv3 (224x224) with onnx runtime
+          </div>
         </ControlPropertySection>
 
         <ControlPropertySection

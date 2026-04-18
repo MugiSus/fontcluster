@@ -44,19 +44,9 @@ export interface DiscoveryOptions {
   font_set: FontSet;
 }
 
-export interface HogOptions {
-  orientations: number;
-  cell_side: number;
-  block_side: number;
-  block_stride: number;
-  width: number;
-  height: number;
-}
-
 export interface AlgorithmConfig {
   discovery: DiscoveryOptions | null;
   image: ImageOptions | null;
-  hog: HogOptions | null;
   pacmap: PacmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }

@@ -1,18 +1,18 @@
 pub mod clusterer;
-pub mod image_generator;
-pub mod vectorizer;
 pub mod compressor;
 pub mod discoverer;
-pub mod session;
-pub mod inference;
-pub mod google_fonts;
 pub mod example;
+pub mod google_fonts;
+pub mod image_generator;
+pub mod inference;
+pub mod session;
+pub mod vectorizer;
 
 pub use clusterer::*;
-pub use image_generator::*;
-pub use vectorizer::*;
 pub use compressor::*;
 pub use discoverer::*;
-pub use session::*;
-pub use inference::*;
 pub use example::*;
+pub use image_generator::*;
+pub use inference::*;
+pub use session::*;
+pub use vectorizer::*;

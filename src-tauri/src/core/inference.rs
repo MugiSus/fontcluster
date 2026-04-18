@@ -2,7 +2,7 @@ use crate::config::{HdbscanConfig, PacmapConfig};
 use crate::error::{AppError, Result};
 use hdbscan::Hdbscan;
 use ndarray::Array2;
-use pacmap::{Configuration, fit_transform, Initialization};
+use pacmap::{fit_transform, Configuration, Initialization};
 
 pub enum EmbeddingEngine {
     Pacmap(PacmapConfig),

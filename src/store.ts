@@ -77,14 +77,6 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   algorithm: {
     discovery: { font_set: 'google_fonts_popular300' },
     image: { font_size: 128 },
-    hog: {
-      orientations: 12,
-      cell_side: 16,
-      block_side: 2,
-      block_stride: 2,
-      width: 128,
-      height: 64,
-    },
     pacmap: {
       mn_phases: 100,
       nn_phases: 100,
