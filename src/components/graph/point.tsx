@@ -126,9 +126,9 @@ export function GraphPoint(props: GraphPointProps) {
           }`}
           text-anchor='middle'
         >
-          {props.isSelected || props.fontName.length <= 16
+          {props.isSelected || props.fontName.length <= 24
             ? props.fontName
-            : props.fontName.substring(0, 16) + '…'}
+            : props.fontName.substring(0, 24) + '…'}
         </text>
       </Show>
     </g>

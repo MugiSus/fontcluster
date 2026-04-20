@@ -17,11 +17,7 @@ import {
 // ...existing imports
 import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../../store';
-import {
-  runProcessingJobs,
-  stopJobs,
-  setSelectedWeights,
-} from '../../actions';
+import { runProcessingJobs, stopJobs, setSelectedWeights } from '../../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { measureText } from '../../lib/text-measurer';
 import { ControlProperty } from './property';
