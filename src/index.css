@@ -108,7 +108,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border font-medium;
   }
 
   input[type='number']::-webkit-inner-spin-button,
