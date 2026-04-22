@@ -5,8 +5,12 @@ use bytemuck;
 use image::imageops::{crop_imm, resize, FilterType};
 use ndarray::Array4;
 use ort::{
+    ep,
     inputs,
-    session::{builder::GraphOptimizationLevel, Session},
+    session::{
+        builder::{GraphOptimizationLevel, SessionBuilder},
+        Session,
+    },
     value::Tensor,
 };
 use rayon::prelude::*;
@@ -39,30 +43,7 @@ impl Vectorizer {
         let model_path = model_dir.join(MODEL_FILE_NAME);
         let spec = load_model_spec(&model_dir)?;
 
-        println!(
-            "🚀 Vectorizer: loading ONNX model from {}",
-            model_path.display()
-        );
-
-        let mut builder =
-            Session::builder().map_err(|err| AppError::Processing(err.to_string()))?;
-        builder = builder
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(|err| AppError::Processing(err.to_string()))?;
-        builder = builder
-            .with_intra_threads(1)
-            .map_err(|err| AppError::Processing(err.to_string()))?;
-
-        let session = builder
-            .commit_from_file(&model_path)
-            .map_err(|err| AppError::Processing(err.to_string()))?;
-
-        for input in session.inputs() {
-            println!("📥 Vectorizer input: {:?}", input);
-        }
-        for output in session.outputs() {
-            println!("📤 Vectorizer output: {:?}", output);
-        }
+        let session = load_session(&model_path)?;
 
         Ok(Self {
             session: Mutex::new(session),
@@ -72,28 +53,11 @@ impl Vectorizer {
 
     pub async fn vectorize_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
-        let session_dir_display = session_dir.display().to_string();
-        let png_files = tokio::task::spawn_blocking(move || {
-            let mut png_files = Vec::new();
-            for entry in jwalk::WalkDir::new(session_dir.join("samples"))
-                .into_iter()
-                .filter_map(|e| e.ok())
-            {
-                if entry.file_type().is_dir() {
-                    let png = entry.path().join("sample.png");
-                    if png.exists() {
-                        png_files.push(png);
-                    }
-                }
-            }
-            png_files
-        })
-        .await
-        .map_err(|e| AppError::Processing(e.to_string()))?;
+        let png_files = collect_sample_paths(session_dir).await?;
 
         println!("🔍 Vectorizer: Found {} images to process", png_files.len());
         if png_files.is_empty() {
-            println!("⚠️ Vectorizer: No images found in {}", session_dir_display);
+            println!("⚠️ Vectorizer: No images found");
             return Ok(());
         }
 
@@ -111,7 +75,8 @@ impl Vectorizer {
                 return Ok(());
             }
 
-            for result in preprocess_images(chunk, &self.spec) {
+            let prepared = preprocess_images(chunk, &self.spec);
+            for result in prepared {
                 if state.is_cancelled.load(Ordering::Relaxed) {
                     return Ok(());
                 }
@@ -145,41 +110,119 @@ impl Vectorizer {
 
     fn process_prepared_image(&self, prepared: PreparedImage) -> Result<()> {
         let PreparedImage { path, input } = prepared;
-        let shape = input.shape().to_vec();
-        let (input_data, input_offset) = input.into_raw_vec_and_offset();
-        if input_offset != Some(0) {
-            return Err(AppError::Processing(
-                "Unexpected non-zero array offset in input tensor".into(),
-            ));
-        }
-
-        let tensor = Tensor::from_array(([shape[0], shape[1], shape[2], shape[3]], input_data))
-            .map_err(|err| AppError::Processing(err.to_string()))?;
+        let tensor = tensor_from_input(input)?;
 
         let feature = {
             let mut session = self
                 .session
                 .lock()
-                .map_err(|_| AppError::Processing("Failed to lock ONNX session".into()))?;
+                .expect("ONNX session mutex should not be poisoned");
             let outputs = session
                 .run(inputs![tensor])
                 .map_err(|err| AppError::Processing(err.to_string()))?;
 
-            select_embedding_from_outputs(&outputs, &self.spec)?
+            select_embedding_from_outputs(&outputs)?
         };
 
-        let mut bin_path = path;
-        bin_path.set_file_name("vector.bin");
-        fs::write(&bin_path, bytemuck::cast_slice(&feature)).map_err(|e| {
-            AppError::Io(format!(
-                "Failed to write vector bin {}: {}",
-                bin_path.display(),
-                e
-            ))
-        })?;
-
-        Ok(())
+        write_feature_vector(path, &feature)
     }
+}
+
+fn load_session(model_path: &Path) -> Result<Session> {
+    println!("🚀 Vectorizer: loading ONNX model from {}", model_path.display());
+
+    let mut builder = Session::builder().map_err(|err| AppError::Processing(err.to_string()))?;
+    builder = builder
+        .with_optimization_level(GraphOptimizationLevel::Level3)
+        .map_err(|err| AppError::Processing(err.to_string()))?;
+    builder = builder
+        .with_intra_threads(1)
+        .map_err(|err| AppError::Processing(err.to_string()))?;
+    builder = configure_execution_providers(builder)?;
+
+    let session = builder
+        .commit_from_file(model_path)
+        .map_err(|err| AppError::Processing(err.to_string()))?;
+
+    for input in session.inputs() {
+        println!("📥 Vectorizer input: {:?}", input);
+    }
+    for output in session.outputs() {
+        println!("📤 Vectorizer output: {:?}", output);
+    }
+
+    Ok(session)
+}
+
+fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuilder> {
+    #[cfg(target_vendor = "apple")]
+    {
+        let coreml = ep::CoreML::default()
+            .with_compute_units(ep::coreml::ComputeUnits::CPUAndNeuralEngine)
+            .with_model_format(ep::coreml::ModelFormat::MLProgram)
+            .with_static_input_shapes(true)
+            .with_specialization_strategy(ep::coreml::SpecializationStrategy::FastPrediction);
+        let available = ep::ExecutionProvider::is_available(&coreml)
+            .map_err(|err| AppError::Processing(err.to_string()))?;
+        println!("🚀 Vectorizer: CoreML EP available={available}");
+
+        builder
+            .with_execution_providers([coreml.build().error_on_failure()])
+            .map_err(|err| AppError::Processing(err.to_string()))
+    }
+
+    #[cfg(not(target_vendor = "apple"))]
+    {
+        Ok(builder)
+    }
+}
+
+async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
+    let session_dir_display = session_dir.display().to_string();
+    tokio::task::spawn_blocking(move || {
+        let mut png_files = Vec::new();
+        for entry in jwalk::WalkDir::new(session_dir.join("samples"))
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.file_type().is_dir() {
+                let png = entry.path().join("sample.png");
+                if png.exists() {
+                    png_files.push(png);
+                }
+            }
+        }
+        png_files
+    })
+    .await
+    .map_err(|e| {
+        AppError::Processing(format!(
+            "Failed to collect sample images under {}: {}",
+            session_dir_display, e
+        ))
+    })
+}
+
+fn tensor_from_input(input: Array4<f32>) -> Result<Tensor<f32>> {
+    let shape = input.shape().to_vec();
+    let (input_data, input_offset) = input.into_raw_vec_and_offset();
+    debug_assert_eq!(input_offset, Some(0));
+
+    Tensor::from_array(([shape[0], shape[1], shape[2], shape[3]], input_data))
+        .map_err(|err| AppError::Processing(err.to_string()))
+}
+
+fn write_feature_vector(path: PathBuf, feature: &[f32]) -> Result<()> {
+    let mut bin_path = path;
+    bin_path.set_file_name("vector.bin");
+    fs::write(&bin_path, bytemuck::cast_slice(feature)).map_err(|e| {
+        AppError::Io(format!(
+            "Failed to write vector bin {}: {}",
+            bin_path.display(),
+            e
+        ))
+    })?;
+    Ok(())
 }
 
 fn preprocess_images(
@@ -203,8 +246,6 @@ fn preprocess_images(
 struct ModelSpec {
     input_size: u32,
     preprocess: PreprocessConfig,
-    num_features: Option<usize>,
-    num_classes: Option<usize>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -225,8 +266,6 @@ struct PreprocessStage {
 #[derive(Debug, Clone, Deserialize)]
 struct MetaConfig {
     input_size: Option<u32>,
-    num_features: Option<usize>,
-    num_classes: Option<usize>,
 }
 
 fn resolve_model_dir(app: &AppHandle) -> Result<PathBuf> {
@@ -276,8 +315,6 @@ fn load_model_spec(model_dir: &Path) -> Result<ModelSpec> {
     Ok(ModelSpec {
         input_size,
         preprocess,
-        num_features: meta.as_ref().and_then(|value| value.num_features),
-        num_classes: meta.as_ref().and_then(|value| value.num_classes),
     })
 }
 
@@ -325,12 +362,8 @@ fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
     let rgba = dyn_img.to_rgba8();
     let rgb_raw = rgba_to_rgb_with_alpha(&rgba);
-    let rgb = image::RgbImage::from_raw(rgba.width(), rgba.height(), rgb_raw).ok_or_else(|| {
-        AppError::Processing(format!(
-            "Failed to construct RGB image buffer for {}",
-            path.display()
-        ))
-    })?;
+    let rgb = image::RgbImage::from_raw(rgba.width(), rgba.height(), rgb_raw)
+        .expect("RGBA to RGB conversion should preserve buffer size");
 
     let mut processed = rgb;
     let mut mean: Option<Vec<f32>> = None;
@@ -422,7 +455,7 @@ fn fill_nchw_input(
     let plane_len = processed.width() as usize * processed.height() as usize;
     let input_slice = input
         .as_slice_mut()
-        .ok_or_else(|| AppError::Processing("Input tensor is not contiguous in memory".into()))?;
+        .expect("Input tensor should be contiguous");
     let pixels = processed.as_raw();
 
     input_slice
@@ -453,39 +486,17 @@ fn fill_nchw_input(
 
 fn select_embedding_from_outputs(
     outputs: &ort::session::SessionOutputs<'_>,
-    spec: &ModelSpec,
 ) -> Result<Vec<f32>> {
-    for (name, output) in outputs.iter() {
-        if name == PREFERRED_EMBEDDING_OUTPUT_NAME {
-            return extract_feature_output(name, &output);
-        }
-    }
+    let output = outputs
+        .get(PREFERRED_EMBEDDING_OUTPUT_NAME)
+        .ok_or_else(|| {
+            AppError::Processing(format!(
+                "Model output '{}' was not found",
+                PREFERRED_EMBEDDING_OUTPUT_NAME
+            ))
+        })?;
 
-    if let Some(num_features) = spec.num_features {
-        for (name, output) in outputs.iter() {
-            let shape = output_shape(&output)?;
-            if output_matches_feature_dim(&shape, num_features)
-                && !output_matches_class_dim(&shape, spec.num_classes)
-            {
-                return extract_feature_output(name, &output);
-            }
-        }
-    }
-
-    if outputs.len() == 1 {
-        let (name, output) = outputs.iter().next().unwrap();
-        return extract_feature_output(name, &output);
-    }
-
-    let mut details = Vec::new();
-    for (name, output) in outputs.iter() {
-        details.push(format!("{} {:?}", name, output_shape(&output)?));
-    }
-
-    Err(AppError::Processing(format!(
-        "Could not determine embedding output from model outputs: {}",
-        details.join(", ")
-    )))
+    extract_feature_output(PREFERRED_EMBEDDING_OUTPUT_NAME, output)
 }
 
 fn extract_feature_output(name: &str, output: &ort::value::DynValue) -> Result<Vec<f32>> {
@@ -493,76 +504,19 @@ fn extract_feature_output(name: &str, output: &ort::value::DynValue) -> Result<V
         .try_extract_array::<f32>()
         .map_err(|err| AppError::Processing(err.to_string()))?;
     let shape = array.shape().to_vec();
-    let data = array.as_slice().ok_or_else(|| {
-        AppError::Processing(format!(
-            "Output tensor '{}' is not contiguous in memory",
-            name
-        ))
-    })?;
+    let data = array
+        .as_slice()
+        .expect("ONNX output tensor should be contiguous");
 
-    extract_feature_vector(name, &shape, data)
-}
-
-fn extract_feature_vector(name: &str, shape: &[usize], data: &[f32]) -> Result<Vec<f32>> {
-    match shape.len() {
-        2 => {
-            let feature_dim = shape[1];
-            Ok(data[..feature_dim].to_vec())
-        }
-        3 => {
-            let feature_dim = shape[2];
-            Ok(data[..feature_dim].to_vec())
-        }
-        4 => {
-            let channels = shape[1];
-            let spatial = shape[2] * shape[3];
-            if channels == 0 || spatial == 0 {
-                return Err(AppError::Processing(format!(
-                    "Output '{}' has invalid 4D shape {:?}",
-                    name, shape
-                )));
-            }
-            let mut pooled = vec![0.0f32; channels];
-            for (channel_index, value) in pooled.iter_mut().enumerate() {
-                let start = channel_index * spatial;
-                let end = start + spatial;
-                *value = data[start..end].iter().sum::<f32>() / spatial as f32;
-            }
-            Ok(pooled)
-        }
-        rank => Err(AppError::Processing(format!(
-            "Unsupported output rank {} for '{}'",
-            rank, name
-        ))),
+    if shape.len() != 2 {
+        return Err(AppError::Processing(format!(
+            "Output '{}' must be 2D [batch, features], got {:?}",
+            name, shape
+        )));
     }
-}
 
-fn output_shape(output: &ort::value::DynValue) -> Result<Vec<usize>> {
-    let array = output
-        .try_extract_array::<f32>()
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-    Ok(array.shape().to_vec())
-}
-
-fn output_matches_feature_dim(shape: &[usize], num_features: usize) -> bool {
-    match shape.len() {
-        2 => shape[1] == num_features,
-        3 => shape[2] == num_features,
-        4 => shape[1] == num_features,
-        _ => false,
-    }
-}
-
-fn output_matches_class_dim(shape: &[usize], num_classes: Option<usize>) -> bool {
-    let Some(num_classes) = num_classes else {
-        return false;
-    };
-    match shape.len() {
-        2 => shape[1] == num_classes,
-        3 => shape[2] == num_classes,
-        4 => shape[1] == num_classes,
-        _ => false,
-    }
+    let feature_dim = shape[1];
+    Ok(data[..feature_dim].to_vec())
 }
 
 fn parse_scalar_size(size: Option<&serde_json::Value>) -> Result<u32> {
