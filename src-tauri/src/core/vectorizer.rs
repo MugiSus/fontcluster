@@ -39,7 +39,10 @@ impl Vectorizer {
         let model_path = model_dir.join(MODEL_FILE_NAME);
         let spec = load_model_spec(&model_dir)?;
 
-        println!("🚀 Vectorizer: loading ONNX model from {}", model_path.display());
+        println!(
+            "🚀 Vectorizer: loading ONNX model from {}",
+            model_path.display()
+        );
 
         let mut builder =
             Session::builder().map_err(|err| AppError::Processing(err.to_string()))?;
@@ -116,7 +119,7 @@ impl Vectorizer {
                 match result {
                     Ok(prepared) => {
                         let path = prepared.path.clone();
-                        match self.process_preprocessed_image(prepared) {
+                        match self.process_prepared_image(prepared) {
                             Ok(_) => progress_events::increase_numerator(app, 1),
                             Err(e) => {
                                 println!("❌ Vectorization failed for {:?}: {}", path, e);
@@ -140,7 +143,7 @@ impl Vectorizer {
         Ok(())
     }
 
-    fn process_preprocessed_image(&self, prepared: PreparedImage) -> Result<()> {
+    fn process_prepared_image(&self, prepared: PreparedImage) -> Result<()> {
         let PreparedImage { path, input } = prepared;
         let shape = input.shape().to_vec();
         let (input_data, input_offset) = input.into_raw_vec_and_offset();
@@ -150,12 +153,10 @@ impl Vectorizer {
             ));
         }
 
-        let tensor = Tensor::from_array(([
-            shape[0], shape[1], shape[2], shape[3],
-        ], input_data))
-        .map_err(|err| AppError::Processing(err.to_string()))?;
+        let tensor = Tensor::from_array(([shape[0], shape[1], shape[2], shape[3]], input_data))
+            .map_err(|err| AppError::Processing(err.to_string()))?;
 
-        let features = {
+        let feature = {
             let mut session = self
                 .session
                 .lock()
@@ -169,7 +170,7 @@ impl Vectorizer {
 
         let mut bin_path = path;
         bin_path.set_file_name("vector.bin");
-        fs::write(&bin_path, bytemuck::cast_slice(&features)).map_err(|e| {
+        fs::write(&bin_path, bytemuck::cast_slice(&feature)).map_err(|e| {
             AppError::Io(format!(
                 "Failed to write vector bin {}: {}",
                 bin_path.display(),
@@ -266,10 +267,11 @@ fn load_model_spec(model_dir: &Path) -> Result<ModelSpec> {
         .and_then(|value| value.input_size)
         .unwrap_or(DEFAULT_INPUT_SIZE);
 
-    let preprocess = match load_optional_json::<PreprocessConfig>(&model_dir.join(PREPROCESS_FILE_NAME))? {
-        Some(config) => config,
-        None => default_preprocess(input_size),
-    };
+    let preprocess =
+        match load_optional_json::<PreprocessConfig>(&model_dir.join(PREPROCESS_FILE_NAME))? {
+            Some(config) => config,
+            None => default_preprocess(input_size),
+        };
 
     Ok(ModelSpec {
         input_size,
@@ -287,9 +289,8 @@ where
         return Ok(None);
     }
 
-    let text = fs::read_to_string(path).map_err(|e| {
-        AppError::Io(format!("Failed to read config {}: {}", path.display(), e))
-    })?;
+    let text = fs::read_to_string(path)
+        .map_err(|e| AppError::Io(format!("Failed to read config {}: {}", path.display(), e)))?;
 
     let value = serde_json::from_str(&text).map_err(|e| {
         AppError::Processing(format!("Failed to parse config {}: {}", path.display(), e))
@@ -419,9 +420,9 @@ fn fill_nchw_input(
     std: Option<&[f32]>,
 ) -> Result<()> {
     let plane_len = processed.width() as usize * processed.height() as usize;
-    let input_slice = input.as_slice_mut().ok_or_else(|| {
-        AppError::Processing("Input tensor is not contiguous in memory".into())
-    })?;
+    let input_slice = input
+        .as_slice_mut()
+        .ok_or_else(|| AppError::Processing("Input tensor is not contiguous in memory".into()))?;
     let pixels = processed.as_raw();
 
     input_slice
@@ -521,12 +522,11 @@ fn extract_feature_vector(name: &str, shape: &[usize], data: &[f32]) -> Result<V
                     name, shape
                 )));
             }
-
             let mut pooled = vec![0.0f32; channels];
-            for c in 0..channels {
-                let start = c * spatial;
+            for (channel_index, value) in pooled.iter_mut().enumerate() {
+                let start = channel_index * spatial;
                 let end = start + spatial;
-                pooled[c] = data[start..end].iter().sum::<f32>() / spatial as f32;
+                *value = data[start..end].iter().sum::<f32>() / spatial as f32;
             }
             Ok(pooled)
         }
