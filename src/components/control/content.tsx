@@ -183,7 +183,7 @@ export function ControlContent() {
           onStepRun={() => handleRun('generated')}
         >
           <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
-            DINOv3 (224x224) with onnx runtime
+            RepVit-M1.0 via ONNX Runtime
           </div>
         </ControlPropertySection>
 
