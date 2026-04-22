@@ -1,0 +1,34 @@
+{
+    "stages": [
+        {
+            "antialias": true,
+            "interpolation": "bicubic",
+            "max_size": null,
+            "size": 235,
+            "type": "resize"
+        },
+        {
+            "size": [
+                224,
+                224
+            ],
+            "type": "center_crop"
+        },
+        {
+            "type": "maybe_to_tensor"
+        },
+        {
+            "mean": [
+                0.48500001430511475,
+                0.4560000002384186,
+                0.4059999883174896
+            ],
+            "std": [
+                0.2290000021457672,
+                0.2240000069141388,
+                0.22499999403953552
+            ],
+            "type": "normalize"
+        }
+    ]
+}
