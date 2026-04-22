@@ -28,6 +28,11 @@ pub struct Vectorizer {
     spec: ModelSpec,
 }
 
+struct PreparedImage {
+    path: PathBuf,
+    input: Array4<f32>,
+}
+
 impl Vectorizer {
     pub fn new(app: &AppHandle) -> Result<Self> {
         let model_dir = resolve_model_dir(app)?;
@@ -92,16 +97,37 @@ impl Vectorizer {
         progress_events::reset_progress(app);
         progress_events::set_progress_denominator(app, png_files.len() as i32);
 
-        for path in png_files {
+        let preprocess_chunk_size = rayon::current_num_threads().max(1);
+        println!(
+            "🚀 Vectorizer: preprocessing {} images at a time",
+            preprocess_chunk_size
+        );
+
+        for chunk in png_files.chunks(preprocess_chunk_size) {
             if state.is_cancelled.load(Ordering::Relaxed) {
                 return Ok(());
             }
 
-            match self.process_image(path.clone()) {
-                Ok(_) => progress_events::increase_numerator(app, 1),
-                Err(e) => {
-                    println!("❌ Vectorization failed for {:?}: {}", path, e);
-                    progress_events::decrease_denominator(app, 1);
+            for result in preprocess_images(chunk, &self.spec) {
+                if state.is_cancelled.load(Ordering::Relaxed) {
+                    return Ok(());
+                }
+
+                match result {
+                    Ok(prepared) => {
+                        let path = prepared.path.clone();
+                        match self.process_preprocessed_image(prepared) {
+                            Ok(_) => progress_events::increase_numerator(app, 1),
+                            Err(e) => {
+                                println!("❌ Vectorization failed for {:?}: {}", path, e);
+                                progress_events::decrease_denominator(app, 1);
+                            }
+                        }
+                    }
+                    Err((path, e)) => {
+                        println!("❌ Vectorization failed for {:?}: {}", path, e);
+                        progress_events::decrease_denominator(app, 1);
+                    }
                 }
             }
         }
@@ -114,8 +140,8 @@ impl Vectorizer {
         Ok(())
     }
 
-    fn process_image(&self, path: PathBuf) -> Result<()> {
-        let input = preprocess_image(&path, &self.spec)?;
+    fn process_preprocessed_image(&self, prepared: PreparedImage) -> Result<()> {
+        let PreparedImage { path, input } = prepared;
         let shape = input.shape().to_vec();
         let (input_data, input_offset) = input.into_raw_vec_and_offset();
         if input_offset != Some(0) {
@@ -153,6 +179,23 @@ impl Vectorizer {
 
         Ok(())
     }
+}
+
+fn preprocess_images(
+    paths: &[PathBuf],
+    spec: &ModelSpec,
+) -> Vec<std::result::Result<PreparedImage, (PathBuf, AppError)>> {
+    paths
+        .par_iter()
+        .map(|path| {
+            preprocess_image(path, spec)
+                .map(|input| PreparedImage {
+                    path: path.clone(),
+                    input,
+                })
+                .map_err(|err| (path.clone(), err))
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone)]
