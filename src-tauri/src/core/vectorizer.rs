@@ -9,6 +9,7 @@ use ort::{
     session::{builder::GraphOptimizationLevel, Session},
     value::Tensor,
 };
+use rayon::prelude::*;
 use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -275,18 +276,17 @@ fn default_preprocess(input_size: u32) -> PreprocessConfig {
     }
 }
 
-fn preprocess_image(path: &PathBuf, spec: &ModelSpec) -> Result<Array4<f32>> {
+fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     let dyn_img = image::open(path)
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
     let rgba = dyn_img.to_rgba8();
-
-    let mut rgb = image::RgbImage::from_pixel(rgba.width(), rgba.height(), image::Rgb([0, 0, 0]));
-    for (x, y, pixel) in rgba.enumerate_pixels() {
-        let alpha = pixel[3] as f32 / 255.0;
-        for channel in 0..3 {
-            rgb.get_pixel_mut(x, y)[channel] = (pixel[channel] as f32 * alpha).round() as u8;
-        }
-    }
+    let rgb_raw = rgba_to_rgb_with_alpha(&rgba);
+    let rgb = image::RgbImage::from_raw(rgba.width(), rgba.height(), rgb_raw).ok_or_else(|| {
+        AppError::Processing(format!(
+            "Failed to construct RGB image buffer for {}",
+            path.display()
+        ))
+    })?;
 
     let mut processed = rgb;
     let mut mean: Option<Vec<f32>> = None;
@@ -351,18 +351,60 @@ fn preprocess_image(path: &PathBuf, spec: &ModelSpec) -> Result<Array4<f32>> {
 
     let mut input =
         Array4::<f32>::zeros((1, 3, spec.input_size as usize, spec.input_size as usize));
-    for (x, y, pixel) in processed.enumerate_pixels() {
-        for channel in 0..3 {
-            let value = pixel[channel] as f32 / 255.0;
-            let normalized = match (&mean, &std) {
-                (Some(mean), Some(std)) => (value - mean[channel]) / std[channel],
-                _ => value,
-            };
-            input[[0, channel, y as usize, x as usize]] = normalized;
-        }
-    }
+    fill_nchw_input(&processed, &mut input, mean.as_deref(), std.as_deref())?;
 
     Ok(input)
+}
+
+fn rgba_to_rgb_with_alpha(rgba: &image::RgbaImage) -> Vec<u8> {
+    let mut rgb = vec![0u8; rgba.width() as usize * rgba.height() as usize * 3];
+    rgb.par_chunks_exact_mut(3)
+        .zip(rgba.as_raw().par_chunks_exact(4))
+        .for_each(|(dst, src)| {
+            let alpha = src[3] as f32 / 255.0;
+            dst[0] = (src[0] as f32 * alpha).round() as u8;
+            dst[1] = (src[1] as f32 * alpha).round() as u8;
+            dst[2] = (src[2] as f32 * alpha).round() as u8;
+        });
+    rgb
+}
+
+fn fill_nchw_input(
+    processed: &image::RgbImage,
+    input: &mut Array4<f32>,
+    mean: Option<&[f32]>,
+    std: Option<&[f32]>,
+) -> Result<()> {
+    let plane_len = processed.width() as usize * processed.height() as usize;
+    let input_slice = input.as_slice_mut().ok_or_else(|| {
+        AppError::Processing("Input tensor is not contiguous in memory".into())
+    })?;
+    let pixels = processed.as_raw();
+
+    input_slice
+        .par_chunks_mut(plane_len)
+        .enumerate()
+        .for_each(|(channel, plane)| {
+            let mean_value = mean
+                .and_then(|values| values.get(channel))
+                .copied()
+                .unwrap_or(0.0);
+            let std_value = std
+                .and_then(|values| values.get(channel))
+                .copied()
+                .unwrap_or(1.0);
+
+            for (index, pixel) in pixels.chunks_exact(3).enumerate() {
+                let value = pixel[channel] as f32 / 255.0;
+                plane[index] = if mean.is_some() && std.is_some() {
+                    (value - mean_value) / std_value
+                } else {
+                    value
+                };
+            }
+        });
+
+    Ok(())
 }
 
 fn select_embedding_from_outputs(
