@@ -317,8 +317,6 @@ export function GraphContent() {
   });
 
   const visibleImageKeys = createMemo(() => {
-    if (!showImages() || isMoving()) return new Set<string>();
-
     const bounds = settledVisibleBounds();
     if (!bounds) return new Set<string>();
     return collectVisibleImageKeys(
@@ -433,7 +431,9 @@ export function GraphContent() {
                   )}
                   sessionDirectory={appState.session.directory}
                   zoomFactor={zoomFactor()}
-                  shouldShowImage={isImageVisible(point.key)}
+                  shouldShowImage={
+                    showImages() && !isMoving() && isImageVisible(point.key)
+                  }
                   isDisabled
                 />
               )}
@@ -453,7 +453,9 @@ export function GraphContent() {
                 isFamilySelected={isFamilySelected(point.metadata.family_name)}
                 sessionDirectory={appState.session.directory}
                 zoomFactor={zoomFactor()}
-                shouldShowImage={isImageVisible(point.key)}
+                shouldShowImage={
+                  showImages() && !isMoving() && isImageVisible(point.key)
+                }
               />
             )}
           </For>
