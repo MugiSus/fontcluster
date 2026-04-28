@@ -8,7 +8,7 @@ import {
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
-import { type FontWeight, type FontMetadata } from '../../types/font';
+import { type FontWeight } from '../../types/font';
 import { WeightSelector } from '../weight-selector';
 import { ImageVisibilityToggle } from './image-visibility-toggle';
 import { CircleSlash2Icon } from 'lucide-solid';
@@ -17,11 +17,19 @@ import { ZoomControls } from './zoom-controls';
 import { useElementSize } from '../../hooks/use-element-size';
 import { appState } from '../../store';
 import { setSelectedFontKey } from '../../actions';
+import {
+  type GraphPointData,
+  type GraphVisibleBounds,
+  type GraphViewBox,
+  collectVisibleImageKeys,
+  getVisibleBounds,
+  partitionVisiblePoints,
+} from './lib';
 
 const GRAPH_PADDING = 50;
 const GRAPH_SIZE = 1000;
 
-const INITIAL_VIEWBOX = {
+const INITIAL_VIEWBOX: GraphViewBox = {
   x: -GRAPH_PADDING,
   y: -GRAPH_PADDING,
   width: GRAPH_SIZE + GRAPH_PADDING * 2,
@@ -30,16 +38,11 @@ const INITIAL_VIEWBOX = {
 
 const ZOOM_FACTOR_RATIO = 1.05;
 
-interface GraphPointData {
-  key: string;
-  metadata: FontMetadata;
-  x: number;
-  y: number;
-}
-
 export function GraphContent() {
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
   const [showImages, setShowImages] = createSignal(true);
+  const [settledVisibleBounds, setSettledVisibleBounds] =
+    createSignal<GraphVisibleBounds | null>(null);
 
   let svgElement: SVGSVGElement | undefined;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
@@ -272,15 +275,17 @@ export function GraphContent() {
     return map;
   });
 
+  const activeWeightSet = createMemo(() => new Set(graphWeights()));
+
   const fontQuadtree = createMemo(() => {
     const map = pointsMap();
-    const activeWeights = graphWeights();
+    const activeWeights = activeWeightSet();
     const filteredKeys = appState.fonts.filteredKeys;
 
     const activePoints = [];
     for (const key of filteredKeys) {
       const p = map.get(key);
-      if (p && activeWeights.includes(p.metadata.weight as FontWeight)) {
+      if (p && activeWeights.has(p.metadata.weight as FontWeight)) {
         activePoints.push(p);
       }
     }
@@ -291,46 +296,43 @@ export function GraphContent() {
       .addAll(activePoints);
   });
 
-  const visiblePoints = createMemo(() => {
-    const vb = viewBox();
+  const visibleBounds = createMemo(() =>
+    getVisibleBounds(viewBox(), svgSize(), zoomFactor()),
+  );
+
+  createEffect(() => {
+    if (isMoving()) return;
     const size = svgSize();
-    const scale = zoomFactor();
-
-    const visibleWidth = size.width * scale;
-    const visibleHeight = size.height * scale;
-
-    const padding = 50 * scale;
-    const minVisibleX = vb.x + vb.width / 2 - visibleWidth / 2 - padding;
-    const maxVisibleX = vb.x + vb.width / 2 + visibleWidth / 2 + padding;
-    const minVisibleY = vb.y + vb.height / 2 - visibleHeight / 2 - padding;
-    const maxVisibleY = vb.y + vb.height / 2 + visibleHeight / 2 + padding;
-
-    const filteredKeys = appState.fonts.filteredKeys;
-    const activeWeights = new Set(graphWeights());
-    const visibleFilteredPoints = [];
-    const visibleUnfilteredPoints = [];
-
-    for (const point of allPoints()) {
-      const isWeightIncluded = activeWeights.has(
-        point.metadata.weight as FontWeight,
-      );
-      const isVisible =
-        point.x >= minVisibleX &&
-        point.x <= maxVisibleX &&
-        point.y >= minVisibleY &&
-        point.y <= maxVisibleY;
-
-      if (isWeightIncluded && isVisible) {
-        if (filteredKeys.has(point.key)) {
-          visibleFilteredPoints.push(point);
-        } else {
-          visibleUnfilteredPoints.push(point);
-        }
-      }
-    }
-
-    return { visibleFilteredPoints, visibleUnfilteredPoints };
+    if (size.width === 0 || size.height === 0) return;
+    setSettledVisibleBounds(visibleBounds());
   });
+
+  const visiblePoints = createMemo(() => {
+    return partitionVisiblePoints(
+      allPoints(),
+      appState.fonts.filteredKeys,
+      activeWeightSet(),
+      visibleBounds(),
+    );
+  });
+
+  const visibleImageKeys = createMemo(() => {
+    if (!showImages() || isMoving()) return new Set<string>();
+
+    const bounds = settledVisibleBounds();
+    if (!bounds) return new Set<string>();
+    return collectVisibleImageKeys(
+      allPoints(),
+      appState.fonts.filteredKeys,
+      activeWeightSet(),
+      bounds,
+      zoomFactor(),
+    );
+  });
+  const isImageVisible = createSelector(
+    visibleImageKeys,
+    (key: string, keys: Set<string>) => keys.has(key),
+  );
 
   return (
     <div class='relative flex size-full items-center justify-center bg-background'>
@@ -431,8 +433,7 @@ export function GraphContent() {
                   )}
                   sessionDirectory={appState.session.directory}
                   zoomFactor={zoomFactor()}
-                  isMoving={isMoving()}
-                  showImages={showImages()}
+                  shouldShowImage={isImageVisible(point.key)}
                   isDisabled
                 />
               )}
@@ -452,8 +453,7 @@ export function GraphContent() {
                 isFamilySelected={isFamilySelected(point.metadata.family_name)}
                 sessionDirectory={appState.session.directory}
                 zoomFactor={zoomFactor()}
-                isMoving={isMoving()}
-                showImages={showImages()}
+                shouldShowImage={isImageVisible(point.key)}
               />
             )}
           </For>

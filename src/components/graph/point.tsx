@@ -13,8 +13,7 @@ interface GraphPointProps {
   isFamilySelected: boolean;
   sessionDirectory: string;
   zoomFactor: number;
-  isMoving: boolean;
-  showImages: boolean;
+  shouldShowImage: boolean;
   isDisabled?: boolean;
 }
 
@@ -79,7 +78,7 @@ export function GraphPoint(props: GraphPointProps) {
         />
       </Show>
 
-      <Show when={props.isSelected || (props.showImages && !props.isMoving)}>
+      <Show when={props.isSelected || props.shouldShowImage}>
         <mask id={`mask-${props.safeName}`}>
           <image
             href={imgSrc()}
