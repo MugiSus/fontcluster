@@ -121,7 +121,7 @@ export function GraphPoint(props: GraphPointProps) {
           y={-10}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
-            props.isSelected ? 'font-bold' : ''
+            props.isSelected ? 'font-bold' : 'fill-muted-foreground'
           }`}
           text-anchor='middle'
         >

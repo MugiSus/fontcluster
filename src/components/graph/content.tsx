@@ -382,7 +382,7 @@ export function GraphContent() {
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         >
-          <g opacity={0.7}>
+          <g>
             <path
               d='M 490 490 L 510 510 M 510 490 L 490 510'
               fill='none'
