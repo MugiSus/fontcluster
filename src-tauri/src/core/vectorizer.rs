@@ -325,7 +325,12 @@ fn center_in_square(source: &image::RgbImage, target_size: u32) -> image::RgbIma
     let mut canvas = image::RgbImage::new(target_size, target_size);
     let x_offset = (target_size - source.width()) / 2;
     let y_offset = (target_size - source.height()) / 2;
-    replace(&mut canvas, source, i64::from(x_offset), i64::from(y_offset));
+    replace(
+        &mut canvas,
+        source,
+        i64::from(x_offset),
+        i64::from(y_offset),
+    );
     canvas
 }
 
