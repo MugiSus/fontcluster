@@ -2,11 +2,10 @@ use crate::commands::progress::progress_events;
 use crate::core::AppState;
 use crate::error::{AppError, Result};
 use bytemuck;
-use image::imageops::{crop_imm, resize, FilterType};
+use image::imageops::{replace, FilterType};
 use ndarray::Array4;
 use ort::{
-    ep,
-    inputs,
+    ep, inputs,
     session::{
         builder::{GraphOptimizationLevel, SessionBuilder},
         Session,
@@ -14,7 +13,6 @@ use ort::{
     value::Tensor,
 };
 use rayon::prelude::*;
-use serde::Deserialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::Ordering, Mutex};
@@ -22,10 +20,10 @@ use tauri::{AppHandle, Manager};
 
 const MODEL_REPO_DIR: &str = "repvit_m1.dist_in1k";
 const MODEL_FILE_NAME: &str = "model.onnx";
-const PREPROCESS_FILE_NAME: &str = "preprocess.json";
-const META_FILE_NAME: &str = "meta.json";
 const DEFAULT_INPUT_SIZE: u32 = 224;
 const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
+const DEFAULT_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
+const DEFAULT_STD: [f32; 3] = [0.229, 0.224, 0.225];
 
 pub struct Vectorizer {
     session: Mutex<Session>,
@@ -41,7 +39,7 @@ impl Vectorizer {
     pub fn new(app: &AppHandle) -> Result<Self> {
         let model_dir = resolve_model_dir(app)?;
         let model_path = model_dir.join(MODEL_FILE_NAME);
-        let spec = load_model_spec(&model_dir)?;
+        let spec = default_model_spec();
 
         let session = load_session(&model_path)?;
 
@@ -129,7 +127,10 @@ impl Vectorizer {
 }
 
 fn load_session(model_path: &Path) -> Result<Session> {
-    println!("🚀 Vectorizer: loading ONNX model from {}", model_path.display());
+    println!(
+        "🚀 Vectorizer: loading ONNX model from {}",
+        model_path.display()
+    );
 
     let mut builder = Session::builder().map_err(|err| AppError::Processing(err.to_string()))?;
     builder = builder
@@ -245,27 +246,8 @@ fn preprocess_images(
 #[derive(Debug, Clone)]
 struct ModelSpec {
     input_size: u32,
-    preprocess: PreprocessConfig,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PreprocessConfig {
-    stages: Vec<PreprocessStage>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct PreprocessStage {
-    #[serde(rename = "type")]
-    stage_type: String,
-    size: Option<serde_json::Value>,
-    interpolation: Option<String>,
-    mean: Option<Vec<f32>>,
-    std: Option<Vec<f32>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct MetaConfig {
-    input_size: Option<u32>,
+    mean: [f32; 3],
+    std: [f32; 3],
 }
 
 fn resolve_model_dir(app: &AppHandle) -> Result<PathBuf> {
@@ -299,122 +281,24 @@ fn resolve_model_dir(app: &AppHandle) -> Result<PathBuf> {
     )))
 }
 
-fn load_model_spec(model_dir: &Path) -> Result<ModelSpec> {
-    let meta = load_optional_json::<MetaConfig>(&model_dir.join(META_FILE_NAME))?;
-    let input_size = meta
-        .as_ref()
-        .and_then(|value| value.input_size)
-        .unwrap_or(DEFAULT_INPUT_SIZE);
-
-    let preprocess =
-        match load_optional_json::<PreprocessConfig>(&model_dir.join(PREPROCESS_FILE_NAME))? {
-            Some(config) => config,
-            None => default_preprocess(input_size),
-        };
-
-    Ok(ModelSpec {
-        input_size,
-        preprocess,
-    })
-}
-
-fn load_optional_json<T>(path: &Path) -> Result<Option<T>>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    if !path.exists() {
-        return Ok(None);
-    }
-
-    let text = fs::read_to_string(path)
-        .map_err(|e| AppError::Io(format!("Failed to read config {}: {}", path.display(), e)))?;
-
-    let value = serde_json::from_str(&text).map_err(|e| {
-        AppError::Processing(format!("Failed to parse config {}: {}", path.display(), e))
-    })?;
-
-    Ok(Some(value))
-}
-
-fn default_preprocess(input_size: u32) -> PreprocessConfig {
-    PreprocessConfig {
-        stages: vec![
-            PreprocessStage {
-                stage_type: "resize".into(),
-                size: Some(serde_json::Value::from(input_size)),
-                interpolation: Some("triangle".into()),
-                mean: None,
-                std: None,
-            },
-            PreprocessStage {
-                stage_type: "maybe_to_tensor".into(),
-                size: None,
-                interpolation: None,
-                mean: None,
-                std: None,
-            },
-        ],
+fn default_model_spec() -> ModelSpec {
+    ModelSpec {
+        input_size: DEFAULT_INPUT_SIZE,
+        mean: DEFAULT_MEAN,
+        std: DEFAULT_STD,
     }
 }
 
 fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     let dyn_img = image::open(path)
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
-    let rgba = dyn_img.to_rgba8();
+    let resized = dyn_img.resize(spec.input_size, spec.input_size, FilterType::CatmullRom);
+    let rgba = resized.to_rgba8();
     let rgb_raw = rgba_to_rgb_with_alpha(&rgba);
     let rgb = image::RgbImage::from_raw(rgba.width(), rgba.height(), rgb_raw)
         .expect("RGBA to RGB conversion should preserve buffer size");
 
-    let mut processed = rgb;
-    let mut mean: Option<Vec<f32>> = None;
-    let mut std: Option<Vec<f32>> = None;
-
-    for stage in &spec.preprocess.stages {
-        match stage.stage_type.as_str() {
-            "resize" => {
-                let target = parse_scalar_size(stage.size.as_ref())?;
-                let (new_width, new_height) =
-                    resize_shortest_edge(processed.width(), processed.height(), target);
-                processed = resize(
-                    &processed,
-                    new_width,
-                    new_height,
-                    parse_filter_type(stage.interpolation.as_deref()),
-                );
-            }
-            "center_crop" => {
-                let (crop_width, crop_height) = parse_pair_size(stage.size.as_ref())?;
-                if crop_width > processed.width() || crop_height > processed.height() {
-                    return Err(AppError::Processing(format!(
-                        "Center crop size {}x{} is larger than image {}x{}",
-                        crop_width,
-                        crop_height,
-                        processed.width(),
-                        processed.height()
-                    )));
-                }
-
-                let x = (processed.width() - crop_width) / 2;
-                let y = (processed.height() - crop_height) / 2;
-                processed = crop_imm(&processed, x, y, crop_width, crop_height).to_image();
-            }
-            "maybe_to_tensor" => {}
-            "normalize" => {
-                if let Some(stage_mean) = &stage.mean {
-                    mean = Some(stage_mean.clone());
-                }
-                if let Some(stage_std) = &stage.std {
-                    std = Some(stage_std.clone());
-                }
-            }
-            other => {
-                return Err(AppError::Processing(format!(
-                    "Unsupported preprocess stage '{}'",
-                    other
-                )))
-            }
-        }
-    }
+    let processed = center_in_square(&rgb, spec.input_size);
 
     if processed.width() != spec.input_size || processed.height() != spec.input_size {
         return Err(AppError::Processing(format!(
@@ -428,9 +312,21 @@ fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
 
     let mut input =
         Array4::<f32>::zeros((1, 3, spec.input_size as usize, spec.input_size as usize));
-    fill_nchw_input(&processed, &mut input, mean.as_deref(), std.as_deref())?;
+    fill_nchw_input(&processed, &mut input, Some(&spec.mean), Some(&spec.std))?;
 
     Ok(input)
+}
+
+fn center_in_square(source: &image::RgbImage, target_size: u32) -> image::RgbImage {
+    if source.width() == target_size && source.height() == target_size {
+        return source.clone();
+    }
+
+    let mut canvas = image::RgbImage::new(target_size, target_size);
+    let x_offset = (target_size - source.width()) / 2;
+    let y_offset = (target_size - source.height()) / 2;
+    replace(&mut canvas, source, i64::from(x_offset), i64::from(y_offset));
+    canvas
 }
 
 fn rgba_to_rgb_with_alpha(rgba: &image::RgbaImage) -> Vec<u8> {
@@ -484,9 +380,7 @@ fn fill_nchw_input(
     Ok(())
 }
 
-fn select_embedding_from_outputs(
-    outputs: &ort::session::SessionOutputs<'_>,
-) -> Result<Vec<f32>> {
+fn select_embedding_from_outputs(outputs: &ort::session::SessionOutputs<'_>) -> Result<Vec<f32>> {
     let output = outputs
         .get(PREFERRED_EMBEDDING_OUTPUT_NAME)
         .ok_or_else(|| {
@@ -517,67 +411,4 @@ fn extract_feature_output(name: &str, output: &ort::value::DynValue) -> Result<V
 
     let feature_dim = shape[1];
     Ok(data[..feature_dim].to_vec())
-}
-
-fn parse_scalar_size(size: Option<&serde_json::Value>) -> Result<u32> {
-    match size {
-        Some(serde_json::Value::Number(number)) => number
-            .as_u64()
-            .map(|value| value as u32)
-            .ok_or_else(|| AppError::Processing("Resize size must be a positive integer".into())),
-        Some(other) => Err(AppError::Processing(format!(
-            "Resize size must be an integer, got {}",
-            other
-        ))),
-        None => Err(AppError::Processing("Resize stage is missing size".into())),
-    }
-}
-
-fn parse_pair_size(size: Option<&serde_json::Value>) -> Result<(u32, u32)> {
-    let Some(serde_json::Value::Array(values)) = size else {
-        return Err(AppError::Processing(
-            "Center crop size must be a two-element array".into(),
-        ));
-    };
-    if values.len() != 2 {
-        return Err(AppError::Processing(
-            "Center crop size must have exactly two elements".into(),
-        ));
-    }
-
-    let height = values[0]
-        .as_u64()
-        .ok_or_else(|| AppError::Processing("Center crop height must be an integer".into()))?
-        as u32;
-    let width = values[1]
-        .as_u64()
-        .ok_or_else(|| AppError::Processing("Center crop width must be an integer".into()))?
-        as u32;
-
-    Ok((width, height))
-}
-
-fn resize_shortest_edge(width: u32, height: u32, target: u32) -> (u32, u32) {
-    if width == 0 || height == 0 {
-        return (target, target);
-    }
-
-    if width <= height {
-        let scale = target as f32 / width as f32;
-        (target, (height as f32 * scale).round() as u32)
-    } else {
-        let scale = target as f32 / height as f32;
-        ((width as f32 * scale).round() as u32, target)
-    }
-}
-
-fn parse_filter_type(interpolation: Option<&str>) -> FilterType {
-    match interpolation.unwrap_or("triangle") {
-        "nearest" => FilterType::Nearest,
-        "triangle" => FilterType::Triangle,
-        "catmullrom" | "bicubic" => FilterType::CatmullRom,
-        "gaussian" => FilterType::Gaussian,
-        "lanczos3" => FilterType::Lanczos3,
-        _ => FilterType::Triangle,
-    }
 }
