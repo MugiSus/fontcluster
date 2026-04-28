@@ -33,7 +33,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b bg-background/60 px-1.5'>
+    <div class='absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b px-1.5'>
       <Show
         when={
           !props.panelState.control ||
