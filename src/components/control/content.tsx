@@ -183,7 +183,7 @@ export function ControlContent() {
           onStepRun={() => handleRun('generated')}
         >
           <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
-            RepVit on ORT
+            RepVit on ONNX Runtime
           </div>
         </ControlPropertySection>
 
