@@ -38,7 +38,9 @@ export type FontSet =
   | 'google_fonts_popular200'
   | 'google_fonts_popular300'
   | 'google_fonts_popular500'
-  | 'google_fonts_popular1000';
+  | 'google_fonts_popular1000'
+  | 'google_fonts_popular1500'
+  | 'google_fonts_all';
 
 export interface DiscoveryOptions {
   font_set: FontSet;

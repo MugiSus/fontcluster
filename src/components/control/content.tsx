@@ -158,6 +158,10 @@ export function ControlContent() {
               <option value='google_fonts_popular1000'>
                 Google Fonts top 1000
               </option>
+              <option value='google_fonts_popular1500'>
+                Google Fonts top 1500
+              </option>
+              <option value='google_fonts_all'>All Google Fonts</option>
             </select>
           </ControlProperty>
         </ControlPropertySection>

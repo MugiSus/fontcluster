@@ -66,14 +66,19 @@ pub fn fetch_subset_fonts(
 
     let limit = match font_set {
         FontSet::SystemFonts => return Ok(Vec::new()), // Should not be called
-        FontSet::GoogleFontsPopular100 => 100,
-        FontSet::GoogleFontsPopular200 => 200,
-        FontSet::GoogleFontsPopular300 => 300,
-        FontSet::GoogleFontsPopular500 => 500,
-        FontSet::GoogleFontsPopular1000 => 1000,
+        FontSet::GoogleFontsPopular100 => Some(100),
+        FontSet::GoogleFontsPopular200 => Some(200),
+        FontSet::GoogleFontsPopular300 => Some(300),
+        FontSet::GoogleFontsPopular500 => Some(500),
+        FontSet::GoogleFontsPopular1000 => Some(1000),
+        FontSet::GoogleFontsPopular1500 => Some(1500),
+        FontSet::GoogleFontsAll => None,
     };
 
-    let target_fonts = all_fonts.into_iter().take(limit).collect::<Vec<_>>();
+    let target_fonts = match limit {
+        Some(limit) => all_fonts.into_iter().take(limit).collect::<Vec<_>>(),
+        None => all_fonts,
+    };
 
     let cache_dir = session_dir.join("google_fonts");
     fs::create_dir_all(&cache_dir)
