@@ -44,7 +44,7 @@ export function ListPanel(props: ListPanelProps) {
 
   return (
     <AppShellPanel
-      title='List'
+      title='list'
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

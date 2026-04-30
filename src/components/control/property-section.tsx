@@ -18,7 +18,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
   return (
     <div class={props.class ?? 'group/section flex flex-col gap-2'}>
       <div class='flex items-center gap-1'>
-        <div class='text-xs font-semibold'>{props.title}</div>
+        <div class='text-xs font-semibold capitalize'>{props.title}</div>
         <Tooltip>
           <TooltipTrigger
             as={Button<'button'>}

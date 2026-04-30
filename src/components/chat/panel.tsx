@@ -10,7 +10,7 @@ interface ChatPanelProps {
 export function ChatPanel(props: ChatPanelProps) {
   return (
     <AppShellPanel
-      title='Chat'
+      title='chat'
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

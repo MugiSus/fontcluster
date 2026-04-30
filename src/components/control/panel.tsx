@@ -10,7 +10,7 @@ interface ControlPanelProps {
 export function ControlPanel(props: ControlPanelProps) {
   return (
     <AppShellPanel
-      title='Control'
+      title='control'
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

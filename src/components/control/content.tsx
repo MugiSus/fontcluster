@@ -129,13 +129,13 @@ export function ControlContent() {
 
       <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
         <ControlPropertySection
-          title='Discover'
+          title='discover'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('empty')}
           class='group/section space-y-1.5'
           contentClass='grid grid-cols-1 gap-2'
         >
-          <ControlProperty label='Source' class='mr-1 gap-0.5'>
+          <ControlProperty label='source' class='mr-1 gap-0.5'>
             <select
               class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
               value={
@@ -174,12 +174,12 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='Generate'
+          title='generate'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('discovered')}
         >
           <ControlProperty
-            label='Font Size'
+            label='font size'
             type='number'
             name='image-font-size'
             value={appState.session.config?.algorithm?.image?.font_size ?? 128}
@@ -189,7 +189,7 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='Analyze'
+          title='analyze'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('generated')}
         >
@@ -199,12 +199,12 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='Compress'
+          title='compress'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
         >
           <ControlProperty
-            label='Global Iterations'
+            label='global iterations'
             type='number'
             name='pacmap-mn-phases'
             value={appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100}
@@ -212,7 +212,7 @@ export function ControlContent() {
             min='0'
           />
           <ControlProperty
-            label='Attraction Iterations'
+            label='attraction iterations'
             type='number'
             name='pacmap-nn-phases'
             value={appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100}
@@ -220,7 +220,7 @@ export function ControlContent() {
             min='0'
           />
           <ControlProperty
-            label='Repulsion Iterations'
+            label='repulsion iterations'
             type='number'
             name='pacmap-fp-phases'
             value={appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100}
@@ -228,7 +228,7 @@ export function ControlContent() {
             min='0'
           />
           <ControlProperty
-            label='Learning rate'
+            label='learning rate'
             type='number'
             name='pacmap-learning-rate'
             value={
@@ -237,7 +237,7 @@ export function ControlContent() {
             step='0.1'
           />
           <ControlProperty
-            label='Neighbors'
+            label='neighbors'
             type='number'
             name='pacmap-n-neighbors'
             value={
@@ -249,12 +249,12 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='Classify'
+          title='classify'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('compressed')}
         >
           <ControlProperty
-            label='Min Cluster Size'
+            label='min cluster size'
             type='number'
             name='hdbscan-min-cluster-size'
             value={
@@ -265,7 +265,7 @@ export function ControlContent() {
             min='0'
           />
           <ControlProperty
-            label='Min Samples'
+            label='min samples'
             type='number'
             name='hdbscan-min-samples'
             value={

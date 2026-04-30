@@ -18,7 +18,7 @@ export function ControlProperty(props: ControlPropertyProps) {
 
   return (
     <TextField class='relative'>
-      <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center font-medium'>
+      <TextFieldLabel class='absolute inset-y-0 left-2 flex items-center font-medium capitalize'>
         {local.label}
       </TextFieldLabel>
       {local.children ?? <TextFieldInput {...inputProps} />}
