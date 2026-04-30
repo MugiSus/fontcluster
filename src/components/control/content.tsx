@@ -129,7 +129,7 @@ export function ControlContent() {
 
       <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
         <ControlPropertySection
-          title='Discovery'
+          title='Discover'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('empty')}
           class='group/section space-y-1.5'
@@ -174,7 +174,7 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='Image Generation'
+          title='Generate'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('discovered')}
         >
@@ -189,7 +189,7 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='Vectorization'
+          title='Analyze'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('generated')}
         >
@@ -199,7 +199,7 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='PaCMAP (D-Reduction)'
+          title='Compress'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
         >
@@ -249,7 +249,7 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='HDBSCAN (Clustering)'
+          title='Classify'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('compressed')}
         >

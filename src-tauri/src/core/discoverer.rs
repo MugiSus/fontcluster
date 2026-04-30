@@ -1,7 +1,7 @@
 use crate::commands::progress::progress_events;
 use crate::core::AppState;
 use crate::error::{AppError, Result};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 // use futures::StreamExt as _;
 use std::collections::HashMap;
 use std::fs;
@@ -154,7 +154,7 @@ impl Discoverer {
         app: &AppHandle,
         state: &AppState,
     ) -> Result<HashMap<i32, Vec<String>>> {
-        let (preview_text, target_weights, session_id, font_set, process_status) = {
+        let (preview_text, target_weights, session_id, font_set) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
             let font_set = s
@@ -168,7 +168,6 @@ impl Discoverer {
                 s.weights.clone(),
                 s.id.clone(),
                 font_set,
-                s.status.process_status.clone(),
             )
         };
         let session_dir = AppState::get_base_dir()?
@@ -181,46 +180,10 @@ impl Discoverer {
                 Self::get_font_files()
             }
             _ => {
-                if process_status == crate::config::ProcessStatus::Downloaded {
-                    println!("🔍 Using cached Google Fonts...");
-                    let mut files = Vec::new();
-                    Self::walk_dir(&session_dir.join("google_fonts"), &mut files);
-                    files
-                } else {
-                    println!("🔍 Fetching Google Fonts subset ({:?})...", font_set);
-                    let font_set = font_set.clone();
-                    let preview_text = preview_text.clone();
-                    let session_dir = session_dir.clone();
-                    let download_app = app.clone();
-
-                    let target_weights = target_weights.clone();
-
-                    let font_files = tokio::task::spawn_blocking(move || {
-                        crate::core::google_fonts::fetch_subset_fonts(
-                            &font_set,
-                            &preview_text,
-                            &session_dir,
-                            &target_weights,
-                            &download_app,
-                        )
-                    })
-                    .await
-                    .map_err(|e| AppError::Processing(e.to_string()))??;
-
-                    if state
-                        .is_cancelled
-                        .load(std::sync::atomic::Ordering::Relaxed)
-                    {
-                        return Ok(HashMap::new());
-                    }
-
-                    state.update_status(|s| {
-                        s.process_status = crate::config::ProcessStatus::Downloaded
-                    })?;
-                    app.emit("download_complete", ())?;
-
-                    font_files
-                }
+                println!("🔍 Using cached Google Fonts...");
+                let mut files = Vec::new();
+                Self::walk_dir(&session_dir.join("google_fonts"), &mut files);
+                files
             }
         };
 
@@ -376,7 +339,6 @@ impl Discoverer {
         }
 
         state.update_session(|session| {
-            session.status.process_status = crate::config::ProcessStatus::Discovered;
             session.discovered_fonts = discovered.clone();
         })?;
 

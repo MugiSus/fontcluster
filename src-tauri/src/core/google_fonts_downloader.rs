@@ -1,5 +1,6 @@
 use crate::commands::progress::progress_events;
 use crate::config::FontSet;
+use crate::core::AppState;
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -57,7 +58,72 @@ fn font_matches_subset_requirements(
     })
 }
 
-pub fn fetch_subset_fonts(
+pub struct GoogleFontsDownloader {}
+
+impl GoogleFontsDownloader {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn should_run(state: &AppState) -> Result<bool> {
+        let guard = state.current_session.lock().unwrap();
+        let session = guard
+            .as_ref()
+            .ok_or_else(|| AppError::Processing("No active session".into()))?;
+        let font_set = session
+            .algorithm
+            .as_ref()
+            .and_then(|a| a.discovery.as_ref())
+            .map(|d| d.font_set.clone())
+            .unwrap_or_default();
+
+        Ok(!matches!(font_set, FontSet::SystemFonts))
+    }
+
+    pub async fn download_fonts(
+        &self,
+        app: &tauri::AppHandle,
+        state: &AppState,
+    ) -> Result<Vec<PathBuf>> {
+        let (font_set, preview_text, target_weights, session_id) = {
+            let guard = state.current_session.lock().unwrap();
+            let session = guard
+                .as_ref()
+                .ok_or_else(|| AppError::Processing("No active session".into()))?;
+            let font_set = session
+                .algorithm
+                .as_ref()
+                .and_then(|a| a.discovery.as_ref())
+                .map(|d| d.font_set.clone())
+                .unwrap_or_default();
+
+            (
+                font_set,
+                session.preview_text.clone(),
+                session.weights.clone(),
+                session.id.clone(),
+            )
+        };
+        let session_dir = AppState::get_base_dir()?
+            .join("Generated")
+            .join(&session_id);
+        let app = app.clone();
+
+        tokio::task::spawn_blocking(move || {
+            download_fonts_impl(
+                &font_set,
+                &preview_text,
+                &session_dir,
+                &target_weights,
+                &app,
+            )
+        })
+        .await
+        .map_err(|e| AppError::Processing(e.to_string()))?
+    }
+}
+
+fn download_fonts_impl(
     font_set: &FontSet,
     target_text: &str,
     session_dir: &Path,

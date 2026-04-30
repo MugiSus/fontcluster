@@ -1,5 +1,7 @@
 use crate::config::{AlgorithmConfig, ProcessStatus};
-use crate::core::{AppState, Clusterer, Compressor, Discoverer, ImageGenerator, Vectorizer};
+use crate::core::{
+    AppState, Clusterer, Compressor, Discoverer, GoogleFontsDownloader, ImageGenerator, Vectorizer,
+};
 use crate::error::Result;
 use std::sync::atomic::Ordering;
 use tauri::{command, AppHandle, Emitter, State};
@@ -25,7 +27,28 @@ pub async fn run_jobs(
         state.initialize_session(text, weights, algorithm)?
     };
 
-    // Step 0: Discovery
+    // Step 0: Download Google Fonts
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if status == ProcessStatus::Empty && GoogleFontsDownloader::should_run(&state)? {
+        if state.is_cancelled.load(Ordering::Relaxed) {
+            return Ok("Cancelled".into());
+        }
+        println!("⬇️ Starting Google Fonts download...");
+        app.emit("download_start", ())?;
+        let downloader = GoogleFontsDownloader::new();
+        downloader.download_fonts(&app, &state).await?;
+
+        if state.is_cancelled.load(Ordering::Relaxed) {
+            return Ok("Cancelled".into());
+        }
+        state.update_status(|s| s.process_status = ProcessStatus::Downloaded)?;
+        app.emit("download_complete", id.clone())?;
+    }
+
+    // Step 1: Discovery
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
@@ -42,10 +65,11 @@ pub async fn run_jobs(
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
+        state.update_status(|s| s.process_status = ProcessStatus::Discovered)?;
         app.emit("discovery_complete", id.clone())?;
     }
 
-    // Step 1: Images
+    // Step 2: Images
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
@@ -65,7 +89,7 @@ pub async fn run_jobs(
         app.emit("font_generation_complete", id.clone())?;
     }
 
-    // Step 2: Vectors
+    // Step 3: Vectors
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
@@ -85,7 +109,7 @@ pub async fn run_jobs(
         app.emit("vectorization_complete", id.clone())?;
     }
 
-    // Step 3: Compression
+    // Step 4: Compression
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
@@ -104,7 +128,7 @@ pub async fn run_jobs(
         app.emit("compression_complete", id.clone())?;
     }
 
-    // Step 4: Clustering
+    // Step 5: Clustering
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
