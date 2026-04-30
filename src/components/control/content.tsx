@@ -423,15 +423,15 @@ export function ControlContent() {
             {!appState.session.isProcessing
               ? 'Completed'
               : appState.session.status === 'empty'
-                ? 'Step 1: Discovering'
+                ? 'Discovering Fonts...'
                 : appState.session.status === 'discovered'
-                  ? 'Step 2: Generating'
+                  ? 'Drawing Glyphs...'
                   : appState.session.status === 'generated'
-                    ? 'Step 3: Vectorizing'
+                    ? 'Analyzing Glyphs...'
                     : appState.session.status === 'vectorized'
-                      ? 'Step 4: Compressing'
+                      ? 'Plotting Points...'
                       : appState.session.status === 'compressed'
-                        ? 'Step 5: Clustering'
+                        ? 'Painting Points...'
                         : ''}
           </span>
           <Show
