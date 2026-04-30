@@ -30,6 +30,7 @@ export type ProcessStatusBadge = {
     | 'Compressed'
     | 'Vectorized'
     | 'Generated'
+    | 'Downloaded'
     | 'Discovered'
     | 'Empty';
   variant: 'default' | 'outline' | 'error';
@@ -49,6 +50,8 @@ export const getProcessStatusBadge = (
       return { text: 'Generated', variant: 'outline' };
     case 'discovered':
       return { text: 'Discovered', variant: 'outline' };
+    case 'downloaded':
+      return { text: 'Downloaded', variant: 'outline' };
     default:
       return { text: 'Empty', variant: 'error' };
   }

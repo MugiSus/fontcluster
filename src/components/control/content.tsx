@@ -22,6 +22,13 @@ import { ControlProperty } from './property';
 import { ControlPropertySection } from './property-section';
 
 export function ControlContent() {
+  const selectedFontSet = () =>
+    (appState.session.config?.algorithm?.discovery?.font_set ??
+      'google_fonts_popular300') as FontSet;
+  const showDownloadProgress = () => selectedFontSet() !== 'system_fonts';
+  const progressPercent = () =>
+    `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`;
+
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     handleRun();
@@ -314,14 +321,48 @@ export function ControlContent() {
           </Show>
         </div>
 
-        <div class='grid grid-cols-5 gap-1'>
+        <div
+          class={cn(
+            'grid gap-1',
+            showDownloadProgress() ? 'grid-cols-6' : 'grid-cols-5',
+          )}
+        >
+          <Show when={showDownloadProgress()}>
+            <div
+              class='h-1 overflow-hidden rounded-full bg-primary/30'
+              style={{
+                '--progress':
+                  appState.session.isProcessing &&
+                  appState.session.status === 'empty'
+                    ? progressPercent()
+                    : '0%',
+              }}
+            >
+              <div
+                class={cn(
+                  'h-full w-0 rounded-full bg-primary',
+                  appState.session.isProcessing &&
+                    appState.session.status === 'empty' &&
+                    'w-[var(--progress)] animate-pulse',
+                  (appState.session.status === 'downloaded' ||
+                    appState.session.status === 'discovered' ||
+                    appState.session.status === 'generated' ||
+                    appState.session.status === 'vectorized' ||
+                    appState.session.status === 'compressed' ||
+                    appState.session.status === 'clustered') &&
+                    'w-full',
+                )}
+              />
+            </div>
+          </Show>
           <div
             class='h-1 overflow-hidden rounded-full bg-primary/30'
             style={{
               '--progress':
                 appState.session.isProcessing &&
-                appState.session.status === 'empty'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                appState.session.status ===
+                  (showDownloadProgress() ? 'downloaded' : 'empty')
+                  ? progressPercent()
                   : '0%',
             }}
           >
@@ -329,7 +370,8 @@ export function ControlContent() {
               class={cn(
                 'h-full w-0 rounded-full bg-primary',
                 appState.session.isProcessing &&
-                  appState.session.status === 'empty' &&
+                  appState.session.status ===
+                    (showDownloadProgress() ? 'downloaded' : 'empty') &&
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'discovered' ||
                   appState.session.status === 'generated' ||
@@ -346,7 +388,7 @@ export function ControlContent() {
               '--progress':
                 appState.session.isProcessing &&
                 appState.session.status === 'discovered'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  ? progressPercent()
                   : '0%',
             }}
           >
@@ -370,7 +412,7 @@ export function ControlContent() {
               '--progress':
                 appState.session.isProcessing &&
                 appState.session.status === 'generated'
-                  ? `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`
+                  ? progressPercent()
                   : '0%',
             }}
           >
@@ -423,21 +465,26 @@ export function ControlContent() {
             {!appState.session.isProcessing
               ? 'Completed'
               : appState.session.status === 'empty'
-                ? 'Discovering Fonts...'
-                : appState.session.status === 'discovered'
-                  ? 'Drawing Glyphs...'
-                  : appState.session.status === 'generated'
-                    ? 'Analyzing Glyphs...'
-                    : appState.session.status === 'vectorized'
-                      ? 'Plotting Points...'
-                      : appState.session.status === 'compressed'
-                        ? 'Painting Points...'
-                        : ''}
+                ? showDownloadProgress()
+                  ? 'Downloading Fonts...'
+                  : 'Discovering Fonts...'
+                : appState.session.status === 'downloaded'
+                  ? 'Discovering Fonts...'
+                  : appState.session.status === 'discovered'
+                    ? 'Drawing Glyphs...'
+                    : appState.session.status === 'generated'
+                      ? 'Analyzing Glyphs...'
+                      : appState.session.status === 'vectorized'
+                        ? 'Plotting Points...'
+                        : appState.session.status === 'compressed'
+                          ? 'Painting Points...'
+                          : ''}
           </span>
           <Show
             when={
               appState.session.isProcessing &&
               (appState.session.status === 'empty' ||
+                appState.session.status === 'downloaded' ||
                 appState.session.status === 'discovered' ||
                 appState.session.status === 'generated')
             }

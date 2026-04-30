@@ -55,6 +55,7 @@ export interface AlgorithmConfig {
 
 export type ProcessStatus =
   | 'empty'
+  | 'downloaded'
   | 'discovered'
   | 'generated'
   | 'vectorized'

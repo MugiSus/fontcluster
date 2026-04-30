@@ -1,3 +1,4 @@
+use crate::commands::progress::progress_events;
 use crate::config::FontSet;
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
@@ -153,6 +154,9 @@ pub fn fetch_subset_fonts(
     use rayon::prelude::*;
     let downloaded_paths: Arc<Mutex<Vec<PathBuf>>> = Arc::new(Mutex::new(Vec::new()));
     let client = Arc::new(client);
+    let progress_app = app_handle.clone();
+    progress_events::reset_progress(app_handle);
+    progress_events::set_progress_denominator(app_handle, target_fonts.len() as i32);
 
     // We need to encode text for URL.
     let encoded_text = urlencoding::encode(target_text).to_string();
@@ -160,6 +164,7 @@ pub fn fetch_subset_fonts(
 
     target_fonts.par_iter().for_each(|font| {
         let client = Arc::clone(&client);
+        let progress_app = progress_app.clone();
         let safe_family = font.family.replace(' ', "+");
 
         // Iterate over requested weights
@@ -297,6 +302,7 @@ pub fn fetch_subset_fonts(
                 }
             }
         }
+        progress_events::increase_numerator(&progress_app, 1);
     });
 
     let paths = Arc::try_unwrap(downloaded_paths)

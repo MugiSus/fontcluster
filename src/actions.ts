@@ -211,6 +211,10 @@ export function initAppEvents() {
     setAppState('session', 'status', 'discovered');
   });
 
+  listen('download_complete', () => {
+    setAppState('session', 'status', 'downloaded');
+  });
+
   listen('font_generation_complete', () => {
     setAppState('session', 'status', 'generated');
   });

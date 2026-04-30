@@ -114,6 +114,7 @@ impl Default for ImageConfig {
 pub enum ProcessStatus {
     #[default]
     Empty,
+    Downloaded,
     Discovered,
     Generated,
     Vectorized,

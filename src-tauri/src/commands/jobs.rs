@@ -30,7 +30,7 @@ pub async fn run_jobs(
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-    if status == ProcessStatus::Empty {
+    if status == ProcessStatus::Empty || status == ProcessStatus::Downloaded {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
