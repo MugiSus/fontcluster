@@ -2,6 +2,7 @@ use crate::config::FontSet;
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
 use serde::Deserialize;
+use std::collections::HashSet;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -12,11 +13,47 @@ use tauri::Manager;
 struct GoogleFontMetadata {
     family: String,
     variants: Vec<String>,
-    // subsets: Vec<String>,
+    subsets: Vec<String>,
     // category: String,
     // version: String,
     // #[serde(rename = "lastModified")]
     // last_modified: String,
+}
+
+fn text_subset_requirements(target_text: &str) -> Vec<Vec<&'static str>> {
+    target_text
+        .chars()
+        .filter(|ch| !ch.is_whitespace() && !ch.is_control())
+        .filter_map(|ch| {
+            let subsets = google_fonts_subsets::subsets_for_codepoint(ch as u32);
+            let subsets = subsets
+                .into_iter()
+                .filter(|subset| *subset != "menu")
+                .collect::<Vec<_>>();
+
+            if subsets.is_empty() {
+                None
+            } else {
+                Some(subsets)
+            }
+        })
+        .collect()
+}
+
+fn font_matches_subset_requirements(
+    font_subsets: &[String],
+    requirements: &[Vec<&'static str>],
+) -> bool {
+    let font_subsets = font_subsets
+        .iter()
+        .map(String::as_str)
+        .collect::<HashSet<_>>();
+
+    requirements.iter().all(|candidate_subsets| {
+        candidate_subsets
+            .iter()
+            .any(|subset| font_subsets.contains(subset))
+    })
 }
 
 pub fn fetch_subset_fonts(
@@ -79,6 +116,22 @@ pub fn fetch_subset_fonts(
         Some(limit) => all_fonts.into_iter().take(limit).collect::<Vec<_>>(),
         None => all_fonts,
     };
+    let total_fonts_before_subset_filter = target_fonts.len();
+    let subset_requirements = text_subset_requirements(target_text);
+    println!(
+        "🔍 Google Fonts subset requirements: {:?}",
+        subset_requirements
+    );
+    let target_fonts = target_fonts
+        .into_iter()
+        .filter(|font| font_matches_subset_requirements(&font.subsets, &subset_requirements))
+        .collect::<Vec<_>>();
+
+    println!(
+        "🔍 Google Fonts subset prefilter: {} -> {} families",
+        total_fonts_before_subset_filter,
+        target_fonts.len()
+    );
 
     let cache_dir = session_dir.join("google_fonts");
     fs::create_dir_all(&cache_dir)
