@@ -19,9 +19,9 @@ export function ImageVisibilityToggle(props: ImageVisibilityToggleProps) {
           onClick={() => props.onToggle()}
         >
           {props.showImages ? (
-            <ImageOffIcon class='size-4' />
-          ) : (
             <ImageIcon class='size-4' />
+          ) : (
+            <ImageOffIcon class='size-4' />
           )}
         </TooltipTrigger>
         <TooltipContent>
