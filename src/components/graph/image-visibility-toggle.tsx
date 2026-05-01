@@ -1,28 +1,41 @@
-import { ImageIcon, ImageOffIcon } from 'lucide-solid';
+import { ImageIcon, TypeIcon } from 'lucide-solid';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface ImageVisibilityToggleProps {
   showImages: boolean;
-  onToggle: () => void;
+  showFontNames: boolean;
+  onToggleImages: () => void;
+  onToggleFontNames: () => void;
 }
 
 export function ImageVisibilityToggle(props: ImageVisibilityToggleProps) {
   return (
-    <div class='flex rounded-md border bg-background'>
-      <Tooltip>
+    <div class='flex flex-col overflow-hidden rounded-md border bg-background'>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
-          variant='ghost'
+          variant={props.showFontNames ? 'default' : 'ghost'}
           size='icon'
           class='size-8 rounded-none'
-          onClick={() => props.onToggle()}
+          onClick={() => props.onToggleFontNames()}
         >
-          {props.showImages ? (
-            <ImageIcon class='size-4' />
-          ) : (
-            <ImageOffIcon class='size-4' />
-          )}
+          <TypeIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>
+          {props.showFontNames ? 'Hide Font Names' : 'Show Font Names'}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.showImages ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-none'
+          onClick={() => props.onToggleImages()}
+        >
+          <ImageIcon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>
           {props.showImages ? 'Hide Images' : 'Show Images'}

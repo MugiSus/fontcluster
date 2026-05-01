@@ -10,8 +10,8 @@ interface ZoomControlsProps {
 
 export function ZoomControls(props: ZoomControlsProps) {
   return (
-    <div class='flex rounded-md border bg-background'>
-      <Tooltip>
+    <div class='flex flex-col rounded-md border bg-background'>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
@@ -24,7 +24,7 @@ export function ZoomControls(props: ZoomControlsProps) {
         <TooltipContent>Zoom In</TooltipContent>
       </Tooltip>
 
-      <Tooltip>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
@@ -37,7 +37,7 @@ export function ZoomControls(props: ZoomControlsProps) {
         <TooltipContent>Reset View</TooltipContent>
       </Tooltip>
 
-      <Tooltip>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'

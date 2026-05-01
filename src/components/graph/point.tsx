@@ -14,6 +14,7 @@ interface GraphPointProps {
   sessionDirectory: string;
   zoomFactor: number;
   shouldShowImage: boolean;
+  shouldShowFontName: boolean;
   isDisabled?: boolean;
 }
 
@@ -111,11 +112,7 @@ export function GraphPoint(props: GraphPointProps) {
         />
       </Show>
 
-      <Show
-        when={
-          !props.isDisabled && (props.zoomFactor < 0.25 || props.isSelected)
-        }
-      >
+      <Show when={!props.isDisabled && props.shouldShowFontName}>
         <text
           x={0}
           y={-10}

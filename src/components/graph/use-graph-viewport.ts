@@ -196,6 +196,8 @@ export function useGraphViewport(
   };
 
   const dragPan = (event: MouseEvent) => {
+    if (!isDragging()) return;
+
     const deltaX = event.clientX - lastMousePos().x;
     const deltaY = event.clientY - lastMousePos().y;
 

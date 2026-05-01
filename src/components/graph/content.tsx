@@ -19,6 +19,7 @@ import { useGraphViewport } from './use-graph-viewport';
 
 export function GraphContent() {
   const [showImages, setShowImages] = createSignal(true);
+  const [showFontNames, setShowFontNames] = createSignal(true);
   const [graphWeights, setGraphWeights] = createSignal<FontWeight[]>([400]);
 
   let svgElement: SVGSVGElement | undefined;
@@ -98,30 +99,26 @@ export function GraphContent() {
         }
       >
         <div
-          class='pointer-events-none absolute bottom-4 right-4 z-10 flex items-end gap-3'
+          class='pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-3 *:pointer-events-auto'
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <div class='pointer-events-auto'>
-            <ImageVisibilityToggle
-              showImages={showImages()}
-              onToggle={() => setShowImages(!showImages())}
-            />
-          </div>
-          <div class='pointer-events-auto'>
-            <ZoomControls
-              onZoomIn={viewport.handleZoomIn}
-              onZoomOut={viewport.handleZoomOut}
-              onReset={viewport.handleReset}
-            />
-          </div>
-          <div class='pointer-events-auto'>
-            <WeightSelector
-              weights={(appState.session.config?.weights as FontWeight[]) || []}
-              selectedWeights={graphWeights()}
-              onWeightChange={setGraphWeights}
-              isVertical
-            />
-          </div>
+          <WeightSelector
+            weights={(appState.session.config?.weights as FontWeight[]) || []}
+            selectedWeights={graphWeights()}
+            onWeightChange={setGraphWeights}
+            isVertical
+          />
+          <ImageVisibilityToggle
+            showImages={showImages()}
+            showFontNames={showFontNames()}
+            onToggleImages={() => setShowImages(!showImages())}
+            onToggleFontNames={() => setShowFontNames(!showFontNames())}
+          />
+          <ZoomControls
+            onZoomIn={viewport.handleZoomIn}
+            onZoomOut={viewport.handleZoomOut}
+            onReset={viewport.handleReset}
+          />
         </div>
         <svg
           ref={(el) => {
@@ -187,6 +184,7 @@ export function GraphContent() {
                     !viewport.isMoving() &&
                     graph.isImageVisible(point.key)
                   }
+                  shouldShowFontName={false}
                   isDisabled
                 />
               )}
@@ -208,6 +206,11 @@ export function GraphContent() {
                 zoomFactor={viewport.zoomFactor()}
                 shouldShowImage={
                   showImages() &&
+                  !viewport.isMoving() &&
+                  graph.isImageVisible(point.key)
+                }
+                shouldShowFontName={
+                  showFontNames() &&
                   !viewport.isMoving() &&
                   graph.isImageVisible(point.key)
                 }
