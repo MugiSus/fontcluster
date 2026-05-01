@@ -5,6 +5,7 @@ import {
   createEffect,
   createMemo,
   createSelector,
+  onCleanup,
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { emit } from '@tauri-apps/api/event';
@@ -29,6 +30,12 @@ import {
 const GRAPH_PADDING = 50;
 const GRAPH_SIZE = 1000;
 
+const MIN_VIEWBOX_SIZE = 10;
+const MAX_VIEWBOX_SIZE = 3000;
+
+const ZOOM_FACTOR_RATIO = 1.05;
+const PINCH_ZOOM_DELTA_BASE = 5;
+
 const INITIAL_VIEWBOX: GraphViewBox = {
   x: -GRAPH_PADDING,
   y: -GRAPH_PADDING,
@@ -36,16 +43,38 @@ const INITIAL_VIEWBOX: GraphViewBox = {
   height: GRAPH_SIZE + GRAPH_PADDING * 2,
 };
 
-const ZOOM_FACTOR_RATIO = 1.05;
-
 export function GraphContent() {
   const [viewBox, setViewBox] = createSignal(INITIAL_VIEWBOX);
   const [showImages, setShowImages] = createSignal(true);
   const [settledVisibleBounds, setSettledVisibleBounds] =
     createSignal<GraphVisibleBounds | null>(null);
+  const [settledZoomFactor, setSettledZoomFactor] = createSignal(1);
 
   let svgElement: SVGSVGElement | undefined;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
+
+  const getCurrentViewBox = () => queuedViewBox ?? viewBox();
+
+  let queuedViewBox: GraphViewBox | undefined;
+  let viewBoxAnimationFrame: number | undefined;
+  const queueViewBoxUpdate = (nextViewBox: GraphViewBox) => {
+    queuedViewBox = nextViewBox;
+    if (viewBoxAnimationFrame) return;
+
+    viewBoxAnimationFrame = window.requestAnimationFrame(() => {
+      if (queuedViewBox) {
+        setViewBox(queuedViewBox);
+        queuedViewBox = undefined;
+      }
+      viewBoxAnimationFrame = undefined;
+    });
+  };
+
+  onCleanup(() => {
+    if (viewBoxAnimationFrame) {
+      window.cancelAnimationFrame(viewBoxAnimationFrame);
+    }
+  });
 
   const zoomFactor = createMemo(() => {
     const minSide = Math.min(svgSize().width, svgSize().height);
@@ -91,7 +120,7 @@ export function GraphContent() {
     const mouseY =
       event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
 
-    const currentViewBox = viewBox();
+    const currentViewBox = getCurrentViewBox();
     const { x: vX, y: vY, width: vWidth, height: vHeight } = currentViewBox;
 
     const svgMouseX =
@@ -100,13 +129,9 @@ export function GraphContent() {
       vY + (mouseY / Math.min(rect.width, rect.height)) * vHeight;
 
     const selectionRadius = 40 * zoomFactor();
-    const activeWeights = graphWeights();
     const nearest = fontQuadtree().find(svgMouseX, svgMouseY, selectionRadius);
 
-    if (
-      nearest &&
-      activeWeights.includes(nearest.metadata.weight as FontWeight)
-    ) {
+    if (nearest) {
       const metadata = appState.fonts.data[nearest.key];
       if (metadata) {
         setSelectedFontKey(nearest.key);
@@ -122,25 +147,65 @@ export function GraphContent() {
     }
   };
 
+  const panBy = ({
+    deltaX,
+    deltaY,
+    shouldStartInteraction = true,
+  }: {
+    deltaX: number;
+    deltaY: number;
+    shouldStartInteraction?: boolean;
+  }) => {
+    const currentViewBox = getCurrentViewBox();
+    const { x, y, width, height } = currentViewBox;
+
+    if (shouldStartInteraction) {
+      startInteractionTimer();
+    }
+
+    queueViewBoxUpdate({
+      x: x + deltaX,
+      y: y + deltaY,
+      width,
+      height,
+    });
+  };
+
+  const panByScreenDelta = ({
+    deltaX,
+    deltaY,
+    shouldStartInteraction = true,
+  }: {
+    deltaX: number;
+    deltaY: number;
+    shouldStartInteraction?: boolean;
+  }) => {
+    const currentViewBox = getCurrentViewBox();
+    const { width, height } = currentViewBox;
+    if (!svgElement) return;
+
+    const rect = svgElement.getBoundingClientRect();
+    const minSide = Math.min(rect.width, rect.height);
+    if (minSide <= 0) return;
+
+    panBy({
+      deltaX: deltaX * (width / minSide),
+      deltaY: deltaY * (height / minSide),
+      shouldStartInteraction,
+    });
+  };
+
   const handleMouseMove = (event: MouseEvent) => {
     // Handle pan dragging
     if (isDragging() && event.buttons === 2) {
       const deltaX = event.clientX - lastMousePos().x;
       const deltaY = event.clientY - lastMousePos().y;
 
-      const currentViewBox = viewBox();
-      const { x, y, width, height } = currentViewBox;
-
-      // Convert screen delta to SVG coordinates
-      const svgElement = event.currentTarget as SVGElement;
-      const rect = svgElement.getBoundingClientRect();
-      const scaleX = width / Math.min(rect.width, rect.height);
-      const scaleY = height / Math.min(rect.width, rect.height);
-
-      const newX = x - deltaX * scaleX;
-      const newY = y - deltaY * scaleY;
-
-      setViewBox({ x: newX, y: newY, width, height });
+      panByScreenDelta({
+        deltaX: -deltaX,
+        deltaY: -deltaY,
+        shouldStartInteraction: false,
+      });
       setLastMousePos({ x: event.clientX, y: event.clientY });
       return;
     }
@@ -178,44 +243,62 @@ export function GraphContent() {
     focusY: number;
     zoomFactor: number;
   }) => {
-    const currentViewBox = viewBox();
+    const currentViewBox = getCurrentViewBox();
     const { x, y, width, height } = currentViewBox;
+    if (width <= 0 || height <= 0) return;
 
-    const newWidth = width * zoomFactor;
-    const newHeight = height * zoomFactor;
+    const newWidth = Math.min(
+      Math.max(width * zoomFactor, MIN_VIEWBOX_SIZE),
+      MAX_VIEWBOX_SIZE,
+    );
+    const effectiveZoomFactor = newWidth / width;
+    const newHeight = height * effectiveZoomFactor;
 
-    const newX = focusX - (focusX - x) * zoomFactor;
-    const newY = focusY - (focusY - y) * zoomFactor;
+    const newX = focusX - (focusX - x) * effectiveZoomFactor;
+    const newY = focusY - (focusY - y) * effectiveZoomFactor;
 
-    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
     startInteractionTimer();
+    queueViewBoxUpdate({
+      x: newX,
+      y: newY,
+      width: newWidth,
+      height: newHeight,
+    });
   };
 
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
-    console.log('wheel', { deltaX: event.deltaX, deltaY: event.deltaY });
 
-    const currentViewBox = viewBox();
-    const { x, y, width, height } = currentViewBox;
-    const svgElement = event.currentTarget as SVGElement;
-    const rect = svgElement.getBoundingClientRect();
+    const deltaX = event.deltaX;
+    const deltaY = event.deltaY;
 
-    const mouseX =
-      event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
-    const mouseY =
-      event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
-    const minSide = Math.min(rect.width, rect.height);
+    if (event.ctrlKey || event.metaKey) {
+      const currentViewBox = getCurrentViewBox();
+      const { x, y, width } = currentViewBox;
+      if (!svgElement) return;
 
-    const focusX = x + (mouseX / minSide) * width;
-    const focusY = y + (mouseY / minSide) * height;
-    const zoomFactor =
-      event.deltaY > 0 ? ZOOM_FACTOR_RATIO : 1 / ZOOM_FACTOR_RATIO;
+      const rect = svgElement.getBoundingClientRect();
+      const minSide = Math.min(rect.width, rect.height);
+      if (minSide <= 0) return;
 
-    zoomInto({ focusX, focusY, zoomFactor });
+      const mouseX =
+        event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
+      const mouseY =
+        event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
+
+      const focusX = x + (mouseX / minSide) * width;
+      const focusY = y + (mouseY / minSide) * currentViewBox.height;
+      const zoomFactor = ZOOM_FACTOR_RATIO ** (deltaY / PINCH_ZOOM_DELTA_BASE);
+
+      zoomInto({ focusX, focusY, zoomFactor });
+      return;
+    }
+
+    panByScreenDelta({ deltaX, deltaY });
   };
 
   const handleZoomIn = () => {
-    const currentViewBox = viewBox();
+    const currentViewBox = getCurrentViewBox();
     const { x, y, width, height } = currentViewBox;
 
     const centerX = x + width / 2;
@@ -226,7 +309,7 @@ export function GraphContent() {
   };
 
   const handleZoomOut = () => {
-    const currentViewBox = viewBox();
+    const currentViewBox = getCurrentViewBox();
     const { x, y, width, height } = currentViewBox;
 
     const centerX = x + width / 2;
@@ -237,7 +320,7 @@ export function GraphContent() {
   };
 
   const handleReset = () => {
-    setViewBox(INITIAL_VIEWBOX);
+    queueViewBoxUpdate(INITIAL_VIEWBOX);
   };
 
   const bounds = createMemo(() => {
@@ -286,33 +369,26 @@ export function GraphContent() {
       });
   });
 
-  const pointsMap = createMemo(() => {
-    const map = new Map<string, GraphPointData>();
-    for (const p of allPoints()) {
-      map.set(p.key, p);
-    }
-    return map;
-  });
-
   const activeWeightSet = createMemo(() => new Set(graphWeights()));
 
   const fontQuadtree = createMemo(() => {
-    const map = pointsMap();
     const activeWeights = activeWeightSet();
     const filteredKeys = appState.fonts.filteredKeys;
+    const points: GraphPointData[] = [];
 
-    const activePoints = [];
-    for (const key of filteredKeys) {
-      const p = map.get(key);
-      if (p && activeWeights.has(p.metadata.weight as FontWeight)) {
-        activePoints.push(p);
+    for (const point of allPoints()) {
+      if (
+        filteredKeys.has(point.key) &&
+        activeWeights.has(point.metadata.weight as FontWeight)
+      ) {
+        points.push(point);
       }
     }
 
     return quadtree<GraphPointData>()
       .x((d) => d.x)
       .y((d) => d.y)
-      .addAll(activePoints);
+      .addAll(points);
   });
 
   const visibleBounds = createMemo(() =>
@@ -324,6 +400,7 @@ export function GraphContent() {
     const size = svgSize();
     if (size.width === 0 || size.height === 0) return;
     setSettledVisibleBounds(visibleBounds());
+    setSettledZoomFactor(zoomFactor());
   });
 
   const visiblePoints = createMemo(() => {
@@ -338,13 +415,7 @@ export function GraphContent() {
   const visibleImageKeys = createMemo(() => {
     const bounds = settledVisibleBounds();
     if (!bounds) return new Set<string>();
-    return collectVisibleImageKeys(
-      allPoints(),
-      appState.fonts.filteredKeys,
-      activeWeightSet(),
-      bounds,
-      zoomFactor(),
-    );
+    return collectVisibleImageKeys(fontQuadtree(), bounds, settledZoomFactor());
   });
   const isImageVisible = createSelector(
     visibleImageKeys,
@@ -352,7 +423,14 @@ export function GraphContent() {
   );
 
   return (
-    <div class='relative flex size-full items-center justify-center bg-background'>
+    <div
+      class='relative flex size-full items-center justify-center bg-background'
+      onMouseMove={handleMouseMove}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onWheel={handleWheel}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <Show
         when={allPoints().length > 0}
         fallback={
@@ -395,11 +473,6 @@ export function GraphContent() {
           viewBox={`${viewBox().x} ${viewBox().y} ${viewBox().width} ${viewBox().height}`}
           xmlns='http://www.w3.org/2000/svg'
           text-rendering='optimizeSpeed'
-          onMouseMove={handleMouseMove}
-          onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onWheel={handleWheel}
-          onContextMenu={(e) => e.preventDefault()}
         >
           <g>
             <path

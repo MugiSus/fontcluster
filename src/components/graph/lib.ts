@@ -1,4 +1,3 @@
-import { quadtree } from 'd3-quadtree';
 import { type FontMetadata, type FontWeight } from '../../types/font';
 
 const IMAGE_GRID_HEX_HEIGHT_PX = 96;
@@ -36,6 +35,10 @@ export interface PartitionedVisiblePoints {
   visibleFilteredPoints: GraphPointData[];
   visibleUnfilteredPoints: GraphPointData[];
   visibleActivePoints: GraphPointData[];
+}
+
+interface GraphPointSearchTree {
+  find: (x: number, y: number, radius?: number) => GraphPointData | undefined;
 }
 
 export function getVisibleBounds(
@@ -119,26 +122,11 @@ function getImageGridMetrics(scale: number): ImageGridMetrics {
 }
 
 export function collectVisibleImageKeys(
-  points: GraphPointData[],
-  filteredKeys: Set<string>,
-  activeWeights: Set<FontWeight>,
+  pointTree: GraphPointSearchTree,
   bounds: GraphVisibleBounds,
   scale: number,
 ): Set<string> {
-  const { visibleActivePoints } = partitionVisiblePoints(
-    points,
-    filteredKeys,
-    activeWeights,
-    bounds,
-  );
-  if (visibleActivePoints.length === 0) return new Set<string>();
-
   const metrics = getImageGridMetrics(scale);
-  const tree = quadtree<GraphPointData>()
-    .x((d) => d.x)
-    .y((d) => d.y)
-    .addAll(visibleActivePoints);
-
   const visibleKeys = new Set<string>();
   const startRow = Math.floor(bounds.minY / metrics.rowStep);
   const endRow = Math.ceil(bounds.maxY / metrics.rowStep);
@@ -157,8 +145,14 @@ export function collectVisibleImageKeys(
       columnIndex += 1
     ) {
       const centerX = columnIndex * metrics.columnStep + rowOffset;
-      const nearest = tree.find(centerX, centerY, metrics.searchRadius);
-      if (nearest) {
+      const nearest = pointTree.find(centerX, centerY, metrics.searchRadius);
+      if (
+        nearest &&
+        nearest.x >= bounds.minX &&
+        nearest.x <= bounds.maxX &&
+        nearest.y >= bounds.minY &&
+        nearest.y <= bounds.maxY
+      ) {
         visibleKeys.add(nearest.key);
       }
     }
