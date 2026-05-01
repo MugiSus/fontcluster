@@ -112,7 +112,11 @@ export function GraphPoint(props: GraphPointProps) {
         />
       </Show>
 
-      <Show when={!props.isDisabled && props.shouldShowFontName}>
+      <Show
+        when={
+          (!props.isDisabled && props.shouldShowFontName) || props.isSelected
+        }
+      >
         <text
           x={0}
           y={-10}
