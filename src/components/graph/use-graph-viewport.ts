@@ -25,9 +25,9 @@ export interface GraphViewportController {
   zoomFactor: Accessor<number>;
   isMoving: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
-  dragPan: (event: MouseEvent) => boolean;
-  startPanDrag: (event: MouseEvent) => boolean;
-  endPanDrag: (event: MouseEvent) => boolean;
+  dragPan: (event: MouseEvent) => void;
+  startPanDrag: (event: MouseEvent) => void;
+  endPanDrag: () => void;
   handleWheel: (event: WheelEvent) => void;
   handleZoomIn: () => void;
   handleZoomOut: () => void;
@@ -196,8 +196,6 @@ export function useGraphViewport(
   };
 
   const dragPan = (event: MouseEvent) => {
-    if (!isDragging() || event.buttons !== 2) return false;
-
     const deltaX = event.clientX - lastMousePos().x;
     const deltaY = event.clientY - lastMousePos().y;
 
@@ -207,26 +205,17 @@ export function useGraphViewport(
       shouldStartInteraction: false,
     });
     setLastMousePos({ x: event.clientX, y: event.clientY });
-    return true;
   };
 
   const startPanDrag = (event: MouseEvent) => {
-    if (event.button !== 2) return false;
-
     event.preventDefault();
     setIsDragging(true);
     setLastMousePos({ x: event.clientX, y: event.clientY });
-    return true;
   };
 
-  const endPanDrag = (event: MouseEvent) => {
-    if (event.button !== 2) return false;
-
-    if (isDragging()) {
-      startInteractionTimer();
-    }
+  const endPanDrag = () => {
+    if (isDragging()) startInteractionTimer();
     setIsDragging(false);
-    return true;
   };
 
   const handleWheel = (event: WheelEvent) => {

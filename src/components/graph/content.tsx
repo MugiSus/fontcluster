@@ -53,21 +53,29 @@ export function GraphContent() {
   const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
 
   const handleMouseMove = (event: MouseEvent) => {
-    if (viewport.dragPan(event)) return;
-    if ((event.buttons & 1) === 0) return;
-
-    selection.selectFromMouseEvent(event);
+    if (event.buttons & 2) {
+      viewport.dragPan(event);
+      return;
+    }
+    if (event.buttons & 1) {
+      selection.selectFromMouseEvent(event);
+      return;
+    }
   };
 
   const handleMouseDown = (event: MouseEvent) => {
-    if (viewport.startPanDrag(event)) return;
-    if (event.button !== 0) return;
-
-    selection.selectFromMouseEvent(event);
+    if (event.buttons & 2) {
+      viewport.startPanDrag(event);
+      return;
+    }
+    if (event.buttons & 1) {
+      selection.selectFromMouseEvent(event);
+      return;
+    }
   };
 
-  const handleMouseUp = (event: MouseEvent) => {
-    viewport.endPanDrag(event);
+  const handleMouseUp = () => {
+    viewport.endPanDrag();
   };
 
   return (
