@@ -169,9 +169,34 @@ export function GraphContent() {
     }
   };
 
+  const zoomInto = ({
+    focusX,
+    focusY,
+    zoomFactor,
+  }: {
+    focusX: number;
+    focusY: number;
+    zoomFactor: number;
+  }) => {
+    const currentViewBox = viewBox();
+    const { x, y, width, height } = currentViewBox;
+
+    const newWidth = width * zoomFactor;
+    const newHeight = height * zoomFactor;
+
+    const newX = focusX - (focusX - x) * zoomFactor;
+    const newY = focusY - (focusY - y) * zoomFactor;
+
+    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
+    startInteractionTimer();
+  };
+
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
+    console.log('wheel', { deltaX: event.deltaX, deltaY: event.deltaY });
 
+    const currentViewBox = viewBox();
+    const { x, y, width, height } = currentViewBox;
     const svgElement = event.currentTarget as SVGElement;
     const rect = svgElement.getBoundingClientRect();
 
@@ -179,42 +204,36 @@ export function GraphContent() {
       event.clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
     const mouseY =
       event.clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
+    const minSide = Math.min(rect.width, rect.height);
 
-    const currentViewBox = viewBox();
-    const { x, y, width, height } = currentViewBox;
-
-    const svgMouseX = x + (mouseX / Math.min(rect.width, rect.height)) * width;
-    const svgMouseY = y + (mouseY / Math.min(rect.width, rect.height)) * height;
-
-    const zoomStepFactor =
+    const focusX = x + (mouseX / minSide) * width;
+    const focusY = y + (mouseY / minSide) * height;
+    const zoomFactor =
       event.deltaY > 0 ? ZOOM_FACTOR_RATIO : 1 / ZOOM_FACTOR_RATIO;
 
-    const newWidth = width * zoomStepFactor;
-    const newHeight = height * zoomStepFactor;
-
-    const newX = svgMouseX - (svgMouseX - x) * zoomStepFactor;
-    const newY = svgMouseY - (svgMouseY - y) * zoomStepFactor;
-
-    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
-    startInteractionTimer();
+    zoomInto({ focusX, focusY, zoomFactor });
   };
 
-  const handleZoom = (factor: number) => {
+  const handleZoomIn = () => {
     const currentViewBox = viewBox();
     const { x, y, width, height } = currentViewBox;
 
-    // Zoom from center
     const centerX = x + width / 2;
     const centerY = y + height / 2;
+    const zoomFactor = ZOOM_FACTOR_RATIO ** -8;
 
-    const newWidth = width * factor;
-    const newHeight = height * factor;
+    zoomInto({ focusX: centerX, focusY: centerY, zoomFactor });
+  };
 
-    const newX = centerX - (centerX - x) * factor;
-    const newY = centerY - (centerY - y) * factor;
+  const handleZoomOut = () => {
+    const currentViewBox = viewBox();
+    const { x, y, width, height } = currentViewBox;
 
-    setViewBox({ x: newX, y: newY, width: newWidth, height: newHeight });
-    startInteractionTimer();
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const zoomFactor = ZOOM_FACTOR_RATIO ** 8;
+
+    zoomInto({ focusX: centerX, focusY: centerY, zoomFactor });
   };
 
   const handleReset = () => {
@@ -353,8 +372,8 @@ export function GraphContent() {
           </div>
           <div class='pointer-events-auto'>
             <ZoomControls
-              onZoomIn={() => handleZoom(1 / ZOOM_FACTOR_RATIO ** 5)}
-              onZoomOut={() => handleZoom(ZOOM_FACTOR_RATIO ** 5)}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
               onReset={handleReset}
             />
           </div>
