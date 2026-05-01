@@ -86,7 +86,7 @@ export function GraphPoint(props: GraphPointProps) {
             x={-64}
             y={8}
             width={128}
-            height={32}
+            height={26}
             preserveAspectRatio='xMidYMid meet'
             image-rendering='optimizeSpeed'
           />
@@ -95,7 +95,7 @@ export function GraphPoint(props: GraphPointProps) {
           x={-64}
           y={8}
           width={128}
-          height={32}
+          height={26}
           class='pointer-events-none fill-current'
           mask={`url(#mask-${props.safeName})`}
         />
