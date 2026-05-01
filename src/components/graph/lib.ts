@@ -1,44 +1,20 @@
-import { type FontMetadata, type FontWeight } from '../../types/font';
+import { type FontWeight } from '../../types/font';
+import {
+  type GraphPointData,
+  type GraphPointSearchTree,
+  type GraphViewBox,
+  type GraphVisibleBounds,
+  type PartitionedVisiblePoints,
+} from './types';
 
 const IMAGE_GRID_HEX_HEIGHT_PX = 96;
 const VISIBLE_BOUNDS_PADDING = 50;
-
-export interface GraphViewBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface GraphVisibleBounds {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
-
-export interface GraphPointData {
-  key: string;
-  metadata: FontMetadata;
-  x: number;
-  y: number;
-}
 
 interface ImageGridMetrics {
   rowStep: number;
   columnStep: number;
   evenRowOffset: number;
   searchRadius: number;
-}
-
-export interface PartitionedVisiblePoints {
-  visibleFilteredPoints: GraphPointData[];
-  visibleUnfilteredPoints: GraphPointData[];
-  visibleActivePoints: GraphPointData[];
-}
-
-interface GraphPointSearchTree {
-  find: (x: number, y: number, radius?: number) => GraphPointData | undefined;
 }
 
 export function getVisibleBounds(
