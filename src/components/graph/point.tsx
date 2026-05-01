@@ -84,7 +84,7 @@ export function GraphPoint(props: GraphPointProps) {
           <image
             href={imgSrc()}
             x={-64}
-            y={6}
+            y={8}
             width={128}
             height={32}
             preserveAspectRatio='xMidYMid meet'
@@ -93,7 +93,7 @@ export function GraphPoint(props: GraphPointProps) {
         </mask>
         <rect
           x={-64}
-          y={6}
+          y={8}
           width={128}
           height={32}
           class='pointer-events-none fill-current'
@@ -115,7 +115,7 @@ export function GraphPoint(props: GraphPointProps) {
       <Show when={!props.isDisabled && props.shouldShowFontName}>
         <text
           x={0}
-          y={-8}
+          y={-10}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
             props.isSelected ? 'font-bold' : 'fill-muted-foreground'
