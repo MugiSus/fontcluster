@@ -97,7 +97,10 @@ export function GraphContent() {
           </div>
         }
       >
-        <div class='pointer-events-none absolute bottom-4 right-4 z-10 flex items-end gap-3'>
+        <div
+          class='pointer-events-none absolute bottom-4 right-4 z-10 flex items-end gap-3'
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           <div class='pointer-events-auto'>
             <ImageVisibilityToggle
               showImages={showImages()}
