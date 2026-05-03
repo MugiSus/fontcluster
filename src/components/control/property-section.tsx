@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 type ControlPropertySectionProps = {
   title: string;
-  children: JSX.Element;
+  children?: JSX.Element;
   onStepRun: () => void;
   disabled?: boolean | undefined;
   class?: string | undefined;

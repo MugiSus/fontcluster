@@ -28,7 +28,6 @@ pub struct SessionConfig {
 pub struct AlgorithmConfig {
     pub discovery: Option<DiscoveryConfig>,
     pub image: Option<ImageConfig>,
-    pub pacmap: Option<PacmapConfig>,
     pub hdbscan: Option<HdbscanConfig>,
 }
 
@@ -75,28 +74,6 @@ impl Default for HdbscanConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct PacmapConfig {
-    pub mn_phases: usize,
-    pub nn_phases: usize,
-    pub fp_phases: usize,
-    pub learning_rate: f32,
-    pub n_neighbors: usize,
-}
-
-impl Default for PacmapConfig {
-    fn default() -> Self {
-        Self {
-            mn_phases: 100,
-            nn_phases: 100,
-            fp_phases: 100,
-            learning_rate: 1.0,
-            n_neighbors: 32,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct ImageConfig {
     pub font_size: f32,
 }
@@ -136,6 +113,8 @@ pub struct ProcessingStatus {
 pub struct ComputedData {
     pub vector: [f32; 2],
     pub k: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outlier_score: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

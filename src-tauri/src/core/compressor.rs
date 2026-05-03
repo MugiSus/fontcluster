@@ -9,18 +9,7 @@ pub struct Compressor;
 impl Compressor {
     pub async fn compress_all(state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
-        let pacmap_config = {
-            let guard = state
-                .current_session
-                .lock()
-                .map_err(|_| AppError::Processing("Lock poisoned".into()))?;
-            guard
-                .as_ref()
-                .and_then(|s| s.algorithm.as_ref())
-                .and_then(|a| a.pacmap.clone())
-                .unwrap_or_default()
-        };
-        let engine = EmbeddingEngine::from_pacmap(pacmap_config);
+        let engine = EmbeddingEngine::pca();
         let session_dir = session_dir.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
@@ -61,10 +50,15 @@ impl Compressor {
 
             for (i, id) in font_ids.iter().enumerate() {
                 let mut meta = load_font_metadata(&session_dir, id)?;
-                let k = meta.computed.as_ref().map(|c| c.k).unwrap_or(-1);
+                let (k, outlier_score) = meta
+                    .computed
+                    .as_ref()
+                    .map(|c| (c.k, c.outlier_score))
+                    .unwrap_or((-1, None));
                 meta.computed = Some(crate::config::ComputedData {
                     vector: [embedding[[i, 0]], embedding[[i, 1]]],
                     k,
+                    outlier_score,
                 });
                 save_font_metadata(&session_dir, &meta)?;
             }

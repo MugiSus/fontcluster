@@ -15,14 +15,6 @@ export const WEIGHT_LABELS: Record<
   900: { short: 'Bl', full: 'Black' },
 };
 
-export interface PacmapOptions {
-  mn_phases: number;
-  nn_phases: number;
-  fp_phases: number;
-  learning_rate: number;
-  n_neighbors: number;
-}
-
 export interface HdbscanOptions {
   min_cluster_size: number;
   min_samples: number;
@@ -49,7 +41,6 @@ export interface DiscoveryOptions {
 export interface AlgorithmConfig {
   discovery: DiscoveryOptions | null;
   image: ImageOptions | null;
-  pacmap: PacmapOptions | null;
   hdbscan: HdbscanOptions | null;
 }
 
@@ -78,8 +69,9 @@ export interface SessionConfig {
 }
 
 export interface ComputedData {
-  vector: number[]; // [x, y] 2D coordinates from PaCMAP
+  vector: number[]; // [x, y] 2D coordinates from PCA
   k: number; // Cluster assignment from HDBSCAN
+  outlier_score?: number; // GLOSH outlier score from HDBSCAN
 }
 
 export interface FontMetadata {

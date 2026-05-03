@@ -1,6 +1,7 @@
 use crate::core::session::{load_font_metadata, save_font_metadata};
 use crate::core::{AppState, ClusteringEngine};
 use crate::error::{AppError, Result};
+use ndarray::Array2;
 use std::fs;
 
 pub struct Clusterer;
@@ -24,7 +25,7 @@ impl Clusterer {
         let session_dir_for_first = session_dir.clone();
 
         let (points, ids) =
-            tokio::task::spawn_blocking(move || -> Result<(Vec<Vec<f32>>, Vec<String>)> {
+            tokio::task::spawn_blocking(move || -> Result<(Array2<f32>, Vec<String>)> {
                 let mut points = Vec::new();
                 let mut ids = Vec::new();
 
@@ -41,12 +42,14 @@ impl Clusterer {
                             path.file_name().unwrap().to_str().unwrap(),
                         ) {
                             if let Some(comp) = meta.computed {
-                                points.push(vec![comp.vector[0], comp.vector[1]]);
+                                points.extend_from_slice(&comp.vector);
                                 ids.push(meta.safe_name);
                             }
                         }
                     }
                 }
+                let points = Array2::from_shape_vec((ids.len(), 2), points)
+                    .map_err(|e| AppError::Processing(e.to_string()))?;
                 Ok((points, ids))
             })
             .await
@@ -56,25 +59,20 @@ impl Clusterer {
             return Ok(());
         }
 
-        let n_samples = points.len();
-        let labels = engine.cluster(points)?;
+        let n_samples = points.nrows();
+        let clustering = engine.cluster(points)?;
 
         let session_dir_for_second = session_dir.clone();
         let n_clusters = tokio::task::spawn_blocking(move || -> Result<usize> {
-            let mut max_cluster = -1;
             for (i, id) in ids.iter().enumerate() {
-                let label = labels[i];
-                if label > max_cluster {
-                    max_cluster = label;
-                }
-
                 let mut meta = load_font_metadata(&session_dir_for_second, id)?;
                 if let Some(comp) = meta.computed.as_mut() {
-                    comp.k = label;
+                    comp.k = clustering.labels[i];
+                    comp.outlier_score = clustering.outlier_scores.get(i).copied();
                 }
                 save_font_metadata(&session_dir_for_second, &meta)?;
             }
-            Ok((max_cluster + 1) as usize)
+            Ok(clustering.cluster_count)
         })
         .await
         .map_err(|e| AppError::Processing(e.to_string()))??;

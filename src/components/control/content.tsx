@@ -67,13 +67,6 @@ export function ControlContent() {
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
-      pacmap: {
-        mn_phases: Number(formData.get('pacmap-mn-phases')),
-        nn_phases: Number(formData.get('pacmap-nn-phases')),
-        fp_phases: Number(formData.get('pacmap-fp-phases')),
-        learning_rate: Number(formData.get('pacmap-learning-rate')),
-        n_neighbors: Number(formData.get('pacmap-n-neighbors')) || 32,
-      },
       hdbscan: {
         min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
         min_samples: Number(formData.get('hdbscan-min-samples')),
@@ -202,51 +195,7 @@ export function ControlContent() {
           title='compress'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
-        >
-          <ControlProperty
-            label='global iterations'
-            type='number'
-            name='pacmap-mn-phases'
-            value={appState.session.config?.algorithm?.pacmap?.mn_phases ?? 100}
-            step='10'
-            min='0'
-          />
-          <ControlProperty
-            label='attraction iterations'
-            type='number'
-            name='pacmap-nn-phases'
-            value={appState.session.config?.algorithm?.pacmap?.nn_phases ?? 100}
-            step='10'
-            min='0'
-          />
-          <ControlProperty
-            label='repulsion iterations'
-            type='number'
-            name='pacmap-fp-phases'
-            value={appState.session.config?.algorithm?.pacmap?.fp_phases ?? 100}
-            step='10'
-            min='0'
-          />
-          <ControlProperty
-            label='learning rate'
-            type='number'
-            name='pacmap-learning-rate'
-            value={
-              appState.session.config?.algorithm?.pacmap?.learning_rate ?? 1.0
-            }
-            step='0.1'
-          />
-          <ControlProperty
-            label='neighbors'
-            type='number'
-            name='pacmap-n-neighbors'
-            value={
-              appState.session.config?.algorithm?.pacmap?.n_neighbors ?? 32
-            }
-            step='1'
-            min='1'
-          />
-        </ControlPropertySection>
+        />
 
         <ControlPropertySection
           title='classify'
