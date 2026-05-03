@@ -170,3 +170,22 @@ fn find_restored_session_config(config_paths: &[PathBuf]) -> Result<Option<Sessi
 
     Ok(None)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::should_skip_zip_entry;
+    use std::path::Path;
+
+    #[test]
+    fn should_skip_macosx_metadata_paths() {
+        assert!(should_skip_zip_entry(Path::new("__MACOSX/font/config.json")));
+        assert!(should_skip_zip_entry(Path::new("session/.DS_Store")));
+        assert!(should_skip_zip_entry(Path::new("session/._config.json")));
+    }
+
+    #[test]
+    fn should_not_skip_regular_paths() {
+        assert!(!should_skip_zip_entry(Path::new("session/config.json")));
+        assert!(!should_skip_zip_entry(Path::new("session/samples/font.png")));
+    }
+}
