@@ -187,7 +187,7 @@ export function ControlContent() {
           onStepRun={() => handleRun('generated')}
         >
           <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
-            RepVit on ONNX Runtime
+            RepVit M1.0 on ONNX Runtime
           </div>
         </ControlPropertySection>
 
@@ -195,7 +195,11 @@ export function ControlContent() {
           title='compress'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
-        />
+        >
+          <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
+            Principal Component Analysis
+          </div>
+        </ControlPropertySection>
 
         <ControlPropertySection
           title='classify'
