@@ -192,7 +192,7 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('generated')}
         >
-          <div class='h-8 px-2 text-xs font-medium text-muted-foreground'>
+          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
             RepVit M1.0 on ONNX Runtime
           </div>
         </ControlPropertySection>
@@ -202,7 +202,7 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
         >
-          <div class='h-8 px-2 text-xs font-medium text-muted-foreground'>
+          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
             PCA
           </div>
         </ControlPropertySection>
@@ -212,7 +212,7 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('compressed')}
         >
-          <div class='h-8 px-2 text-xs font-medium text-muted-foreground'>
+          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
             Agglomerative Clustering
           </div>
           <NumberProperty
