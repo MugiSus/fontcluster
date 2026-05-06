@@ -180,7 +180,7 @@ export function ControlContent() {
             label='font size'
             name='image-font-size'
             defaultValue={
-              appState.session.config?.algorithm?.image?.font_size ?? 128
+              appState.session.config?.algorithm?.image?.font_size ?? 224
             }
             step={1}
             minValue={1}
