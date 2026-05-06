@@ -68,10 +68,19 @@ export interface SessionConfig {
   algorithm?: AlgorithmConfig;
 }
 
-export interface ComputedData {
-  vector: number[]; // [x, y] 2D coordinates from PCA
+export interface VectorizeData {
+  position: number[]; // [x, y] 2D coordinates from PCA
+}
+
+export interface ClusteringData {
   k: number; // Cluster assignment from HDBSCAN
-  outlier_score?: number; // GLOSH outlier score from HDBSCAN
+  outlier_score?: number; // Outlier score from HDBSCAN
+  is_outlier: boolean; // Outlier flag returned by HDBSCAN
+}
+
+export interface ComputedData {
+  vectorize: VectorizeData;
+  clustering?: ClusteringData | null;
 }
 
 export interface FontMetadata {
@@ -84,8 +93,11 @@ export interface FontMetadata {
   designers: Record<string, string>;
   weight: number;
   weights: string[];
-  computed?: ComputedData; // Optional, present after compression and clustering
 }
 
-// Unified type using FontMetadata with computed data
-export type FontMetadataRecord = Record<string, FontMetadata>;
+export interface FontItem {
+  meta: FontMetadata;
+  computed?: ComputedData | null;
+}
+
+export type FontItemRecord = Record<string, FontItem>;

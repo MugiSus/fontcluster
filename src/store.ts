@@ -2,10 +2,10 @@ import { createStore } from 'solid-js/store';
 import { createMemo, createRoot } from 'solid-js';
 import Fuse from 'fuse.js';
 import {
-  FontMetadata,
-  SessionConfig,
-  FontWeight,
-  ProcessStatus,
+  type FontItem,
+  type SessionConfig,
+  type FontWeight,
+  type ProcessStatus,
 } from './types/font';
 
 export interface AppState {
@@ -21,12 +21,12 @@ export interface AppState {
     denominator: number;
   };
   fonts: {
-    data: Record<string, FontMetadata>;
+    data: Record<string, FontItem>;
     readonly filteredKeys: Set<string>;
   };
   ui: {
     selectedFontKey: string | null;
-    readonly selectedFont: FontMetadata | null;
+    readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     selectedWeights: FontWeight[];
     searchQuery: string;
@@ -36,27 +36,28 @@ export interface AppState {
 
 const FUSE_OPTIONS = {
   keys: [
-    'font_name',
-    'family_name',
-    'family_names',
-    'preferred_family_names',
-    'publishers',
-    'designers',
+    'meta.font_name',
+    'meta.family_name',
+    'meta.family_names',
+    'meta.preferred_family_names',
+    'meta.publishers',
+    'meta.designers',
     {
       name: 'family_names_list',
-      getFn: (item: FontMetadata) => Object.values(item.family_names),
+      getFn: (item: FontItem) => Object.values(item.meta.family_names),
     },
     {
       name: 'preferred_family_names_list',
-      getFn: (item: FontMetadata) => Object.values(item.preferred_family_names),
+      getFn: (item: FontItem) =>
+        Object.values(item.meta.preferred_family_names),
     },
     {
       name: 'publishers_list',
-      getFn: (item: FontMetadata) => Object.values(item.publishers),
+      getFn: (item: FontItem) => Object.values(item.meta.publishers),
     },
     {
       name: 'designers_list',
-      getFn: (item: FontMetadata) => Object.values(item.designers),
+      getFn: (item: FontItem) => Object.values(item.meta.designers),
     },
   ],
   threshold: 0.25,
@@ -102,12 +103,12 @@ export const [appState, setAppState] = createStore<AppState>({
   },
   ui: {
     selectedFontKey: null,
-    get selectedFont(): FontMetadata | null {
+    get selectedFont(): FontItem | null {
       const key = this.selectedFontKey;
       return key ? appState.fonts.data[key] || null : null;
     },
     get selectedFontFamily(): string | null {
-      return this.selectedFont?.family_name || null;
+      return this.selectedFont?.meta.family_name || null;
     },
     selectedWeights: [400],
     searchQuery: '',
@@ -136,7 +137,7 @@ export const filteredKeysMemo = createRoot(() => {
 
     const result = fuse()
       .search(q)
-      .map((r) => r.item.safe_name);
+      .map((r) => r.item.meta.safe_name);
     return new Set<string>(result);
   });
   return memo;

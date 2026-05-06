@@ -35,8 +35,8 @@ export function useGraphSelection(
       return;
     }
 
-    const metadata = appState.fonts.data[nearest.key];
-    if (!metadata) return;
+    const item = appState.fonts.data[nearest.key];
+    if (!item) return;
 
     setSelectedFontKey(nearest.key);
     if (event.shiftKey || event.ctrlKey || event.metaKey) {

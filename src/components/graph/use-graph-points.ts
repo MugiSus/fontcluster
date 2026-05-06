@@ -29,11 +29,11 @@ interface UseGraphPointsProps {
 }
 
 function getVectorBounds() {
-  const metadata = Object.values(appState.fonts.data).filter(
-    (font) => font.computed?.vector,
+  const fontItems = Object.values(appState.fonts.data).filter(
+    (item) => item.computed?.vectorize.position,
   );
 
-  if (metadata.length === 0) {
+  if (fontItems.length === 0) {
     return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
   }
 
@@ -42,9 +42,9 @@ function getVectorBounds() {
   let minY = Infinity;
   let maxY = -Infinity;
 
-  for (const font of metadata) {
-    const x = font.computed!.vector[0] ?? 0;
-    const y = font.computed!.vector[1] ?? 0;
+  for (const item of fontItems) {
+    const x = item.computed!.vectorize.position[0] ?? 0;
+    const y = item.computed!.vectorize.position[1] ?? 0;
     minX = Math.min(minX, x);
     maxX = Math.max(maxX, x);
     minY = Math.min(minY, y);
@@ -62,22 +62,22 @@ export function useGraphPoints(props: UseGraphPointsProps) {
   const bounds = createMemo(getVectorBounds);
 
   const allPoints = createMemo(() => {
-    const metadata = Object.values(appState.fonts.data);
+    const fontItems = Object.values(appState.fonts.data);
     const { minX, maxX, minY, maxY } = bounds();
     const rangeX = maxX - minX || 1;
     const rangeY = maxY - minY || 1;
 
-    return metadata
-      .filter((font) => font.computed?.vector)
-      .map((font) => {
-        const vx = font.computed!.vector[0] ?? 0;
-        const vy = font.computed!.vector[1] ?? 0;
+    return fontItems
+      .filter((item) => item.computed?.vectorize.position)
+      .map((item) => {
+        const vx = item.computed!.vectorize.position[0] ?? 0;
+        const vy = item.computed!.vectorize.position[1] ?? 0;
         const x = ((vx - minX) / rangeX) * GRAPH_SIZE;
         const y = ((vy - minY) / rangeY) * GRAPH_SIZE;
 
         return {
-          key: font.safe_name,
-          metadata: font,
+          key: item.meta.safe_name,
+          item,
           x,
           y,
         } satisfies GraphPointData;
@@ -94,7 +94,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     for (const point of allPoints()) {
       if (
         filteredKeys.has(point.key) &&
-        activeWeights.has(point.metadata.weight as FontWeight)
+        activeWeights.has(point.item.meta.weight as FontWeight)
       ) {
         points.push(point);
       }

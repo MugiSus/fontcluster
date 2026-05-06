@@ -1,4 +1,4 @@
-use crate::core::{session::load_font_metadata, AppState};
+use crate::core::{session::load_font_data, AppState};
 use crate::error::Result;
 use std::fs;
 use tauri::{command, State};
@@ -17,10 +17,10 @@ pub async fn get_compressed_vectors(
         for entry in fs::read_dir(samples_dir)? {
             let path = entry?.path();
             if path.is_dir() {
-                if let Ok(meta) =
-                    load_font_metadata(&session_dir, path.file_name().unwrap().to_str().unwrap())
+                if let Ok(font_data) =
+                    load_font_data(&session_dir, path.file_name().unwrap().to_str().unwrap())
                 {
-                    map.insert(meta.safe_name.clone(), meta);
+                    map.insert(font_data.meta.safe_name.clone(), font_data);
                 }
             }
         }

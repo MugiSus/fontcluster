@@ -1,4 +1,5 @@
-use crate::core::session::{load_font_metadata, save_font_metadata};
+use crate::config::{ComputedData, VectorizeData};
+use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
 use crate::core::{AppState, EmbeddingEngine};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
@@ -49,18 +50,17 @@ impl Compressor {
             let embedding = engine.embed(data)?;
 
             for (i, id) in font_ids.iter().enumerate() {
-                let mut meta = load_font_metadata(&session_dir, id)?;
-                let (k, outlier_score) = meta
-                    .computed
-                    .as_ref()
-                    .map(|c| (c.k, c.outlier_score))
-                    .unwrap_or((-1, None));
-                meta.computed = Some(crate::config::ComputedData {
-                    vector: [embedding[[i, 0]], embedding[[i, 1]]],
-                    k,
-                    outlier_score,
-                });
-                save_font_metadata(&session_dir, &meta)?;
+                let meta = load_font_metadata(&session_dir, id)?;
+                let clustering = load_computed_data(&session_dir, id)
+                    .ok()
+                    .and_then(|computed| computed.clustering);
+                let computed = ComputedData {
+                    vectorize: VectorizeData {
+                        position: [embedding[[i, 0]], embedding[[i, 1]]],
+                    },
+                    clustering,
+                };
+                save_computed_data(&session_dir, &meta.safe_name, &computed)?;
             }
 
             Ok(())

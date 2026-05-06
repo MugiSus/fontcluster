@@ -6,7 +6,7 @@ import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
 import { appState, setAppState } from './store';
 import {
-  FontMetadata,
+  type FontItemRecord,
   type FontWeight,
   type SessionConfig,
   type AlgorithmConfig,
@@ -18,9 +18,9 @@ import {
 export const {
   sessionDirectory,
   sessionConfig,
-  fontMetadataRecord,
+  fontItemRecord,
   refetchSessionConfig,
-  refetchFontMetadataRecord,
+  refetchFontItemRecord,
 } = createRoot(() => {
   const [sessionDirectory] = createResource(
     () => appState.session.id,
@@ -56,25 +56,24 @@ export const {
     },
   );
 
-  const [fontMetadataRecord, { refetch: refetchFontMetadataRecord }] =
-    createResource(
-      () => appState.session.id,
-      async (sessionId): Promise<Record<string, FontMetadata>> => {
-        if (!sessionId) return {};
-        try {
-          const response = await invoke<string>('get_compressed_vectors', {
-            sessionId,
-          });
-          if (!response) {
-            return {};
-          }
-          return JSON.parse(response) as Record<string, FontMetadata>;
-        } catch (error) {
-          console.error('Failed to parse font configs:', error);
+  const [fontItemRecord, { refetch: refetchFontItemRecord }] = createResource(
+    () => appState.session.id,
+    async (sessionId): Promise<FontItemRecord> => {
+      if (!sessionId) return {};
+      try {
+        const response = await invoke<string>('get_compressed_vectors', {
+          sessionId,
+        });
+        if (!response) {
           return {};
         }
-      },
-    );
+        return JSON.parse(response) as FontItemRecord;
+      } catch (error) {
+        console.error('Failed to parse font configs:', error);
+        return {};
+      }
+    },
+  );
 
   // Sync session directory to store
   createEffect(() => {
@@ -97,9 +96,9 @@ export const {
     }
   });
 
-  // Sync font metadata map to store
+  // Sync font item map to store
   createEffect(() => {
-    const data = fontMetadataRecord();
+    const data = fontItemRecord();
     if (data) {
       setAppState('session', 'config', (prev) => {
         if (!prev) return prev;
@@ -112,9 +111,9 @@ export const {
   return {
     sessionDirectory,
     sessionConfig,
-    fontMetadataRecord,
+    fontItemRecord,
     refetchSessionConfig,
-    refetchFontMetadataRecord,
+    refetchFontItemRecord,
   };
 });
 
@@ -149,7 +148,7 @@ export const runProcessingJobs = async (
       toast.success('Clustering completed successfully!');
     }
     await refetchSessionConfig();
-    await refetchFontMetadataRecord();
+    await refetchFontItemRecord();
   } catch (error) {
     console.error('Failed to process fonts:', error);
     toast.error(`Font processing failed: ${error}`);

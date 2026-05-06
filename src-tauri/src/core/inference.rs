@@ -43,6 +43,7 @@ fn pca_embedding(data: Array2<f32>) -> Result<Array2<f32>> {
 pub struct ClusteringResult {
     pub labels: Vec<i32>,
     pub outlier_scores: Vec<f32>,
+    pub is_outlier: Vec<bool>,
     pub cluster_count: usize,
 }
 
@@ -65,12 +66,19 @@ impl ClusteringEngine {
                     metric: Euclidean::default(),
                     boruvka: true,
                 };
-                let (clusters, _outliers, outlier_scores) = hdbscan.fit(&points.view(), None);
+                let (clusters, outliers, outlier_scores) = hdbscan.fit(&points.view(), None);
 
                 let mut labels = vec![-1; points.nrows()];
+                let mut is_outlier = vec![false; points.nrows()];
                 let mut cluster_members = clusters.into_values().collect::<Vec<_>>();
                 cluster_members
                     .sort_by_key(|members| members.iter().copied().min().unwrap_or(usize::MAX));
+
+                for point_index in outliers {
+                    if let Some(is_outlier) = is_outlier.get_mut(point_index) {
+                        *is_outlier = true;
+                    }
+                }
 
                 for (cluster_id, members) in cluster_members.iter().enumerate() {
                     for point_index in members {
@@ -81,6 +89,7 @@ impl ClusteringEngine {
                 Ok(ClusteringResult {
                     labels,
                     outlier_scores,
+                    is_outlier,
                     cluster_count: cluster_members.len(),
                 })
             }

@@ -111,10 +111,22 @@ pub struct ProcessingStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedData {
-    pub vector: [f32; 2],
+    pub vectorize: VectorizeData,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub clustering: Option<ClusteringData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VectorizeData {
+    pub position: [f32; 2],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClusteringData {
     pub k: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outlier_score: Option<f32>,
+    pub is_outlier: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,6 +144,11 @@ pub struct FontMetadata {
     pub weights: Vec<String>,
     pub path: Option<PathBuf>,
     pub font_index: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FontData {
+    pub meta: FontMetadata,
     pub computed: Option<ComputedData>,
 }
 

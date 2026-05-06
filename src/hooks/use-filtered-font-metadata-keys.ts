@@ -31,10 +31,10 @@ export function useFilteredFontMetadataKeys(
         if (!q) return;
 
         const firstKey = Array.from(keys)[0];
-        const firstMetadata = firstKey ? appState.fonts.data[firstKey] : null;
+        const firstItem = firstKey ? appState.fonts.data[firstKey] : null;
 
-        if (firstMetadata) {
-          props.onFontSelect(firstMetadata.safe_name);
+        if (firstItem) {
+          props.onFontSelect(firstItem.meta.safe_name);
 
           requestAnimationFrame(() => {
             document

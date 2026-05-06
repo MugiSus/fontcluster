@@ -1,4 +1,5 @@
-use crate::core::session::{load_font_metadata, save_font_metadata};
+use crate::config::ClusteringData;
+use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
 use crate::core::{AppState, ClusteringEngine};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
@@ -41,8 +42,10 @@ impl Clusterer {
                             &session_dir_for_first,
                             path.file_name().unwrap().to_str().unwrap(),
                         ) {
-                            if let Some(comp) = meta.computed {
-                                points.extend_from_slice(&comp.vector);
+                            if let Ok(computed) =
+                                load_computed_data(&session_dir_for_first, &meta.safe_name)
+                            {
+                                points.extend_from_slice(&computed.vectorize.position);
                                 ids.push(meta.safe_name);
                             }
                         }
@@ -65,12 +68,13 @@ impl Clusterer {
         let session_dir_for_second = session_dir.clone();
         let n_clusters = tokio::task::spawn_blocking(move || -> Result<usize> {
             for (i, id) in ids.iter().enumerate() {
-                let mut meta = load_font_metadata(&session_dir_for_second, id)?;
-                if let Some(comp) = meta.computed.as_mut() {
-                    comp.k = clustering.labels[i];
-                    comp.outlier_score = clustering.outlier_scores.get(i).copied();
-                }
-                save_font_metadata(&session_dir_for_second, &meta)?;
+                let mut computed = load_computed_data(&session_dir_for_second, id)?;
+                computed.clustering = Some(ClusteringData {
+                    k: clustering.labels[i],
+                    outlier_score: clustering.outlier_scores.get(i).copied(),
+                    is_outlier: clustering.is_outlier.get(i).copied().unwrap_or(false),
+                });
+                save_computed_data(&session_dir_for_second, id, &computed)?;
             }
             Ok(clustering.cluster_count)
         })

@@ -12,7 +12,9 @@ export function ClipboardListener() {
       if (nearest) {
         navigator.clipboard
           .writeText(
-            event.payload?.isFontName ? nearest.font_name : nearest.family_name,
+            event.payload?.isFontName
+              ? nearest.meta.font_name
+              : nearest.meta.family_name,
           )
           .then(
             () =>
@@ -23,8 +25,8 @@ export function ClipboardListener() {
                     <CopyCheckIcon class='mx-0.5 size-4' />
                     {"'"}
                     {event.payload?.isFontName
-                      ? nearest.font_name
-                      : nearest.family_name}
+                      ? nearest.meta.font_name
+                      : nearest.meta.family_name}
                     {"'"}
                   </div>
                   <div class='text-xs leading-5 text-muted-foreground'>

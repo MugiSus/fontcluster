@@ -290,7 +290,6 @@ impl Discoverer {
                                     weights: available_weights.clone(),
                                     path: Some(meta.path.clone()),
                                     font_index: meta.font_index,
-                                    computed: None,
                                 };
 
                                 if let Err(e) = crate::core::session::save_font_metadata(

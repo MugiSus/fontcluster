@@ -167,15 +167,15 @@ export function GraphContent() {
             <For each={graph.visiblePoints().visibleUnfilteredPoints}>
               {(point) => (
                 <GraphPoint
-                  fontName={point.metadata.font_name}
-                  weight={point.metadata.weight}
-                  clusterId={point.metadata.computed?.k}
-                  safeName={point.metadata.safe_name}
+                  fontName={point.item.meta.font_name}
+                  weight={point.item.meta.weight}
+                  clusterId={point.item.computed?.clustering?.k}
+                  safeName={point.item.meta.safe_name}
                   x={point.x}
                   y={point.y}
                   isSelected={isSelected(point.key)}
                   isFamilySelected={isFamilySelected(
-                    point.metadata.family_name,
+                    point.item.meta.family_name,
                   )}
                   sessionDirectory={appState.session.directory}
                   zoomFactor={viewport.zoomFactor()}
@@ -194,14 +194,14 @@ export function GraphContent() {
           <For each={graph.visiblePoints().visibleFilteredPoints}>
             {(point) => (
               <GraphPoint
-                fontName={point.metadata.font_name}
-                weight={point.metadata.weight}
-                clusterId={point.metadata.computed?.k}
-                safeName={point.metadata.safe_name}
+                fontName={point.item.meta.font_name}
+                weight={point.item.meta.weight}
+                clusterId={point.item.computed?.clustering?.k}
+                safeName={point.item.meta.safe_name}
                 x={point.x}
                 y={point.y}
                 isSelected={isSelected(point.key)}
-                isFamilySelected={isFamilySelected(point.metadata.family_name)}
+                isFamilySelected={isFamilySelected(point.item.meta.family_name)}
                 sessionDirectory={appState.session.directory}
                 zoomFactor={viewport.zoomFactor()}
                 shouldShowImage={

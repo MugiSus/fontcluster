@@ -1,4 +1,4 @@
-import { type FontMetadata } from '../../types/font';
+import { type FontItem } from '../../types/font';
 
 export interface GraphViewBox {
   x: number;
@@ -21,7 +21,7 @@ export interface GraphVisibleBounds {
 
 export interface GraphPointData {
   key: string;
-  metadata: FontMetadata;
+  item: FontItem;
   x: number;
   y: number;
 }

@@ -61,7 +61,7 @@ export function partitionVisiblePoints(
 
   for (const point of points) {
     const isWeightIncluded = activeWeights.has(
-      point.metadata.weight as FontWeight,
+      point.item.meta.weight as FontWeight,
     );
     const isVisible =
       point.x >= bounds.minX &&

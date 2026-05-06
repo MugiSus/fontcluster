@@ -1,5 +1,6 @@
 use crate::config::{
-    AlgorithmConfig, FontMetadata, ProcessStatus, ProcessingStatus, SessionConfig,
+    AlgorithmConfig, ComputedData, FontData, FontMetadata, ProcessStatus, ProcessingStatus,
+    SessionConfig,
 };
 use crate::error::Result;
 use std::collections::HashMap;
@@ -204,4 +205,50 @@ pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMet
             ))
         },
     )?)?)
+}
+
+pub fn save_computed_data(
+    session_dir: &Path,
+    safe_name: &str,
+    computed: &ComputedData,
+) -> Result<()> {
+    let font_dir = session_dir.join("samples").join(safe_name);
+    fs::create_dir_all(&font_dir).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to create font dir {}: {}",
+            font_dir.display(),
+            e
+        ))
+    })?;
+    let computed_path = font_dir.join("computed.json");
+    fs::write(&computed_path, serde_json::to_string_pretty(computed)?).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to save computed data {}: {}",
+            computed_path.display(),
+            e
+        ))
+    })?;
+    Ok(())
+}
+
+pub fn load_computed_data(session_dir: &Path, safe_name: &str) -> Result<ComputedData> {
+    let path = session_dir
+        .join("samples")
+        .join(safe_name)
+        .join("computed.json");
+    Ok(serde_json::from_str(&fs::read_to_string(&path).map_err(
+        |e| {
+            crate::error::AppError::Io(format!(
+                "Failed to load computed data {}: {}",
+                path.display(),
+                e
+            ))
+        },
+    )?)?)
+}
+
+pub fn load_font_data(session_dir: &Path, safe_name: &str) -> Result<FontData> {
+    let meta = load_font_metadata(session_dir, safe_name)?;
+    let computed = load_computed_data(session_dir, safe_name).ok();
+    Ok(FontData { meta, computed })
 }
