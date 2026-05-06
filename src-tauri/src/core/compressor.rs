@@ -1,4 +1,4 @@
-use crate::config::{ComputedData, VectorizeData};
+use crate::config::{CompressionData, ComputedData};
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
 use crate::core::{AppState, EmbeddingEngine};
 use crate::error::{AppError, Result};
@@ -55,7 +55,7 @@ impl Compressor {
                     .ok()
                     .and_then(|computed| computed.clustering);
                 let computed = ComputedData {
-                    vectorize: VectorizeData {
+                    compression: CompressionData {
                         position: [embedding[[i, 0]], embedding[[i, 1]]],
                     },
                     clustering,

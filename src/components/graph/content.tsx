@@ -91,9 +91,9 @@ export function GraphContent() {
       <Show
         when={graph.allPoints().length > 0}
         fallback={
-          <div class='flex size-full flex-col items-center justify-center bg-muted text-sm text-muted-foreground'>
+          <div class='flex size-full flex-col items-center justify-center text-sm text-muted-foreground'>
             <CircleSlash2Icon class='mb-4 size-6' />
-            <h2>No results found</h2>
+            <h2>No Results</h2>
             <p class='text-xs'>Complete processing to see results</p>
           </div>
         }

@@ -48,7 +48,7 @@
     "resources": [
       "models/**/*",
       "resources/google_fonts_popularity.json",
-      "resources/example/*.zip"
+      "resources/example/"
     ],
     "macOS": {
       "signingIdentity": "-"

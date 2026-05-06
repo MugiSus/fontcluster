@@ -68,7 +68,7 @@ export interface SessionConfig {
   algorithm?: AlgorithmConfig;
 }
 
-export interface VectorizeData {
+export interface CompressionData {
   position: number[]; // [x, y] 2D coordinates from PCA
 }
 
@@ -79,7 +79,7 @@ export interface ClusteringData {
 }
 
 export interface ComputedData {
-  vectorize: VectorizeData;
+  compression: CompressionData;
   clustering?: ClusteringData | null;
 }
 

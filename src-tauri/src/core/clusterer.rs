@@ -45,7 +45,7 @@ impl Clusterer {
                             if let Ok(computed) =
                                 load_computed_data(&session_dir_for_first, &meta.safe_name)
                             {
-                                points.extend_from_slice(&computed.vectorize.position);
+                                points.extend_from_slice(&computed.compression.position);
                                 ids.push(meta.safe_name);
                             }
                         }

@@ -111,13 +111,13 @@ pub struct ProcessingStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedData {
-    pub vectorize: VectorizeData,
+    pub compression: CompressionData,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clustering: Option<ClusteringData>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VectorizeData {
+pub struct CompressionData {
     pub position: [f32; 2],
 }
 
