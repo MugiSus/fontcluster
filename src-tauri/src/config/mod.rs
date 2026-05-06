@@ -11,8 +11,7 @@ pub const GLYPH_PADDING: f32 = 4.0;
 pub struct SessionConfig {
     pub app_version: String,
     pub modified_app_version: String,
-    #[serde(rename = "session_id")]
-    pub id: String,
+    pub session_id: String,
     pub preview_text: String,
     pub created_at: DateTime<Utc>,
     pub modified_at: DateTime<Utc>,
@@ -103,10 +102,8 @@ pub enum ProcessStatus {
 #[serde(default)]
 pub struct ProcessingStatus {
     pub process_status: ProcessStatus,
-    #[serde(rename = "clusters_amount")]
-    pub cluster_count: usize,
-    #[serde(rename = "samples_amount")]
-    pub sample_count: usize,
+    pub clusters_amount: usize,
+    pub samples_amount: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -132,10 +129,8 @@ pub struct ClusteringData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontMetadata {
     pub safe_name: String,
-    #[serde(rename = "font_name")]
-    pub display_name: String,
-    #[serde(rename = "family_name")]
-    pub family: String,
+    pub font_name: String,
+    pub family_name: String,
     pub family_names: HashMap<String, String>,
     pub preferred_family_names: HashMap<String, String>,
     pub publishers: HashMap<String, String>,

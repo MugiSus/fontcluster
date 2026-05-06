@@ -28,7 +28,7 @@ impl ImageGenerator {
                 .unwrap_or(DEFAULT_FONT_SIZE);
             (
                 s.discovered_fonts.clone(),
-                s.id.clone(),
+                s.session_id.clone(),
                 s.preview_text.clone(),
                 font_size,
             )

@@ -166,7 +166,7 @@ impl Discoverer {
             (
                 s.preview_text.clone(),
                 s.weights.clone(),
-                s.id.clone(),
+                s.session_id.clone(),
                 font_set,
             )
         };
@@ -280,8 +280,8 @@ impl Discoverer {
                                 );
                                 let font_meta = crate::config::FontMetadata {
                                     safe_name,
-                                    display_name: meta.display_name.clone(),
-                                    family: family_name.clone(),
+                                    font_name: meta.display_name.clone(),
+                                    family_name: family_name.clone(),
                                     family_names: meta.family_names.clone(),
                                     preferred_family_names: meta.preferred_family_names.clone(),
                                     publishers: meta.publishers.clone(),

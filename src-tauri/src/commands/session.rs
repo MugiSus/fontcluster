@@ -72,7 +72,7 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
                         if let Ok(s) = serde_json::from_str::<SessionConfig>(&content) {
                             let current_time = s.modified_at;
                             if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
-                                latest = Some((current_time, s.id));
+                                latest = Some((current_time, s.session_id));
                             }
                         }
                     }

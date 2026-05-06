@@ -18,7 +18,6 @@ struct GoogleFontMetadata {
     subsets: Vec<String>,
     // category: String,
     // version: String,
-    // #[serde(rename = "lastModified")]
     // last_modified: String,
 }
 
@@ -101,7 +100,7 @@ impl GoogleFontsDownloader {
                 font_set,
                 session.preview_text.clone(),
                 session.weights.clone(),
-                session.id.clone(),
+                session.session_id.clone(),
             )
         };
         let session_dir = AppState::get_base_dir()?

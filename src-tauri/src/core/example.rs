@@ -65,7 +65,7 @@ pub fn extract_example_session(app: &AppHandle) -> Result<Option<String>> {
     Ok(restored_sessions
         .into_iter()
         .next()
-        .map(|session| session.id))
+        .map(|session| session.session_id))
 }
 
 pub fn restore_session_from_zip(zip_path: &Path, dest_dir: &Path) -> Result<Option<SessionConfig>> {
@@ -137,7 +137,10 @@ pub fn restore_session_from_zip(zip_path: &Path, dest_dir: &Path) -> Result<Opti
 
     let session = find_restored_session_config(&config_paths)?;
     if let Some(session) = &session {
-        println!("✅ Example session extracted successfully: {}", session.id);
+        println!(
+            "✅ Example session extracted successfully: {}",
+            session.session_id
+        );
     } else {
         println!(
             "⚠️ Example zip did not contain a restorable config.json: {}",

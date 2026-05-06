@@ -83,8 +83,8 @@ impl Clusterer {
 
         state.update_status(|s| {
             s.process_status = crate::config::ProcessStatus::Clustered;
-            s.cluster_count = n_clusters;
-            s.sample_count = n_samples;
+            s.clusters_amount = n_clusters;
+            s.samples_amount = n_samples;
         })?;
 
         Ok(())

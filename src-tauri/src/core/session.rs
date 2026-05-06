@@ -38,7 +38,9 @@ impl AppState {
         let session = guard
             .as_ref()
             .ok_or_else(|| crate::error::AppError::Processing("No active session".into()))?;
-        let path = Self::get_base_dir()?.join("Generated").join(&session.id);
+        let path = Self::get_base_dir()?
+            .join("Generated")
+            .join(&session.session_id);
         if !path.exists() {
             std::fs::create_dir_all(&path).map_err(|e| {
                 crate::error::AppError::Io(format!(
@@ -61,7 +63,7 @@ impl AppState {
         let session = SessionConfig {
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             modified_app_version: env!("CARGO_PKG_VERSION").to_string(),
-            id: id.clone(),
+            session_id: id.clone(),
             preview_text: text,
             created_at: chrono::Utc::now(),
             modified_at: chrono::Utc::now(),
@@ -159,7 +161,9 @@ impl AppState {
     }
 
     fn save_session(&self, session: &SessionConfig) -> Result<()> {
-        let session_dir = Self::get_base_dir()?.join("Generated").join(&session.id);
+        let session_dir = Self::get_base_dir()?
+            .join("Generated")
+            .join(&session.session_id);
         let config_path = session_dir.join("config.json");
         fs::write(&config_path, serde_json::to_string_pretty(session)?).map_err(|e| {
             crate::error::AppError::Io(format!(
