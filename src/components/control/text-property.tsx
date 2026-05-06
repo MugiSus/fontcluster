@@ -7,13 +7,13 @@ import {
   type TextFieldInputProps,
 } from '../ui/text-field';
 
-type ControlPropertyProps = {
+type TextPropertyProps = {
   label: string;
   children?: JSX.Element;
 } & JSX.InputHTMLAttributes<HTMLInputElement> &
   TextFieldInputProps<'input'>;
 
-export function ControlProperty(props: ControlPropertyProps) {
+export function TextProperty(props: TextPropertyProps) {
   const [local, inputProps] = splitProps(props, ['label', 'class', 'children']);
 
   return (

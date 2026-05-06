@@ -18,8 +18,9 @@ import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../../store';
 import { runProcessingJobs, stopJobs, setSelectedWeights } from '../../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { ControlProperty } from './property';
+import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
+import { TextProperty } from './text-property';
 
 export function ControlContent() {
   const selectedFontSet = () =>
@@ -132,7 +133,7 @@ export function ControlContent() {
           class='group/section space-y-1.5'
           contentClass='grid grid-cols-1 gap-2'
         >
-          <ControlProperty label='source' class='mr-1 gap-0.5'>
+          <TextProperty label='source' class='mr-1 gap-0.5'>
             <select
               class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
               value={
@@ -167,7 +168,7 @@ export function ControlContent() {
               </option>
               <option value='google_fonts_all'>All Google Fonts</option>
             </select>
-          </ControlProperty>
+          </TextProperty>
         </ControlPropertySection>
 
         <ControlPropertySection
@@ -175,13 +176,14 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('discovered')}
         >
-          <ControlProperty
+          <NumberProperty
             label='font size'
-            type='number'
             name='image-font-size'
-            value={appState.session.config?.algorithm?.image?.font_size ?? 128}
-            step='1'
-            min='1'
+            defaultValue={
+              appState.session.config?.algorithm?.image?.font_size ?? 128
+            }
+            step={1}
+            minValue={1}
           />
         </ControlPropertySection>
 
@@ -190,7 +192,7 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('generated')}
         >
-          <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
+          <div class='h-8 px-2 text-xs font-medium text-muted-foreground'>
             RepVit M1.0 on ONNX Runtime
           </div>
         </ControlPropertySection>
@@ -200,8 +202,8 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
         >
-          <div class='px-2 py-1.5 text-xs font-medium text-muted-foreground'>
-            Principal Component Analysis
+          <div class='h-8 px-2 text-xs font-medium text-muted-foreground'>
+            PCA
           </div>
         </ControlPropertySection>
 
@@ -210,27 +212,28 @@ export function ControlContent() {
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('compressed')}
         >
-          <ControlProperty
+          <div class='h-8 px-2 text-xs font-medium text-muted-foreground'>
+            Agglomerative Clustering
+          </div>
+          <NumberProperty
             label='distance threshold'
-            type='number'
             name='agglomerative-distance-threshold'
-            value={
+            defaultValue={
               appState.session.config?.algorithm?.agglomerative
                 ?.distance_threshold ?? 0.4
             }
-            step='0.01'
-            min='0'
+            step={0.01}
+            minValue={0}
           />
-          <ControlProperty
+          <NumberProperty
             label='target clusters'
-            type='number'
             name='agglomerative-target-cluster-count'
-            value={
+            defaultValue={
               appState.session.config?.algorithm?.agglomerative
                 ?.target_cluster_count ?? 0
             }
-            step='1'
-            min='0'
+            step={1}
+            minValue={0}
           />
         </ControlPropertySection>
       </div>
