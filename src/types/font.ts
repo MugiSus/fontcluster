@@ -15,9 +15,9 @@ export const WEIGHT_LABELS: Record<
   900: { short: 'Bl', full: 'Black' },
 };
 
-export interface HdbscanOptions {
-  min_cluster_size: number;
-  min_samples: number;
+export interface AgglomerativeOptions {
+  distance_threshold: number;
+  target_cluster_count: number;
 }
 
 export interface ImageOptions {
@@ -41,7 +41,7 @@ export interface DiscoveryOptions {
 export interface AlgorithmConfig {
   discovery: DiscoveryOptions | null;
   image: ImageOptions | null;
-  hdbscan: HdbscanOptions | null;
+  agglomerative: AgglomerativeOptions | null;
 }
 
 export type ProcessStatus =
@@ -73,9 +73,9 @@ export interface CompressionData {
 }
 
 export interface ClusteringData {
-  k: number; // Cluster assignment from HDBSCAN
-  outlier_score?: number; // Outlier score from HDBSCAN
-  is_outlier: boolean; // Outlier flag returned by HDBSCAN
+  k: number;
+  outlier_score?: number;
+  is_outlier: boolean;
 }
 
 export interface ComputedData {

@@ -27,7 +27,7 @@ pub struct SessionConfig {
 pub struct AlgorithmConfig {
     pub discovery: Option<DiscoveryConfig>,
     pub image: Option<ImageConfig>,
-    pub hdbscan: Option<HdbscanConfig>,
+    pub agglomerative: Option<AgglomerativeConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -57,16 +57,16 @@ impl Default for FontSet {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct HdbscanConfig {
-    pub min_cluster_size: usize,
-    pub min_samples: usize,
+pub struct AgglomerativeConfig {
+    pub distance_threshold: f32,
+    pub target_cluster_count: usize,
 }
 
-impl Default for HdbscanConfig {
+impl Default for AgglomerativeConfig {
     fn default() -> Self {
         Self {
-            min_cluster_size: 12,
-            min_samples: 12,
+            distance_threshold: 0.4,
+            target_cluster_count: 0,
         }
     }
 }

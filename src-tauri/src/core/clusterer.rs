@@ -19,10 +19,10 @@ impl Clusterer {
             guard
                 .as_ref()
                 .and_then(|s| s.algorithm.as_ref())
-                .and_then(|a| a.hdbscan.clone())
+                .and_then(|a| a.agglomerative.clone())
                 .unwrap_or_default()
         };
-        let engine = ClusteringEngine::from_hdbscan(config);
+        let engine = ClusteringEngine::from_agglomerative(config);
         let session_dir_for_first = session_dir.clone();
 
         let (points, ids) =
@@ -71,7 +71,7 @@ impl Clusterer {
                 let mut computed = load_computed_data(&session_dir_for_second, id)?;
                 computed.clustering = Some(ClusteringData {
                     k: clustering.labels[i],
-                    outlier_score: clustering.outlier_scores.get(i).copied(),
+                    outlier_score: clustering.outlier_scores.get(i).copied().flatten(),
                     is_outlier: clustering.is_outlier.get(i).copied().unwrap_or(false),
                 });
                 save_computed_data(&session_dir_for_second, id, &computed)?;

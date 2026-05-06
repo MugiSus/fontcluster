@@ -78,7 +78,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   algorithm: {
     discovery: { font_set: 'google_fonts_popular300' },
     image: { font_size: 128 },
-    hdbscan: { min_cluster_size: 12, min_samples: 12 },
+    agglomerative: { distance_threshold: 0.4, target_cluster_count: 0 },
   },
 };
 

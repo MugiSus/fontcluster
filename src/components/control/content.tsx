@@ -67,9 +67,13 @@ export function ControlContent() {
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
-      hdbscan: {
-        min_cluster_size: Number(formData.get('hdbscan-min-cluster-size')),
-        min_samples: Number(formData.get('hdbscan-min-samples')),
+      agglomerative: {
+        distance_threshold: Number(
+          formData.get('agglomerative-distance-threshold'),
+        ),
+        target_cluster_count: Number(
+          formData.get('agglomerative-target-cluster-count'),
+        ),
       },
     };
 
@@ -207,22 +211,23 @@ export function ControlContent() {
           onStepRun={() => handleRun('compressed')}
         >
           <ControlProperty
-            label='min cluster size'
+            label='distance threshold'
             type='number'
-            name='hdbscan-min-cluster-size'
+            name='agglomerative-distance-threshold'
             value={
-              appState.session.config?.algorithm?.hdbscan?.min_cluster_size ??
-              12
+              appState.session.config?.algorithm?.agglomerative
+                ?.distance_threshold ?? 0.4
             }
-            step='1'
+            step='0.01'
             min='0'
           />
           <ControlProperty
-            label='min samples'
+            label='target clusters'
             type='number'
-            name='hdbscan-min-samples'
+            name='agglomerative-target-cluster-count'
             value={
-              appState.session.config?.algorithm?.hdbscan?.min_samples ?? 12
+              appState.session.config?.algorithm?.agglomerative
+                ?.target_cluster_count ?? 0
             }
             step='1'
             min='0'
