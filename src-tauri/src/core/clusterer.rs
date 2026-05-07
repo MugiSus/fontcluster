@@ -1,6 +1,6 @@
 use crate::config::ClusteringData;
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
-use crate::core::{AppState, ClusteringEngine};
+use crate::core::{AppState, ClusteringEngine, EmbeddingEngine};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
 use std::fs;
@@ -22,12 +22,13 @@ impl Clusterer {
                 .and_then(|a| a.agglomerative.clone())
                 .unwrap_or_default()
         };
+        let preprocessing_dimensions = config.preprocessing_dimensions;
         let engine = ClusteringEngine::from_agglomerative(config);
         let session_dir_for_first = session_dir.clone();
 
         let (points, ids) =
             tokio::task::spawn_blocking(move || -> Result<(Array2<f32>, Vec<String>)> {
-                let mut points = Vec::new();
+                let mut vectors = Vec::new();
                 let mut ids = Vec::new();
 
                 let mut entries: Vec<_> = fs::read_dir(session_dir_for_first.join("samples"))?
@@ -38,21 +39,36 @@ impl Clusterer {
                 for entry in entries {
                     let path = entry.path();
                     if path.is_dir() {
-                        if let Ok(meta) = load_font_metadata(
-                            &session_dir_for_first,
-                            path.file_name().unwrap().to_str().unwrap(),
-                        ) {
-                            if let Ok(computed) =
-                                load_computed_data(&session_dir_for_first, &meta.safe_name)
-                            {
-                                points.extend_from_slice(&computed.compression.position);
-                                ids.push(meta.safe_name);
-                            }
+                        let bin_path = path.join("vector.bin");
+                        if bin_path.exists() {
+                            let bytes = fs::read(&bin_path)?;
+                            let floats: Vec<f32> = bytemuck::cast_slice(&bytes).to_vec();
+                            vectors.push(floats);
+                            ids.push(path.file_name().unwrap().to_str().unwrap().to_string());
                         }
                     }
                 }
-                let points = Array2::from_shape_vec((ids.len(), 2), points)
-                    .map_err(|e| AppError::Processing(e.to_string()))?;
+
+                if vectors.is_empty() {
+                    return Ok((Array2::zeros((0, 0)), ids));
+                }
+
+                let n_samples = vectors.len();
+                let n_features = vectors[0].len();
+                let data = Array2::from_shape_vec(
+                    (n_samples, n_features),
+                    vectors.into_iter().flatten().collect(),
+                )
+                .map_err(|e| AppError::Processing(e.to_string()))?;
+
+                let points = if n_samples < 2 || n_features <= preprocessing_dimensions {
+                    data
+                } else {
+                    EmbeddingEngine::pca(preprocessing_dimensions)
+                        .embed(data)
+                        .map_err(|e| AppError::Processing(e.to_string()))?
+                };
+
                 Ok((points, ids))
             })
             .await
@@ -66,20 +82,26 @@ impl Clusterer {
         let clustering = engine.cluster(points)?;
 
         let session_dir_for_second = session_dir.clone();
-        let n_clusters = tokio::task::spawn_blocking(move || -> Result<usize> {
-            for (i, id) in ids.iter().enumerate() {
-                let mut computed = load_computed_data(&session_dir_for_second, id)?;
-                computed.clustering = Some(ClusteringData {
-                    k: clustering.labels[i],
-                    outlier_score: clustering.outlier_scores.get(i).copied().flatten(),
-                    is_outlier: clustering.is_outlier.get(i).copied().unwrap_or(false),
-                });
-                save_computed_data(&session_dir_for_second, id, &computed)?;
-            }
-            Ok(clustering.cluster_count)
-        })
-        .await
-        .map_err(|e| AppError::Processing(e.to_string()))??;
+        let n_clusters =
+            tokio::task::spawn_blocking(move || -> Result<usize> {
+                for (i, id) in ids.iter().enumerate() {
+                    let meta = load_font_metadata(&session_dir_for_second, id)?;
+                    let mut computed = load_computed_data(&session_dir_for_second, id)
+                        .unwrap_or_else(|_| crate::config::ComputedData {
+                            positioning: None,
+                            clustering: None,
+                        });
+                    computed.clustering = Some(ClusteringData {
+                        k: clustering.labels[i],
+                        outlier_score: clustering.outlier_scores.get(i).copied().flatten(),
+                        is_outlier: clustering.is_outlier.get(i).copied().unwrap_or(false),
+                    });
+                    save_computed_data(&session_dir_for_second, &meta.safe_name, &computed)?;
+                }
+                Ok(clustering.cluster_count)
+            })
+            .await
+            .map_err(|e| AppError::Processing(e.to_string()))??;
 
         state.update_status(|s| {
             s.process_status = crate::config::ProcessStatus::Clustered;

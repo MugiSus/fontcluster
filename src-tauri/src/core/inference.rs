@@ -6,22 +6,22 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 
 pub enum EmbeddingEngine {
-    Pca,
+    Pca { dimensions: usize },
 }
 
 impl EmbeddingEngine {
-    pub fn pca() -> Self {
-        Self::Pca
+    pub fn pca(dimensions: usize) -> Self {
+        Self::Pca { dimensions }
     }
 
     pub fn embed(&self, data: Array2<f32>) -> Result<Array2<f32>> {
         match self {
-            Self::Pca => pca_embedding(data),
+            Self::Pca { dimensions } => pca_embedding(data, *dimensions),
         }
     }
 }
 
-fn pca_embedding(data: Array2<f32>) -> Result<Array2<f32>> {
+fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
     let (n_samples, n_features) = data.dim();
     if n_samples < 2 {
         return Err(AppError::Processing(
@@ -34,7 +34,9 @@ fn pca_embedding(data: Array2<f32>) -> Result<Array2<f32>> {
         ));
     }
 
-    PcaBuilder::new(2)
+    let dimensions = dimensions.clamp(1, n_samples.min(n_features));
+
+    PcaBuilder::new(dimensions)
         .build()
         .fit_transform(&data)
         .map_err(|e| AppError::Processing(e.to_string()))
@@ -255,9 +257,16 @@ fn normalize_points(points: &Array2<f32>) -> Array2<f32> {
 }
 
 fn point_distance(points: &Array2<f32>, left: usize, right: usize) -> f32 {
-    let dx = points[[left, 0]] - points[[right, 0]];
-    let dy = points[[left, 1]] - points[[right, 1]];
-    dx.hypot(dy)
+    points
+        .row(left)
+        .iter()
+        .zip(points.row(right).iter())
+        .map(|(left, right)| {
+            let delta = left - right;
+            delta * delta
+        })
+        .sum::<f32>()
+        .sqrt()
 }
 
 fn should_continue_merging(

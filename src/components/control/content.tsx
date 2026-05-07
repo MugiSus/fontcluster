@@ -40,7 +40,7 @@ export function ControlContent() {
     if (!form) return;
 
     const isRerun = targetStatus !== undefined;
-    const isFinished = appState.session.status === 'clustered';
+    const isFinished = appState.session.status === 'positioned';
     const shouldStartNewSession =
       !isRerun && (isFinished || !appState.session.id);
 
@@ -69,6 +69,9 @@ export function ControlContent() {
         font_size: Number(formData.get('image-font-size')),
       },
       agglomerative: {
+        preprocessing_dimensions: Number(
+          formData.get('agglomerative-preprocessing-dimensions'),
+        ),
         distance_threshold: Number(
           formData.get('agglomerative-distance-threshold'),
         ),
@@ -198,23 +201,24 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='compress'
+          title='classify'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
         >
           <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-            PCA
-          </div>
-        </ControlPropertySection>
-
-        <ControlPropertySection
-          title='classify'
-          disabled={appState.session.isProcessing}
-          onStepRun={() => handleRun('compressed')}
-        >
-          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
             Agglomerative Clustering
           </div>
+          <NumberProperty
+            label='PCA dimensions'
+            name='agglomerative-preprocessing-dimensions'
+            defaultValue={
+              appState.session.config?.algorithm?.agglomerative
+                ?.preprocessing_dimensions ?? 64
+            }
+            step={1}
+            minValue={1}
+            maxValue={384}
+          />
           <NumberProperty
             label='distance threshold'
             name='agglomerative-distance-threshold'
@@ -236,6 +240,16 @@ export function ControlContent() {
             minValue={0}
           />
         </ControlPropertySection>
+
+        <ControlPropertySection
+          title='positioning'
+          disabled={appState.session.isProcessing}
+          onStepRun={() => handleRun('clustered')}
+        >
+          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
+            PCA
+          </div>
+        </ControlPropertySection>
       </div>
 
       <div class='flex flex-col gap-1 border-t p-4'>
@@ -251,7 +265,7 @@ export function ControlContent() {
             >
               {appState.session.isProcessing
                 ? 'Processing...'
-                : appState.session.status === 'clustered'
+                : appState.session.status === 'positioned'
                   ? 'Run'
                   : 'Continue'}
               <Show
@@ -262,7 +276,7 @@ export function ControlContent() {
               </Show>
             </TooltipTrigger>
             <TooltipContent>
-              {appState.session.status === 'clustered'
+              {appState.session.status === 'positioned'
                 ? 'Create new and run'
                 : 'Continue'}
             </TooltipContent>
@@ -309,8 +323,8 @@ export function ControlContent() {
                     appState.session.status === 'discovered' ||
                     appState.session.status === 'generated' ||
                     appState.session.status === 'vectorized' ||
-                    appState.session.status === 'compressed' ||
-                    appState.session.status === 'clustered') &&
+                    appState.session.status === 'clustered' ||
+                    appState.session.status === 'positioned') &&
                     'w-full',
                 )}
               />
@@ -337,8 +351,8 @@ export function ControlContent() {
                 (appState.session.status === 'discovered' ||
                   appState.session.status === 'generated' ||
                   appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
+                  appState.session.status === 'clustered' ||
+                  appState.session.status === 'positioned') &&
                   'w-full',
               )}
             />
@@ -361,8 +375,8 @@ export function ControlContent() {
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'generated' ||
                   appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
+                  appState.session.status === 'clustered' ||
+                  appState.session.status === 'positioned') &&
                   'w-full',
               )}
             />
@@ -384,8 +398,8 @@ export function ControlContent() {
                   appState.session.status === 'generated' &&
                   'w-[var(--progress)] animate-pulse',
                 (appState.session.status === 'vectorized' ||
-                  appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
+                  appState.session.status === 'clustered' ||
+                  appState.session.status === 'positioned') &&
                   'w-full',
               )}
             />
@@ -394,8 +408,8 @@ export function ControlContent() {
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-primary',
-                (appState.session.status === 'compressed' ||
-                  appState.session.status === 'clustered') &&
+                (appState.session.status === 'clustered' ||
+                  appState.session.status === 'positioned') &&
                   'w-full',
                 appState.session.isProcessing &&
                   appState.session.status === 'vectorized' &&
@@ -407,9 +421,9 @@ export function ControlContent() {
             <div
               class={cn(
                 'h-full w-0 rounded-full bg-primary',
-                appState.session.status === 'clustered' && 'w-full',
+                appState.session.status === 'positioned' && 'w-full',
                 appState.session.isProcessing &&
-                  appState.session.status === 'compressed' &&
+                  appState.session.status === 'clustered' &&
                   'w-full animate-pulse transition-[width] duration-1000',
               )}
             />
@@ -436,9 +450,9 @@ export function ControlContent() {
                     : appState.session.status === 'generated'
                       ? 'Analyzing Glyphs...'
                       : appState.session.status === 'vectorized'
-                        ? 'Plotting Points...'
-                        : appState.session.status === 'compressed'
-                          ? 'Painting Points...'
+                        ? 'Classifying Fonts...'
+                        : appState.session.status === 'clustered'
+                          ? 'Positioning Points...'
                           : ''}
           </span>
           <Show

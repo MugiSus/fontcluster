@@ -58,6 +58,7 @@ impl Default for FontSet {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AgglomerativeConfig {
+    pub preprocessing_dimensions: usize,
     pub distance_threshold: f32,
     pub target_cluster_count: usize,
 }
@@ -65,6 +66,7 @@ pub struct AgglomerativeConfig {
 impl Default for AgglomerativeConfig {
     fn default() -> Self {
         Self {
+            preprocessing_dimensions: 64,
             distance_threshold: 0.4,
             target_cluster_count: 0,
         }
@@ -94,8 +96,8 @@ pub enum ProcessStatus {
     Discovered,
     Generated,
     Vectorized,
-    Compressed,
     Clustered,
+    Positioned,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -108,13 +110,14 @@ pub struct ProcessingStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedData {
-    pub compression: CompressionData,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub positioning: Option<PositioningData>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clustering: Option<ClusteringData>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CompressionData {
+pub struct PositioningData {
     pub position: [f32; 2],
 }
 

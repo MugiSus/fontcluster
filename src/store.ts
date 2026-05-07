@@ -78,7 +78,11 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   algorithm: {
     discovery: { font_set: 'google_fonts_popular300' },
     image: { font_size: 224 },
-    agglomerative: { distance_threshold: 0.4, target_cluster_count: 0 },
+    agglomerative: {
+      preprocessing_dimensions: 64,
+      distance_threshold: 0.4,
+      target_cluster_count: 0,
+    },
   },
 };
 

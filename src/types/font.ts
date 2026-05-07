@@ -16,6 +16,7 @@ export const WEIGHT_LABELS: Record<
 };
 
 export interface AgglomerativeOptions {
+  preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
 }
@@ -50,8 +51,8 @@ export type ProcessStatus =
   | 'discovered'
   | 'generated'
   | 'vectorized'
-  | 'compressed'
-  | 'clustered';
+  | 'clustered'
+  | 'positioned';
 
 export interface SessionConfig {
   session_id: string;
@@ -68,7 +69,7 @@ export interface SessionConfig {
   algorithm?: AlgorithmConfig;
 }
 
-export interface CompressionData {
+export interface PositioningData {
   position: number[]; // [x, y] 2D coordinates from PCA
 }
 
@@ -79,7 +80,7 @@ export interface ClusteringData {
 }
 
 export interface ComputedData {
-  compression: CompressionData;
+  positioning?: PositioningData | null;
   clustering?: ClusteringData | null;
 }
 

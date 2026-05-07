@@ -1,16 +1,18 @@
-use crate::config::{CompressionData, ComputedData};
+use crate::config::{ComputedData, PositioningData};
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
 use crate::core::{AppState, EmbeddingEngine};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
 use std::fs;
 
-pub struct Compressor;
+const POSITIONING_DIMENSIONS: usize = 2;
 
-impl Compressor {
-    pub async fn compress_all(state: &AppState) -> Result<()> {
+pub struct Positioner;
+
+impl Positioner {
+    pub async fn position_all(state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
-        let engine = EmbeddingEngine::pca();
+        let engine = EmbeddingEngine::pca(POSITIONING_DIMENSIONS);
         let session_dir = session_dir.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
@@ -36,7 +38,7 @@ impl Compressor {
             }
 
             if vectors.is_empty() {
-                return Err(AppError::Processing("No vectors to compress".into()));
+                return Err(AppError::Processing("No vectors to position".into()));
             }
 
             let n_samples = vectors.len();
@@ -47,19 +49,22 @@ impl Compressor {
             )
             .map_err(|e| AppError::Processing(e.to_string()))?;
 
-            let embedding = engine.embed(data)?;
+            let embedding = if n_samples < 2 || n_features < 2 {
+                Array2::zeros((n_samples, POSITIONING_DIMENSIONS))
+            } else {
+                engine.embed(data)?
+            };
 
             for (i, id) in font_ids.iter().enumerate() {
                 let meta = load_font_metadata(&session_dir, id)?;
-                let clustering = load_computed_data(&session_dir, id)
-                    .ok()
-                    .and_then(|computed| computed.clustering);
-                let computed = ComputedData {
-                    compression: CompressionData {
-                        position: [embedding[[i, 0]], embedding[[i, 1]]],
-                    },
-                    clustering,
-                };
+                let mut computed =
+                    load_computed_data(&session_dir, id).unwrap_or_else(|_| ComputedData {
+                        positioning: None,
+                        clustering: None,
+                    });
+                computed.positioning = Some(PositioningData {
+                    position: [embedding[[i, 0]], embedding[[i, 1]]],
+                });
                 save_computed_data(&session_dir, &meta.safe_name, &computed)?;
             }
 
@@ -68,7 +73,7 @@ impl Compressor {
         .await
         .map_err(|e| AppError::Processing(e.to_string()))??;
 
-        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Compressed)?;
+        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Positioned)?;
         Ok(())
     }
 }

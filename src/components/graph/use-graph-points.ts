@@ -30,7 +30,7 @@ interface UseGraphPointsProps {
 
 function getVectorBounds() {
   const fontItems = Object.values(appState.fonts.data).filter(
-    (item) => item.computed?.compression.position,
+    (item) => item.computed?.positioning?.position,
   );
 
   if (fontItems.length === 0) {
@@ -43,8 +43,8 @@ function getVectorBounds() {
   let maxY = -Infinity;
 
   for (const item of fontItems) {
-    const x = item.computed!.compression.position[0] ?? 0;
-    const y = item.computed!.compression.position[1] ?? 0;
+    const x = item.computed!.positioning!.position[0] ?? 0;
+    const y = item.computed!.positioning!.position[1] ?? 0;
     minX = Math.min(minX, x);
     maxX = Math.max(maxX, x);
     minY = Math.min(minY, y);
@@ -68,10 +68,10 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     const rangeY = maxY - minY || 1;
 
     return fontItems
-      .filter((item) => item.computed?.compression.position)
+      .filter((item) => item.computed?.positioning?.position)
       .map((item) => {
-        const vx = item.computed!.compression.position[0] ?? 0;
-        const vy = item.computed!.compression.position[1] ?? 0;
+        const vx = item.computed!.positioning!.position[0] ?? 0;
+        const vy = item.computed!.positioning!.position[1] ?? 0;
         const x = ((vx - minX) / rangeX) * GRAPH_SIZE;
         const y = ((vy - minY) / rangeY) * GRAPH_SIZE;
 

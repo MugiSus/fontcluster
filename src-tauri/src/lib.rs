@@ -116,7 +116,7 @@ pub fn run() {
             crate::commands::delete_session,
             crate::commands::run_jobs,
             crate::commands::stop_jobs,
-            crate::commands::get_compressed_vectors,
+            crate::commands::get_font_items,
             crate::commands::get_system_fonts,
         ])
         .run(tauri::generate_context!())

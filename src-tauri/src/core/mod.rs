@@ -1,19 +1,19 @@
 pub mod clusterer;
-pub mod compressor;
 pub mod discoverer;
 pub mod example;
 pub mod google_fonts_downloader;
 pub mod image_generator;
 pub mod inference;
+pub mod positioner;
 pub mod session;
 pub mod vectorizer;
 
 pub use clusterer::*;
-pub use compressor::*;
 pub use discoverer::*;
 pub use example::*;
 pub use google_fonts_downloader::*;
 pub use image_generator::*;
 pub use inference::*;
+pub use positioner::*;
 pub use session::*;
 pub use vectorizer::*;

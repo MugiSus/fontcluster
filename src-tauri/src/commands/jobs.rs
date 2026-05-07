@@ -1,6 +1,6 @@
 use crate::config::{AlgorithmConfig, ProcessStatus};
 use crate::core::{
-    AppState, Clusterer, Compressor, Discoverer, GoogleFontsDownloader, ImageGenerator, Vectorizer,
+    AppState, Clusterer, Discoverer, GoogleFontsDownloader, ImageGenerator, Positioner, Vectorizer,
 };
 use crate::error::Result;
 use std::sync::atomic::Ordering;
@@ -109,7 +109,7 @@ pub async fn run_jobs(
         app.emit("vectorization_complete", id.clone())?;
     }
 
-    // Step 4: Compression
+    // Step 4: Clustering
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
@@ -118,29 +118,29 @@ pub async fn run_jobs(
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        println!("📦 Starting compression...");
-        app.emit("compression_start", ())?;
-        Compressor::compress_all(&state).await?;
+        println!("✨ Starting clustering...");
+        app.emit("clustering_start", ())?;
+        Clusterer::cluster_all(&state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        app.emit("compression_complete", id.clone())?;
+        app.emit("clustering_complete", id.clone())?;
     }
 
-    // Step 5: Clustering
+    // Step 5: Positioning
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-    if status == ProcessStatus::Compressed {
+    if status == ProcessStatus::Clustered {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        println!("✨ Starting clustering...");
-        app.emit("clustering_start", ())?;
-        Clusterer::cluster_all(&state).await?;
-        app.emit("clustering_complete", id.clone())?;
+        println!("📍 Starting positioning...");
+        app.emit("positioning_start", ())?;
+        Positioner::position_all(&state).await?;
+        app.emit("positioning_complete", id.clone())?;
     }
 
     if state.is_cancelled.load(Ordering::Relaxed) {

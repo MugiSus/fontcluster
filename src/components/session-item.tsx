@@ -27,7 +27,7 @@ const CLUSTER_COLORS = [
 export type ProcessStatusBadge = {
   text:
     | 'Complete'
-    | 'Compressed'
+    | 'Clustered'
     | 'Vectorized'
     | 'Generated'
     | 'Downloaded'
@@ -40,10 +40,10 @@ export const getProcessStatusBadge = (
   status: ProcessStatus,
 ): ProcessStatusBadge => {
   switch (status) {
-    case 'clustered':
+    case 'positioned':
       return { text: 'Complete', variant: 'default' };
-    case 'compressed':
-      return { text: 'Compressed', variant: 'outline' };
+    case 'clustered':
+      return { text: 'Clustered', variant: 'outline' };
     case 'vectorized':
       return { text: 'Vectorized', variant: 'outline' };
     case 'generated':

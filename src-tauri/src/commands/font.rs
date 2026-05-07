@@ -5,10 +5,7 @@ use tauri::{command, State};
 
 #[command]
 #[allow(non_snake_case)]
-pub async fn get_compressed_vectors(
-    sessionId: String,
-    _state: State<'_, AppState>,
-) -> Result<String> {
+pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
     let session_dir = AppState::get_base_dir()?.join("Generated").join(sessionId);
     let samples_dir = session_dir.join("samples");
     let mut map = std::collections::HashMap::new();

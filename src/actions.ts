@@ -61,7 +61,7 @@ export const {
     async (sessionId): Promise<FontItemRecord> => {
       if (!sessionId) return {};
       try {
-        const response = await invoke<string>('get_compressed_vectors', {
+        const response = await invoke<string>('get_font_items', {
           sessionId,
         });
         if (!response) {
@@ -145,7 +145,7 @@ export const runProcessingJobs = async (
     });
     console.log('Complete pipeline result:', result);
     if (result === 'Success') {
-      toast.success('Clustering completed successfully!');
+      toast.success('Processing completed successfully!');
     }
     await refetchSessionConfig();
     await refetchFontItemRecord();
@@ -222,13 +222,14 @@ export function initAppEvents() {
     setAppState('session', 'status', 'vectorized');
   });
 
-  listen('compression_complete', () => {
-    setAppState('session', 'status', 'compressed');
-  });
-
   listen('clustering_complete', (event: { payload: string }) => {
     console.log('Clustering completed for session:', event.payload);
     setAppState('session', 'status', 'clustered');
+  });
+
+  listen('positioning_complete', (event: { payload: string }) => {
+    console.log('Positioning completed for session:', event.payload);
+    setAppState('session', 'status', 'positioned');
     untrack(() => {
       setCurrentSessionId(event.payload);
     });
