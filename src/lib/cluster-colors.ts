@@ -1,32 +1,32 @@
 const CLUSTER_TEXT_COLORS = [
-  'text-blue-500 dark:text-blue-400',
-  'text-red-500 dark:text-red-400',
-  'text-yellow-500 dark:text-yellow-400',
-  'text-green-500 dark:text-green-400',
-  'text-purple-500 dark:text-purple-400',
-  'text-orange-500 dark:text-orange-400',
-  'text-teal-500 dark:text-teal-400',
-  'text-indigo-500 dark:text-indigo-400',
-  'text-cyan-500 dark:text-cyan-400',
-  'text-fuchsia-500 dark:text-fuchsia-400',
+  'text-blue-500',
+  'text-red-500',
+  'text-yellow-500',
+  'text-green-500',
+  'text-purple-500',
+  'text-orange-500',
+  'text-teal-500',
+  'text-indigo-500',
+  'text-cyan-500',
+  'text-fuchsia-500',
 ];
 
 const CLUSTER_BG_COLORS = [
-  'bg-blue-500 dark:bg-blue-400',
-  'bg-red-500 dark:bg-red-400',
-  'bg-yellow-500 dark:bg-yellow-400',
-  'bg-green-500 dark:bg-green-400',
-  'bg-purple-500 dark:bg-purple-400',
-  'bg-orange-500 dark:bg-orange-400',
-  'bg-teal-500 dark:bg-teal-400',
-  'bg-indigo-500 dark:bg-indigo-400',
-  'bg-cyan-500 dark:bg-cyan-400',
-  'bg-fuchsia-500 dark:bg-fuchsia-400',
+  'bg-blue-500',
+  'bg-red-500',
+  'bg-yellow-500',
+  'bg-green-500',
+  'bg-purple-500',
+  'bg-orange-500',
+  'bg-teal-500',
+  'bg-indigo-500',
+  'bg-cyan-500',
+  'bg-fuchsia-500',
 ];
 
 export function getClusterTextColor(clusterId: number | undefined): string {
   if (clusterId === undefined || clusterId === -1) {
-    return 'text-zinc-400';
+    return 'text-zinc-500';
   }
 
   return (

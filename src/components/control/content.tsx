@@ -242,12 +242,12 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='positioning'
+          title='position'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('clustered')}
         >
           <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-            PCA
+            PCA 384D {'->'} 2D
           </div>
         </ControlPropertySection>
       </div>
