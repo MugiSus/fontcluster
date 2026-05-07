@@ -32,35 +32,29 @@ export function GraphPoint(props: GraphPointProps) {
       transform={`translate(${props.x}, ${props.y}) scale(${props.zoomFactor})`}
       class={getClusterTextColor(props.clusterId)}
     >
-      <rect
-        x={-1.5}
-        y={-1.5}
-        width={3}
-        height={3}
-        transform={`rotate(45) scale(${props.isSelected ? 3 : props.isFamilySelected ? 2 : 1})`}
-        class='pointer-events-none fill-current'
-      />
-
-      <Show when={props.isSelected}>
-        <line
-          x1={-10}
-          y1={0}
-          x2={10}
-          y2={0}
-          stroke='currentColor'
-          stroke-width={1}
-        />
-        <line
-          x1={0}
-          y1={-15}
-          x2={0}
-          y2={15}
-          stroke='currentColor'
-          stroke-width={1}
+      <Show
+        when={
+          (props.isDisabled ||
+            !props.shouldShowImage ||
+            !props.shouldShowFontName) &&
+          !props.isSelected
+        }
+      >
+        <rect
+          x={props.isFamilySelected ? -3 : -1.5}
+          y={props.isFamilySelected ? -3 : -1.5}
+          width={props.isFamilySelected ? 6 : 3}
+          height={props.isFamilySelected ? 6 : 3}
+          transform='rotate(45)'
+          class='pointer-events-none fill-current'
         />
       </Show>
 
-      <Show when={!props.isSelected && props.isFamilySelected}>
+      <Show
+        when={
+          !props.isSelected && props.isFamilySelected && !props.shouldShowImage
+        }
+      >
         <line
           x1={-8}
           y1={0}
@@ -79,12 +73,33 @@ export function GraphPoint(props: GraphPointProps) {
         />
       </Show>
 
+      <Show when={props.isSelected || props.isFamilySelected}>
+        <circle
+          cx={0}
+          cy={0}
+          r={props.isSelected ? 40 : 24}
+          fill='transparent'
+          stroke='currentColor'
+          stroke-width={1.5}
+          stroke-dasharray='3 3'
+          stroke-dashoffset={0}
+        >
+          <animate
+            attributeName='stroke-dashoffset'
+            from='0'
+            to='-6'
+            dur='2000ms'
+            repeatCount='indefinite'
+          />
+        </circle>
+      </Show>
+
       <Show when={props.isSelected || props.shouldShowImage}>
         <mask id={`mask-${props.safeName}`}>
           <image
             href={imgSrc()}
             x={-64}
-            y={8}
+            y={-13}
             width={128}
             height={26}
             preserveAspectRatio='xMidYMid meet'
@@ -93,22 +108,11 @@ export function GraphPoint(props: GraphPointProps) {
         </mask>
         <rect
           x={-64}
-          y={8}
+          y={-13}
           width={128}
           height={26}
           class='pointer-events-none fill-current'
           mask={`url(#mask-${props.safeName})`}
-        />
-      </Show>
-
-      <Show when={props.isSelected || props.isFamilySelected}>
-        <circle
-          cx={0}
-          cy={0}
-          r={props.isSelected ? 40 : 20}
-          fill='transparent'
-          stroke='currentColor'
-          stroke-width={1.5}
         />
       </Show>
 
@@ -119,16 +123,18 @@ export function GraphPoint(props: GraphPointProps) {
       >
         <text
           x={0}
-          y={-10}
+          y={-18}
           opacity={1}
           class={`pointer-events-none select-none fill-foreground text-xs ${
-            props.isSelected ? 'font-bold' : 'fill-muted-foreground'
+            props.isSelected
+              ? 'font-semibold'
+              : 'fill-muted-foreground font-light'
           }`}
           text-anchor='middle'
         >
-          {props.isSelected || props.fontName.length <= 24
+          {props.isSelected || props.fontName.length <= 20
             ? props.fontName
-            : props.fontName.substring(0, 24) + '…'}
+            : props.fontName.substring(0, 20) + '…'}
         </text>
       </Show>
     </g>
