@@ -128,129 +128,131 @@ export function ControlContent() {
         </TextField>
       </div>
 
-      <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
-        <ControlPropertySection
-          title='discover'
-          disabled={appState.session.isProcessing}
-          onStepRun={() => handleRun('empty')}
-          class='group/section space-y-1.5'
-          contentClass='grid grid-cols-1 gap-2'
-        >
-          <TextProperty label='source' class='mr-1 gap-0.5'>
-            <select
-              class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-              value={
-                appState.session.config?.algorithm?.discovery?.font_set ??
-                'google_fonts_popular300'
+      <Show when={appState.session.config.session_id} keyed>
+        <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
+          <ControlPropertySection
+            title='discover'
+            disabled={appState.session.isProcessing}
+            onStepRun={() => handleRun('empty')}
+            class='group/section space-y-1.5'
+            contentClass='grid grid-cols-1 gap-2'
+          >
+            <TextProperty label='source' class='mr-1 gap-0.5'>
+              <select
+                class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
+                value={
+                  appState.session.config?.algorithm?.discovery?.font_set ??
+                  'google_fonts_popular300'
+                }
+                onChange={(e) =>
+                  setAppState('session', 'config', 'algorithm', 'discovery', {
+                    font_set: e.currentTarget.value as FontSet,
+                  })
+                }
+              >
+                <option value='system_fonts'>Installed Fonts</option>
+                <hr />
+                <option value='google_fonts_popular100'>
+                  Google Fonts top 100
+                </option>
+                <option value='google_fonts_popular200'>
+                  Google Fonts top 200
+                </option>
+                <option value='google_fonts_popular300'>
+                  Google Fonts top 300
+                </option>
+                <option value='google_fonts_popular500'>
+                  Google Fonts top 500
+                </option>
+                <option value='google_fonts_popular1000'>
+                  Google Fonts top 1000
+                </option>
+                <option value='google_fonts_popular1500'>
+                  Google Fonts top 1500
+                </option>
+                <option value='google_fonts_all'>All Google Fonts</option>
+              </select>
+            </TextProperty>
+          </ControlPropertySection>
+
+          <ControlPropertySection
+            title='generate'
+            disabled={appState.session.isProcessing}
+            onStepRun={() => handleRun('discovered')}
+          >
+            <NumberProperty
+              label='font size'
+              name='image-font-size'
+              defaultValue={
+                appState.session.config?.algorithm?.image?.font_size ?? 224
               }
-              onChange={(e) =>
-                setAppState('session', 'config', 'algorithm', 'discovery', {
-                  font_set: e.currentTarget.value as FontSet,
-                })
+              step={1}
+              minValue={1}
+            />
+          </ControlPropertySection>
+
+          <ControlPropertySection
+            title='analyze'
+            disabled={appState.session.isProcessing}
+            onStepRun={() => handleRun('generated')}
+          >
+            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
+              RepVit M1.0 on ONNX Runtime
+            </div>
+          </ControlPropertySection>
+
+          <ControlPropertySection
+            title='clustering'
+            disabled={appState.session.isProcessing}
+            onStepRun={() => handleRun('vectorized')}
+          >
+            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
+              Agglomerative Clustering
+            </div>
+            <NumberProperty
+              label='PCA dimensions'
+              name='clustering-preprocessing-dimensions'
+              defaultValue={
+                appState.session.config?.algorithm?.clustering
+                  ?.preprocessing_dimensions ?? 64
               }
-            >
-              <option value='system_fonts'>Installed Fonts</option>
-              <hr />
-              <option value='google_fonts_popular100'>
-                Google Fonts top 100
-              </option>
-              <option value='google_fonts_popular200'>
-                Google Fonts top 200
-              </option>
-              <option value='google_fonts_popular300'>
-                Google Fonts top 300
-              </option>
-              <option value='google_fonts_popular500'>
-                Google Fonts top 500
-              </option>
-              <option value='google_fonts_popular1000'>
-                Google Fonts top 1000
-              </option>
-              <option value='google_fonts_popular1500'>
-                Google Fonts top 1500
-              </option>
-              <option value='google_fonts_all'>All Google Fonts</option>
-            </select>
-          </TextProperty>
-        </ControlPropertySection>
+              step={1}
+              minValue={1}
+              maxValue={384}
+            />
+            <NumberProperty
+              label='distance threshold'
+              name='clustering-distance-threshold'
+              defaultValue={
+                appState.session.config?.algorithm?.clustering
+                  ?.distance_threshold ?? 0.4
+              }
+              step={0.01}
+              minValue={0}
+            />
+            <NumberProperty
+              label='target clusters'
+              name='clustering-target-cluster-count'
+              defaultValue={
+                appState.session.config?.algorithm?.clustering
+                  ?.target_cluster_count ?? 0
+              }
+              step={1}
+              minValue={0}
+            />
+          </ControlPropertySection>
 
-        <ControlPropertySection
-          title='generate'
-          disabled={appState.session.isProcessing}
-          onStepRun={() => handleRun('discovered')}
-        >
-          <NumberProperty
-            label='font size'
-            name='image-font-size'
-            defaultValue={
-              appState.session.config?.algorithm?.image?.font_size ?? 224
-            }
-            step={1}
-            minValue={1}
-          />
-        </ControlPropertySection>
-
-        <ControlPropertySection
-          title='analyze'
-          disabled={appState.session.isProcessing}
-          onStepRun={() => handleRun('generated')}
-        >
-          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-            RepVit M1.0 on ONNX Runtime
-          </div>
-        </ControlPropertySection>
-
-        <ControlPropertySection
-          title='clustering'
-          disabled={appState.session.isProcessing}
-          onStepRun={() => handleRun('vectorized')}
-        >
-          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-            Agglomerative Clustering
-          </div>
-          <NumberProperty
-            label='PCA dimensions'
-            name='clustering-preprocessing-dimensions'
-            defaultValue={
-              appState.session.config?.algorithm?.clustering
-                ?.preprocessing_dimensions ?? 64
-            }
-            step={1}
-            minValue={1}
-            maxValue={384}
-          />
-          <NumberProperty
-            label='distance threshold'
-            name='clustering-distance-threshold'
-            defaultValue={
-              appState.session.config?.algorithm?.clustering
-                ?.distance_threshold ?? 0.4
-            }
-            step={0.01}
-            minValue={0}
-          />
-          <NumberProperty
-            label='target clusters'
-            name='clustering-target-cluster-count'
-            defaultValue={
-              appState.session.config?.algorithm?.clustering
-                ?.target_cluster_count ?? 0
-            }
-            step={1}
-            minValue={0}
-          />
-        </ControlPropertySection>
-
-        <ControlPropertySection
-          title='position'
-          disabled={appState.session.isProcessing}
-          onStepRun={() => handleRun('clustered')}
-        >
-          <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-            PCA 384D {'->'} 2D
-          </div>
-        </ControlPropertySection>
-      </div>
+          <ControlPropertySection
+            title='position'
+            disabled={appState.session.isProcessing}
+            onStepRun={() => handleRun('clustered')}
+          >
+            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
+              PCA 384D {'->'} 2D
+            </div>
+          </ControlPropertySection>
+        </div>
+      </Show>
 
       <div class='flex flex-col gap-1 border-t p-4'>
         <div class='mb-1 flex items-center gap-1'>
