@@ -1,4 +1,4 @@
-use crate::config::AgglomerativeConfig;
+use crate::config::ClusteringConfig;
 use crate::error::{AppError, Result};
 use ndarray::Array2;
 use petal_decomposition::PcaBuilder;
@@ -50,11 +50,11 @@ pub struct ClusteringResult {
 }
 
 pub enum ClusteringEngine {
-    Agglomerative(AgglomerativeConfig),
+    Agglomerative(ClusteringConfig),
 }
 
 impl ClusteringEngine {
-    pub fn from_agglomerative(config: AgglomerativeConfig) -> Self {
+    pub fn from_agglomerative(config: ClusteringConfig) -> Self {
         Self::Agglomerative(config)
     }
 
@@ -113,7 +113,7 @@ impl Ord for QueueItem {
 
 fn agglomerative_clustering(
     points: Array2<f32>,
-    config: &AgglomerativeConfig,
+    config: &ClusteringConfig,
 ) -> Result<ClusteringResult> {
     let n = points.nrows();
     if n == 0 {

@@ -27,7 +27,7 @@ pub struct SessionConfig {
 pub struct AlgorithmConfig {
     pub discovery: Option<DiscoveryConfig>,
     pub image: Option<ImageConfig>,
-    pub agglomerative: Option<AgglomerativeConfig>,
+    pub clustering: Option<ClusteringConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -57,13 +57,13 @@ impl Default for FontSet {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct AgglomerativeConfig {
+pub struct ClusteringConfig {
     pub preprocessing_dimensions: usize,
     pub distance_threshold: f32,
     pub target_cluster_count: usize,
 }
 
-impl Default for AgglomerativeConfig {
+impl Default for ClusteringConfig {
     fn default() -> Self {
         Self {
             preprocessing_dimensions: 64,

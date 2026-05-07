@@ -15,7 +15,7 @@ export const WEIGHT_LABELS: Record<
   900: { short: 'Bl', full: 'Black' },
 };
 
-export interface AgglomerativeOptions {
+export interface ClusteringOptions {
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
@@ -42,7 +42,7 @@ export interface DiscoveryOptions {
 export interface AlgorithmConfig {
   discovery: DiscoveryOptions | null;
   image: ImageOptions | null;
-  agglomerative: AgglomerativeOptions | null;
+  clustering: ClusteringOptions | null;
 }
 
 export type ProcessStatus =

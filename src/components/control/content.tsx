@@ -68,15 +68,15 @@ export function ControlContent() {
       image: {
         font_size: Number(formData.get('image-font-size')),
       },
-      agglomerative: {
+      clustering: {
         preprocessing_dimensions: Number(
-          formData.get('agglomerative-preprocessing-dimensions'),
+          formData.get('clustering-preprocessing-dimensions'),
         ),
         distance_threshold: Number(
-          formData.get('agglomerative-distance-threshold'),
+          formData.get('clustering-distance-threshold'),
         ),
         target_cluster_count: Number(
-          formData.get('agglomerative-target-cluster-count'),
+          formData.get('clustering-target-cluster-count'),
         ),
       },
     };
@@ -201,7 +201,7 @@ export function ControlContent() {
         </ControlPropertySection>
 
         <ControlPropertySection
-          title='classify'
+          title='clustering'
           disabled={appState.session.isProcessing}
           onStepRun={() => handleRun('vectorized')}
         >
@@ -210,9 +210,9 @@ export function ControlContent() {
           </div>
           <NumberProperty
             label='PCA dimensions'
-            name='agglomerative-preprocessing-dimensions'
+            name='clustering-preprocessing-dimensions'
             defaultValue={
-              appState.session.config?.algorithm?.agglomerative
+              appState.session.config?.algorithm?.clustering
                 ?.preprocessing_dimensions ?? 64
             }
             step={1}
@@ -221,9 +221,9 @@ export function ControlContent() {
           />
           <NumberProperty
             label='distance threshold'
-            name='agglomerative-distance-threshold'
+            name='clustering-distance-threshold'
             defaultValue={
-              appState.session.config?.algorithm?.agglomerative
+              appState.session.config?.algorithm?.clustering
                 ?.distance_threshold ?? 0.4
             }
             step={0.01}
@@ -231,9 +231,9 @@ export function ControlContent() {
           />
           <NumberProperty
             label='target clusters'
-            name='agglomerative-target-cluster-count'
+            name='clustering-target-cluster-count'
             defaultValue={
-              appState.session.config?.algorithm?.agglomerative
+              appState.session.config?.algorithm?.clustering
                 ?.target_cluster_count ?? 0
             }
             step={1}

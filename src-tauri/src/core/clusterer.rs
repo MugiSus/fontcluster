@@ -19,7 +19,7 @@ impl Clusterer {
             guard
                 .as_ref()
                 .and_then(|s| s.algorithm.as_ref())
-                .and_then(|a| a.agglomerative.clone())
+                .and_then(|a| a.clustering.clone())
                 .unwrap_or_default()
         };
         let preprocessing_dimensions = config.preprocessing_dimensions;
