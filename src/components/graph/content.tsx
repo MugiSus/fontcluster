@@ -163,7 +163,7 @@ export function GraphContent() {
             />
           </g>
 
-          <g opacity={0.2}>
+          <g opacity={0.35}>
             <For each={graph.visiblePoints().visibleUnfilteredPoints}>
               {(point) => (
                 <GraphPoint

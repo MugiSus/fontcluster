@@ -32,14 +32,7 @@ export function GraphPoint(props: GraphPointProps) {
       transform={`translate(${props.x}, ${props.y}) scale(${props.zoomFactor})`}
       class={getClusterTextColor(props.clusterId)}
     >
-      <Show
-        when={
-          (props.isDisabled ||
-            !props.shouldShowImage ||
-            !props.shouldShowFontName) &&
-          !props.isSelected
-        }
-      >
+      <Show when={!props.shouldShowImage && !props.isSelected}>
         <rect
           x={props.isFamilySelected ? -3 : -1.5}
           y={props.isFamilySelected ? -3 : -1.5}
