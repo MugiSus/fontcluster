@@ -118,7 +118,7 @@ export function GraphPoint(props: GraphPointProps) {
           x={0}
           y={-18}
           opacity={1}
-          class={`pointer-events-none select-none fill-foreground text-xs ${
+          class={`pointer-events-none select-none fill-foreground text-xxs ${
             props.isSelected
               ? 'font-semibold'
               : 'fill-muted-foreground font-light'
