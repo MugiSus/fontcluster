@@ -1,4 +1,4 @@
-use crate::config::{AlgorithmConfig, SessionConfig};
+use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
 use crate::core::AppState;
 use crate::error::Result;
 use chrono::{DateTime, Utc};
@@ -62,6 +62,7 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
     let base = AppState::get_base_dir()?.join("Generated");
 
     let mut latest: Option<(DateTime<Utc>, String)> = None;
+    let mut has_sessions = false;
     if base.exists() {
         if let Ok(entries) = fs::read_dir(&base) {
             for entry in entries.filter_map(|e| e.ok()) {
@@ -70,6 +71,11 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
                     let config_path = path.join("config.json");
                     if let Ok(content) = fs::read_to_string(&config_path) {
                         if let Ok(s) = serde_json::from_str::<SessionConfig>(&content) {
+                            has_sessions = true;
+                            if s.status.process_status != ProcessStatus::Positioned {
+                                continue;
+                            }
+
                             let current_time = s.modified_at;
                             if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
                                 latest = Some((current_time, s.session_id));
@@ -81,7 +87,7 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
         }
     }
 
-    if latest.is_none() {
+    if latest.is_none() && !has_sessions {
         println!("✨ No existing sessions found. Attempting to extract example session...");
         return crate::core::extract_example_session(&app);
     }

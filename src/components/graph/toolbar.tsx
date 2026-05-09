@@ -6,7 +6,7 @@ import { appState } from '@/store';
 import { cn } from '@/lib/utils';
 import { ThemeModeToggle } from '../theme-mode-toggle';
 import { GraphSearchField } from './search-field';
-import { JobHistory } from './job-history';
+import { SessionHistory } from './session-history';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { CollapsiblePanelKey, PanelState } from '../../types/panels';
@@ -114,7 +114,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
           <TooltipContent>Copy family name</TooltipContent>
         </Tooltip>
 
-        <JobHistory class='bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+        <SessionHistory class='bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
 
         <Tooltip>
           <TooltipTrigger as='div'>

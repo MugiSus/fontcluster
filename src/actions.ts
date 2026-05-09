@@ -132,18 +132,28 @@ const markJobState = (
   setAppState('jobs', index, {
     ...job,
     state,
+    canStop: state === 'running' ? job.canStop : false,
     sessionId: sessionId ?? job.sessionId,
     updatedAt: new Date().toISOString(),
   });
 };
 
+const markLatestRunningJobState = (
+  state: 'completed' | 'cancelled' | 'failed',
+  sessionId?: string,
+) => {
+  const job = appState.jobs.find((item) => item.state === 'running');
+  if (!job) return;
+  markJobState(job.id, state, sessionId);
+};
+
 const STATUS_PROGRESS: Record<ProcessStatus, number> = {
   empty: 0,
-  downloaded: 16,
-  discovered: 33,
+  downloaded: 20,
+  discovered: 30,
   generated: 50,
-  vectorized: 66,
-  clustered: 83,
+  vectorized: 80,
+  clustered: 90,
   positioned: 100,
 };
 
@@ -161,6 +171,23 @@ export const syncLatestJobProgress = (
     progress: STATUS_PROGRESS[status],
     sessionId: sessionId ?? job.sessionId,
     updatedAt: new Date().toISOString(),
+  });
+};
+
+const syncSessionStatusIfCurrent = (
+  sessionId: string,
+  status: ProcessStatus,
+) => {
+  if (sessionId !== appState.session.id) return;
+  setAppState('session', 'status', status);
+};
+
+const notifyJobComplete = (sessionId: string) => {
+  toast.success('Processing completed successfully!', {
+    action: {
+      label: 'View',
+      onClick: () => setCurrentSessionId(sessionId),
+    },
   });
 };
 
@@ -192,6 +219,9 @@ export const runProcessingJobs = async (
   };
 
   setAppState('jobs', (prev) => [job, ...prev].slice(0, 20));
+  toast('Processing started', {
+    description: job.title,
+  });
 
   try {
     const result = await invoke<string>('run_jobs', {
@@ -203,15 +233,14 @@ export const runProcessingJobs = async (
     });
     console.log('Complete pipeline result:', result);
     if (result === 'Success') {
-      markJobState(jobId, 'completed', appState.session.id || sessionId);
-      toast.success('Processing completed successfully!');
+      markJobState(jobId, 'completed');
     } else if (result === 'Cancelled') {
-      markJobState(jobId, 'cancelled', appState.session.id || sessionId);
+      markJobState(jobId, 'cancelled');
     }
     await refetchSessionConfig();
     await refetchFontItemRecord();
   } catch (error) {
-    markJobState(jobId, 'failed', appState.session.id || sessionId);
+    markJobState(jobId, 'failed');
     console.error('Failed to process fonts:', error);
     toast.error(`Font processing failed: ${error}`);
   }
@@ -268,46 +297,42 @@ export function initAppEvents() {
     setAppState('progress', 'denominator', (prev) => prev - event.payload);
   });
 
-  listen('discovery_complete', () => {
-    setAppState('session', 'status', 'discovered');
-    syncLatestJobProgress('discovered');
+  listen('discovery_complete', (event: { payload: string }) => {
+    syncSessionStatusIfCurrent(event.payload, 'discovered');
+    syncLatestJobProgress('discovered', event.payload);
   });
 
-  listen('download_complete', () => {
-    setAppState('session', 'status', 'downloaded');
-    syncLatestJobProgress('downloaded');
+  listen('download_complete', (event: { payload: string }) => {
+    syncSessionStatusIfCurrent(event.payload, 'downloaded');
+    syncLatestJobProgress('downloaded', event.payload);
   });
 
-  listen('font_generation_complete', () => {
-    setAppState('session', 'status', 'generated');
-    syncLatestJobProgress('generated');
+  listen('font_generation_complete', (event: { payload: string }) => {
+    syncSessionStatusIfCurrent(event.payload, 'generated');
+    syncLatestJobProgress('generated', event.payload);
   });
 
-  listen('vectorization_complete', () => {
-    setAppState('session', 'status', 'vectorized');
-    syncLatestJobProgress('vectorized');
+  listen('vectorization_complete', (event: { payload: string }) => {
+    syncSessionStatusIfCurrent(event.payload, 'vectorized');
+    syncLatestJobProgress('vectorized', event.payload);
   });
 
   listen('clustering_complete', (event: { payload: string }) => {
     console.log('Clustering completed for session:', event.payload);
-    setAppState('session', 'status', 'clustered');
+    syncSessionStatusIfCurrent(event.payload, 'clustered');
     syncLatestJobProgress('clustered', event.payload);
   });
 
   listen('positioning_complete', (event: { payload: string }) => {
     console.log('Positioning completed for session:', event.payload);
-    setAppState('session', 'status', 'positioned');
+    syncSessionStatusIfCurrent(event.payload, 'positioned');
     syncLatestJobProgress('positioned', event.payload);
-    untrack(() => {
-      setCurrentSessionId(event.payload);
-    });
   });
 
   listen('all_jobs_complete', (event: { payload: string }) => {
     console.log('All jobs completed successfully for session:', event.payload);
-    untrack(() => {
-      setCurrentSessionId(event.payload);
-    });
+    markLatestRunningJobState('completed', event.payload);
+    notifyJobComplete(event.payload);
   });
 
   listen('refresh-requested', () => {

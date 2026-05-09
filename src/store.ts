@@ -24,7 +24,6 @@ export interface AppState {
     config: SessionConfig;
     directory: string;
     status: ProcessStatus;
-    isProcessing: boolean;
   };
   jobs: JobRun[];
   progress: {
@@ -104,7 +103,6 @@ export const [appState, setAppState] = createStore<AppState>({
     config: DEFAULT_SESSION_CONFIG,
     directory: '',
     status: 'empty',
-    isProcessing: false,
   },
   jobs: [],
   progress: {

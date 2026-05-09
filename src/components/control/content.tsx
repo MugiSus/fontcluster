@@ -1,7 +1,7 @@
-import { Show } from 'solid-js';
+import { createSignal, onCleanup, Show } from 'solid-js';
 import { Button } from '../ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
-import { ArrowRightIcon, LoaderCircleIcon, TypeIcon } from 'lucide-solid';
+import { ArrowRightIcon, TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '../weight-selector';
 import {
   type FontWeight,
@@ -17,26 +17,36 @@ import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
 
 export function ControlContent() {
+  const [isRunCooldown, setIsRunCooldown] = createSignal(false);
+  let runCooldownTimer: ReturnType<typeof setTimeout> | undefined;
+
+  onCleanup(() => {
+    if (runCooldownTimer) clearTimeout(runCooldownTimer);
+  });
+
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    handleRun();
+    void handleRun();
   };
 
   const handleRun = async (targetStatus?: ProcessStatus) => {
+    if (isRunCooldown()) return;
+
+    setIsRunCooldown(true);
+    if (runCooldownTimer) clearTimeout(runCooldownTimer);
+    runCooldownTimer = setTimeout(() => {
+      setIsRunCooldown(false);
+      runCooldownTimer = undefined;
+    }, 2000);
+
     const form = document.querySelector('form');
     if (!form) return;
 
     const isRerun = targetStatus !== undefined;
-    const isFinished = appState.session.status === 'positioned';
-    const shouldStartNewSession =
-      !isRerun && (isFinished || !appState.session.id);
-
-    setAppState('session', 'isProcessing', true);
+    const shouldStartNewSession = !isRerun;
 
     if (isRerun) {
       setAppState('session', 'status', targetStatus);
-    } else if (shouldStartNewSession) {
-      setAppState('session', 'status', 'empty');
     }
 
     const formData = new FormData(form);
@@ -68,17 +78,13 @@ export function ControlContent() {
       },
     };
 
-    try {
-      await runProcessingJobs(
-        text || 'font',
-        selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
-        algorithm,
-        !shouldStartNewSession ? appState.session.id : undefined,
-        targetStatus ?? undefined,
-      );
-    } finally {
-      setAppState('session', 'isProcessing', false);
-    }
+    await runProcessingJobs(
+      text || 'font',
+      selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
+      algorithm,
+      !shouldStartNewSession ? appState.session.id : undefined,
+      targetStatus ?? undefined,
+    );
   };
 
   return (
@@ -119,7 +125,7 @@ export function ControlContent() {
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
             title='discover'
-            disabled={appState.session.isProcessing}
+            disabled={isRunCooldown()}
             onStepRun={() => handleRun('empty')}
             class='group/section space-y-1.5'
             contentClass='grid grid-cols-1 gap-2'
@@ -164,7 +170,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='generate'
-            disabled={appState.session.isProcessing}
+            disabled={isRunCooldown()}
             onStepRun={() => handleRun('discovered')}
           >
             <NumberProperty
@@ -180,7 +186,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='analyze'
-            disabled={appState.session.isProcessing}
+            disabled={isRunCooldown()}
             onStepRun={() => handleRun('generated')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
@@ -190,7 +196,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='clustering'
-            disabled={appState.session.isProcessing}
+            disabled={isRunCooldown()}
             onStepRun={() => handleRun('vectorized')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
@@ -231,7 +237,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='position'
-            disabled={appState.session.isProcessing}
+            disabled={isRunCooldown()}
             onStepRun={() => handleRun('clustered')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
@@ -246,28 +252,15 @@ export function ControlContent() {
           <TooltipTrigger
             as={Button<'button'>}
             type='submit'
-            disabled={appState.session.isProcessing}
+            disabled={isRunCooldown()}
             variant='default'
             size='sm'
             class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
           >
-            {appState.session.isProcessing
-              ? 'Processing...'
-              : appState.session.status === 'positioned'
-                ? 'Run'
-                : 'Continue'}
-            <Show
-              when={appState.session.isProcessing}
-              fallback={<ArrowRightIcon class='absolute right-3' />}
-            >
-              <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-            </Show>
+            Run
+            <ArrowRightIcon class='absolute right-3' />
           </TooltipTrigger>
-          <TooltipContent>
-            {appState.session.status === 'positioned'
-              ? 'Create new and run'
-              : 'Continue'}
-          </TooltipContent>
+          <TooltipContent>Create new and run</TooltipContent>
         </Tooltip>
       </div>
     </form>
