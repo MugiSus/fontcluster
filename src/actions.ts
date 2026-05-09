@@ -119,6 +119,45 @@ export const {
 
 // Actions
 
+const markJobState = (
+  id: string,
+  state: 'running' | 'completed' | 'cancelled' | 'failed',
+  sessionId?: string,
+) => {
+  const index = appState.jobs.findIndex((job) => job.id === id);
+  if (index < 0) return;
+  setAppState('jobs', index, {
+    ...appState.jobs[index],
+    state,
+    sessionId: sessionId ?? appState.jobs[index].sessionId,
+    updatedAt: new Date().toISOString(),
+  });
+};
+
+const STATUS_PROGRESS: Record<ProcessStatus, number> = {
+  empty: 0,
+  downloaded: 16,
+  discovered: 33,
+  generated: 50,
+  vectorized: 66,
+  clustered: 83,
+  positioned: 100,
+};
+
+export const syncLatestJobProgress = (
+  status: ProcessStatus,
+  sessionId?: string,
+) => {
+  const index = appState.jobs.findIndex((job) => job.state === 'running');
+  if (index < 0) return;
+  setAppState('jobs', index, {
+    ...appState.jobs[index],
+    progress: STATUS_PROGRESS[status],
+    sessionId: sessionId ?? appState.jobs[index].sessionId,
+    updatedAt: new Date().toISOString(),
+  });
+};
+
 export const setSelectedWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'selectedWeights', weights);
 
@@ -135,6 +174,22 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
+  const jobId = crypto.randomUUID();
+  setAppState('jobs', (prev) =>
+    [
+      {
+        id: jobId,
+        sessionId: sessionId ?? null,
+        title: `${overrideStatus ? `Re-run from ${overrideStatus}` : 'Full run'} · ${text || 'font'}`,
+        state: 'running',
+        progress: STATUS_PROGRESS[overrideStatus ?? 'empty'],
+        canStop: true,
+        updatedAt: new Date().toISOString(),
+      },
+      ...prev,
+    ].slice(0, 20),
+  );
+
   try {
     const result = await invoke<string>('run_jobs', {
       text,
@@ -145,11 +200,15 @@ export const runProcessingJobs = async (
     });
     console.log('Complete pipeline result:', result);
     if (result === 'Success') {
+      markJobState(jobId, 'completed', appState.session.id || sessionId);
       toast.success('Processing completed successfully!');
+    } else if (result === 'Cancelled') {
+      markJobState(jobId, 'cancelled', appState.session.id || sessionId);
     }
     await refetchSessionConfig();
     await refetchFontItemRecord();
   } catch (error) {
+    markJobState(jobId, 'failed', appState.session.id || sessionId);
     console.error('Failed to process fonts:', error);
     toast.error(`Font processing failed: ${error}`);
   }
@@ -208,28 +267,34 @@ export function initAppEvents() {
 
   listen('discovery_complete', () => {
     setAppState('session', 'status', 'discovered');
+    syncLatestJobProgress('discovered');
   });
 
   listen('download_complete', () => {
     setAppState('session', 'status', 'downloaded');
+    syncLatestJobProgress('downloaded');
   });
 
   listen('font_generation_complete', () => {
     setAppState('session', 'status', 'generated');
+    syncLatestJobProgress('generated');
   });
 
   listen('vectorization_complete', () => {
     setAppState('session', 'status', 'vectorized');
+    syncLatestJobProgress('vectorized');
   });
 
   listen('clustering_complete', (event: { payload: string }) => {
     console.log('Clustering completed for session:', event.payload);
     setAppState('session', 'status', 'clustered');
+    syncLatestJobProgress('clustered', event.payload);
   });
 
   listen('positioning_complete', (event: { payload: string }) => {
     console.log('Positioning completed for session:', event.payload);
     setAppState('session', 'status', 'positioned');
+    syncLatestJobProgress('positioned', event.payload);
     untrack(() => {
       setCurrentSessionId(event.payload);
     });

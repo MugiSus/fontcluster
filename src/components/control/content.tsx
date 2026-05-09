@@ -1,12 +1,7 @@
 import { Show } from 'solid-js';
 import { Button } from '../ui/button';
 import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
-import {
-  ArrowRightIcon,
-  LoaderCircleIcon,
-  PauseIcon,
-  TypeIcon,
-} from 'lucide-solid';
+import { ArrowRightIcon, LoaderCircleIcon, TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '../weight-selector';
 import {
   type FontWeight,
@@ -14,22 +9,14 @@ import {
   type ProcessStatus,
   type FontSet,
 } from '../../types/font';
-import { cn } from '@/lib/utils';
 import { appState, setAppState } from '../../store';
-import { runProcessingJobs, stopJobs, setSelectedWeights } from '../../actions';
+import { runProcessingJobs, setSelectedWeights } from '../../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
 
 export function ControlContent() {
-  const selectedFontSet = () =>
-    (appState.session.config?.algorithm?.discovery?.font_set ??
-      'google_fonts_popular300') as FontSet;
-  const showDownloadProgress = () => selectedFontSet() !== 'system_fonts';
-  const progressPercent = () =>
-    `${(appState.progress.numerator / appState.progress.denominator || 0) * 100}%`;
-
   const handleSubmit = (e: Event) => {
     e.preventDefault();
     handleRun();
@@ -254,229 +241,34 @@ export function ControlContent() {
         </div>
       </Show>
 
-      <div class='flex flex-col gap-1 border-t p-4'>
-        <div class='mb-1 flex items-center gap-1'>
-          <Tooltip>
-            <TooltipTrigger
-              as={Button<'button'>}
-              type='submit'
-              disabled={appState.session.isProcessing}
-              variant='default'
-              size='sm'
-              class='relative flex flex-1 items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
-            >
-              {appState.session.isProcessing
-                ? 'Processing...'
-                : appState.session.status === 'positioned'
-                  ? 'Run'
-                  : 'Continue'}
-              <Show
-                when={appState.session.isProcessing}
-                fallback={<ArrowRightIcon class='absolute right-3' />}
-              >
-                <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
-              </Show>
-            </TooltipTrigger>
-            <TooltipContent>
-              {appState.session.status === 'positioned'
-                ? 'Create new and run'
+      <div class='border-t p-4'>
+        <Tooltip>
+          <TooltipTrigger
+            as={Button<'button'>}
+            type='submit'
+            disabled={appState.session.isProcessing}
+            variant='default'
+            size='sm'
+            class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
+          >
+            {appState.session.isProcessing
+              ? 'Processing...'
+              : appState.session.status === 'positioned'
+                ? 'Run'
                 : 'Continue'}
-            </TooltipContent>
-          </Tooltip>
-
-          <Show when={appState.session.isProcessing}>
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon'
-              class='size-9 shrink-0 rounded-full text-destructive hover:bg-destructive/20 hover:text-destructive'
-              onClick={() => stopJobs()}
-              title='Stop Run'
+            <Show
+              when={appState.session.isProcessing}
+              fallback={<ArrowRightIcon class='absolute right-3' />}
             >
-              <PauseIcon class='size-3' />
-            </Button>
-          </Show>
-        </div>
-
-        <div
-          class={cn(
-            'grid gap-1',
-            showDownloadProgress() ? 'grid-cols-6' : 'grid-cols-5',
-          )}
-        >
-          <Show when={showDownloadProgress()}>
-            <div
-              class='h-1 overflow-hidden rounded-full bg-primary/30'
-              style={{
-                '--progress':
-                  appState.session.isProcessing &&
-                  appState.session.status === 'empty'
-                    ? progressPercent()
-                    : '0%',
-              }}
-            >
-              <div
-                class={cn(
-                  'h-full w-0 rounded-full bg-primary',
-                  appState.session.isProcessing &&
-                    appState.session.status === 'empty' &&
-                    'w-[var(--progress)] animate-pulse',
-                  (appState.session.status === 'downloaded' ||
-                    appState.session.status === 'discovered' ||
-                    appState.session.status === 'generated' ||
-                    appState.session.status === 'vectorized' ||
-                    appState.session.status === 'clustered' ||
-                    appState.session.status === 'positioned') &&
-                    'w-full',
-                )}
-              />
-            </div>
-          </Show>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status ===
-                  (showDownloadProgress() ? 'downloaded' : 'empty')
-                  ? progressPercent()
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status ===
-                    (showDownloadProgress() ? 'downloaded' : 'empty') &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'discovered' ||
-                  appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
-                  appState.session.status === 'clustered' ||
-                  appState.session.status === 'positioned') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'discovered'
-                  ? progressPercent()
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status === 'discovered' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'generated' ||
-                  appState.session.status === 'vectorized' ||
-                  appState.session.status === 'clustered' ||
-                  appState.session.status === 'positioned') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div
-            class='h-1 overflow-hidden rounded-full bg-primary/30'
-            style={{
-              '--progress':
-                appState.session.isProcessing &&
-                appState.session.status === 'generated'
-                  ? progressPercent()
-                  : '0%',
-            }}
-          >
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.isProcessing &&
-                  appState.session.status === 'generated' &&
-                  'w-[var(--progress)] animate-pulse',
-                (appState.session.status === 'vectorized' ||
-                  appState.session.status === 'clustered' ||
-                  appState.session.status === 'positioned') &&
-                  'w-full',
-              )}
-            />
-          </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                (appState.session.status === 'clustered' ||
-                  appState.session.status === 'positioned') &&
-                  'w-full',
-                appState.session.isProcessing &&
-                  appState.session.status === 'vectorized' &&
-                  'w-full animate-pulse transition-[width] duration-1000',
-              )}
-            />
-          </div>
-          <div class='h-1 overflow-hidden rounded-full bg-primary/30'>
-            <div
-              class={cn(
-                'h-full w-0 rounded-full bg-primary',
-                appState.session.status === 'positioned' && 'w-full',
-                appState.session.isProcessing &&
-                  appState.session.status === 'clustered' &&
-                  'w-full animate-pulse transition-[width] duration-1000',
-              )}
-            />
-          </div>
-        </div>
-
-        <div
-          class={cn(
-            'flex items-end justify-between text-xs font-semibold text-muted-foreground',
-            appState.session.isProcessing && 'animate-pulse',
-          )}
-        >
-          <span>
-            {!appState.session.isProcessing
-              ? 'Completed'
-              : appState.session.status === 'empty'
-                ? showDownloadProgress()
-                  ? 'Downloading Fonts...'
-                  : 'Discovering Fonts...'
-                : appState.session.status === 'downloaded'
-                  ? 'Discovering Fonts...'
-                  : appState.session.status === 'discovered'
-                    ? 'Drawing Glyphs...'
-                    : appState.session.status === 'generated'
-                      ? 'Analyzing Glyphs...'
-                      : appState.session.status === 'vectorized'
-                        ? 'Classifying Fonts...'
-                        : appState.session.status === 'clustered'
-                          ? 'Positioning Points...'
-                          : ''}
-          </span>
-          <Show
-            when={
-              appState.session.isProcessing &&
-              (appState.session.status === 'empty' ||
-                appState.session.status === 'downloaded' ||
-                appState.session.status === 'discovered' ||
-                appState.session.status === 'generated')
-            }
-            fallback={
-              <span class='tabular-nums'>
-                {Object.keys(appState.fonts.data).length} Fonts
-              </span>
-            }
-          >
-            <span class='tabular-nums'>
-              {appState.progress.numerator}/{appState.progress.denominator}{' '}
-              Fonts
-            </span>
-          </Show>
-        </div>
+              <LoaderCircleIcon class='absolute right-3 origin-center animate-spin' />
+            </Show>
+          </TooltipTrigger>
+          <TooltipContent>
+            {appState.session.status === 'positioned'
+              ? 'Create new and run'
+              : 'Continue'}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </form>
   );
