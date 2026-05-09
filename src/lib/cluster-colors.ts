@@ -29,20 +29,15 @@ export function getClusterTextColor(clusterId: number | undefined): string {
     return 'text-zinc-500';
   }
 
-  return (
-    CLUSTER_TEXT_COLORS[clusterId % CLUSTER_TEXT_COLORS.length] ??
-    'text-blue-500'
-  );
+  return CLUSTER_TEXT_COLORS[clusterId % CLUSTER_TEXT_COLORS.length]!;
 }
 
 export function getClusterBackgroundColor(
   clusterId: number | undefined,
 ): string {
   if (clusterId === undefined || clusterId === -1) {
-    return 'bg-zinc-400';
+    return 'bg-zinc-500';
   }
 
-  return (
-    CLUSTER_BG_COLORS[clusterId % CLUSTER_BG_COLORS.length] ?? 'bg-blue-400'
-  );
+  return CLUSTER_BG_COLORS[clusterId % CLUSTER_BG_COLORS.length]!;
 }

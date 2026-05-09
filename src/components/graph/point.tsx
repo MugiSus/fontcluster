@@ -49,18 +49,18 @@ export function GraphPoint(props: GraphPointProps) {
         }
       >
         <line
-          x1={-8}
+          x1={-6}
           y1={0}
-          x2={8}
+          x2={6}
           y2={0}
           stroke='currentColor'
           stroke-width={1}
         />
         <line
           x1={0}
-          y1={-12}
+          y1={-10}
           x2={0}
-          y2={12}
+          y2={10}
           stroke='currentColor'
           stroke-width={1}
         />
