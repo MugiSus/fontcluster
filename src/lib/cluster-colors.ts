@@ -1,27 +1,23 @@
 const CLUSTER_TEXT_COLORS = [
-  'text-blue-500',
-  'text-red-500',
-  'text-yellow-500',
-  'text-green-500',
-  'text-purple-500',
-  'text-orange-500',
-  'text-teal-500',
-  'text-indigo-500',
-  'text-cyan-500',
-  'text-fuchsia-500',
+  'text-cluster-1',
+  'text-cluster-2',
+  'text-cluster-3',
+  'text-cluster-4',
+  'text-cluster-5',
+  'text-cluster-6',
+  'text-cluster-7',
+  'text-cluster-8',
 ];
 
 const CLUSTER_BG_COLORS = [
-  'bg-blue-500',
-  'bg-red-500',
-  'bg-yellow-500',
-  'bg-green-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-teal-500',
-  'bg-indigo-500',
-  'bg-cyan-500',
-  'bg-fuchsia-500',
+  'bg-cluster-1',
+  'bg-cluster-2',
+  'bg-cluster-3',
+  'bg-cluster-4',
+  'bg-cluster-5',
+  'bg-cluster-6',
+  'bg-cluster-7',
+  'bg-cluster-8',
 ];
 
 export function getClusterTextColor(clusterId: number | undefined): string {

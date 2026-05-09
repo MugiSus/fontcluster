@@ -75,6 +75,16 @@ export default {
         slate: {
           20: '#fcfdfe',
         },
+        cluster: {
+          1: '#1aba8c',
+          2: '#c3c31b',
+          3: '#6dad13',
+          4: '#924dd8',
+          5: '#d69129',
+          6: '#4658ca',
+          7: '#da532a',
+          8: '#c448c2',
+        }
       },
       borderRadius: {
         xl: "calc(var(--radius) + 4px)",

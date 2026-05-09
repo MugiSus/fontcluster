@@ -69,7 +69,7 @@ export function ListItem(props: ListItemProps) {
               </div>
             </div>
             <img
-              class='block size-auto h-8 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
+              class='block size-auto h-7 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
               src={convertFileSrc(
                 `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
               )}

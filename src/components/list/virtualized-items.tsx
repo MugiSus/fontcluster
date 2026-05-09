@@ -18,7 +18,7 @@ export function VirtualizedItems(props: VirtualizedItemsProps) {
       return props.fontItems.length;
     },
     getScrollElement: () => scrollContainerRef()?.parentElement ?? null,
-    estimateSize: () => 84,
+    estimateSize: () => 80,
     overscan: 20,
     getItemKey: (index) => props.fontItems[index]?.meta.safe_name ?? index,
   });
