@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
-import { appState, setAppState } from './store';
+import { appState, setAppState, type JobRun } from './store';
 import {
   type FontItemRecord,
   type FontWeight,
@@ -126,10 +126,13 @@ const markJobState = (
 ) => {
   const index = appState.jobs.findIndex((job) => job.id === id);
   if (index < 0) return;
+  const job = appState.jobs[index];
+  if (!job) return;
+
   setAppState('jobs', index, {
-    ...appState.jobs[index],
+    ...job,
     state,
-    sessionId: sessionId ?? appState.jobs[index].sessionId,
+    sessionId: sessionId ?? job.sessionId,
     updatedAt: new Date().toISOString(),
   });
 };
@@ -150,10 +153,13 @@ export const syncLatestJobProgress = (
 ) => {
   const index = appState.jobs.findIndex((job) => job.state === 'running');
   if (index < 0) return;
+  const job = appState.jobs[index];
+  if (!job) return;
+
   setAppState('jobs', index, {
-    ...appState.jobs[index],
+    ...job,
     progress: STATUS_PROGRESS[status],
-    sessionId: sessionId ?? appState.jobs[index].sessionId,
+    sessionId: sessionId ?? job.sessionId,
     updatedAt: new Date().toISOString(),
   });
 };
@@ -175,20 +181,17 @@ export const runProcessingJobs = async (
   overrideStatus?: ProcessStatus,
 ) => {
   const jobId = crypto.randomUUID();
-  setAppState('jobs', (prev) =>
-    [
-      {
-        id: jobId,
-        sessionId: sessionId ?? null,
-        title: `${overrideStatus ? `Re-run from ${overrideStatus}` : 'Full run'} · ${text || 'font'}`,
-        state: 'running',
-        progress: STATUS_PROGRESS[overrideStatus ?? 'empty'],
-        canStop: true,
-        updatedAt: new Date().toISOString(),
-      },
-      ...prev,
-    ].slice(0, 20),
-  );
+  const job: JobRun = {
+    id: jobId,
+    sessionId: sessionId ?? null,
+    title: `${overrideStatus ? `Re-run from ${overrideStatus}` : 'Full run'} · ${text || 'font'}`,
+    state: 'running',
+    progress: STATUS_PROGRESS[overrideStatus ?? 'empty'],
+    canStop: true,
+    updatedAt: new Date().toISOString(),
+  };
+
+  setAppState('jobs', (prev) => [job, ...prev].slice(0, 20));
 
   try {
     const result = await invoke<string>('run_jobs', {

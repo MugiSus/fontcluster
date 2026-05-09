@@ -1,11 +1,12 @@
 import { emit } from '@tauri-apps/api/event';
 import { Show } from 'solid-js';
-import { CopyIcon, HistoryIcon, SparklesIcon } from 'lucide-solid';
+import { CopyIcon, SparklesIcon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
 import { cn } from '@/lib/utils';
 import { ThemeModeToggle } from '../theme-mode-toggle';
 import { GraphSearchField } from './search-field';
+import { JobHistory } from './job-history';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { CollapsiblePanelKey, PanelState } from '../../types/panels';
@@ -22,10 +23,6 @@ export function GraphToolbar(props: GraphToolbarProps) {
       toast: true,
       isFontName: event.ctrlKey || event.metaKey,
     });
-  };
-
-  const showSessions = () => {
-    emit('show_session_selection');
   };
 
   const handleManualUpdateCheck = () => {
@@ -117,19 +114,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
           <TooltipContent>Copy family name</TooltipContent>
         </Tooltip>
 
-        <Tooltip>
-          <TooltipTrigger as='div'>
-            <Button
-              variant='ghost'
-              size='icon'
-              onClick={showSessions}
-              class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-            >
-              <HistoryIcon class='size-4' />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>History</TooltipContent>
-        </Tooltip>
+        <JobHistory class='bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
 
         <Tooltip>
           <TooltipTrigger as='div'>
