@@ -63,17 +63,17 @@ export function ControlContent() {
           'google_fonts_popular300') as FontSet,
       },
       image: {
-        font_size: Number(formData.get('image-font-size')),
+        font_size: Number(formData.get('image-font-size')) || 224,
       },
       clustering: {
         preprocessing_dimensions: Number(
-          formData.get('clustering-preprocessing-dimensions'),
+          formData.get('clustering-preprocessing-dimensions') || 128,
         ),
         distance_threshold: Number(
-          formData.get('clustering-distance-threshold'),
+          formData.get('clustering-distance-threshold') || 0.5,
         ),
         target_cluster_count: Number(
-          formData.get('clustering-target-cluster-count'),
+          formData.get('clustering-target-cluster-count') || 0,
         ),
       },
     };
@@ -121,7 +121,7 @@ export function ControlContent() {
         </TextField>
       </div>
 
-      <Show when={true} keyed>
+      <Show when={appState.session.config.session_id ?? 'session_id'} keyed>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
             title='discover'
