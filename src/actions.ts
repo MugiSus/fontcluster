@@ -88,7 +88,6 @@ export const {
     const config = sessionConfig();
     if (config) {
       setAppState('session', 'config', config);
-      setAppState('session', 'status', config.process_status);
       setAppState('ui', 'sampleText', config.preview_text);
       if (config.weights) {
         setAppState('ui', 'selectedWeights', config.weights as FontWeight[]);
@@ -102,7 +101,13 @@ export const {
     if (data) {
       setAppState('session', 'config', (prev) => {
         if (!prev) return prev;
-        return { ...prev, samples_amount: Object.keys(data).length };
+        return {
+          ...prev,
+          status: {
+            ...prev.status,
+            samples_amount: Object.keys(data).length,
+          },
+        };
       });
       setAppState('fonts', 'data', reconcile(data));
     }
@@ -118,6 +123,17 @@ export const {
 });
 
 // Actions
+
+const notifyJobComplete = (sessionId: string) => {
+  toast.success('Job completed successfully!', {
+    id: `job-complete-${sessionId}`,
+    action: {
+      label: 'View',
+      onClick: () => setCurrentSessionId(sessionId),
+    },
+    duration: 20000,
+  });
+};
 
 export const setSelectedWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'selectedWeights', weights);
@@ -135,6 +151,8 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
+  toast.info(`Job started: '${text}'`);
+
   try {
     const result = await invoke<string>('run_jobs', {
       text,
@@ -144,20 +162,17 @@ export const runProcessingJobs = async (
       overrideStatus,
     });
     console.log('Complete pipeline result:', result);
-    if (result === 'Success') {
-      toast.success('Processing completed successfully!');
-    }
     await refetchSessionConfig();
     await refetchFontItemRecord();
   } catch (error) {
     console.error('Failed to process fonts:', error);
-    toast.error(`Font processing failed: ${error}`);
+    toast.error(`Job failed: ${error}`);
   }
 };
 
-export const stopJobs = async () => {
+export const stopJobs = async (sessionId?: string) => {
   try {
-    await invoke('stop_jobs');
+    await invoke('stop_jobs', { sessionId });
   } catch (error) {
     console.error('Failed to stop jobs:', error);
   }
@@ -165,9 +180,36 @@ export const stopJobs = async () => {
 
 // --- Initialization ---
 
+let appEventsCleanup: (() => void) | null = null;
+
 export function initAppEvents() {
+  if (appEventsCleanup) return appEventsCleanup;
+
+  let disposed = false;
+  const unlisteners: Array<() => void> = [];
+
+  const registerListener = <T>(
+    event: string,
+    handler: (event: { payload: T }) => void,
+  ) => {
+    void listen(event, handler).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+      unlisteners.push(cleanup);
+    });
+  };
+
+  appEventsCleanup = () => {
+    disposed = true;
+    for (const unlisten of unlisteners) unlisten();
+    unlisteners.length = 0;
+    appEventsCleanup = null;
+  };
+
   // Load latest session ID on startup
-  const loadCurrentSession = async () => {
+  void (async () => {
     try {
       const latestSessionId = await invoke<string | null>(
         'get_latest_session_id',
@@ -181,75 +223,31 @@ export function initAppEvents() {
     } catch (error) {
       console.error('Failed to get latest session ID:', error);
     }
-  };
+  })();
 
-  loadCurrentSession();
-
-  // Progress tracking and status update event listeners
-  listen('progress_numerator_reset', (event: { payload: number }) => {
-    setAppState('progress', 'numerator', event.payload);
-  });
-
-  listen('progress_denominator_reset', (event: { payload: number }) => {
-    setAppState('progress', 'denominator', event.payload);
-  });
-
-  listen('progress_numerator_increase', (event: { payload: number }) => {
-    setAppState('progress', 'numerator', (prev) => prev + event.payload);
-  });
-
-  listen('progress_denominator_set', (event: { payload: number }) => {
-    setAppState('progress', 'denominator', event.payload);
-  });
-
-  listen('progress_denominator_decrease', (event: { payload: number }) => {
-    setAppState('progress', 'denominator', (prev) => prev - event.payload);
-  });
-
-  listen('discovery_complete', () => {
-    setAppState('session', 'status', 'discovered');
-  });
-
-  listen('download_complete', () => {
-    setAppState('session', 'status', 'downloaded');
-  });
-
-  listen('font_generation_complete', () => {
-    setAppState('session', 'status', 'generated');
-  });
-
-  listen('vectorization_complete', () => {
-    setAppState('session', 'status', 'vectorized');
-  });
-
-  listen('clustering_complete', (event: { payload: string }) => {
+  registerListener<string>('clustering_complete', (event) => {
     console.log('Clustering completed for session:', event.payload);
-    setAppState('session', 'status', 'clustered');
   });
 
-  listen('positioning_complete', (event: { payload: string }) => {
+  registerListener<string>('positioning_complete', (event) => {
     console.log('Positioning completed for session:', event.payload);
-    setAppState('session', 'status', 'positioned');
-    untrack(() => {
-      setCurrentSessionId(event.payload);
-    });
   });
 
-  listen('all_jobs_complete', (event: { payload: string }) => {
+  registerListener<string>('all_jobs_complete', (event) => {
     console.log('All jobs completed successfully for session:', event.payload);
-    untrack(() => {
-      setCurrentSessionId(event.payload);
-    });
+    notifyJobComplete(event.payload);
   });
 
-  listen('refresh-requested', () => {
+  registerListener('refresh-requested', () => {
     window.location.reload();
   });
 
-  listen('check-update-requested', () => {
+  registerListener('check-update-requested', () => {
     checkForAppUpdates(true);
   });
 
   // Check for updates automatically on startup
   checkForAppUpdates();
+
+  return appEventsCleanup;
 }

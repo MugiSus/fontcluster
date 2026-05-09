@@ -4,6 +4,7 @@ import {
   createEffect,
   createSelector,
   createSignal,
+  onCleanup,
 } from 'solid-js';
 import { type FontWeight } from '../../types/font';
 import { WeightSelector } from '../weight-selector';
@@ -13,6 +14,7 @@ import { GraphPoint } from './point';
 import { ZoomControls } from './zoom-controls';
 import { useElementSize } from '../../hooks/use-element-size';
 import { appState } from '../../store';
+import { type GraphCoordinate } from './types';
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
@@ -21,8 +23,12 @@ export function GraphContent() {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [graphWeights, setGraphWeights] = createSignal<FontWeight[]>([400]);
+  const [mouseSelectionPoint, setMouseSelectionPoint] =
+    createSignal<GraphCoordinate | null>(null);
 
   let svgElement: SVGSVGElement | undefined;
+  let pendingMouseSelectionPoint: GraphCoordinate | null = null;
+  let mouseSelectionAnimationFrame: number | undefined;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
 
   createEffect(() => {
@@ -53,29 +59,59 @@ export function GraphContent() {
   const isSelected = createSelector(() => appState.ui.selectedFontKey);
   const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
 
+  const queueMouseSelectionPoint = (point: GraphCoordinate | null) => {
+    pendingMouseSelectionPoint = point;
+    if (mouseSelectionAnimationFrame) return;
+
+    mouseSelectionAnimationFrame = window.requestAnimationFrame(() => {
+      setMouseSelectionPoint(pendingMouseSelectionPoint);
+      mouseSelectionAnimationFrame = undefined;
+    });
+  };
+
+  const updateMouseSelectionPoint = (event: MouseEvent) => {
+    queueMouseSelectionPoint(viewport.getGraphPointFromEvent(event));
+  };
+
+  const hideMouseSelectionPoint = () => {
+    queueMouseSelectionPoint(null);
+  };
+
+  onCleanup(() => {
+    if (mouseSelectionAnimationFrame) {
+      window.cancelAnimationFrame(mouseSelectionAnimationFrame);
+    }
+  });
+
   const handleMouseMove = (event: MouseEvent) => {
     if (event.buttons & 2) {
+      hideMouseSelectionPoint();
       viewport.dragPan(event);
       return;
     }
     if (event.buttons & 1) {
+      updateMouseSelectionPoint(event);
       selection.selectFromMouseEvent(event);
       return;
     }
+    hideMouseSelectionPoint();
   };
 
   const handleMouseDown = (event: MouseEvent) => {
     if (event.buttons & 2) {
+      hideMouseSelectionPoint();
       viewport.startPanDrag(event);
       return;
     }
     if (event.buttons & 1) {
+      updateMouseSelectionPoint(event);
       selection.selectFromMouseEvent(event);
       return;
     }
   };
 
   const handleMouseUp = () => {
+    hideMouseSelectionPoint();
     viewport.endPanDrag();
   };
 
@@ -85,6 +121,7 @@ export function GraphContent() {
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
+      onMouseLeave={hideMouseSelectionPoint}
       onWheel={viewport.handleWheel}
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -120,6 +157,23 @@ export function GraphContent() {
             onReset={viewport.handleReset}
           />
         </div>
+
+        {/* <div class='pointer-events-none absolute bottom-3 left-3 z-10'>
+          <Show when={appState.fonts.data[appState.ui.selectedFontKey || '']}>
+            {(fontData) => (
+              <div class='text-sm *:pointer-events-auto'>
+                <p class='font-semibold'>{fontData().meta.font_name}</p>
+                <p class='text-xs text-muted-foreground'>
+                  Weight: {fontData().meta.weight}
+                </p>
+                <p class='text-xs text-muted-foreground'>
+                  Family: {fontData().meta.family_name}
+                </p>
+              </div>
+            )}
+          </Show>
+        </div> */}
+
         <svg
           ref={(el) => {
             svgElement = el;
@@ -217,6 +271,33 @@ export function GraphContent() {
               />
             )}
           </For>
+
+          <Show when={mouseSelectionPoint()}>
+            {(point) => (
+              <g
+                transform={`translate(${point().x}, ${point().y}) scale(${viewport.zoomFactor()})`}
+              >
+                <circle
+                  cx={0}
+                  cy={0}
+                  r={40}
+                  fill='transparent'
+                  stroke='currentColor'
+                  stroke-width={1.5}
+                  stroke-dasharray='3 3'
+                  stroke-dashoffset={0}
+                >
+                  <animate
+                    attributeName='stroke-dashoffset'
+                    from='0'
+                    to='6'
+                    dur='2000ms'
+                    repeatCount='indefinite'
+                  />
+                </circle>
+              </g>
+            )}
+          </Show>
         </svg>
       </Show>
     </div>

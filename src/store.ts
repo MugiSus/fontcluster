@@ -5,7 +5,6 @@ import {
   type FontItem,
   type SessionConfig,
   type FontWeight,
-  type ProcessStatus,
 } from './types/font';
 
 export interface AppState {
@@ -13,12 +12,6 @@ export interface AppState {
     id: string;
     config: SessionConfig;
     directory: string;
-    status: ProcessStatus;
-    isProcessing: boolean;
-  };
-  progress: {
-    numerator: number;
-    denominator: number;
   };
   fonts: {
     data: Record<string, FontItem>;
@@ -67,12 +60,22 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   app_version: '0.5.0',
   modified_app_version: '0.5.0',
   session_id: '',
-  preview_text: 'font',
+  preview_text: 'A',
   created_at: new Date().toISOString(),
   modified_at: new Date().toISOString(),
-  process_status: 'empty',
-  clusters_amount: 0,
-  samples_amount: 0,
+  status: {
+    process_status: 'empty',
+    clusters_amount: 0,
+    samples_amount: 0,
+    progress: {
+      download: { numerator: 0, denominator: 1 },
+      discovery: { numerator: 0, denominator: 1 },
+      generation: { numerator: 0, denominator: 1 },
+      vectorization: { numerator: 0, denominator: 1 },
+      analysis: { numerator: 0, denominator: 1 },
+      position: { numerator: 0, denominator: 1 },
+    },
+  },
   weights: [400],
   discovered_fonts: {},
   algorithm: {
@@ -92,12 +95,6 @@ export const [appState, setAppState] = createStore<AppState>({
     id: '',
     config: DEFAULT_SESSION_CONFIG,
     directory: '',
-    status: 'empty',
-    isProcessing: false,
-  },
-  progress: {
-    numerator: 0,
-    denominator: 0,
   },
   fonts: {
     data: {},
@@ -116,7 +113,7 @@ export const [appState, setAppState] = createStore<AppState>({
     },
     selectedWeights: [400],
     searchQuery: '',
-    sampleText: 'font',
+    sampleText: 'A',
   },
 });
 

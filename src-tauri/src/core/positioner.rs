@@ -1,6 +1,7 @@
-use crate::config::{ComputedData, PositioningData};
+use crate::commands::progress::progress_events;
+use crate::config::{ComputedData, PositioningData, ProgressStage};
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
-use crate::core::{AppState, EmbeddingEngine};
+use crate::core::{AppState, EmbeddingEngine, EventSink};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
 use std::fs;
@@ -10,10 +11,12 @@ const POSITIONING_DIMENSIONS: usize = 2;
 pub struct Positioner;
 
 impl Positioner {
-    pub async fn position_all(state: &AppState) -> Result<()> {
+    pub async fn position_all(events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
         let engine = EmbeddingEngine::pca(POSITIONING_DIMENSIONS);
         let session_dir = session_dir.clone();
+        let events = events.clone();
+        let state_clone = state.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
             let mut vectors = Vec::new();
@@ -55,6 +58,14 @@ impl Positioner {
                 engine.embed(data)?
             };
 
+            progress_events::reset_progress(&events, &state_clone, ProgressStage::Position);
+            progress_events::set_progress_denominator(
+                &events,
+                &state_clone,
+                ProgressStage::Position,
+                font_ids.len() as i32,
+            );
+
             for (i, id) in font_ids.iter().enumerate() {
                 let meta = load_font_metadata(&session_dir, id)?;
                 let mut computed =
@@ -66,6 +77,12 @@ impl Positioner {
                     position: [embedding[[i, 0]], embedding[[i, 1]]],
                 });
                 save_computed_data(&session_dir, &meta.safe_name, &computed)?;
+                progress_events::increase_numerator(
+                    &events,
+                    &state_clone,
+                    ProgressStage::Position,
+                    1,
+                );
             }
 
             Ok(())

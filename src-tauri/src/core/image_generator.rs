@@ -1,11 +1,10 @@
 use crate::commands::progress::progress_events;
-use crate::config::{RenderConfig, DEFAULT_FONT_SIZE};
-use crate::core::AppState;
+use crate::config::{ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
+use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use tauri::AppHandle;
 
 pub struct ImageGenerator {}
 
@@ -16,7 +15,7 @@ impl ImageGenerator {
 
     // discover_fonts moved to discoverer.rs
 
-    pub async fn generate_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
+    pub async fn generate_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let (discovered_fonts, session_id, text, font_size) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
@@ -49,8 +48,13 @@ impl ImageGenerator {
             println!("⚠️ No fonts discovered for weights. Skipping generation.");
         }
 
-        progress_events::reset_progress(app);
-        progress_events::set_progress_denominator(app, tasks.len() as i32);
+        progress_events::reset_progress(events, state, ProgressStage::Generation);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Generation,
+            tasks.len() as i32,
+        );
 
         let render_config = Arc::new(RenderConfig {
             text,
@@ -58,7 +62,7 @@ impl ImageGenerator {
             output_dir: session_dir,
         });
 
-        let app_handle = app.clone();
+        let events = events.clone();
         let state_clone = state.clone();
         let render_config = Arc::clone(&render_config);
 
@@ -119,7 +123,12 @@ impl ImageGenerator {
                     })();
 
                     match res {
-                        Ok(_) => progress_events::increase_numerator(&app_handle, 1),
+                        Ok(_) => progress_events::increase_numerator(
+                            &events,
+                            &state_clone,
+                            ProgressStage::Generation,
+                            1,
+                        ),
                         Err(e) => {
                             eprintln!("❌ Failed to process {}: {}", family_name, e);
                             let font_dir =
@@ -127,7 +136,12 @@ impl ImageGenerator {
                             if font_dir.exists() {
                                 let _ = std::fs::remove_dir_all(font_dir);
                             }
-                            progress_events::decrease_denominator(&app_handle, 1);
+                            progress_events::decrease_denominator(
+                                &events,
+                                &state_clone,
+                                ProgressStage::Generation,
+                                1,
+                            );
                         }
                     }
                 });

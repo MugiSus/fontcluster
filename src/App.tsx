@@ -1,6 +1,5 @@
-import { Show, onMount } from 'solid-js';
+import { Show, onCleanup, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { SessionPickerDialog } from './components/session-picker-dialog';
 import { ClipboardListener } from './components/clipboard-listener';
 import { initAppEvents } from './actions';
 import { Toaster } from './components/ui/sonner';
@@ -19,9 +18,14 @@ function App() {
     list: true,
     chat: false,
   });
+  let cleanupAppEvents: (() => void) | undefined;
 
   onMount(() => {
-    initAppEvents();
+    cleanupAppEvents = initAppEvents();
+  });
+
+  onCleanup(() => {
+    cleanupAppEvents?.();
   });
 
   const closePanel = (panel: CollapsiblePanelKey) => {
@@ -36,7 +40,6 @@ function App() {
     <>
       <Toaster position='bottom-center' />
       <ClipboardListener />
-      <SessionPickerDialog />
       <div class='flex h-full min-h-0'>
         <Show when={panelState.control}>
           <ControlPanel

@@ -54,6 +54,13 @@ export type ProcessStatus =
   | 'clustered'
   | 'positioned';
 
+export interface ProcessingStatus {
+  process_status: ProcessStatus;
+  clusters_amount: number;
+  samples_amount: number;
+  progress: SessionProgress;
+}
+
 export interface SessionConfig {
   session_id: string;
   preview_text: string;
@@ -61,12 +68,34 @@ export interface SessionConfig {
   modified_at: string;
   app_version: string;
   modified_app_version: string;
-  process_status: ProcessStatus;
-  clusters_amount: number;
-  samples_amount: number;
+  status: ProcessingStatus;
   weights: number[];
   discovered_fonts: Record<number, string[]>;
   algorithm?: AlgorithmConfig;
+}
+
+export interface SessionHistoryEntry {
+  session_id: string;
+  preview_text: string;
+  modified_at: string;
+  weights: number[];
+  algorithm?: AlgorithmConfig;
+  status: ProcessingStatus;
+  is_running: boolean;
+}
+
+export interface SessionProgressSection {
+  numerator: number;
+  denominator: number;
+}
+
+export interface SessionProgress {
+  download: SessionProgressSection;
+  discovery: SessionProgressSection;
+  generation: SessionProgressSection;
+  vectorization: SessionProgressSection;
+  analysis: SessionProgressSection;
+  position: SessionProgressSection;
 }
 
 export interface PositioningData {

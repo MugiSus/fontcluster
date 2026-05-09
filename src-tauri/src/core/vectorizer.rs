@@ -1,5 +1,6 @@
 use crate::commands::progress::progress_events;
-use crate::core::AppState;
+use crate::config::ProgressStage;
+use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
@@ -16,7 +17,6 @@ use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::Ordering, Mutex};
-use tauri::{AppHandle, Manager};
 
 const MODEL_REPO_DIR: &str = "repvit_m1.dist_in1k";
 const MODEL_FILE_NAME: &str = "model.onnx";
@@ -36,8 +36,8 @@ struct PreparedImage {
 }
 
 impl Vectorizer {
-    pub fn new(app: &AppHandle) -> Result<Self> {
-        let model_dir = resolve_model_dir(app)?;
+    pub fn new() -> Result<Self> {
+        let model_dir = resolve_model_dir()?;
         let model_path = model_dir.join(MODEL_FILE_NAME);
         let spec = default_model_spec();
 
@@ -49,7 +49,7 @@ impl Vectorizer {
         })
     }
 
-    pub async fn vectorize_all(&self, app: &AppHandle, state: &AppState) -> Result<()> {
+    pub async fn vectorize_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
         let png_files = collect_sample_paths(session_dir).await?;
 
@@ -59,8 +59,13 @@ impl Vectorizer {
             return Ok(());
         }
 
-        progress_events::reset_progress(app);
-        progress_events::set_progress_denominator(app, png_files.len() as i32);
+        progress_events::reset_progress(events, state, ProgressStage::Vectorization);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Vectorization,
+            png_files.len() as i32,
+        );
 
         let preprocess_chunk_size = rayon::current_num_threads().max(1);
         println!(
@@ -83,16 +88,31 @@ impl Vectorizer {
                     Ok(prepared) => {
                         let path = prepared.path.clone();
                         match self.process_prepared_image(prepared) {
-                            Ok(_) => progress_events::increase_numerator(app, 1),
+                            Ok(_) => progress_events::increase_numerator(
+                                events,
+                                state,
+                                ProgressStage::Vectorization,
+                                1,
+                            ),
                             Err(e) => {
                                 println!("❌ Vectorization failed for {:?}: {}", path, e);
-                                progress_events::decrease_denominator(app, 1);
+                                progress_events::decrease_denominator(
+                                    events,
+                                    state,
+                                    ProgressStage::Vectorization,
+                                    1,
+                                );
                             }
                         }
                     }
                     Err((path, e)) => {
                         println!("❌ Vectorization failed for {:?}: {}", path, e);
-                        progress_events::decrease_denominator(app, 1);
+                        progress_events::decrease_denominator(
+                            events,
+                            state,
+                            ProgressStage::Vectorization,
+                            1,
+                        );
                     }
                 }
             }
@@ -250,10 +270,18 @@ struct ModelSpec {
     std: [f32; 3],
 }
 
-fn resolve_model_dir(app: &AppHandle) -> Result<PathBuf> {
+fn resolve_model_dir() -> Result<PathBuf> {
     let mut roots = vec![PathBuf::from("src-tauri/models"), PathBuf::from("models")];
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        roots.push(resource_dir.join("models"));
+
+    if let Ok(resource_dir) = std::env::var("FONTCLUSTER_RESOURCE_DIR") {
+        roots.push(PathBuf::from(resource_dir).join("models"));
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            roots.push(exe_dir.join("../Resources/models"));
+            roots.push(exe_dir.join("models"));
+        }
     }
 
     for root in roots {

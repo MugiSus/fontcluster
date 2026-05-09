@@ -1,7 +1,7 @@
 use crate::commands::progress::progress_events;
-use crate::core::AppState;
+use crate::config::ProgressStage;
+use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
-use tauri::AppHandle;
 // use futures::StreamExt as _;
 use std::collections::HashMap;
 use std::fs;
@@ -151,7 +151,7 @@ impl Discoverer {
 
     pub async fn discover_fonts(
         &self,
-        app: &AppHandle,
+        events: &impl EventSink,
         state: &AppState,
     ) -> Result<HashMap<i32, Vec<String>>> {
         let (preview_text, target_weights, session_id, font_set) = {
@@ -190,13 +190,19 @@ impl Discoverer {
         let total_files = font_files.len();
         println!("🔍 Found {} font files", total_files);
 
-        progress_events::reset_progress(app);
-        progress_events::set_progress_denominator(app, total_files as i32);
+        progress_events::reset_progress(events, state, ProgressStage::Discovery);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Discovery,
+            total_files as i32,
+        );
 
-        let app_handle = app.clone();
+        let events = events.clone();
         let preview_text = preview_text.clone();
         let target_weights = target_weights.clone();
         let session_dir = session_dir.clone();
+        let state_clone = state.clone();
         let is_cancelled = state.is_cancelled.clone();
 
         let discovered =
@@ -220,7 +226,12 @@ impl Discoverer {
                             }
                         }
                     }
-                    progress_events::increase_numerator(&app_handle, 1);
+                    progress_events::increase_numerator(
+                        &events,
+                        &state_clone,
+                        ProgressStage::Discovery,
+                        1,
+                    );
                     results.push(local_metas);
                 }
 
