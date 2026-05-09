@@ -342,14 +342,6 @@ pub async fn run_jobs_pipeline(
 }
 
 #[command]
-pub fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<String>> {
-    let running_jobs = state.current_job_children.lock().unwrap();
-    let mut session_ids = running_jobs.keys().cloned().collect::<Vec<_>>();
-    session_ids.sort();
-    Ok(session_ids)
-}
-
-#[command]
 pub fn stop_jobs(
     app: AppHandle,
     state: State<'_, AppState>,

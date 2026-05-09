@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { appState, DEFAULT_SESSION_CONFIG } from '@/store';
 import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
-import { type FontWeight, type SessionConfig } from '@/types/font';
+import { type FontWeight, type SessionHistoryEntry } from '@/types/font';
 import { SessionHistoryItem } from './session-history-item';
 
 interface SessionHistoryProps {
@@ -39,63 +39,42 @@ export function SessionHistory(props: SessionHistoryProps) {
   const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
     new Set(),
   );
-  const [runningSessionIds, setRunningSessionIds] = createSignal<Set<string>>(
-    new Set(),
-  );
   const [isLoadingSessions, setIsLoadingSessions] = createSignal(false);
-  const [availableSessions, setAvailableSessions] = createStore<
-    SessionConfig[]
+  const [sessionHistory, setSessionHistory] = createStore<
+    SessionHistoryEntry[]
   >([]);
   const committedDeletes = new Set<string>();
   const cancelledDeletes = new Set<string>();
 
-  const refetchAvailableSessions = async () => {
+  const refetchSessionHistory = async () => {
     setIsLoadingSessions(true);
     try {
-      const result = await invoke<string>('get_available_sessions');
-      setAvailableSessions(
-        reconcile(JSON.parse(result) as SessionConfig[], {
+      const result = await invoke<SessionHistoryEntry[]>('get_session_history');
+      setSessionHistory(
+        reconcile(result, {
           key: 'session_id',
         }),
       );
     } catch (error) {
-      console.error('Failed to get available sessions:', error);
+      console.error('Failed to get session history:', error);
     } finally {
       setIsLoadingSessions(false);
     }
   };
 
-  const refetchRunningSessionIds = async () => {
-    try {
-      const sessionIds = await invoke<string[]>('get_running_session_ids');
-      setRunningSessionIds(new Set(sessionIds));
-    } catch (error) {
-      console.error('Failed to get running session IDs:', error);
-    }
-  };
-
-  const refetchSessionHistory = async () => {
-    await Promise.all([refetchAvailableSessions(), refetchRunningSessionIds()]);
-  };
-
   const visibleSessions = createMemo(() =>
-    availableSessions.filter(
+    sessionHistory.filter(
       (session) => !hiddenSessionIds().has(session.session_id),
     ),
   );
 
-  const sortedSessions = createMemo<SessionConfig[]>(() => {
-    const activeSessionIds = runningSessionIds();
-
-    return visibleSessions().sort(
+  const sortedSessions = createMemo<SessionHistoryEntry[]>(() =>
+    visibleSessions().sort(
       (a, b) =>
-        Number(activeSessionIds.has(b.session_id)) -
-          Number(activeSessionIds.has(a.session_id)) ||
+        Number(b.is_running) - Number(a.is_running) ||
         new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime(),
-    );
-  });
-  const isRunningSession = (sessionId: string) =>
-    runningSessionIds().has(sessionId);
+    ),
+  );
 
   const unlisteners: Array<() => void> = [];
   let disposed = false;
@@ -131,7 +110,9 @@ export function SessionHistory(props: SessionHistoryProps) {
   });
 
   createEffect(() => {
-    if (!open() || runningSessionIds().size === 0) return;
+    if (!open() || !sessionHistory.some((session) => session.is_running)) {
+      return;
+    }
 
     const intervalId = window.setInterval(() => {
       void refetchSessionHistory();
@@ -166,7 +147,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
   };
 
-  const continueSessionProcessing = (session: SessionConfig) => {
+  const continueSessionProcessing = (session: SessionHistoryEntry) => {
     const algorithm = session.algorithm ?? DEFAULT_SESSION_CONFIG.algorithm;
     if (!algorithm) return;
 
@@ -214,7 +195,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
   };
 
-  const handleDeleteClick = (session: SessionConfig) => {
+  const handleDeleteClick = (session: SessionHistoryEntry) => {
     const sessionId = session.session_id;
     cancelledDeletes.delete(sessionId);
     setHiddenSessionIds((prev) => new Set(prev).add(sessionId));
@@ -287,7 +268,6 @@ export function SessionHistory(props: SessionHistoryProps) {
                 <SessionHistoryItem
                   session={session}
                   isCurrentSession={session.session_id === appState.session.id}
-                  isRunning={() => isRunningSession(session.session_id)}
                   isRestoring={isRestoring()}
                   onDeleteClick={() => handleDeleteClick(session)}
                   onContinueProcessing={() =>

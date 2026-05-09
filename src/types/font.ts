@@ -74,6 +74,16 @@ export interface SessionConfig {
   algorithm?: AlgorithmConfig;
 }
 
+export interface SessionHistoryEntry {
+  session_id: string;
+  preview_text: string;
+  modified_at: string;
+  weights: number[];
+  algorithm?: AlgorithmConfig;
+  status: ProcessingStatus;
+  is_running: boolean;
+}
+
 export interface SessionProgressSection {
   numerator: number;
   denominator: number;

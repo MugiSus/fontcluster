@@ -1,4 +1,4 @@
-import { Show, type Accessor } from 'solid-js';
+import { Show } from 'solid-js';
 import { PlayIcon, RotateCcwIcon, SquareIcon, Trash2Icon } from 'lucide-solid';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,16 +7,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { type SessionConfig, type SessionProgressSection } from '@/types/font';
-
-const PROGRESS_WEIGHTS = {
-  download: 0.1,
-  discovery: 0.1,
-  generation: 0.15,
-  vectorization: 0.6,
-  analysis: 0.025,
-  position: 0.025,
-} as const;
+import {
+  type SessionHistoryEntry,
+  type SessionProgressSection,
+} from '@/types/font';
 
 export const getProcessStatusBadge = (status: string) => {
   switch (status) {
@@ -38,9 +32,8 @@ export const getProcessStatusBadge = (status: string) => {
 };
 
 interface SessionHistoryItemProps {
-  session: SessionConfig;
+  session: SessionHistoryEntry;
   isCurrentSession: boolean;
-  isRunning: Accessor<boolean>;
   isRestoring: boolean;
   onDeleteClick: () => void;
   onContinueProcessing: () => void;
@@ -53,7 +46,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const badge = () => {
     return getProcessStatusBadge(session().status.process_status);
   };
-  const isRunning = () => props.isRunning();
+  const isRunning = () => session().is_running;
 
   const isComplete = () => session()?.status.process_status === 'positioned';
 
@@ -68,12 +61,12 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const progressValue = () => {
     const progress = session().status.progress;
     const weightedProgress =
-      sectionRatio(progress.download) * PROGRESS_WEIGHTS.download +
-      sectionRatio(progress.discovery) * PROGRESS_WEIGHTS.discovery +
-      sectionRatio(progress.generation) * PROGRESS_WEIGHTS.generation +
-      sectionRatio(progress.vectorization) * PROGRESS_WEIGHTS.vectorization +
-      sectionRatio(progress.analysis) * PROGRESS_WEIGHTS.analysis +
-      sectionRatio(progress.position) * PROGRESS_WEIGHTS.position;
+      sectionRatio(progress.download) * 0.1 +
+      sectionRatio(progress.discovery) * 0.1 +
+      sectionRatio(progress.generation) * 0.15 +
+      sectionRatio(progress.vectorization) * 0.6 +
+      sectionRatio(progress.analysis) * 0.025 +
+      sectionRatio(progress.position) * 0.025;
 
     return Math.min(1, Math.max(0, weightedProgress / 1));
   };
