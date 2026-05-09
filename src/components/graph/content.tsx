@@ -120,6 +120,23 @@ export function GraphContent() {
             onReset={viewport.handleReset}
           />
         </div>
+
+        {/* <div class='pointer-events-none absolute bottom-3 left-3 z-10'>
+          <Show when={appState.fonts.data[appState.ui.selectedFontKey || '']}>
+            {(fontData) => (
+              <div class='text-sm *:pointer-events-auto'>
+                <p class='font-semibold'>{fontData().meta.font_name}</p>
+                <p class='text-xs text-muted-foreground'>
+                  Weight: {fontData().meta.weight}
+                </p>
+                <p class='text-xs text-muted-foreground'>
+                  Family: {fontData().meta.family_name}
+                </p>
+              </div>
+            )}
+          </Show>
+        </div> */}
+
         <svg
           ref={(el) => {
             svgElement = el;

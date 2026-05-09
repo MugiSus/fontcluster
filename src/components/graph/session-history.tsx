@@ -29,7 +29,11 @@ import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
 import { type FontWeight, type SessionConfig } from '@/types/font';
 import { SessionHistoryItem } from './session-history-item';
 
-export function SessionHistory() {
+interface SessionHistoryProps {
+  class?: string;
+}
+
+export function SessionHistory(props: SessionHistoryProps) {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
   const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
@@ -214,7 +218,7 @@ export function SessionHistory() {
         as={Button<'button'>}
         variant='ghost'
         size='icon'
-        class='size-8 rounded-full'
+        class={props.class}
         aria-label='Open session history'
       >
         <HistoryIcon class='size-4' />

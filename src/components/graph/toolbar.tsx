@@ -114,7 +114,12 @@ export function GraphToolbar(props: GraphToolbarProps) {
           <TooltipContent>Copy family name</TooltipContent>
         </Tooltip>
 
-        <SessionHistory class='bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+        <Tooltip>
+          <TooltipTrigger as='div'>
+            <SessionHistory class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+          </TooltipTrigger>
+          <TooltipContent>Session history</TooltipContent>
+        </Tooltip>
 
         <Tooltip>
           <TooltipTrigger as='div'>
