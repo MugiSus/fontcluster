@@ -18,7 +18,6 @@ pub struct SessionConfig {
     pub weights: Vec<i32>,
     pub discovered_fonts: HashMap<i32, Vec<String>>,
     pub algorithm: Option<AlgorithmConfig>,
-    #[serde(flatten)]
     pub status: ProcessingStatus,
 }
 
@@ -106,6 +105,35 @@ pub struct ProcessingStatus {
     pub process_status: ProcessStatus,
     pub clusters_amount: usize,
     pub samples_amount: usize,
+    pub progress: ProcessingProgress,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(default)]
+pub struct ProcessingProgress {
+    pub download: ProgressSection,
+    pub discovery: ProgressSection,
+    pub generation: ProgressSection,
+    pub vectorization: ProgressSection,
+    pub analysis: ProgressSection,
+    pub position: ProgressSection,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(default)]
+pub struct ProgressSection {
+    pub numerator: usize,
+    pub denominator: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProgressStage {
+    Download,
+    Discovery,
+    Generation,
+    Vectorization,
+    Analysis,
+    Position,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

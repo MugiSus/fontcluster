@@ -43,7 +43,7 @@ export function ControlContent() {
     if (!form) return;
 
     const isCompletedSession =
-      appState.session.config.process_status === 'positioned';
+      appState.session.config.status.process_status === 'positioned';
     const sessionId =
       targetStatus || !isCompletedSession
         ? appState.session.id || undefined
@@ -121,7 +121,7 @@ export function ControlContent() {
         </TextField>
       </div>
 
-      <Show when={appState.session.config.session_id} keyed>
+      <Show when={true} keyed>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
             title='discover'

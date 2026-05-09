@@ -1,5 +1,5 @@
 use crate::commands::progress::progress_events;
-use crate::config::FontSet;
+use crate::config::{FontSet, ProgressStage};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
@@ -106,6 +106,7 @@ impl GoogleFontsDownloader {
             .join("Generated")
             .join(&session_id);
         let events = events.clone();
+        let state = state.clone();
 
         tokio::task::spawn_blocking(move || {
             download_fonts_impl(
@@ -114,6 +115,7 @@ impl GoogleFontsDownloader {
                 &session_dir,
                 &target_weights,
                 &events,
+                &state,
             )
         })
         .await
@@ -127,6 +129,7 @@ fn download_fonts_impl(
     session_dir: &Path,
     target_weights: &[i32],
     events: &impl EventSink,
+    state: &AppState,
 ) -> Result<Vec<PathBuf>> {
     let resource_path = resolve_google_fonts_popularity_path();
 
@@ -208,8 +211,13 @@ fn download_fonts_impl(
     let downloaded_paths: Arc<Mutex<Vec<PathBuf>>> = Arc::new(Mutex::new(Vec::new()));
     let client = Arc::new(client);
     let progress_events_sink = events.clone();
-    progress_events::reset_progress(events);
-    progress_events::set_progress_denominator(events, target_fonts.len() as i32);
+    progress_events::reset_progress(events, state, ProgressStage::Download);
+    progress_events::set_progress_denominator(
+        events,
+        state,
+        ProgressStage::Download,
+        target_fonts.len() as i32,
+    );
 
     // We need to encode text for URL.
     let encoded_text = urlencoding::encode(target_text).to_string();
@@ -218,6 +226,7 @@ fn download_fonts_impl(
     target_fonts.par_iter().for_each(|font| {
         let client = Arc::clone(&client);
         let progress_events_sink = progress_events_sink.clone();
+        let state = state.clone();
         let safe_family = font.family.replace(' ', "+");
 
         // Iterate over requested weights
@@ -355,7 +364,12 @@ fn download_fonts_impl(
                 }
             }
         }
-        progress_events::increase_numerator(&progress_events_sink, 1);
+        progress_events::increase_numerator(
+            &progress_events_sink,
+            &state,
+            ProgressStage::Download,
+            1,
+        );
     });
 
     let paths = Arc::try_unwrap(downloaded_paths)

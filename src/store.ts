@@ -13,9 +13,6 @@ export interface AppState {
     config: SessionConfig;
     directory: string;
   };
-  progress: {
-    bySession: Record<string, { numerator: number; denominator: number }>;
-  };
   fonts: {
     data: Record<string, FontItem>;
     readonly filteredKeys: Set<string>;
@@ -66,9 +63,19 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   preview_text: 'A',
   created_at: new Date().toISOString(),
   modified_at: new Date().toISOString(),
-  process_status: 'empty',
-  clusters_amount: 0,
-  samples_amount: 0,
+  status: {
+    process_status: 'empty',
+    clusters_amount: 0,
+    samples_amount: 0,
+    progress: {
+      download: { numerator: 0, denominator: 1 },
+      discovery: { numerator: 0, denominator: 1 },
+      generation: { numerator: 0, denominator: 1 },
+      vectorization: { numerator: 0, denominator: 1 },
+      analysis: { numerator: 0, denominator: 1 },
+      position: { numerator: 0, denominator: 1 },
+    },
+  },
   weights: [400],
   discovered_fonts: {},
   algorithm: {
@@ -88,9 +95,6 @@ export const [appState, setAppState] = createStore<AppState>({
     id: '',
     config: DEFAULT_SESSION_CONFIG,
     directory: '',
-  },
-  progress: {
-    bySession: {},
   },
   fonts: {
     data: {},

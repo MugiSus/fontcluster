@@ -1,5 +1,5 @@
 use crate::commands::progress::progress_events;
-use crate::config::{RenderConfig, DEFAULT_FONT_SIZE};
+use crate::config::{ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
@@ -48,8 +48,13 @@ impl ImageGenerator {
             println!("⚠️ No fonts discovered for weights. Skipping generation.");
         }
 
-        progress_events::reset_progress(events);
-        progress_events::set_progress_denominator(events, tasks.len() as i32);
+        progress_events::reset_progress(events, state, ProgressStage::Generation);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Generation,
+            tasks.len() as i32,
+        );
 
         let render_config = Arc::new(RenderConfig {
             text,
@@ -118,7 +123,12 @@ impl ImageGenerator {
                     })();
 
                     match res {
-                        Ok(_) => progress_events::increase_numerator(&events, 1),
+                        Ok(_) => progress_events::increase_numerator(
+                            &events,
+                            &state_clone,
+                            ProgressStage::Generation,
+                            1,
+                        ),
                         Err(e) => {
                             eprintln!("❌ Failed to process {}: {}", family_name, e);
                             let font_dir =
@@ -126,7 +136,12 @@ impl ImageGenerator {
                             if font_dir.exists() {
                                 let _ = std::fs::remove_dir_all(font_dir);
                             }
-                            progress_events::decrease_denominator(&events, 1);
+                            progress_events::decrease_denominator(
+                                &events,
+                                &state_clone,
+                                ProgressStage::Generation,
+                                1,
+                            );
                         }
                     }
                 });

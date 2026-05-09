@@ -1,4 +1,5 @@
 use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
+use crate::core::session::refresh_session_progress;
 use crate::core::AppState;
 use crate::error::Result;
 use chrono::{DateTime, Utc};
@@ -45,9 +46,10 @@ pub async fn get_available_sessions() -> Result<String> {
         if path.is_dir() {
             let config_path = path.join("config.json");
             if config_path.exists() {
-                if let Ok(s) =
+                if let Ok(mut s) =
                     serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?)
                 {
+                    refresh_session_progress(&mut s)?;
                     sessions.push(s);
                 }
             }

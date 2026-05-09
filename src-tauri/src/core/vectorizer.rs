@@ -1,4 +1,5 @@
 use crate::commands::progress::progress_events;
+use crate::config::ProgressStage;
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use bytemuck;
@@ -58,8 +59,13 @@ impl Vectorizer {
             return Ok(());
         }
 
-        progress_events::reset_progress(events);
-        progress_events::set_progress_denominator(events, png_files.len() as i32);
+        progress_events::reset_progress(events, state, ProgressStage::Vectorization);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Vectorization,
+            png_files.len() as i32,
+        );
 
         let preprocess_chunk_size = rayon::current_num_threads().max(1);
         println!(
@@ -82,16 +88,31 @@ impl Vectorizer {
                     Ok(prepared) => {
                         let path = prepared.path.clone();
                         match self.process_prepared_image(prepared) {
-                            Ok(_) => progress_events::increase_numerator(events, 1),
+                            Ok(_) => progress_events::increase_numerator(
+                                events,
+                                state,
+                                ProgressStage::Vectorization,
+                                1,
+                            ),
                             Err(e) => {
                                 println!("❌ Vectorization failed for {:?}: {}", path, e);
-                                progress_events::decrease_denominator(events, 1);
+                                progress_events::decrease_denominator(
+                                    events,
+                                    state,
+                                    ProgressStage::Vectorization,
+                                    1,
+                                );
                             }
                         }
                     }
                     Err((path, e)) => {
                         println!("❌ Vectorization failed for {:?}: {}", path, e);
-                        progress_events::decrease_denominator(events, 1);
+                        progress_events::decrease_denominator(
+                            events,
+                            state,
+                            ProgressStage::Vectorization,
+                            1,
+                        );
                     }
                 }
             }

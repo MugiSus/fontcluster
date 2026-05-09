@@ -101,7 +101,13 @@ export const {
     if (data) {
       setAppState('session', 'config', (prev) => {
         if (!prev) return prev;
-        return { ...prev, samples_amount: Object.keys(data).length };
+        return {
+          ...prev,
+          status: {
+            ...prev.status,
+            samples_amount: Object.keys(data).length,
+          },
+        };
       });
       setAppState('fonts', 'data', reconcile(data));
     }
@@ -172,39 +178,6 @@ export const stopJobs = async (sessionId?: string) => {
   }
 };
 
-type ProgressEventPayload =
-  | number
-  | {
-      sessionId?: string;
-      value: number;
-    };
-
-const getProgressEventParts = (payload: ProgressEventPayload) => {
-  if (typeof payload === 'number') {
-    return { sessionId: appState.session.id, value: payload };
-  }
-
-  return {
-    sessionId: payload.sessionId ?? appState.session.id,
-    value: payload.value,
-  };
-};
-
-const updateSessionProgress = (
-  payload: ProgressEventPayload,
-  update: (
-    previous: { numerator: number; denominator: number },
-    value: number,
-  ) => { numerator: number; denominator: number },
-) => {
-  const { sessionId, value } = getProgressEventParts(payload);
-  if (!sessionId) return;
-
-  setAppState('progress', 'bySession', sessionId, (previous) =>
-    update(previous ?? { numerator: 0, denominator: 0 }, value),
-  );
-};
-
 // --- Initialization ---
 
 let appEventsCleanup: (() => void) | null = null;
@@ -251,57 +224,6 @@ export function initAppEvents() {
       console.error('Failed to get latest session ID:', error);
     }
   })();
-
-  // Progress tracking and status update event listeners
-  registerListener<ProgressEventPayload>(
-    'progress_numerator_reset',
-    (event) => {
-      updateSessionProgress(event.payload, (previous, value) => ({
-        ...previous,
-        numerator: value,
-      }));
-    },
-  );
-
-  registerListener<ProgressEventPayload>(
-    'progress_denominator_reset',
-    (event) => {
-      updateSessionProgress(event.payload, (previous, value) => ({
-        ...previous,
-        denominator: value,
-      }));
-    },
-  );
-
-  registerListener<ProgressEventPayload>(
-    'progress_numerator_increase',
-    (event) => {
-      updateSessionProgress(event.payload, (previous, value) => ({
-        ...previous,
-        numerator: previous.numerator + value,
-      }));
-    },
-  );
-
-  registerListener<ProgressEventPayload>(
-    'progress_denominator_set',
-    (event) => {
-      updateSessionProgress(event.payload, (previous, value) => ({
-        ...previous,
-        denominator: value,
-      }));
-    },
-  );
-
-  registerListener<ProgressEventPayload>(
-    'progress_denominator_decrease',
-    (event) => {
-      updateSessionProgress(event.payload, (previous, value) => ({
-        ...previous,
-        denominator: previous.denominator - value,
-      }));
-    },
-  );
 
   registerListener<string>('clustering_complete', (event) => {
     console.log('Clustering completed for session:', event.payload);

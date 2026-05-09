@@ -14,7 +14,7 @@ use tauri::{command, AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
 const WORKER_RUN_JOBS_ARG: &str = "--fontcluster-worker-run-jobs";
-const MAX_RUNNING_JOBS: usize = 2;
+const MAX_RUNNING_JOBS: usize = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -310,7 +310,7 @@ pub async fn run_jobs_pipeline(
         }
         println!("✨ Starting clustering...");
         events.emit_unit("clustering_start")?;
-        Clusterer::cluster_all(state).await?;
+        Clusterer::cluster_all(&events, state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -329,7 +329,7 @@ pub async fn run_jobs_pipeline(
         }
         println!("📍 Starting positioning...");
         events.emit_unit("positioning_start")?;
-        Positioner::position_all(state).await?;
+        Positioner::position_all(&events, state).await?;
         events.emit_string("positioning_complete", id.clone())?;
     }
 
@@ -342,20 +342,27 @@ pub async fn run_jobs_pipeline(
 }
 
 #[command]
+pub fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<String>> {
+    let running_jobs = state.current_job_children.lock().unwrap();
+    let mut session_ids = running_jobs.keys().cloned().collect::<Vec<_>>();
+    session_ids.sort();
+    Ok(session_ids)
+}
+
+#[command]
 pub fn stop_jobs(
     app: AppHandle,
     state: State<'_, AppState>,
     session_id: Option<String>,
 ) -> Result<()> {
     let jobs = {
-        let running_jobs = state.current_job_children.lock().unwrap();
+        let mut running_jobs = state.current_job_children.lock().unwrap();
         match session_id.as_ref() {
             Some(session_id) => running_jobs
-                .get(session_id)
-                .cloned()
+                .remove(session_id)
                 .into_iter()
                 .collect::<Vec<_>>(),
-            None => running_jobs.values().cloned().collect::<Vec<_>>(),
+            None => running_jobs.drain().map(|(_, job)| job).collect::<Vec<_>>(),
         }
     };
 

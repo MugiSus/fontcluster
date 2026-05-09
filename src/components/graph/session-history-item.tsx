@@ -7,15 +7,41 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { getProcessStatusBadge } from '@/components/session-item';
-import { type SessionConfig } from '@/types/font';
+import { type SessionConfig, type SessionProgressSection } from '@/types/font';
+
+const PROGRESS_WEIGHTS = {
+  download: 1,
+  discovery: 1,
+  generation: 2,
+  vectorization: 5,
+  analysis: 0.5,
+  position: 0.5,
+} as const;
+
+export const getProcessStatusBadge = (status: string) => {
+  switch (status) {
+    case 'positioned':
+      return { text: 'Complete', variant: 'default' } as const;
+    case 'clustered':
+      return { text: 'Clustered', variant: 'outline' } as const;
+    case 'vectorized':
+      return { text: 'Vectorized', variant: 'outline' } as const;
+    case 'generated':
+      return { text: 'Generated', variant: 'outline' } as const;
+    case 'discovered':
+      return { text: 'Discovered', variant: 'outline' } as const;
+    case 'downloaded':
+      return { text: 'Downloaded', variant: 'outline' } as const;
+    default:
+      return { text: 'Empty', variant: 'error' } as const;
+  }
+};
 
 interface SessionHistoryItemProps {
   session: SessionConfig;
   isCurrentSession: boolean;
   isRunning: Accessor<boolean>;
   isRestoring: boolean;
-  progress: Accessor<number>;
   onDeleteClick: () => void;
   onContinueProcessing: () => void;
   onSelectSession: () => void;
@@ -25,23 +51,39 @@ interface SessionHistoryItemProps {
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const session = () => props.session;
   const badge = () => {
-    return getProcessStatusBadge(session().process_status);
+    return getProcessStatusBadge(session().status.process_status);
   };
   const isRunning = () => props.isRunning();
-  const isComplete = () => session()?.process_status === 'positioned';
+
+  const isComplete = () => session()?.status.process_status === 'positioned';
+
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;
   const canContinueProcessing = () =>
     !!session() && !isComplete() && !isRunning();
-  const title = () => session().preview_text || 'A';
-  const details = () => {
-    const currentSession = session();
-    return `${currentSession.weights.length} weights · ${
-      currentSession.samples_amount
-    } samples · ${currentSession.clusters_amount} clusters`;
+  const sectionRatio = (section: SessionProgressSection) => {
+    if (section.denominator <= 0) return 1;
+    return Math.min(1, Math.max(0, section.numerator / section.denominator));
   };
-  const progressPercent = () => props.progress() * 100;
-  const roundedProgressPercent = () => Math.round(progressPercent());
+  const progressValue = () => {
+    const progress = session().status.progress;
+    const weightedProgress =
+      sectionRatio(progress.download) * PROGRESS_WEIGHTS.download +
+      sectionRatio(progress.discovery) * PROGRESS_WEIGHTS.discovery +
+      sectionRatio(progress.generation) * PROGRESS_WEIGHTS.generation +
+      sectionRatio(progress.vectorization) * PROGRESS_WEIGHTS.vectorization +
+      sectionRatio(progress.analysis) * PROGRESS_WEIGHTS.analysis +
+      sectionRatio(progress.position) * PROGRESS_WEIGHTS.position;
+    const totalWeight =
+      PROGRESS_WEIGHTS.download +
+      PROGRESS_WEIGHTS.discovery +
+      PROGRESS_WEIGHTS.generation +
+      PROGRESS_WEIGHTS.vectorization +
+      PROGRESS_WEIGHTS.analysis +
+      PROGRESS_WEIGHTS.position;
+
+    return Math.min(1, Math.max(0, weightedProgress / totalWeight));
+  };
 
   return (
     <article class='space-y-2 rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
@@ -61,8 +103,14 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               })}
             </time>
           </div>
-          <p class='truncate text-sm font-medium leading-5'>{title()}</p>
-          <p class='truncate text-muted-foreground'>{details()}</p>
+          <p class='truncate text-sm font-medium leading-5'>
+            {session().preview_text || 'A'}
+          </p>
+          <p class='truncate text-muted-foreground'>
+            {session().weights.length} weights {' · '}
+            {session().status.samples_amount} samples {' · '}
+            {session().status.clusters_amount} clusters
+          </p>
         </div>
         <div class='flex shrink-0 items-center'>
           <Show
@@ -130,17 +178,19 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           </Show>
         </div>
       </div>
-      <Show when={isRunning()}>
+      <Show when={!isComplete()}>
         <div class='space-y-1'>
           <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
             <div
-              class='h-full bg-primary'
-              style={{ width: `${progressPercent()}%` }}
+              class='h-full bg-primary transition-[width] duration-500'
+              style={{ width: `${progressValue() * 100}%` }}
             />
           </div>
           <div class='flex justify-between gap-2 text-muted-foreground'>
-            <p class='truncate'>Processing</p>
-            <p class='shrink-0 tabular-nums'>{roundedProgressPercent()}%</p>
+            <p class='truncate'>{isRunning() ? 'Processing' : 'Progress'}</p>
+            <p class='shrink-0 tabular-nums'>
+              {Math.round(progressValue() * 100)}%
+            </p>
           </div>
         </div>
       </Show>

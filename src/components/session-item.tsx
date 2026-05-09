@@ -67,7 +67,8 @@ interface SessionItemProps {
 }
 
 export function SessionItem(props: SessionItemProps) {
-  const badge = () => getProcessStatusBadge(props.session.process_status);
+  const badge = () =>
+    getProcessStatusBadge(props.session.status.process_status);
 
   return (
     <div class='flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted'>
@@ -89,7 +90,7 @@ export function SessionItem(props: SessionItemProps) {
           <WeightIndicators weights={props.session.weights} />
           <TypeIcon class='ml-1 size-3 text-muted-foreground' />
           <div class='text-xs text-muted-foreground'>
-            {props.session.samples_amount}
+            {props.session.status.samples_amount}
           </div>
           <ClusterIndicators count={props.clusterCount} />
         </div>

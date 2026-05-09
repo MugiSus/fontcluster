@@ -1,4 +1,5 @@
 use crate::commands::progress::progress_events;
+use crate::config::ProgressStage;
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 // use futures::StreamExt as _;
@@ -189,13 +190,19 @@ impl Discoverer {
         let total_files = font_files.len();
         println!("🔍 Found {} font files", total_files);
 
-        progress_events::reset_progress(events);
-        progress_events::set_progress_denominator(events, total_files as i32);
+        progress_events::reset_progress(events, state, ProgressStage::Discovery);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Discovery,
+            total_files as i32,
+        );
 
         let events = events.clone();
         let preview_text = preview_text.clone();
         let target_weights = target_weights.clone();
         let session_dir = session_dir.clone();
+        let state_clone = state.clone();
         let is_cancelled = state.is_cancelled.clone();
 
         let discovered =
@@ -219,7 +226,12 @@ impl Discoverer {
                             }
                         }
                     }
-                    progress_events::increase_numerator(&events, 1);
+                    progress_events::increase_numerator(
+                        &events,
+                        &state_clone,
+                        ProgressStage::Discovery,
+                        1,
+                    );
                     results.push(local_metas);
                 }
 

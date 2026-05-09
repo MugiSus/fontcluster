@@ -1,6 +1,7 @@
-use crate::config::ClusteringData;
+use crate::commands::progress::progress_events;
+use crate::config::{ClusteringData, ProgressStage};
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
-use crate::core::{AppState, ClusteringEngine, EmbeddingEngine};
+use crate::core::{AppState, ClusteringEngine, EmbeddingEngine, EventSink};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
 use std::fs;
@@ -8,7 +9,7 @@ use std::fs;
 pub struct Clusterer;
 
 impl Clusterer {
-    pub async fn cluster_all(state: &AppState) -> Result<()> {
+    pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
 
         let config = {
@@ -81,7 +82,17 @@ impl Clusterer {
         let n_samples = points.nrows();
         let clustering = engine.cluster(points)?;
 
+        progress_events::reset_progress(events, state, ProgressStage::Analysis);
+        progress_events::set_progress_denominator(
+            events,
+            state,
+            ProgressStage::Analysis,
+            ids.len() as i32,
+        );
+
         let session_dir_for_second = session_dir.clone();
+        let events = events.clone();
+        let state_clone = state.clone();
         let n_clusters =
             tokio::task::spawn_blocking(move || -> Result<usize> {
                 for (i, id) in ids.iter().enumerate() {
@@ -97,6 +108,12 @@ impl Clusterer {
                         is_outlier: clustering.is_outlier.get(i).copied().unwrap_or(false),
                     });
                     save_computed_data(&session_dir_for_second, &meta.safe_name, &computed)?;
+                    progress_events::increase_numerator(
+                        &events,
+                        &state_clone,
+                        ProgressStage::Analysis,
+                        1,
+                    );
                 }
                 Ok(clustering.cluster_count)
             })
