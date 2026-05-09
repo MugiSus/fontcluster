@@ -64,7 +64,7 @@ export function ListContent(props: ListProps) {
   const NoResultsFound = () => (
     <div class='inset-x-0 flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
       <SearchSlashIcon />
-      No results found
+      No Results
     </div>
   );
 
