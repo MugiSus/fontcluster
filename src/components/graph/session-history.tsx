@@ -1,7 +1,6 @@
 import {
   createMemo,
   createResource,
-  createSelector,
   createSignal,
   For,
   onCleanup,
@@ -39,8 +38,8 @@ export function SessionHistory(props: SessionHistoryProps) {
   const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
     new Set(),
   );
-  const [runningSessionId, setRunningSessionId] = createSignal<string | null>(
-    null,
+  const [runningSessionIds, setRunningSessionIds] = createSignal<Set<string>>(
+    new Set(),
   );
   const committedDeletes = new Set<string>();
   const cancelledDeletes = new Set<string>();
@@ -62,21 +61,24 @@ export function SessionHistory(props: SessionHistoryProps) {
   );
 
   const sortedSessions = createMemo<SessionConfig[]>(() => {
-    const activeSessionId = runningSessionId();
+    const activeSessionIds = runningSessionIds();
 
     return visibleSessions().sort(
       (a, b) =>
-        Number(b.session_id === activeSessionId) -
-          Number(a.session_id === activeSessionId) ||
+        Number(activeSessionIds.has(b.session_id)) -
+          Number(activeSessionIds.has(a.session_id)) ||
         new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime(),
     );
   });
-  const isRunningSession = createSelector(runningSessionId);
-  const runningProgress = createMemo(() => {
-    const denominator = appState.progress.denominator;
+  const isRunningSession = (sessionId: string) =>
+    runningSessionIds().has(sessionId);
+  const runningProgress = (sessionId: string) => {
+    const progress = appState.progress.bySession[sessionId];
+    const denominator = progress?.denominator ?? 0;
     if (denominator <= 0) return 0;
-    return Math.min(1, Math.max(0, appState.progress.numerator / denominator));
-  });
+
+    return Math.min(1, Math.max(0, (progress?.numerator ?? 0) / denominator));
+  };
 
   const unlisteners: Array<() => void> = [];
   let disposed = false;
@@ -99,15 +101,25 @@ export function SessionHistory(props: SessionHistoryProps) {
     void refetch();
   });
   registerListener<string>('session_started', (event) => {
-    setRunningSessionId(event.payload);
+    setRunningSessionIds((prev) => new Set(prev).add(event.payload));
     void refetch();
   });
-  registerListener<string>('all_jobs_complete', () => {
-    setRunningSessionId(null);
+  registerListener<string>('all_jobs_complete', (event) => {
+    setRunningSessionIds((prev) => {
+      const next = new Set(prev);
+      next.delete(event.payload);
+      return next;
+    });
     void refetch();
   });
-  registerListener('jobs_cancelled', () => {
-    setRunningSessionId(null);
+  registerListener<string | null>('jobs_cancelled', (event) => {
+    setRunningSessionIds((prev) => {
+      if (!event.payload) return new Set<string>();
+
+      const next = new Set(prev);
+      next.delete(event.payload);
+      return next;
+    });
     void refetch();
   });
 
@@ -140,7 +152,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     if (!algorithm) return;
 
     void runProcessingJobs(
-      session.preview_text || 'font',
+      session.preview_text || 'A',
       session.weights as FontWeight[],
       algorithm,
       session.session_id,
@@ -148,8 +160,8 @@ export function SessionHistory(props: SessionHistoryProps) {
     setOpen(false);
   };
 
-  const stopCurrentRun = () => {
-    void stopJobs();
+  const stopCurrentRun = (sessionId: string) => {
+    void stopJobs(sessionId);
     void refetch();
   };
 
@@ -261,7 +273,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                   isCurrentSession={session.session_id === appState.session.id}
                   isRunning={() => isRunningSession(session.session_id)}
                   isRestoring={isRestoring()}
-                  progress={runningProgress}
+                  progress={() => runningProgress(session.session_id)}
                   onDeleteClick={() => handleDeleteClick(session)}
                   onContinueProcessing={() =>
                     continueSessionProcessing(session)
@@ -269,7 +281,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                   onSelectSession={() => {
                     selectSession(session.session_id);
                   }}
-                  onStopRun={stopCurrentRun}
+                  onStopRun={() => stopCurrentRun(session.session_id)}
                 />
               )}
             </For>

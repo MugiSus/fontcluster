@@ -79,7 +79,7 @@ export function ControlContent() {
     };
 
     await runProcessingJobs(
-      text || 'font',
+      text || 'A',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
       algorithm,
       sessionId,
@@ -106,7 +106,7 @@ export function ControlContent() {
             onInput={(e) =>
               setAppState('ui', 'sampleText', e.currentTarget.value)
             }
-            placeholder='Font'
+            placeholder='A'
             spellcheck='false'
             class='h-9 text-[15px]'
           />

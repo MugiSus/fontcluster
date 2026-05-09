@@ -14,8 +14,7 @@ export interface AppState {
     directory: string;
   };
   progress: {
-    numerator: number;
-    denominator: number;
+    bySession: Record<string, { numerator: number; denominator: number }>;
   };
   fonts: {
     data: Record<string, FontItem>;
@@ -64,7 +63,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   app_version: '0.5.0',
   modified_app_version: '0.5.0',
   session_id: '',
-  preview_text: 'font',
+  preview_text: 'A',
   created_at: new Date().toISOString(),
   modified_at: new Date().toISOString(),
   process_status: 'empty',
@@ -91,8 +90,7 @@ export const [appState, setAppState] = createStore<AppState>({
     directory: '',
   },
   progress: {
-    numerator: 0,
-    denominator: 0,
+    bySession: {},
   },
   fonts: {
     data: {},
@@ -111,7 +109,7 @@ export const [appState, setAppState] = createStore<AppState>({
     },
     selectedWeights: [400],
     searchQuery: '',
-    sampleText: 'font',
+    sampleText: 'A',
   },
 });
 

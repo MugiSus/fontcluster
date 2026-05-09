@@ -10,14 +10,6 @@ import {
 import { getProcessStatusBadge } from '@/components/session-item';
 import { type SessionConfig } from '@/types/font';
 
-const formatDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('ja-JP', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
 interface SessionHistoryItemProps {
   session: SessionConfig;
   isCurrentSession: boolean;
@@ -41,7 +33,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
     isComplete() && !isRunning() && !!session()?.session_id;
   const canContinueProcessing = () =>
     !!session() && !isComplete() && !isRunning();
-  const title = () => session().preview_text || 'font';
+  const title = () => session().preview_text || 'A';
   const details = () => {
     const currentSession = session();
     return `${currentSession.weights.length} weights · ${
@@ -59,13 +51,14 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             <Badge variant={badge().variant} class='shrink-0 px-1.5 py-0' round>
               {badge().text}
             </Badge>
-            <Show when={isRunning()}>
-              <span class='shrink-0 rounded bg-muted px-1.5 py-0.5 uppercase text-muted-foreground'>
-                running
-              </span>
-            </Show>
             <time class='truncate text-muted-foreground'>
-              {formatDateTime(session().modified_at)}
+              {new Date(session().modified_at).toLocaleString('ja-JP', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })}
             </time>
           </div>
           <p class='truncate text-sm font-medium leading-5'>{title()}</p>
@@ -141,7 +134,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
         <div class='space-y-1'>
           <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
             <div
-              class='h-full bg-primary transition-all'
+              class='h-full bg-primary'
               style={{ width: `${progressPercent()}%` }}
             />
           </div>

@@ -12,9 +12,15 @@ use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 #[derive(Clone)]
+pub struct RunningJob {
+    pub child: Arc<Mutex<Child>>,
+    pub is_cancelled: Arc<AtomicBool>,
+}
+
+#[derive(Clone)]
 pub struct AppState {
     pub current_session: Arc<Mutex<Option<SessionConfig>>>,
-    pub current_job_child: Arc<Mutex<Option<Arc<Mutex<Child>>>>>,
+    pub current_job_children: Arc<Mutex<HashMap<String, RunningJob>>>,
     pub is_cancelled: Arc<AtomicBool>,
 }
 
@@ -22,7 +28,7 @@ impl AppState {
     pub fn new() -> Self {
         Self {
             current_session: Arc::new(Mutex::new(None)),
-            current_job_child: Arc::new(Mutex::new(None)),
+            current_job_children: Arc::new(Mutex::new(HashMap::new())),
             is_cancelled: Arc::new(AtomicBool::new(false)),
         }
     }

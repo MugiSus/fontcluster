@@ -120,6 +120,7 @@ export const {
 
 const notifyJobComplete = (sessionId: string) => {
   toast.success('Job completed successfully!', {
+    id: `job-complete-${sessionId}`,
     action: {
       label: 'View',
       onClick: () => setCurrentSessionId(sessionId),
@@ -144,9 +145,7 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  toast('Job started', {
-    description: `${overrideStatus ? `Re-run from ${overrideStatus}` : 'Full run'} · ${text || 'font'}`,
-  });
+  toast.info(`Job started: '${text}'`);
 
   try {
     const result = await invoke<string>('run_jobs', {
@@ -165,19 +164,79 @@ export const runProcessingJobs = async (
   }
 };
 
-export const stopJobs = async () => {
+export const stopJobs = async (sessionId?: string) => {
   try {
-    await invoke('stop_jobs');
+    await invoke('stop_jobs', { sessionId });
   } catch (error) {
     console.error('Failed to stop jobs:', error);
   }
 };
 
+type ProgressEventPayload =
+  | number
+  | {
+      sessionId?: string;
+      value: number;
+    };
+
+const getProgressEventParts = (payload: ProgressEventPayload) => {
+  if (typeof payload === 'number') {
+    return { sessionId: appState.session.id, value: payload };
+  }
+
+  return {
+    sessionId: payload.sessionId ?? appState.session.id,
+    value: payload.value,
+  };
+};
+
+const updateSessionProgress = (
+  payload: ProgressEventPayload,
+  update: (
+    previous: { numerator: number; denominator: number },
+    value: number,
+  ) => { numerator: number; denominator: number },
+) => {
+  const { sessionId, value } = getProgressEventParts(payload);
+  if (!sessionId) return;
+
+  setAppState('progress', 'bySession', sessionId, (previous) =>
+    update(previous ?? { numerator: 0, denominator: 0 }, value),
+  );
+};
+
 // --- Initialization ---
 
+let appEventsCleanup: (() => void) | null = null;
+
 export function initAppEvents() {
+  if (appEventsCleanup) return appEventsCleanup;
+
+  let disposed = false;
+  const unlisteners: Array<() => void> = [];
+
+  const registerListener = <T>(
+    event: string,
+    handler: (event: { payload: T }) => void,
+  ) => {
+    void listen(event, handler).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+      unlisteners.push(cleanup);
+    });
+  };
+
+  appEventsCleanup = () => {
+    disposed = true;
+    for (const unlisten of unlisteners) unlisten();
+    unlisteners.length = 0;
+    appEventsCleanup = null;
+  };
+
   // Load latest session ID on startup
-  const loadCurrentSession = async () => {
+  void (async () => {
     try {
       const latestSessionId = await invoke<string | null>(
         'get_latest_session_id',
@@ -191,52 +250,82 @@ export function initAppEvents() {
     } catch (error) {
       console.error('Failed to get latest session ID:', error);
     }
-  };
-
-  loadCurrentSession();
+  })();
 
   // Progress tracking and status update event listeners
-  listen('progress_numerator_reset', (event: { payload: number }) => {
-    setAppState('progress', 'numerator', event.payload);
-  });
+  registerListener<ProgressEventPayload>(
+    'progress_numerator_reset',
+    (event) => {
+      updateSessionProgress(event.payload, (previous, value) => ({
+        ...previous,
+        numerator: value,
+      }));
+    },
+  );
 
-  listen('progress_denominator_reset', (event: { payload: number }) => {
-    setAppState('progress', 'denominator', event.payload);
-  });
+  registerListener<ProgressEventPayload>(
+    'progress_denominator_reset',
+    (event) => {
+      updateSessionProgress(event.payload, (previous, value) => ({
+        ...previous,
+        denominator: value,
+      }));
+    },
+  );
 
-  listen('progress_numerator_increase', (event: { payload: number }) => {
-    setAppState('progress', 'numerator', (prev) => prev + event.payload);
-  });
+  registerListener<ProgressEventPayload>(
+    'progress_numerator_increase',
+    (event) => {
+      updateSessionProgress(event.payload, (previous, value) => ({
+        ...previous,
+        numerator: previous.numerator + value,
+      }));
+    },
+  );
 
-  listen('progress_denominator_set', (event: { payload: number }) => {
-    setAppState('progress', 'denominator', event.payload);
-  });
+  registerListener<ProgressEventPayload>(
+    'progress_denominator_set',
+    (event) => {
+      updateSessionProgress(event.payload, (previous, value) => ({
+        ...previous,
+        denominator: value,
+      }));
+    },
+  );
 
-  listen('progress_denominator_decrease', (event: { payload: number }) => {
-    setAppState('progress', 'denominator', (prev) => prev - event.payload);
-  });
+  registerListener<ProgressEventPayload>(
+    'progress_denominator_decrease',
+    (event) => {
+      updateSessionProgress(event.payload, (previous, value) => ({
+        ...previous,
+        denominator: previous.denominator - value,
+      }));
+    },
+  );
 
-  listen('clustering_complete', (event: { payload: string }) => {
+  registerListener<string>('clustering_complete', (event) => {
     console.log('Clustering completed for session:', event.payload);
   });
 
-  listen('positioning_complete', (event: { payload: string }) => {
+  registerListener<string>('positioning_complete', (event) => {
     console.log('Positioning completed for session:', event.payload);
   });
 
-  listen('all_jobs_complete', (event: { payload: string }) => {
+  registerListener<string>('all_jobs_complete', (event) => {
     console.log('All jobs completed successfully for session:', event.payload);
     notifyJobComplete(event.payload);
   });
 
-  listen('refresh-requested', () => {
+  registerListener('refresh-requested', () => {
     window.location.reload();
   });
 
-  listen('check-update-requested', () => {
+  registerListener('check-update-requested', () => {
     checkForAppUpdates(true);
   });
 
   // Check for updates automatically on startup
   checkForAppUpdates();
+
+  return appEventsCleanup;
 }

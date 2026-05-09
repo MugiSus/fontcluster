@@ -1,4 +1,4 @@
-import { Show, onMount } from 'solid-js';
+import { Show, onCleanup, onMount } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { ClipboardListener } from './components/clipboard-listener';
 import { initAppEvents } from './actions';
@@ -18,9 +18,14 @@ function App() {
     list: true,
     chat: false,
   });
+  let cleanupAppEvents: (() => void) | undefined;
 
   onMount(() => {
-    initAppEvents();
+    cleanupAppEvents = initAppEvents();
+  });
+
+  onCleanup(() => {
+    cleanupAppEvents?.();
   });
 
   const closePanel = (panel: CollapsiblePanelKey) => {
