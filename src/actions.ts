@@ -124,6 +124,7 @@ const notifyJobComplete = (sessionId: string) => {
       label: 'View',
       onClick: () => setCurrentSessionId(sessionId),
     },
+    duration: Infinity,
   });
 };
 

@@ -19,11 +19,7 @@ const formatDateTime = (iso: string) =>
   });
 
 interface SessionHistoryItemProps {
-  entry: {
-    key: string;
-    session: SessionConfig;
-    updatedAt: string;
-  };
+  session: SessionConfig;
   isCurrentSession: boolean;
   isRunning: Accessor<boolean>;
   isRestoring: boolean;
@@ -35,7 +31,7 @@ interface SessionHistoryItemProps {
 }
 
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
-  const session = () => props.entry.session;
+  const session = () => props.session;
   const badge = () => {
     return getProcessStatusBadge(session().process_status);
   };
@@ -69,7 +65,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               </span>
             </Show>
             <time class='truncate text-muted-foreground'>
-              {formatDateTime(props.entry.updatedAt)}
+              {formatDateTime(session().modified_at)}
             </time>
           </div>
           <p class='truncate text-sm font-medium leading-5'>{title()}</p>

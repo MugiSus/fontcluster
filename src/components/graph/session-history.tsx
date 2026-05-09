@@ -29,12 +29,6 @@ import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
 import { type FontWeight, type SessionConfig } from '@/types/font';
 import { SessionHistoryItem } from './session-history-item';
 
-interface SessionHistoryEntry {
-  key: string;
-  session: SessionConfig;
-  updatedAt: string;
-}
-
 export function SessionHistory() {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
@@ -63,21 +57,15 @@ export function SessionHistory() {
     ),
   );
 
-  const historyEntries = createMemo<SessionHistoryEntry[]>(() => {
+  const sortedSessions = createMemo<SessionConfig[]>(() => {
     const activeSessionId = runningSessionId();
 
-    return visibleSessions()
-      .map((session) => ({
-        key: session.session_id,
-        session,
-        updatedAt: session.modified_at,
-      }))
-      .sort(
-        (a, b) =>
-          Number(b.session.session_id === activeSessionId) -
-            Number(a.session.session_id === activeSessionId) ||
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-      );
+    return visibleSessions().sort(
+      (a, b) =>
+        Number(b.session_id === activeSessionId) -
+          Number(a.session_id === activeSessionId) ||
+        new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime(),
+    );
   });
   const isRunningSession = createSelector(runningSessionId);
   const runningProgress = createMemo(() => {
@@ -252,7 +240,7 @@ export function SessionHistory() {
         <DropdownMenuSeparator />
 
         <Show
-          when={!availableSessions.loading && historyEntries().length > 0}
+          when={!availableSessions.loading && sortedSessions().length > 0}
           fallback={
             <p class='px-2 py-3 text-xs text-muted-foreground'>
               {availableSessions.loading
@@ -262,24 +250,20 @@ export function SessionHistory() {
           }
         >
           <div class='max-h-[30rem] overflow-y-auto'>
-            <For each={historyEntries()}>
-              {(entry) => (
+            <For each={sortedSessions()}>
+              {(session) => (
                 <SessionHistoryItem
-                  entry={entry}
-                  isCurrentSession={
-                    entry.session?.session_id === appState.session.id
-                  }
-                  isRunning={() => isRunningSession(entry.session.session_id)}
+                  session={session}
+                  isCurrentSession={session.session_id === appState.session.id}
+                  isRunning={() => isRunningSession(session.session_id)}
                   isRestoring={isRestoring()}
                   progress={runningProgress}
-                  onDeleteClick={() =>
-                    entry.session && handleDeleteClick(entry.session)
-                  }
+                  onDeleteClick={() => handleDeleteClick(session)}
                   onContinueProcessing={() =>
-                    entry.session && continueSessionProcessing(entry.session)
+                    continueSessionProcessing(session)
                   }
                   onSelectSession={() => {
-                    selectSession(entry.session.session_id);
+                    selectSession(session.session_id);
                   }}
                   onStopRun={stopCurrentRun}
                 />

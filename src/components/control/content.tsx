@@ -42,7 +42,12 @@ export function ControlContent() {
     const form = document.querySelector('form');
     if (!form) return;
 
-    const statusOverride = targetStatus ?? 'empty';
+    const isCompletedSession =
+      appState.session.config.process_status === 'positioned';
+    const sessionId =
+      targetStatus || !isCompletedSession
+        ? appState.session.id || undefined
+        : undefined;
 
     const formData = new FormData(form);
     const text = formData.get('preview-text') as string;
@@ -77,8 +82,8 @@ export function ControlContent() {
       text || 'font',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
       algorithm,
-      appState.session.id || undefined,
-      statusOverride,
+      sessionId,
+      targetStatus,
     );
   };
 
