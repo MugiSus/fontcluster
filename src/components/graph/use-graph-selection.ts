@@ -31,7 +31,6 @@ export function useGraphSelection(
     );
 
     if (!nearest) {
-      setSelectedFontKey(null);
       return;
     }
 

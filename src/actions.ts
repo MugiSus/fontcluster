@@ -124,7 +124,7 @@ const notifyJobComplete = (sessionId: string) => {
       label: 'View',
       onClick: () => setCurrentSessionId(sessionId),
     },
-    duration: Infinity,
+    duration: 20000,
   });
 };
 
@@ -144,7 +144,7 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  toast('Processing started', {
+  toast('Job started', {
     description: `${overrideStatus ? `Re-run from ${overrideStatus}` : 'Full run'} · ${text || 'font'}`,
   });
 
