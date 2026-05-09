@@ -42,12 +42,7 @@ export function ControlContent() {
     const form = document.querySelector('form');
     if (!form) return;
 
-    const isRerun = targetStatus !== undefined;
-    const shouldStartNewSession = !isRerun;
-
-    if (isRerun) {
-      setAppState('session', 'status', targetStatus);
-    }
+    const statusOverride = targetStatus ?? 'empty';
 
     const formData = new FormData(form);
     const text = formData.get('preview-text') as string;
@@ -82,8 +77,8 @@ export function ControlContent() {
       text || 'font',
       selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
       algorithm,
-      !shouldStartNewSession ? appState.session.id : undefined,
-      targetStatus ?? undefined,
+      appState.session.id || undefined,
+      statusOverride,
     );
   };
 
@@ -260,7 +255,7 @@ export function ControlContent() {
             Run
             <ArrowRightIcon class='absolute right-3' />
           </TooltipTrigger>
-          <TooltipContent>Create new and run</TooltipContent>
+          <TooltipContent>Run processing</TooltipContent>
         </Tooltip>
       </div>
     </form>

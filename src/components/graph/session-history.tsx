@@ -1,6 +1,7 @@
 import {
   createMemo,
   createResource,
+  createSelector,
   createSignal,
   For,
   onCleanup,
@@ -23,26 +24,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import { appState, DEFAULT_SESSION_CONFIG, type JobRun } from '@/store';
-import { runProcessingJobs, setCurrentSessionId } from '@/actions';
+import { appState, DEFAULT_SESSION_CONFIG } from '@/store';
+import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
 import { type FontWeight, type SessionConfig } from '@/types/font';
-import {
-  SessionHistoryItem,
-  type SessionHistoryEntry,
-} from './session-history-item';
+import { SessionHistoryItem } from './session-history-item';
 
-const isUnfinishedJob = (job: JobRun) => job.state !== 'completed';
-
-interface SessionHistoryProps {
-  class?: string | undefined;
+interface SessionHistoryEntry {
+  key: string;
+  session: SessionConfig;
+  updatedAt: string;
 }
 
-export function SessionHistory(props: SessionHistoryProps) {
+export function SessionHistory() {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
   const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
     new Set(),
+  );
+  const [runningSessionId, setRunningSessionId] = createSignal<string | null>(
+    null,
   );
   const committedDeletes = new Set<string>();
   const cancelledDeletes = new Set<string>();
@@ -64,55 +64,64 @@ export function SessionHistory(props: SessionHistoryProps) {
   );
 
   const historyEntries = createMemo<SessionHistoryEntry[]>(() => {
-    const unfinishedJobs = appState.jobs.filter(isUnfinishedJob);
-    const entries = visibleSessions().map((session) => {
-      const job =
-        unfinishedJobs.find((item) => item.sessionId === session.session_id) ??
-        null;
+    const activeSessionId = runningSessionId();
 
-      return {
+    return visibleSessions()
+      .map((session) => ({
         key: session.session_id,
         session,
-        job,
-        updatedAt: job?.updatedAt ?? session.modified_at,
-      };
-    });
-
-    const sessionIds = new Set(
-      entries.map((entry) => entry.session.session_id),
-    );
-    const looseJobEntries = unfinishedJobs
-      .filter((job) => !job.sessionId || !sessionIds.has(job.sessionId))
-      .map((job) => ({
-        key: `job:${job.id}`,
-        session: null,
-        job,
-        updatedAt: job.updatedAt,
-      }));
-
-    return [...looseJobEntries, ...entries].sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+        updatedAt: session.modified_at,
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.session.session_id === activeSessionId) -
+            Number(a.session.session_id === activeSessionId) ||
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+  });
+  const isRunningSession = createSelector(runningSessionId);
+  const runningProgress = createMemo(() => {
+    const denominator = appState.progress.denominator;
+    if (denominator <= 0) return 0;
+    return Math.min(1, Math.max(0, appState.progress.numerator / denominator));
   });
 
-  let unlisten: (() => void) | undefined;
+  const unlisteners: Array<() => void> = [];
   let disposed = false;
 
-  listen('show_session_selection', () => {
+  const registerListener = <T,>(
+    event: string,
+    handler: (event: { payload: T }) => void,
+  ) => {
+    listen(event, handler).then((cleanup) => {
+      if (disposed) {
+        cleanup();
+        return;
+      }
+      unlisteners.push(cleanup);
+    });
+  };
+
+  registerListener('show_session_selection', () => {
     setOpen(true);
     void refetch();
-  }).then((cleanup) => {
-    if (disposed) {
-      cleanup();
-      return;
-    }
-    unlisten = cleanup;
+  });
+  registerListener<string>('session_started', (event) => {
+    setRunningSessionId(event.payload);
+    void refetch();
+  });
+  registerListener<string>('all_jobs_complete', () => {
+    setRunningSessionId(null);
+    void refetch();
+  });
+  registerListener('jobs_cancelled', () => {
+    setRunningSessionId(null);
+    void refetch();
   });
 
   onCleanup(() => {
     disposed = true;
-    unlisten?.();
+    for (const unlisten of unlisteners) unlisten();
   });
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -145,6 +154,11 @@ export function SessionHistory(props: SessionHistoryProps) {
       session.session_id,
     );
     setOpen(false);
+  };
+
+  const stopCurrentRun = () => {
+    void stopJobs();
+    void refetch();
   };
 
   const deleteSession = async (sessionId: string) => {
@@ -212,8 +226,8 @@ export function SessionHistory(props: SessionHistoryProps) {
         as={Button<'button'>}
         variant='ghost'
         size='icon'
-        class={cn('size-8 rounded-full', props.class)}
-        aria-label='Open job history'
+        class='size-8 rounded-full'
+        aria-label='Open session history'
       >
         <HistoryIcon class='size-4' />
       </DropdownMenuTrigger>
@@ -243,7 +257,7 @@ export function SessionHistory(props: SessionHistoryProps) {
             <p class='px-2 py-3 text-xs text-muted-foreground'>
               {availableSessions.loading
                 ? 'Loading history...'
-                : 'No sessions or jobs yet.'}
+                : 'No sessions yet.'}
             </p>
           }
         >
@@ -255,7 +269,9 @@ export function SessionHistory(props: SessionHistoryProps) {
                   isCurrentSession={
                     entry.session?.session_id === appState.session.id
                   }
+                  isRunning={() => isRunningSession(entry.session.session_id)}
                   isRestoring={isRestoring()}
+                  progress={runningProgress}
                   onDeleteClick={() =>
                     entry.session && handleDeleteClick(entry.session)
                   }
@@ -263,10 +279,9 @@ export function SessionHistory(props: SessionHistoryProps) {
                     entry.session && continueSessionProcessing(entry.session)
                   }
                   onSelectSession={() => {
-                    const sessionId =
-                      entry.session?.session_id ?? entry.job?.sessionId;
-                    if (sessionId) selectSession(sessionId);
+                    selectSession(entry.session.session_id);
                   }}
+                  onStopRun={stopCurrentRun}
                 />
               )}
             </For>

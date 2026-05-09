@@ -5,27 +5,14 @@ import {
   type FontItem,
   type SessionConfig,
   type FontWeight,
-  type ProcessStatus,
 } from './types/font';
-
-export interface JobRun {
-  id: string;
-  sessionId: string | null;
-  title: string;
-  state: 'running' | 'completed' | 'cancelled' | 'failed';
-  progress: number;
-  canStop: boolean;
-  updatedAt: string;
-}
 
 export interface AppState {
   session: {
     id: string;
     config: SessionConfig;
     directory: string;
-    status: ProcessStatus;
   };
-  jobs: JobRun[];
   progress: {
     numerator: number;
     denominator: number;
@@ -102,9 +89,7 @@ export const [appState, setAppState] = createStore<AppState>({
     id: '',
     config: DEFAULT_SESSION_CONFIG,
     directory: '',
-    status: 'empty',
   },
-  jobs: [],
   progress: {
     numerator: 0,
     denominator: 0,

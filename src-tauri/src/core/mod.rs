@@ -1,5 +1,6 @@
 pub mod clusterer;
 pub mod discoverer;
+pub mod events;
 pub mod example;
 pub mod google_fonts_downloader;
 pub mod image_generator;
@@ -10,6 +11,7 @@ pub mod vectorizer;
 
 pub use clusterer::*;
 pub use discoverer::*;
+pub use events::*;
 pub use example::*;
 pub use google_fonts_downloader::*;
 pub use image_generator::*;

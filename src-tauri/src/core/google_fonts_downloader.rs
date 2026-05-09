@@ -1,6 +1,6 @@
 use crate::commands::progress::progress_events;
 use crate::config::FontSet;
-use crate::core::AppState;
+use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -9,7 +9,6 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use tauri::Manager;
 
 #[derive(Debug, Deserialize)]
 struct GoogleFontMetadata {
@@ -81,7 +80,7 @@ impl GoogleFontsDownloader {
 
     pub async fn download_fonts(
         &self,
-        app: &tauri::AppHandle,
+        events: &impl EventSink,
         state: &AppState,
     ) -> Result<Vec<PathBuf>> {
         let (font_set, preview_text, target_weights, session_id) = {
@@ -106,7 +105,7 @@ impl GoogleFontsDownloader {
         let session_dir = AppState::get_base_dir()?
             .join("Generated")
             .join(&session_id);
-        let app = app.clone();
+        let events = events.clone();
 
         tokio::task::spawn_blocking(move || {
             download_fonts_impl(
@@ -114,7 +113,7 @@ impl GoogleFontsDownloader {
                 &preview_text,
                 &session_dir,
                 &target_weights,
-                &app,
+                &events,
             )
         })
         .await
@@ -127,20 +126,9 @@ fn download_fonts_impl(
     target_text: &str,
     session_dir: &Path,
     target_weights: &[i32],
-    app_handle: &tauri::AppHandle,
+    events: &impl EventSink,
 ) -> Result<Vec<PathBuf>> {
-    let resource_path = app_handle
-        .path()
-        .resolve(
-            "resources/google_fonts_popularity.json",
-            tauri::path::BaseDirectory::Resource,
-        )
-        .map_err(|e| {
-            AppError::Io(format!(
-                "Failed to resolve google_fonts_popularity.json: {}",
-                e
-            ))
-        })?;
+    let resource_path = resolve_google_fonts_popularity_path();
 
     // Fallback for dev environment if resource not found (optional, but helpful)
     let json_content = if resource_path.exists() {
@@ -219,9 +207,9 @@ fn download_fonts_impl(
     use rayon::prelude::*;
     let downloaded_paths: Arc<Mutex<Vec<PathBuf>>> = Arc::new(Mutex::new(Vec::new()));
     let client = Arc::new(client);
-    let progress_app = app_handle.clone();
-    progress_events::reset_progress(app_handle);
-    progress_events::set_progress_denominator(app_handle, target_fonts.len() as i32);
+    let progress_events_sink = events.clone();
+    progress_events::reset_progress(events);
+    progress_events::set_progress_denominator(events, target_fonts.len() as i32);
 
     // We need to encode text for URL.
     let encoded_text = urlencoding::encode(target_text).to_string();
@@ -229,7 +217,7 @@ fn download_fonts_impl(
 
     target_fonts.par_iter().for_each(|font| {
         let client = Arc::clone(&client);
-        let progress_app = progress_app.clone();
+        let progress_events_sink = progress_events_sink.clone();
         let safe_family = font.family.replace(' ', "+");
 
         // Iterate over requested weights
@@ -367,7 +355,7 @@ fn download_fonts_impl(
                 }
             }
         }
-        progress_events::increase_numerator(&progress_app, 1);
+        progress_events::increase_numerator(&progress_events_sink, 1);
     });
 
     let paths = Arc::try_unwrap(downloaded_paths)
@@ -375,4 +363,28 @@ fn download_fonts_impl(
         .into_inner()
         .unwrap();
     Ok(paths)
+}
+
+fn resolve_google_fonts_popularity_path() -> PathBuf {
+    let mut roots = vec![
+        PathBuf::from("src-tauri/resources"),
+        PathBuf::from("resources"),
+    ];
+
+    if let Ok(resource_dir) = std::env::var("FONTCLUSTER_RESOURCE_DIR") {
+        roots.push(PathBuf::from(resource_dir).join("resources"));
+    }
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            roots.push(exe_dir.join("../Resources/resources"));
+            roots.push(exe_dir.join("resources"));
+        }
+    }
+
+    roots
+        .into_iter()
+        .map(|root| root.join("google_fonts_popularity.json"))
+        .find(|path| path.exists())
+        .unwrap_or_else(|| PathBuf::from("resources/google_fonts_popularity.json"))
 }

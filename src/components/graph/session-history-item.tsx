@@ -1,4 +1,4 @@
-import { Show } from 'solid-js';
+import { Show, type Accessor } from 'solid-js';
 import { PlayIcon, RotateCcwIcon, SquareIcon, Trash2Icon } from 'lucide-solid';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getProcessStatusBadge } from '@/components/session-item';
-import { cn } from '@/lib/utils';
-import { stopJobs } from '@/actions';
-import { type JobRun } from '@/store';
 import { type SessionConfig } from '@/types/font';
 
 const formatDateTime = (iso: string) =>
@@ -21,56 +18,42 @@ const formatDateTime = (iso: string) =>
     minute: '2-digit',
   });
 
-export interface SessionHistoryEntry {
-  key: string;
-  session: SessionConfig | null;
-  job: JobRun | null;
-  updatedAt: string;
-}
-
 interface SessionHistoryItemProps {
-  entry: SessionHistoryEntry;
+  entry: {
+    key: string;
+    session: SessionConfig;
+    updatedAt: string;
+  };
   isCurrentSession: boolean;
+  isRunning: Accessor<boolean>;
   isRestoring: boolean;
+  progress: Accessor<number>;
   onDeleteClick: () => void;
   onContinueProcessing: () => void;
   onSelectSession: () => void;
+  onStopRun: () => void;
 }
 
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const session = () => props.entry.session;
-  const job = () => props.entry.job;
   const badge = () => {
-    const currentSession = session();
-    return currentSession
-      ? getProcessStatusBadge(currentSession.process_status)
-      : { text: 'Running', variant: 'outline' as const };
+    return getProcessStatusBadge(session().process_status);
   };
-  const isRunning = () => job()?.state === 'running';
+  const isRunning = () => props.isRunning();
   const isComplete = () => session()?.process_status === 'positioned';
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;
   const canContinueProcessing = () =>
     !!session() && !isComplete() && !isRunning();
-  const title = () => session()?.preview_text ?? job()?.title ?? 'Processing';
+  const title = () => session().preview_text || 'font';
   const details = () => {
     const currentSession = session();
-    if (!currentSession) return 'Pending session';
-
     return `${currentSession.weights.length} weights · ${
       currentSession.samples_amount
     } samples · ${currentSession.clusters_amount} clusters`;
   };
-  const progressClass = () => {
-    switch (job()?.state) {
-      case 'failed':
-        return 'bg-destructive';
-      case 'cancelled':
-        return 'bg-muted-foreground';
-      default:
-        return 'bg-primary';
-    }
-  };
+  const progressPercent = () => props.progress() * 100;
+  const roundedProgressPercent = () => Math.round(progressPercent());
 
   return (
     <article class='space-y-2 rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
@@ -80,12 +63,10 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             <Badge variant={badge().variant} class='shrink-0 px-1.5 py-0' round>
               {badge().text}
             </Badge>
-            <Show when={job()}>
-              {(currentJob) => (
-                <span class='shrink-0 rounded bg-muted px-1.5 py-0.5 uppercase text-muted-foreground'>
-                  {currentJob().state}
-                </span>
-              )}
+            <Show when={isRunning()}>
+              <span class='shrink-0 rounded bg-muted px-1.5 py-0.5 uppercase text-muted-foreground'>
+                running
+              </span>
             </Show>
             <time class='truncate text-muted-foreground'>
               {formatDateTime(props.entry.updatedAt)}
@@ -96,7 +77,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
         </div>
         <div class='flex shrink-0 items-center'>
           <Show
-            when={!isComplete() && session()}
+            when={!isComplete()}
             fallback={
               <Tooltip>
                 <TooltipTrigger
@@ -137,21 +118,21 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               size='icon'
               variant='ghost'
               class='size-7 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive'
-              disabled={!session()}
+              disabled={isRunning()}
               onClick={props.onDeleteClick}
             >
               <Trash2Icon class='size-3.5' />
             </TooltipTrigger>
             <TooltipContent>Delete session</TooltipContent>
           </Tooltip>
-          <Show when={job()?.canStop}>
+          <Show when={isRunning()}>
             <Tooltip>
               <TooltipTrigger
                 as={Button<'button'>}
                 size='icon'
                 variant='ghost'
                 class='size-7 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive'
-                onClick={() => stopJobs()}
+                onClick={props.onStopRun}
               >
                 <SquareIcon class='size-3' />
               </TooltipTrigger>
@@ -160,21 +141,19 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           </Show>
         </div>
       </div>
-      <Show when={job()}>
-        {(currentJob) => (
-          <div class='space-y-1'>
-            <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
-              <div
-                class={cn('h-full transition-all', progressClass())}
-                style={{ width: `${currentJob().progress}%` }}
-              />
-            </div>
-            <div class='flex justify-between gap-2 text-muted-foreground'>
-              <p class='truncate'>{currentJob().title}</p>
-              <p class='shrink-0 tabular-nums'>{currentJob().progress}%</p>
-            </div>
+      <Show when={isRunning()}>
+        <div class='space-y-1'>
+          <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
+            <div
+              class='h-full bg-primary transition-all'
+              style={{ width: `${progressPercent()}%` }}
+            />
           </div>
-        )}
+          <div class='flex justify-between gap-2 text-muted-foreground'>
+            <p class='truncate'>Processing</p>
+            <p class='shrink-0 tabular-nums'>{roundedProgressPercent()}%</p>
+          </div>
+        </div>
       </Show>
     </article>
   );
