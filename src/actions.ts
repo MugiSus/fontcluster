@@ -119,7 +119,7 @@ export const {
 // Actions
 
 const notifyJobComplete = (sessionId: string) => {
-  toast.success('Processing completed successfully!', {
+  toast.success('Job completed successfully!', {
     action: {
       label: 'View',
       onClick: () => setCurrentSessionId(sessionId),
@@ -161,7 +161,7 @@ export const runProcessingJobs = async (
     await refetchFontItemRecord();
   } catch (error) {
     console.error('Failed to process fonts:', error);
-    toast.error(`Font processing failed: ${error}`);
+    toast.error(`Job failed: ${error}`);
   }
 };
 
