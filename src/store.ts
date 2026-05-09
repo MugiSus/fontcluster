@@ -8,6 +8,14 @@ import {
   type ProcessStatus,
 } from './types/font';
 
+export interface JobRun {
+  id: string;
+  sessionId: string | null;
+  title: string;
+  state: 'running' | 'completed' | 'cancelled' | 'failed';
+  updatedAt: string;
+}
+
 export interface AppState {
   session: {
     id: string;
@@ -95,6 +103,7 @@ export const [appState, setAppState] = createStore<AppState>({
     status: 'empty',
     isProcessing: false,
   },
+  jobs: [],
   progress: {
     numerator: 0,
     denominator: 0,
