@@ -26,6 +26,7 @@ export interface AppState {
     status: ProcessStatus;
     isProcessing: boolean;
   };
+  jobs: JobRun[];
   progress: {
     numerator: number;
     denominator: number;
