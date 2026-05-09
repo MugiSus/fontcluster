@@ -72,15 +72,8 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
       sectionRatio(progress.vectorization) * PROGRESS_WEIGHTS.vectorization +
       sectionRatio(progress.analysis) * PROGRESS_WEIGHTS.analysis +
       sectionRatio(progress.position) * PROGRESS_WEIGHTS.position;
-    const totalWeight =
-      PROGRESS_WEIGHTS.download +
-      PROGRESS_WEIGHTS.discovery +
-      PROGRESS_WEIGHTS.generation +
-      PROGRESS_WEIGHTS.vectorization +
-      PROGRESS_WEIGHTS.analysis +
-      PROGRESS_WEIGHTS.position;
 
-    return Math.min(1, Math.max(0, weightedProgress / totalWeight));
+    return Math.min(1, Math.max(0, weightedProgress / 1));
   };
 
   return (
