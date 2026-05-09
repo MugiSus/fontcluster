@@ -209,7 +209,7 @@ fn progress_section_mut(
         ProgressStage::Discovery => &mut progress.discovery,
         ProgressStage::Generation => &mut progress.generation,
         ProgressStage::Vectorization => &mut progress.vectorization,
-        ProgressStage::Analysis => &mut progress.analysis,
+        ProgressStage::Clustering => &mut progress.clustering,
         ProgressStage::Position => &mut progress.position,
     }
 }

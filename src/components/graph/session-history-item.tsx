@@ -65,7 +65,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
       sectionRatio(progress.discovery) * 0.1 +
       sectionRatio(progress.generation) * 0.15 +
       sectionRatio(progress.vectorization) * 0.6 +
-      sectionRatio(progress.analysis) * 0.025 +
+      sectionRatio(progress.clustering) * 0.025 +
       sectionRatio(progress.position) * 0.025;
 
     return Math.min(1, Math.max(0, weightedProgress / 1));
@@ -92,11 +92,13 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           <p class='truncate text-sm font-medium leading-5'>
             {session().preview_text || 'A'}
           </p>
-          <p class='truncate text-muted-foreground'>
-            {session().weights.length} weights {' · '}
-            {session().status.samples_amount} samples {' · '}
-            {session().status.clusters_amount} clusters
-          </p>
+          <Show when={isComplete()}>
+            <p class='truncate text-muted-foreground'>
+              {session().weights.length} weights {' · '}
+              {session().status.samples_amount} samples {' · '}
+              {session().status.clusters_amount} clusters
+            </p>
+          </Show>
         </div>
         <div class='flex shrink-0 items-center'>
           <Show when={isRunning() && !isComplete()}>

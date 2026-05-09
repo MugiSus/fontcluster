@@ -72,7 +72,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
       discovery: { numerator: 0, denominator: 1 },
       generation: { numerator: 0, denominator: 1 },
       vectorization: { numerator: 0, denominator: 1 },
-      analysis: { numerator: 0, denominator: 1 },
+      clustering: { numerator: 0, denominator: 1 },
       position: { numerator: 0, denominator: 1 },
     },
   },

@@ -82,11 +82,11 @@ impl Clusterer {
         let n_samples = points.nrows();
         let clustering = engine.cluster(points)?;
 
-        progress_events::reset_progress(events, state, ProgressStage::Analysis);
+        progress_events::reset_progress(events, state, ProgressStage::Clustering);
         progress_events::set_progress_denominator(
             events,
             state,
-            ProgressStage::Analysis,
+            ProgressStage::Clustering,
             ids.len() as i32,
         );
 
@@ -111,7 +111,7 @@ impl Clusterer {
                     progress_events::increase_numerator(
                         &events,
                         &state_clone,
-                        ProgressStage::Analysis,
+                        ProgressStage::Clustering,
                         1,
                     );
                 }

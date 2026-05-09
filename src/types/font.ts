@@ -94,7 +94,7 @@ export interface SessionProgress {
   discovery: SessionProgressSection;
   generation: SessionProgressSection;
   vectorization: SessionProgressSection;
-  analysis: SessionProgressSection;
+  clustering: SessionProgressSection;
   position: SessionProgressSection;
 }
 

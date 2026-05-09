@@ -115,7 +115,7 @@ pub struct ProcessingProgress {
     pub discovery: ProgressSection,
     pub generation: ProgressSection,
     pub vectorization: ProgressSection,
-    pub analysis: ProgressSection,
+    pub clustering: ProgressSection,
     pub position: ProgressSection,
 }
 
@@ -141,7 +141,7 @@ pub enum ProgressStage {
     Discovery,
     Generation,
     Vectorization,
-    Analysis,
+    Clustering,
     Position,
 }
 
