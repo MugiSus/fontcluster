@@ -10,12 +10,12 @@ import {
 import { type SessionConfig, type SessionProgressSection } from '@/types/font';
 
 const PROGRESS_WEIGHTS = {
-  download: 1,
-  discovery: 1,
-  generation: 1.5,
-  vectorization: 6,
-  analysis: 0.25,
-  position: 0.25,
+  download: 0.1,
+  discovery: 0.1,
+  generation: 0.15,
+  vectorization: 0.6,
+  analysis: 0.025,
+  position: 0.025,
 } as const;
 
 export const getProcessStatusBadge = (status: string) => {
@@ -59,10 +59,12 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
 
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;
+
   const sectionRatio = (section: SessionProgressSection) => {
     if (section.denominator <= 0) return 0;
     return Math.min(1, Math.max(0, section.numerator / section.denominator));
   };
+
   const progressValue = () => {
     const progress = session().status.progress;
     const weightedProgress =
@@ -104,7 +106,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           </p>
         </div>
         <div class='flex shrink-0 items-center'>
-          <Show when={isRunning()}>
+          <Show when={isRunning() && !isComplete()}>
             <Tooltip>
               <TooltipTrigger
                 as={Button<'button'>}
@@ -148,9 +150,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               >
                 <PlayIcon class='size-3.5' />
               </TooltipTrigger>
-              <TooltipContent>
-                {isRunning() ? 'Session is running' : 'Continue processing'}
-              </TooltipContent>
+              <TooltipContent>Continue processing</TooltipContent>
             </Tooltip>
           </Show>
 
