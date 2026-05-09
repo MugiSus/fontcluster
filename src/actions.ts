@@ -119,6 +119,21 @@ export const {
 
 // Actions
 
+const markJobState = (
+  id: string,
+  state: 'running' | 'completed' | 'cancelled' | 'failed',
+  sessionId?: string,
+) => {
+  const index = appState.jobs.findIndex((job) => job.id === id);
+  if (index < 0) return;
+  setAppState('jobs', index, {
+    ...appState.jobs[index],
+    state,
+    sessionId: sessionId ?? appState.jobs[index].sessionId,
+    updatedAt: new Date().toISOString(),
+  });
+};
+
 export const setSelectedWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'selectedWeights', weights);
 
@@ -135,6 +150,20 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
+  const jobId = crypto.randomUUID();
+  setAppState('jobs', (prev) =>
+    [
+      {
+        id: jobId,
+        sessionId: sessionId ?? null,
+        title: `${overrideStatus ? `Re-run from ${overrideStatus}` : 'Full run'} · ${text || 'font'}`,
+        state: 'running',
+        updatedAt: new Date().toISOString(),
+      },
+      ...prev,
+    ].slice(0, 20),
+  );
+
   try {
     const result = await invoke<string>('run_jobs', {
       text,
@@ -145,11 +174,15 @@ export const runProcessingJobs = async (
     });
     console.log('Complete pipeline result:', result);
     if (result === 'Success') {
+      markJobState(jobId, 'completed', appState.session.id || sessionId);
       toast.success('Processing completed successfully!');
+    } else if (result === 'Cancelled') {
+      markJobState(jobId, 'cancelled', appState.session.id || sessionId);
     }
     await refetchSessionConfig();
     await refetchFontItemRecord();
   } catch (error) {
+    markJobState(jobId, 'failed', appState.session.id || sessionId);
     console.error('Failed to process fonts:', error);
     toast.error(`Font processing failed: ${error}`);
   }
