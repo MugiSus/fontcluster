@@ -176,7 +176,6 @@ export function SessionHistory(props: SessionHistoryProps) {
       algorithm,
       session.session_id,
     );
-    setOpen(false);
   };
 
   const stopCurrentRun = async (sessionId: string) => {

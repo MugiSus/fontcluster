@@ -12,10 +12,10 @@ import { type SessionConfig, type SessionProgressSection } from '@/types/font';
 const PROGRESS_WEIGHTS = {
   download: 1,
   discovery: 1,
-  generation: 2,
-  vectorization: 5,
-  analysis: 0.5,
-  position: 0.5,
+  generation: 1.5,
+  vectorization: 6,
+  analysis: 0.25,
+  position: 0.25,
 } as const;
 
 export const getProcessStatusBadge = (status: string) => {
@@ -59,10 +59,8 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
 
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;
-  const canContinueProcessing = () =>
-    !!session() && !isComplete() && !isRunning();
   const sectionRatio = (section: SessionProgressSection) => {
-    if (section.denominator <= 0) return 1;
+    if (section.denominator <= 0) return 0;
     return Math.min(1, Math.max(0, section.numerator / section.denominator));
   };
   const progressValue = () => {
@@ -113,55 +111,6 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           </p>
         </div>
         <div class='flex shrink-0 items-center'>
-          <Show
-            when={!isComplete()}
-            fallback={
-              <Tooltip>
-                <TooltipTrigger
-                  as={Button<'button'>}
-                  size='icon'
-                  variant='ghost'
-                  class='size-7 rounded-full'
-                  disabled={
-                    props.isCurrentSession || props.isRestoring || !canRestore()
-                  }
-                  onClick={props.onSelectSession}
-                >
-                  <RotateCcwIcon class='size-3.5' />
-                </TooltipTrigger>
-                <TooltipContent>Restore session</TooltipContent>
-              </Tooltip>
-            }
-          >
-            <Tooltip>
-              <TooltipTrigger
-                as={Button<'button'>}
-                size='icon'
-                variant='ghost'
-                class='size-7 rounded-full'
-                disabled={!canContinueProcessing()}
-                onClick={props.onContinueProcessing}
-              >
-                <PlayIcon class='size-3.5' />
-              </TooltipTrigger>
-              <TooltipContent>
-                {isRunning() ? 'Session is running' : 'Continue processing'}
-              </TooltipContent>
-            </Tooltip>
-          </Show>
-          <Tooltip>
-            <TooltipTrigger
-              as={Button<'button'>}
-              size='icon'
-              variant='ghost'
-              class='size-7 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive'
-              disabled={isRunning()}
-              onClick={props.onDeleteClick}
-            >
-              <Trash2Icon class='size-3.5' />
-            </TooltipTrigger>
-            <TooltipContent>Delete session</TooltipContent>
-          </Tooltip>
           <Show when={isRunning()}>
             <Tooltip>
               <TooltipTrigger
@@ -176,13 +125,62 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               <TooltipContent>Stop run</TooltipContent>
             </Tooltip>
           </Show>
+
+          <Show when={isComplete()}>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                size='icon'
+                variant='ghost'
+                class='size-7 rounded-full'
+                disabled={
+                  props.isCurrentSession || props.isRestoring || !canRestore()
+                }
+                onClick={props.onSelectSession}
+              >
+                <RotateCcwIcon class='size-3.5' />
+              </TooltipTrigger>
+              <TooltipContent>Restore session</TooltipContent>
+            </Tooltip>
+          </Show>
+
+          <Show when={!isComplete() && !isRunning()}>
+            <Tooltip>
+              <TooltipTrigger
+                as={Button<'button'>}
+                size='icon'
+                variant='ghost'
+                class='size-7 rounded-full'
+                onClick={props.onContinueProcessing}
+              >
+                <PlayIcon class='size-3.5' />
+              </TooltipTrigger>
+              <TooltipContent>
+                {isRunning() ? 'Session is running' : 'Continue processing'}
+              </TooltipContent>
+            </Tooltip>
+          </Show>
+
+          <Tooltip>
+            <TooltipTrigger
+              as={Button<'button'>}
+              size='icon'
+              variant='ghost'
+              class='size-7 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive'
+              disabled={isRunning()}
+              onClick={props.onDeleteClick}
+            >
+              <Trash2Icon class='size-3.5' />
+            </TooltipTrigger>
+            <TooltipContent>Delete session</TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <Show when={!isComplete()}>
         <div class='space-y-1'>
           <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
             <div
-              class='h-full bg-primary transition-[width] duration-500'
+              class='h-full rounded-full bg-primary transition-[width] duration-500'
               style={{ width: `${progressValue() * 100}%` }}
             />
           </div>

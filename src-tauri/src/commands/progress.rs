@@ -5,7 +5,7 @@ pub mod progress_events {
     pub fn reset_progress(events: &impl EventSink, state: &AppState, stage: ProgressStage) {
         let _ = state.update_progress(stage, |section| {
             section.numerator = 0;
-            section.denominator = 0;
+            section.denominator = 1;
         });
         let _ = events.emit_i32("progress_numerator_reset", 0);
         let _ = events.emit_i32("progress_denominator_reset", 0);
@@ -17,10 +17,14 @@ pub mod progress_events {
         stage: ProgressStage,
         den: i32,
     ) {
-        let denominator = den.max(0) as usize;
         let _ = state.update_progress(stage, |section| {
-            section.denominator = denominator;
-            section.numerator = section.numerator.min(section.denominator);
+            if den <= 0 {
+                section.numerator = 1;
+                section.denominator = 1;
+            } else {
+                section.denominator = den as usize;
+                section.numerator = section.numerator.min(section.denominator);
+            }
         });
         let _ = events.emit_i32("progress_denominator_set", den);
     }

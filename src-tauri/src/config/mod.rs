@@ -119,11 +119,20 @@ pub struct ProcessingProgress {
     pub position: ProgressSection,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct ProgressSection {
     pub numerator: usize,
     pub denominator: usize,
+}
+
+impl Default for ProgressSection {
+    fn default() -> Self {
+        Self {
+            numerator: 0,
+            denominator: 1,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
