@@ -119,20 +119,15 @@ export function SessionHistory(props: SessionHistoryProps) {
       runningSessionIds().has(session.session_id),
     );
 
-  const markSessionSeen = (session: SessionConfig) => {
-    if (
-      session.status.process_status !== 'positioned' ||
-      runningSessionIds().has(session.session_id)
-    ) {
-      return;
-    }
-    if (seenCompletedSessions()[session.session_id] === session.modified_at) {
+  const markSessionSeen = (sessionId: string, modifiedAt: string) => {
+    if (!sessionId) return;
+    if (seenCompletedSessions()[sessionId] === modifiedAt) {
       return;
     }
 
     const next = {
       ...seenCompletedSessions(),
-      [session.session_id]: session.modified_at,
+      [sessionId]: modifiedAt,
     };
     setSeenCompletedSessions(next);
     saveSeenCompletedSessions(next);
@@ -183,6 +178,17 @@ export function SessionHistory(props: SessionHistoryProps) {
     onCleanup(() => window.clearInterval(intervalId));
   });
 
+  createEffect(() => {
+    const session = appState.session.config;
+    if (
+      session.status.process_status !== 'positioned' ||
+      runningSessionIds().has(session.session_id)
+    ) {
+      return;
+    }
+    markSessionSeen(session.session_id, session.modified_at);
+  });
+
   onCleanup(() => {
     disposed = true;
     for (const unlisten of unlisteners) unlisten();
@@ -203,7 +209,13 @@ export function SessionHistory(props: SessionHistoryProps) {
       const session = sessionHistory.find(
         (session) => session.session_id === sessionId,
       );
-      if (session) markSessionSeen(session);
+      if (
+        session &&
+        session.status.process_status === 'positioned' &&
+        !runningSessionIds().has(session.session_id)
+      ) {
+        markSessionSeen(session.session_id, session.modified_at);
+      }
       setCurrentSessionId(sessionId);
       setOpen(false);
     } catch (error) {

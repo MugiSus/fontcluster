@@ -5,6 +5,7 @@ use crate::error::{AppError, Result};
 // use futures::StreamExt as _;
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExtractedMeta {
@@ -69,6 +70,20 @@ impl Discoverer {
                 }
             }
         }
+    }
+
+    fn google_font_family_from_path(path: &Path) -> Option<String> {
+        let stem = path.file_stem()?.to_str()?;
+        let family = stem.split_once("_Weight")?.0;
+        Some(family.replace('_', " "))
+    }
+
+    fn internal_family_name(meta: &ExtractedMeta) -> String {
+        meta.preferred_family_names
+            .get("1033")
+            .or_else(|| meta.family_names.get("1033"))
+            .unwrap_or(&meta.display_name)
+            .clone()
     }
 
     pub fn analyze_font_data(
@@ -174,6 +189,7 @@ impl Discoverer {
             .join("Generated")
             .join(&session_id);
 
+        let is_google_fonts = !matches!(font_set, crate::config::FontSet::SystemFonts);
         let font_files = match font_set {
             crate::config::FontSet::SystemFonts => {
                 println!("🔍 Scanning system for font files...");
@@ -243,12 +259,12 @@ impl Discoverer {
 
                 let mut families: HashMap<String, Vec<ExtractedMeta>> = HashMap::new();
                 for meta in all_metas {
-                    let family_name = meta
-                        .preferred_family_names
-                        .get("1033")
-                        .or_else(|| meta.family_names.get("1033"))
-                        .unwrap_or(&meta.display_name)
-                        .clone();
+                    let family_name = if is_google_fonts {
+                        Self::google_font_family_from_path(&meta.path)
+                            .unwrap_or_else(|| Self::internal_family_name(&meta))
+                    } else {
+                        Self::internal_family_name(&meta)
+                    };
                     families.entry(family_name).or_default().push(meta);
                 }
 
