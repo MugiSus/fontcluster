@@ -12,6 +12,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { toast } from 'solid-sonner';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -33,6 +34,30 @@ interface SessionHistoryProps {
   class?: string;
 }
 
+const SEEN_COMPLETED_SESSIONS_KEY = 'fontcluster:seen-completed-sessions';
+
+type SeenCompletedSessions = Record<string, string>;
+
+const loadSeenCompletedSessions = (): SeenCompletedSessions => {
+  try {
+    if (typeof localStorage === 'undefined') return {};
+    return JSON.parse(
+      localStorage.getItem(SEEN_COMPLETED_SESSIONS_KEY) ?? '{}',
+    ) as SeenCompletedSessions;
+  } catch {
+    return {};
+  }
+};
+
+const saveSeenCompletedSessions = (sessions: SeenCompletedSessions) => {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(SEEN_COMPLETED_SESSIONS_KEY, JSON.stringify(sessions));
+  } catch {
+    // Notification state is best-effort UI metadata.
+  }
+};
+
 export function SessionHistory(props: SessionHistoryProps) {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
@@ -40,6 +65,8 @@ export function SessionHistory(props: SessionHistoryProps) {
     new Set(),
   );
   const [isLoadingSessions, setIsLoadingSessions] = createSignal(false);
+  const [seenCompletedSessions, setSeenCompletedSessions] =
+    createSignal<SeenCompletedSessions>(loadSeenCompletedSessions());
   const [sessionHistory, setSessionHistory] = createStore<
     SessionHistoryEntry[]
   >([]);
@@ -75,6 +102,30 @@ export function SessionHistory(props: SessionHistoryProps) {
         new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime(),
     ),
   );
+
+  const isCompleteSession = (session: SessionHistoryEntry) =>
+    session.status.process_status === 'positioned' && !session.is_running;
+
+  const isUnseenCompletedSession = (session: SessionHistoryEntry) =>
+    isCompleteSession(session) &&
+    seenCompletedSessions()[session.session_id] !== session.modified_at;
+
+  const hasRunningSession = () =>
+    visibleSessions().some((session) => session.is_running);
+
+  const markSessionSeen = (session: SessionHistoryEntry) => {
+    if (!isCompleteSession(session)) return;
+    if (seenCompletedSessions()[session.session_id] === session.modified_at) {
+      return;
+    }
+
+    const next = {
+      ...seenCompletedSessions(),
+      [session.session_id]: session.modified_at,
+    };
+    setSeenCompletedSessions(next);
+    saveSeenCompletedSessions(next);
+  };
 
   const unlisteners: Array<() => void> = [];
   let disposed = false;
@@ -138,6 +189,10 @@ export function SessionHistory(props: SessionHistoryProps) {
   const selectSession = (sessionId: string) => {
     setIsRestoring(true);
     try {
+      const session = sessionHistory.find(
+        (session) => session.session_id === sessionId,
+      );
+      if (session) markSessionSeen(session);
       setCurrentSessionId(sessionId);
       setOpen(false);
     } catch (error) {
@@ -174,6 +229,10 @@ export function SessionHistory(props: SessionHistoryProps) {
         sessionUuid: sessionId,
       });
       if (result) {
+        const next = { ...seenCompletedSessions() };
+        delete next[sessionId];
+        setSeenCompletedSessions(next);
+        saveSeenCompletedSessions(next);
         await refetchSessionHistory();
         return;
       }
@@ -229,10 +288,21 @@ export function SessionHistory(props: SessionHistoryProps) {
         as={Button<'button'>}
         variant='ghost'
         size='icon'
-        class={props.class}
+        class={cn('relative', props.class)}
         aria-label='Open session history'
       >
         <HistoryIcon class='size-4' />
+        <span
+          class={cn(
+            'pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full',
+            !hasRunningSession() &&
+              !visibleSessions().some(isUnseenCompletedSession) &&
+              'hidden',
+            hasRunningSession()
+              ? 'bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]'
+              : 'bg-blue-500',
+          )}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='flex items-center justify-between gap-2'>
@@ -268,6 +338,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                 <SessionHistoryItem
                   session={session}
                   isCurrentSession={session.session_id === appState.session.id}
+                  isUnread={isUnseenCompletedSession(session)}
                   isRestoring={isRestoring()}
                   onDeleteClick={() => handleDeleteClick(session)}
                   onContinueProcessing={() =>

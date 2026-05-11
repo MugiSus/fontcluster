@@ -34,6 +34,7 @@ export const getProcessStatusBadge = (status: string) => {
 interface SessionHistoryItemProps {
   session: SessionHistoryEntry;
   isCurrentSession: boolean;
+  isUnread: boolean;
   isRestoring: boolean;
   onDeleteClick: () => void;
   onContinueProcessing: () => void;
@@ -72,7 +73,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   };
 
   return (
-    <article class='space-y-2 rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
+    <article class='relative rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
       <div class='flex items-start justify-between gap-2'>
         <div class='min-w-0 space-y-1'>
           <div class='flex min-w-0 items-center gap-2'>
@@ -179,6 +180,9 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             </p>
           </div>
         </div>
+      </Show>
+      <Show when={props.isUnread}>
+        <span class='pointer-events-none absolute right-2 top-2 size-1.5 rounded-full bg-blue-500' />
       </Show>
     </article>
   );

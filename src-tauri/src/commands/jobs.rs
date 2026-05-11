@@ -141,6 +141,13 @@ async fn run_jobs_in_worker(
                 continue;
             }
 
+            if message.event == "all_jobs_complete" {
+                let key = session_id.as_ref().unwrap_or(&run_id).to_string();
+                state.current_job_children.lock().unwrap().remove(&key);
+                app.emit(&message.event, message.payload)?;
+                continue;
+            }
+
             app.emit(&message.event, message.payload)?;
         }
 
