@@ -12,6 +12,11 @@ Before changing code, identify:
 
 Do not implement changes until this ownership is clear.
 
+Before implementation, also identify missing requirements, ambiguous behavior,
+operational risks, and open questions that could affect the task. If any of
+these materially change the implementation choice, list them and ask the user
+before proceeding.
+
 ### Single Source of Truth
 
 Every piece of application state must have exactly one authoritative owner.
