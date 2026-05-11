@@ -1,11 +1,7 @@
 import { createStore } from 'solid-js/store';
 import { createMemo, createRoot } from 'solid-js';
 import Fuse from 'fuse.js';
-import {
-  type FontItem,
-  type SessionConfig,
-  type FontWeight,
-} from './types/font';
+import { type FontItem, type SessionConfig } from './types/font';
 
 export interface AppState {
   session: {
@@ -21,9 +17,7 @@ export interface AppState {
     selectedFontKey: string | null;
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
-    selectedWeights: FontWeight[];
     searchQuery: string;
-    sampleText: string;
   };
 }
 
@@ -111,9 +105,7 @@ export const [appState, setAppState] = createStore<AppState>({
     get selectedFontFamily(): string | null {
       return this.selectedFont?.meta.family_name || null;
     },
-    selectedWeights: [400],
     searchQuery: '',
-    sampleText: 'A',
   },
 });
 

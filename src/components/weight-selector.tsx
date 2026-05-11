@@ -1,4 +1,4 @@
-import { For, Show } from 'solid-js';
+import { createSignal, For, Show } from 'solid-js';
 import { Button } from './ui/button';
 import { type FontWeight, WEIGHT_LABELS } from '../types/font';
 import { WeightIcon } from 'lucide-solid';
@@ -7,20 +7,30 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 interface WeightSelectorProps {
   weights: FontWeight[];
-  selectedWeights: FontWeight[];
+  defaultValue?: FontWeight[];
   name?: string;
-  onWeightChange: (weights: FontWeight[]) => void;
+  onChange?: (weights: FontWeight[]) => void;
   isVertical?: boolean;
   isCompact?: boolean;
 }
 
 export function WeightSelector(props: WeightSelectorProps) {
+  const initialSelectedWeights = () => {
+    const defaultValue = props.defaultValue ?? ([400] as FontWeight[]);
+    const selectableWeights = new Set(props.weights);
+    return defaultValue.filter((weight) => selectableWeights.has(weight));
+  };
+  const [selectedWeights, setSelectedWeights] = createSignal(
+    initialSelectedWeights(),
+  );
+
   const handleWeightToggle = (weight: FontWeight) => {
-    const currentWeights = props.selectedWeights;
+    const currentWeights = selectedWeights();
     const newWeights = currentWeights.includes(weight)
       ? currentWeights.filter((w) => w !== weight)
       : [...currentWeights, weight];
-    props.onWeightChange(newWeights);
+    setSelectedWeights(newWeights);
+    props.onChange?.(newWeights);
   };
 
   return (
@@ -33,7 +43,7 @@ export function WeightSelector(props: WeightSelectorProps) {
       <input
         type='hidden'
         name={props.name || 'weights'}
-        value={props.selectedWeights.join(',')}
+        value={selectedWeights().join(',')}
       />
       <Show when={!props.isCompact}>
         <div class='flex size-8 items-center justify-center'>
@@ -42,7 +52,7 @@ export function WeightSelector(props: WeightSelectorProps) {
       </Show>
       <For each={props.weights.toSorted()}>
         {(weight) => {
-          const isSelected = () => props.selectedWeights.includes(weight);
+          const isSelected = () => selectedWeights().includes(weight);
           const isSelectable = () => props.weights.includes(weight);
 
           return (

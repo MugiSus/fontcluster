@@ -9,8 +9,8 @@ import {
   type ProcessStatus,
   type FontSet,
 } from '../../types/font';
-import { appState, setAppState } from '../../store';
-import { runProcessingJobs, setSelectedWeights } from '../../actions';
+import { appState } from '../../store';
+import { runProcessingJobs } from '../../actions';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
@@ -49,31 +49,32 @@ export function ControlContent() {
         ? appState.session.id || undefined
         : undefined;
 
-    const formData = new FormData(form);
-    const text = formData.get('preview-text') as string;
+    const formdata = new FormData(form);
+    const text = formdata.get('preview-text') as string;
 
-    const selectedWeightsString = formData.get('weights') as string;
+    const selectedWeightsString = formdata.get('weights') as string;
     const selectedWeightsArray = (
       selectedWeightsString ? selectedWeightsString.split(',').map(Number) : []
     ) as FontWeight[];
 
     const algorithm: AlgorithmConfig = {
       discovery: {
-        font_set: (appState.session.config?.algorithm?.discovery?.font_set ??
+        font_set: (formdata.get('discovery-font-set') ??
+          appState.session.config?.algorithm?.discovery?.font_set ??
           'google_fonts_popular300') as FontSet,
       },
       image: {
-        font_size: Number(formData.get('image-font-size')) || 224,
+        font_size: Number(formdata.get('image-font-size')) || 224,
       },
       clustering: {
         preprocessing_dimensions: Number(
-          formData.get('clustering-preprocessing-dimensions') || 128,
+          formdata.get('clustering-preprocessing-dimensions') || 128,
         ),
         distance_threshold: Number(
-          formData.get('clustering-distance-threshold') || 0.5,
+          formdata.get('clustering-distance-threshold') || 0.5,
         ),
         target_cluster_count: Number(
-          formData.get('clustering-target-cluster-count') || 0,
+          formdata.get('clustering-target-cluster-count') || 0,
         ),
       },
     };
@@ -102,22 +103,20 @@ export function ControlContent() {
             type='text'
             name='preview-text'
             id='preview-text'
-            value={appState.ui.sampleText}
-            onInput={(e) =>
-              setAppState('ui', 'sampleText', e.currentTarget.value)
-            }
+            value={appState.session.config.preview_text || 'A'}
             placeholder='A'
             spellcheck='false'
             class='h-9 text-[15px]'
           />
         </TextField>
         <TextField class='grid w-full items-center gap-1'>
-          <WeightSelector
-            weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-            selectedWeights={appState.ui.selectedWeights}
-            onWeightChange={setSelectedWeights}
-            isCompact
-          />
+          <Show when={appState.session.config.session_id || 'session_id'} keyed>
+            <WeightSelector
+              weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
+              defaultValue={appState.session.config.weights as FontWeight[]}
+              isCompact
+            />
+          </Show>
         </TextField>
       </div>
 
@@ -132,15 +131,11 @@ export function ControlContent() {
           >
             <TextProperty label='source' class='mr-1 gap-0.5'>
               <select
+                name='discovery-font-set'
                 class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
                 value={
                   appState.session.config?.algorithm?.discovery?.font_set ??
                   'google_fonts_popular300'
-                }
-                onChange={(e) =>
-                  setAppState('session', 'config', 'algorithm', 'discovery', {
-                    font_set: e.currentTarget.value as FontSet,
-                  })
                 }
               >
                 <option value='system_fonts'>Installed Fonts</option>

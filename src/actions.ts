@@ -83,15 +83,11 @@ export const {
     }
   });
 
-  // Sync session config and weights to store
+  // Sync loaded session config to store
   createEffect(() => {
     const config = sessionConfig();
     if (config) {
       setAppState('session', 'config', config);
-      setAppState('ui', 'sampleText', config.preview_text);
-      if (config.weights) {
-        setAppState('ui', 'selectedWeights', config.weights as FontWeight[]);
-      }
     }
   });
 
@@ -135,9 +131,6 @@ const notifyJobComplete = (sessionId: string) => {
   });
 };
 
-export const setSelectedWeights = (weights: FontWeight[]) =>
-  setAppState('ui', 'selectedWeights', weights);
-
 export const setSelectedFontKey = (key: string | null) =>
   setAppState('ui', 'selectedFontKey', key);
 
@@ -162,8 +155,10 @@ export const runProcessingJobs = async (
       overrideStatus,
     });
     console.log('Complete pipeline result:', result);
-    await refetchSessionConfig();
-    await refetchFontItemRecord();
+    if (sessionId && sessionId === appState.session.id) {
+      await refetchSessionConfig();
+      await refetchFontItemRecord();
+    }
   } catch (error) {
     console.error('Failed to process fonts:', error);
     toast.error(`Job failed: ${error}`);

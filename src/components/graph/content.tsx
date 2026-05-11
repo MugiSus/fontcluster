@@ -139,12 +139,21 @@ export function GraphContent() {
           class='pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-3 *:pointer-events-auto'
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <WeightSelector
-            weights={(appState.session.config?.weights as FontWeight[]) || []}
-            selectedWeights={graphWeights()}
-            onWeightChange={setGraphWeights}
-            isVertical
-          />
+          <Show
+            when={(
+              (appState.session.config?.weights as FontWeight[]) || []
+            ).join(',')}
+            keyed
+          >
+            <WeightSelector
+              weights={(appState.session.config?.weights as FontWeight[]) || []}
+              defaultValue={
+                (appState.session.config?.weights as FontWeight[]) || []
+              }
+              onChange={setGraphWeights}
+              isVertical
+            />
+          </Show>
           <ImageVisibilityToggle
             showImages={showImages()}
             showFontNames={showFontNames()}
