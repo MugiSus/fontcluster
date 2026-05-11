@@ -54,6 +54,15 @@
     --error: 0 93% 94%;
     --error-foreground: 0 84% 60%;
 
+    --cluster-1: #1aba8c;
+    --cluster-2: #d0d02d;
+    --cluster-3: #da532a;
+    --cluster-4: #465ae0;
+    --cluster-5: #985cd5;
+    --cluster-6: #85d11b;
+    --cluster-7: #e3941f;
+    --cluster-8: #d561b0;
+
     --ring: 215 25% 27%;
 
     --radius: 0.5rem;
@@ -99,6 +108,15 @@
 
     --error: 0 74% 16%;
     --error-foreground: 0 84% 60%;
+
+    --cluster-1: #16d59f;
+    --cluster-2: #eaea1f;
+    --cluster-3: #f5592a;
+    --cluster-4: #445ae3;
+    --cluster-5: #9852de;
+    --cluster-6: #8edb21;
+    --cluster-7: #f1a026;
+    --cluster-8: #d750c7;
 
     --ring: 0 0% 98%;
 

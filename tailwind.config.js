@@ -76,14 +76,14 @@ export default {
           20: '#fcfdfe',
         },
         cluster: {
-          1: '#1aba8c',
-          2: '#c3c31b',
-          3: '#da532a',
-          4: '#465ae0',
-          5: '#d69129',
-          6: '#985cd5',
-          7: '#6dad13',
-          8: '#d266c5',
+          1: 'var(--cluster-1)',
+          2: 'var(--cluster-2)',
+          3: 'var(--cluster-3)',
+          4: 'var(--cluster-4)',
+          5: 'var(--cluster-5)',
+          6: 'var(--cluster-6)',
+          7: 'var(--cluster-7)',
+          8: 'var(--cluster-8)',
         }
       },
       borderRadius: {
