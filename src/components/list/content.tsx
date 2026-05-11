@@ -1,9 +1,70 @@
-import { createMemo, Show } from 'solid-js';
-import { type FontItem as FontItemData } from '../../types/font';
+import { createMemo, For, Show } from 'solid-js';
+import { quadtree } from 'd3-quadtree';
 import { SearchSlashIcon } from 'lucide-solid';
+import { setSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
-// import { FontItem } from './font-item';
-import { VirtualizedItems } from './virtualized-items';
+import { type FontItem as FontItemData } from '../../types/font';
+import { FontItem } from './font-item';
+
+const MAX_NEAREST_ITEMS = 80;
+
+interface PositionedFontItem {
+  item: FontItemData;
+  key: string;
+  x: number;
+  y: number;
+}
+
+function getPosition(item: FontItemData) {
+  const position = item.computed?.positioning?.position;
+  const x = position?.[0];
+  const y = position?.[1];
+
+  if (typeof x !== 'number' || typeof y !== 'number') return null;
+  return { x, y };
+}
+
+function getNearestItems(items: FontItemData[], selectedItem: FontItemData) {
+  const selectedPosition = getPosition(selectedItem);
+  if (!selectedPosition) return [];
+
+  const points: PositionedFontItem[] = [];
+  for (const item of items) {
+    const key = item.meta.safe_name;
+    if (key === selectedItem.meta.safe_name) continue;
+
+    const position = getPosition(item);
+    if (!position) continue;
+
+    points.push({
+      item,
+      key,
+      x: position.x,
+      y: position.y,
+    });
+  }
+
+  const tree = quadtree<PositionedFontItem>()
+    .x((point) => point.x)
+    .y((point) => point.y)
+    .addAll(points);
+
+  const nearestItems: FontItemData[] = [];
+  while (nearestItems.length < MAX_NEAREST_ITEMS) {
+    const nearest = tree.find(selectedPosition.x, selectedPosition.y);
+    if (!nearest) break;
+
+    tree.remove(nearest);
+    nearestItems.push(nearest.item);
+  }
+
+  console.log(
+    'Nearest items:',
+    nearestItems.map((item) => item.meta.safe_name),
+  );
+
+  return nearestItems;
+}
 
 export function ListContent() {
   const filteredItems = createMemo(() => {
@@ -13,6 +74,18 @@ export function ListContent() {
       .map((key) => data[key])
       .filter((item): item is FontItemData => !!item);
   });
+
+  const nearestItems = createMemo(() => {
+    const selectedItem = appState.ui.selectedFont;
+    if (!selectedItem) return [];
+
+    return getNearestItems(filteredItems(), selectedItem);
+  });
+
+  const selectFont = (key: string) => {
+    if (appState.ui.selectedFontKey === key) return;
+    setSelectedFontKey(key);
+  };
 
   const NoResultsFound = () => (
     <div class='inset-x-0 flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
@@ -24,11 +97,22 @@ export function ListContent() {
   return (
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
       <Show when={filteredItems().length > 0} fallback={<NoResultsFound />}>
-        {/* <Show when={appState.ui.selectedFont}>
+        <Show when={appState.ui.selectedFont}>
           {(item) => <FontItem item={item()} class='border-b' />}
-        </Show> */}
+        </Show>
         <div class='min-h-0 flex-1 overflow-scroll'>
-          <VirtualizedItems fontItems={filteredItems()} />
+          <ul class='w-full'>
+            <For each={nearestItems()}>
+              {(item) => (
+                <li
+                  data-font-name={item.meta.safe_name}
+                  onClick={() => selectFont(item.meta.safe_name)}
+                >
+                  <FontItem item={item} />
+                </li>
+              )}
+            </For>
+          </ul>
         </div>
       </Show>
     </div>

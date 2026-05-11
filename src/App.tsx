@@ -7,7 +7,6 @@ import { ChatPanel } from './components/chat';
 import { ControlPanel } from './components/control';
 import { GraphPanel } from './components/graph';
 import { ListPanel } from './components/list';
-import { cn } from './lib/utils';
 import { CollapsiblePanelKey, PanelState } from './types/panels';
 import { useIsFullscreen } from './hooks/use-is-fullscreen';
 
@@ -48,12 +47,12 @@ function App() {
           />
         </Show>
 
-        <div class={cn('flex min-h-0 shrink-0', !panelState.list && 'hidden')}>
+        <Show when={panelState.list}>
           <ListPanel
             onClose={() => closePanel('list')}
             isLeftInset={!isFullscreen() && !panelState.control}
           />
-        </div>
+        </Show>
 
         <Show when={panelState.chat}>
           <ChatPanel
