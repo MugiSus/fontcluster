@@ -112,6 +112,7 @@ pub fn run() {
             crate::commands::get_session_info,
             crate::commands::get_available_sessions,
             crate::commands::get_session_history,
+            crate::commands::get_running_session_ids,
             crate::commands::get_latest_session_id,
             crate::commands::get_session_directory,
             crate::commands::delete_session,

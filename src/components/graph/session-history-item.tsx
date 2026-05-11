@@ -7,10 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  type SessionHistoryEntry,
-  type SessionProgressSection,
-} from '@/types/font';
+import { type SessionConfig, type SessionProgressSection } from '@/types/font';
 
 export const getProcessStatusBadge = (status: string) => {
   switch (status) {
@@ -32,8 +29,9 @@ export const getProcessStatusBadge = (status: string) => {
 };
 
 interface SessionHistoryItemProps {
-  session: SessionHistoryEntry;
+  session: SessionConfig;
   isCurrentSession: boolean;
+  isRunning: boolean;
   isUnread: boolean;
   isRestoring: boolean;
   onDeleteClick: () => void;
@@ -47,7 +45,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const badge = () => {
     return getProcessStatusBadge(session().status.process_status);
   };
-  const isRunning = () => session().is_running;
+  const isRunning = () => props.isRunning;
 
   const isComplete = () => session()?.status.process_status === 'positioned';
 
@@ -181,7 +179,10 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           </div>
         </div>
       </Show>
-      <Show when={props.isUnread}>
+      <Show when={isRunning()}>
+        <span class='pointer-events-none absolute right-2 top-2 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
+      </Show>
+      <Show when={!isRunning() && props.isUnread}>
         <span class='pointer-events-none absolute right-2 top-2 size-1.5 rounded-full bg-blue-500' />
       </Show>
     </article>

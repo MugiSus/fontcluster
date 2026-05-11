@@ -1,22 +1,10 @@
-use crate::config::{AlgorithmConfig, ProcessStatus, ProcessingStatus, SessionConfig};
+use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
 use crate::core::AppState;
 use crate::error::Result;
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{command, State};
-
-#[derive(Debug, Clone, Serialize)]
-pub struct SessionHistoryEntry {
-    pub session_id: String,
-    pub preview_text: String,
-    pub modified_at: DateTime<Utc>,
-    pub weights: Vec<i32>,
-    pub algorithm: Option<AlgorithmConfig>,
-    pub status: ProcessingStatus,
-    pub is_running: bool,
-}
 
 #[command]
 pub async fn create_new_session(
@@ -70,19 +58,11 @@ pub async fn get_available_sessions() -> Result<String> {
 }
 
 #[command]
-pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<SessionHistoryEntry>> {
+pub async fn get_session_history() -> Result<Vec<SessionConfig>> {
     let base = AppState::get_base_dir()?.join("Generated");
     if !base.exists() {
         return Ok(Vec::new());
     }
-
-    let running_session_ids = {
-        let running_jobs = state.current_job_children.lock().unwrap();
-        running_jobs
-            .keys()
-            .cloned()
-            .collect::<std::collections::HashSet<_>>()
-    };
 
     let mut sessions = Vec::new();
     for entry in fs::read_dir(base)? {
@@ -99,24 +79,18 @@ pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<Sessi
         if let Ok(session) =
             serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?)
         {
-            sessions.push(SessionHistoryEntry {
-                is_running: running_session_ids.contains(&session.session_id),
-                session_id: session.session_id,
-                preview_text: session.preview_text,
-                modified_at: session.modified_at,
-                weights: session.weights,
-                algorithm: session.algorithm,
-                status: session.status,
-            });
+            sessions.push(session);
         }
     }
 
-    sessions.sort_by(|a, b| {
-        b.is_running
-            .cmp(&a.is_running)
-            .then_with(|| b.modified_at.cmp(&a.modified_at))
-    });
+    sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     Ok(sessions)
+}
+
+#[command]
+pub async fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<String>> {
+    let running_jobs = state.current_job_children.lock().unwrap();
+    Ok(running_jobs.keys().cloned().collect())
 }
 
 #[command]

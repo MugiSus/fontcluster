@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { appState, DEFAULT_SESSION_CONFIG } from '@/store';
 import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
-import { type FontWeight, type SessionHistoryEntry } from '@/types/font';
+import { type FontWeight, type SessionConfig } from '@/types/font';
 import { SessionHistoryItem } from './session-history-item';
 
 interface SessionHistoryProps {
@@ -39,23 +39,13 @@ const SEEN_COMPLETED_SESSIONS_KEY = 'fontcluster:seen-completed-sessions';
 type SeenCompletedSessions = Record<string, string>;
 
 const loadSeenCompletedSessions = (): SeenCompletedSessions => {
-  try {
-    if (typeof localStorage === 'undefined') return {};
-    return JSON.parse(
-      localStorage.getItem(SEEN_COMPLETED_SESSIONS_KEY) ?? '{}',
-    ) as SeenCompletedSessions;
-  } catch {
-    return {};
-  }
+  return JSON.parse(
+    localStorage.getItem(SEEN_COMPLETED_SESSIONS_KEY) ?? '{}',
+  ) as SeenCompletedSessions;
 };
 
 const saveSeenCompletedSessions = (sessions: SeenCompletedSessions) => {
-  try {
-    if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(SEEN_COMPLETED_SESSIONS_KEY, JSON.stringify(sessions));
-  } catch {
-    // Notification state is best-effort UI metadata.
-  }
+  localStorage.setItem(SEEN_COMPLETED_SESSIONS_KEY, JSON.stringify(sessions));
 };
 
 export function SessionHistory(props: SessionHistoryProps) {
@@ -65,18 +55,19 @@ export function SessionHistory(props: SessionHistoryProps) {
     new Set(),
   );
   const [isLoadingSessions, setIsLoadingSessions] = createSignal(false);
+  const [runningSessionIds, setRunningSessionIds] = createSignal<Set<string>>(
+    new Set(),
+  );
   const [seenCompletedSessions, setSeenCompletedSessions] =
     createSignal<SeenCompletedSessions>(loadSeenCompletedSessions());
-  const [sessionHistory, setSessionHistory] = createStore<
-    SessionHistoryEntry[]
-  >([]);
+  const [sessionHistory, setSessionHistory] = createStore<SessionConfig[]>([]);
   const committedDeletes = new Set<string>();
   const cancelledDeletes = new Set<string>();
 
   const refetchSessionHistory = async () => {
     setIsLoadingSessions(true);
     try {
-      const result = await invoke<SessionHistoryEntry[]>('get_session_history');
+      const result = await invoke<SessionConfig[]>('get_session_history');
       setSessionHistory(
         reconcile(result, {
           key: 'session_id',
@@ -89,32 +80,52 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
   };
 
+  const refetchRunningSessionIds = async () => {
+    try {
+      const result = await invoke<string[]>('get_running_session_ids');
+      setRunningSessionIds(new Set(result));
+    } catch (error) {
+      console.error('Failed to get running sessions:', error);
+    }
+  };
+
+  const refetchSessions = async () => {
+    await Promise.all([refetchSessionHistory(), refetchRunningSessionIds()]);
+  };
+
   const visibleSessions = createMemo(() =>
     sessionHistory.filter(
       (session) => !hiddenSessionIds().has(session.session_id),
     ),
   );
 
-  const sortedSessions = createMemo<SessionHistoryEntry[]>(() =>
-    visibleSessions().sort(
+  const sortedSessions = createMemo<SessionConfig[]>(() => {
+    const runningIds = runningSessionIds();
+    return visibleSessions().sort(
       (a, b) =>
-        Number(b.is_running) - Number(a.is_running) ||
+        Number(runningIds.has(b.session_id)) -
+          Number(runningIds.has(a.session_id)) ||
         new Date(b.modified_at).getTime() - new Date(a.modified_at).getTime(),
-    ),
-  );
+    );
+  });
 
-  const isCompleteSession = (session: SessionHistoryEntry) =>
-    session.status.process_status === 'positioned' && !session.is_running;
-
-  const isUnseenCompletedSession = (session: SessionHistoryEntry) =>
-    isCompleteSession(session) &&
+  const isUnseenCompletedSession = (session: SessionConfig) =>
+    session.status.process_status === 'positioned' &&
+    !runningSessionIds().has(session.session_id) &&
     seenCompletedSessions()[session.session_id] !== session.modified_at;
 
   const hasRunningSession = () =>
-    visibleSessions().some((session) => session.is_running);
+    visibleSessions().some((session) =>
+      runningSessionIds().has(session.session_id),
+    );
 
-  const markSessionSeen = (session: SessionHistoryEntry) => {
-    if (!isCompleteSession(session)) return;
+  const markSessionSeen = (session: SessionConfig) => {
+    if (
+      session.status.process_status !== 'positioned' ||
+      runningSessionIds().has(session.session_id)
+    ) {
+      return;
+    }
     if (seenCompletedSessions()[session.session_id] === session.modified_at) {
       return;
     }
@@ -145,28 +156,28 @@ export function SessionHistory(props: SessionHistoryProps) {
 
   registerListener('show_session_selection', () => {
     setOpen(true);
-    void refetchSessionHistory();
+    void refetchSessions();
   });
 
   registerListener<string>('session_started', () => {
-    void refetchSessionHistory();
+    void refetchSessions();
   });
 
   registerListener<string>('all_jobs_complete', () => {
-    void refetchSessionHistory();
+    void refetchSessions();
   });
 
   registerListener<string | null>('jobs_cancelled', () => {
-    void refetchSessionHistory();
+    void refetchSessions();
   });
 
   createEffect(() => {
-    if (!open() || !sessionHistory.some((session) => session.is_running)) {
+    if (!open() || runningSessionIds().size === 0) {
       return;
     }
 
     const intervalId = window.setInterval(() => {
-      void refetchSessionHistory();
+      void refetchSessions();
     }, 1000);
 
     onCleanup(() => window.clearInterval(intervalId));
@@ -177,12 +188,12 @@ export function SessionHistory(props: SessionHistoryProps) {
     for (const unlisten of unlisteners) unlisten();
   });
 
-  void refetchSessionHistory();
+  void refetchSessions();
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (nextOpen) {
-      void refetchSessionHistory();
+      void refetchSessions();
     }
   };
 
@@ -202,7 +213,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
   };
 
-  const continueSessionProcessing = (session: SessionHistoryEntry) => {
+  const continueSessionProcessing = (session: SessionConfig) => {
     const algorithm = session.algorithm ?? DEFAULT_SESSION_CONFIG.algorithm;
     if (!algorithm) return;
 
@@ -216,7 +227,7 @@ export function SessionHistory(props: SessionHistoryProps) {
 
   const stopCurrentRun = async (sessionId: string) => {
     await stopJobs(sessionId);
-    await refetchSessionHistory();
+    await refetchSessions();
   };
 
   const deleteSession = async (sessionId: string) => {
@@ -233,7 +244,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         delete next[sessionId];
         setSeenCompletedSessions(next);
         saveSeenCompletedSessions(next);
-        await refetchSessionHistory();
+        await refetchSessions();
         return;
       }
 
@@ -254,7 +265,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
   };
 
-  const handleDeleteClick = (session: SessionHistoryEntry) => {
+  const handleDeleteClick = (session: SessionConfig) => {
     const sessionId = session.session_id;
     cancelledDeletes.delete(sessionId);
     setHiddenSessionIds((prev) => new Set(prev).add(sessionId));
@@ -292,17 +303,17 @@ export function SessionHistory(props: SessionHistoryProps) {
         aria-label='Open session history'
       >
         <HistoryIcon class='size-4' />
-        <span
-          class={cn(
-            'pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full',
+        <Show when={hasRunningSession()}>
+          <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
+        </Show>
+        <Show
+          when={
             !hasRunningSession() &&
-              !visibleSessions().some(isUnseenCompletedSession) &&
-              'hidden',
-            hasRunningSession()
-              ? 'bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]'
-              : 'bg-blue-500',
-          )}
-        />
+            visibleSessions().some(isUnseenCompletedSession)
+          }
+        >
+          <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-blue-500' />
+        </Show>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='flex items-center justify-between gap-2'>
@@ -314,7 +325,7 @@ export function SessionHistory(props: SessionHistoryProps) {
               variant='ghost'
               class='size-7'
               onClick={() => {
-                void refetchSessionHistory();
+                void refetchSessions();
               }}
             >
               <RefreshCwIcon class='size-3.5' />
@@ -338,6 +349,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                 <SessionHistoryItem
                   session={session}
                   isCurrentSession={session.session_id === appState.session.id}
+                  isRunning={runningSessionIds().has(session.session_id)}
                   isUnread={isUnseenCompletedSession(session)}
                   isRestoring={isRestoring()}
                   onDeleteClick={() => handleDeleteClick(session)}
