@@ -1,4 +1,5 @@
-import { createMemo, For, Show } from 'solid-js';
+import { createMemo, Index, Show } from 'solid-js';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { quadtree } from 'd3-quadtree';
 import { SearchSlashIcon } from 'lucide-solid';
 import { setSelectedFontKey } from '../../actions';
@@ -13,6 +14,11 @@ interface PositionedFontItem {
   key: string;
   x: number;
   y: number;
+}
+
+interface FontItemViewProps {
+  item: FontItemData;
+  class?: string;
 }
 
 function getPosition(item: FontItemData) {
@@ -58,12 +64,24 @@ function getNearestItems(items: FontItemData[], selectedItem: FontItemData) {
     nearestItems.push(nearest.item);
   }
 
-  console.log(
-    'Nearest items:',
-    nearestItems.map((item) => item.meta.safe_name),
-  );
-
   return nearestItems;
+}
+
+function FontItemView(props: FontItemViewProps) {
+  const meta = () => props.item.meta;
+
+  return (
+    <FontItem
+      safeName={meta().safe_name}
+      fontName={meta().font_name}
+      weight={meta().weight}
+      clusterId={props.item.computed?.clustering?.k}
+      sampleSrc={convertFileSrc(
+        `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
+      )}
+      class={props.class}
+    />
+  );
 }
 
 export function ListContent() {
@@ -98,22 +116,22 @@ export function ListContent() {
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
       <Show when={filteredItems().length > 0} fallback={<NoResultsFound />}>
         <Show when={appState.ui.selectedFont}>
-          {(item) => <FontItem item={item()} class='border-b' />}
+          {(item) => <FontItemView item={item()} class='border-b' />}
         </Show>
-        <div class='min-h-0 flex-1 overflow-scroll'>
+        {/* <div class='min-h-0 flex-1 overflow-scroll'>
           <ul class='w-full'>
-            <For each={nearestItems()}>
+            <Index each={nearestItems()}>
               {(item) => (
                 <li
-                  data-font-name={item.meta.safe_name}
-                  onClick={() => selectFont(item.meta.safe_name)}
+                  data-font-name={item().meta.safe_name}
+                  onClick={() => selectFont(item().meta.safe_name)}
                 >
-                  <FontItem item={item} />
+                  <FontItemView item={item()} />
                 </li>
               )}
-            </For>
+            </Index>
           </ul>
-        </div>
+        </div> */}
       </Show>
     </div>
   );
