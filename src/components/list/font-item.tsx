@@ -1,17 +1,12 @@
-import {
-  getClusterBackgroundColor,
-  getClusterTextColor,
-} from '../../lib/cluster-colors';
-import { type FontWeight, WEIGHT_LABELS } from '../../types/font';
 import { cn } from '../../lib/utils';
 
 interface FontItemProps {
-  safeName: string;
   fontName: string;
-  weight: number;
-  clusterId: number | undefined;
+  weightLabel: string;
+  clusterBackgroundClass: string;
+  clusterTextClass: string;
   sampleSrc: string;
-  class?: string;
+  class?: string | undefined;
 }
 
 export function FontItem(props: FontItemProps) {
@@ -23,14 +18,9 @@ export function FontItem(props: FontItemProps) {
       )}
     >
       <div class='flex items-center gap-2 px-4 font-semibold'>
-        <div
-          class={`h-3.5 w-1 rounded-full ${getClusterBackgroundColor(props.clusterId)}`}
-        />
-        <div class={`text-sm ${getClusterTextColor(props.clusterId)}`}>
-          {
-            WEIGHT_LABELS[(Math.round(props.weight / 100) * 100) as FontWeight]
-              .short
-          }
+        <div class={`h-3.5 w-1 rounded-full ${props.clusterBackgroundClass}`} />
+        <div class={`text-sm ${props.clusterTextClass}`}>
+          {props.weightLabel}
         </div>
         <div class='text-nowrap text-sm text-muted-foreground'>
           {props.fontName}
@@ -40,7 +30,7 @@ export function FontItem(props: FontItemProps) {
         class='block size-auto h-7 max-h-none max-w-none px-4 mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
         src={props.sampleSrc}
         alt={`Font preview for ${props.fontName}`}
-        decoding='sync'
+        decoding='async'
       />
     </div>
   );

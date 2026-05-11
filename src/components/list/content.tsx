@@ -1,13 +1,28 @@
-import { createMemo, Index, Show } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  Index,
+  onCleanup,
+  Show,
+} from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { quadtree } from 'd3-quadtree';
 import { SearchSlashIcon } from 'lucide-solid';
 import { setSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
-import { type FontItem as FontItemData } from '../../types/font';
+import {
+  type FontItem as FontItemData,
+  type FontWeight,
+  WEIGHT_LABELS,
+} from '../../types/font';
+import {
+  getClusterBackgroundColor,
+  getClusterTextColor,
+} from '../../lib/cluster-colors';
 import { FontItem } from './font-item';
 
-const MAX_NEAREST_ITEMS = 80;
+const MAX_NEAREST_ITEMS = 40;
 
 interface PositionedFontItem {
   item: FontItemData;
@@ -69,13 +84,15 @@ function getNearestItems(items: FontItemData[], selectedItem: FontItemData) {
 
 function FontItemView(props: FontItemViewProps) {
   const meta = () => props.item.meta;
+  const clusterId = () => props.item.computed?.clustering?.k;
+  const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
 
   return (
     <FontItem
-      safeName={meta().safe_name}
       fontName={meta().font_name}
-      weight={meta().weight}
-      clusterId={props.item.computed?.clustering?.k}
+      weightLabel={WEIGHT_LABELS[weight()].short}
+      clusterBackgroundClass={getClusterBackgroundColor(clusterId())}
+      clusterTextClass={getClusterTextColor(clusterId())}
       sampleSrc={convertFileSrc(
         `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
       )}
@@ -85,6 +102,8 @@ function FontItemView(props: FontItemViewProps) {
 }
 
 export function ListContent() {
+  const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
+
   const filteredItems = createMemo(() => {
     const data = appState.fonts.data;
     if (Object.keys(data).length === 0) return [];
@@ -93,11 +112,19 @@ export function ListContent() {
       .filter((item): item is FontItemData => !!item);
   });
 
-  const nearestItems = createMemo(() => {
+  createEffect(() => {
+    const items = filteredItems();
     const selectedItem = appState.ui.selectedFont;
-    if (!selectedItem) return [];
+    if (!selectedItem) {
+      setNearestItems([]);
+      return;
+    }
 
-    return getNearestItems(filteredItems(), selectedItem);
+    const frameId = requestAnimationFrame(() => {
+      setNearestItems(getNearestItems(items, selectedItem));
+    });
+
+    onCleanup(() => cancelAnimationFrame(frameId));
   });
 
   const selectFont = (key: string) => {
@@ -118,7 +145,7 @@ export function ListContent() {
         <Show when={appState.ui.selectedFont}>
           {(item) => <FontItemView item={item()} class='border-b' />}
         </Show>
-        {/* <div class='min-h-0 flex-1 overflow-scroll'>
+        <div class='min-h-0 flex-1 overflow-scroll'>
           <ul class='w-full'>
             <Index each={nearestItems()}>
               {(item) => (
@@ -131,7 +158,7 @@ export function ListContent() {
               )}
             </Index>
           </ul>
-        </div> */}
+        </div>
       </Show>
     </div>
   );
