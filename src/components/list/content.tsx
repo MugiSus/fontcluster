@@ -2,7 +2,7 @@ import { createMemo, Show } from 'solid-js';
 import { type FontItem as FontItemData } from '../../types/font';
 import { SearchSlashIcon } from 'lucide-solid';
 import { appState } from '../../store';
-import { FontItem } from './font-item';
+// import { FontItem } from './font-item';
 import { VirtualizedItems } from './virtualized-items';
 
 export function ListContent() {
@@ -24,9 +24,9 @@ export function ListContent() {
   return (
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
       <Show when={filteredItems().length > 0} fallback={<NoResultsFound />}>
-        <Show when={appState.ui.selectedFont}>
+        {/* <Show when={appState.ui.selectedFont}>
           {(item) => <FontItem item={item()} class='border-b' />}
-        </Show>
+        </Show> */}
         <div class='min-h-0 flex-1 overflow-scroll'>
           <VirtualizedItems fontItems={filteredItems()} />
         </div>
