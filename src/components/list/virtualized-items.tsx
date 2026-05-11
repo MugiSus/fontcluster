@@ -5,7 +5,6 @@ import {
   For,
   onCleanup,
   untrack,
-  Show,
 } from 'solid-js';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { quadtree } from 'd3-quadtree';
@@ -25,6 +24,12 @@ interface PositionedFontItem {
   key: string;
   x: number;
   y: number;
+}
+
+interface VisibleVirtualItem {
+  item: FontItemData;
+  size: number;
+  start: number;
 }
 
 function getPosition(item: FontItemData) {
@@ -164,9 +169,22 @@ export function VirtualizedItems(props: VirtualizedItemsProps) {
     return Math.min(queue.size, Math.max(1, visibleEndIndex + OVERSCAN));
   });
 
-  const visibleVirtualItems = createMemo(() => {
+  const visibleVirtualItems = createMemo((): VisibleVirtualItem[] => {
     revealedCount();
-    return virtualizer.getVirtualItems();
+    const visibleItems: VisibleVirtualItem[] = [];
+
+    for (const virtualItem of virtualizer.getVirtualItems()) {
+      const item = revealedItems[virtualItem.index];
+      if (!item) continue;
+
+      visibleItems.push({
+        item,
+        size: virtualItem.size,
+        start: virtualItem.start,
+      });
+    }
+
+    return visibleItems;
   });
 
   let frameId: number | undefined;
@@ -242,17 +260,13 @@ export function VirtualizedItems(props: VirtualizedItemsProps) {
         {(virtualItem) => {
           return (
             <li
-              class='absolute'
+              class='absolute w-full'
               style={{
-                transform: `translateY(${virtualItem.start}px)`,
                 height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
               }}
             >
-              <Show when={revealedItems[virtualItem.index]}>
-                {(item) => {
-                  return <FontItem item={item()} />;
-                }}
-              </Show>
+              <FontItem item={virtualItem.item} />
             </li>
           );
         }}
