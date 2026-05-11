@@ -306,12 +306,31 @@ pub async fn run_jobs_pipeline(
         events.emit_string("vectorization_complete", id.clone())?;
     }
 
-    // Step 4: Clustering
+    // Step 4: Positioning
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
     if status == ProcessStatus::Vectorized {
+        if state.is_cancelled.load(Ordering::Relaxed) {
+            return Ok("Cancelled".into());
+        }
+        println!("📍 Starting positioning...");
+        events.emit_unit("positioning_start")?;
+        Positioner::position_all(&events, state).await?;
+
+        if state.is_cancelled.load(Ordering::Relaxed) {
+            return Ok("Cancelled".into());
+        }
+        events.emit_string("positioning_complete", id.clone())?;
+    }
+
+    // Step 5: Clustering
+    let status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if status == ProcessStatus::Positioned {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
@@ -323,21 +342,6 @@ pub async fn run_jobs_pipeline(
             return Ok("Cancelled".into());
         }
         events.emit_string("clustering_complete", id.clone())?;
-    }
-
-    // Step 5: Positioning
-    let status = {
-        let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
-    };
-    if status == ProcessStatus::Clustered {
-        if state.is_cancelled.load(Ordering::Relaxed) {
-            return Ok("Cancelled".into());
-        }
-        println!("📍 Starting positioning...");
-        events.emit_unit("positioning_start")?;
-        Positioner::position_all(&events, state).await?;
-        events.emit_string("positioning_complete", id.clone())?;
     }
 
     if state.is_cancelled.load(Ordering::Relaxed) {

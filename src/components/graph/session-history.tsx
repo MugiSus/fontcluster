@@ -110,7 +110,7 @@ export function SessionHistory(props: SessionHistoryProps) {
   });
 
   const isUnseenCompletedSession = (session: SessionConfig) =>
-    session.status.process_status === 'positioned' &&
+    session.status.process_status === 'clustered' &&
     !runningSessionIds().has(session.session_id) &&
     seenCompletedSessions()[session.session_id] !== session.modified_at;
 
@@ -181,7 +181,7 @@ export function SessionHistory(props: SessionHistoryProps) {
   createEffect(() => {
     const session = appState.session.config;
     if (
-      session.status.process_status !== 'positioned' ||
+      session.status.process_status !== 'clustered' ||
       runningSessionIds().has(session.session_id)
     ) {
       return;
@@ -211,7 +211,7 @@ export function SessionHistory(props: SessionHistoryProps) {
       );
       if (
         session &&
-        session.status.process_status === 'positioned' &&
+        session.status.process_status === 'clustered' &&
         !runningSessionIds().has(session.session_id)
       ) {
         markSessionSeen(session.session_id, session.modified_at);

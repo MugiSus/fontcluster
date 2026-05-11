@@ -51,8 +51,8 @@ export type ProcessStatus =
   | 'discovered'
   | 'generated'
   | 'vectorized'
-  | 'clustered'
-  | 'positioned';
+  | 'positioned'
+  | 'clustered';
 
 export interface ProcessingStatus {
   process_status: ProcessStatus;

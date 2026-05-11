@@ -43,7 +43,7 @@ export function ControlContent() {
     if (!form) return;
 
     const isCompletedSession =
-      appState.session.config.status.process_status === 'positioned';
+      appState.session.config.status.process_status === 'clustered';
     const sessionId =
       targetStatus || !isCompletedSession
         ? appState.session.id || undefined
@@ -190,9 +190,19 @@ export function ControlContent() {
           </ControlPropertySection>
 
           <ControlPropertySection
-            title='clustering'
+            title='position'
             disabled={isRunCooldown()}
             onStepRun={() => handleRun('vectorized')}
+          >
+            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
+              PCA 384D {'->'} 2D
+            </div>
+          </ControlPropertySection>
+
+          <ControlPropertySection
+            title='clustering'
+            disabled={isRunCooldown()}
+            onStepRun={() => handleRun('positioned')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
               Agglomerative Clustering
@@ -228,16 +238,6 @@ export function ControlContent() {
               step={1}
               minValue={0}
             />
-          </ControlPropertySection>
-
-          <ControlPropertySection
-            title='position'
-            disabled={isRunCooldown()}
-            onStepRun={() => handleRun('clustered')}
-          >
-            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              PCA 384D {'->'} 2D
-            </div>
           </ControlPropertySection>
         </div>
       </Show>

@@ -108,7 +108,7 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
                     if let Ok(content) = fs::read_to_string(&config_path) {
                         if let Ok(s) = serde_json::from_str::<SessionConfig>(&content) {
                             has_sessions = true;
-                            if s.status.process_status != ProcessStatus::Positioned {
+                            if s.status.process_status != ProcessStatus::Clustered {
                                 continue;
                             }
 

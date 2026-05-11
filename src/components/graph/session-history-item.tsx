@@ -11,10 +11,10 @@ import { type SessionConfig, type SessionProgressSection } from '@/types/font';
 
 export const getProcessStatusBadge = (status: string) => {
   switch (status) {
-    case 'positioned':
-      return { text: 'Complete', variant: 'default' } as const;
     case 'clustered':
-      return { text: 'Clustered', variant: 'outline' } as const;
+      return { text: 'Complete', variant: 'default' } as const;
+    case 'positioned':
+      return { text: 'Positioned', variant: 'outline' } as const;
     case 'vectorized':
       return { text: 'Vectorized', variant: 'outline' } as const;
     case 'generated':
@@ -47,7 +47,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   };
   const isRunning = () => props.isRunning;
 
-  const isComplete = () => session()?.status.process_status === 'positioned';
+  const isComplete = () => session()?.status.process_status === 'clustered';
 
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;

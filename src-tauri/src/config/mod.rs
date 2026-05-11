@@ -95,8 +95,8 @@ pub enum ProcessStatus {
     Discovered,
     Generated,
     Vectorized,
-    Clustered,
     Positioned,
+    Clustered,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
