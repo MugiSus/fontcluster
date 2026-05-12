@@ -197,7 +197,7 @@ export function GraphContent() {
             <path
               d='M 490 490 L 510 510 M 510 490 L 490 510'
               fill='none'
-              stroke-width={viewport.zoomFactor() * 1}
+              stroke-width={viewport.zoomFactor()}
               class='pointer-events-none stroke-border'
             />
             <circle
@@ -205,7 +205,7 @@ export function GraphContent() {
               cy='500'
               r='200'
               fill='none'
-              stroke-width={viewport.zoomFactor() * 1}
+              stroke-width={viewport.zoomFactor()}
               class='pointer-events-none stroke-border'
             />
             <circle
@@ -213,7 +213,7 @@ export function GraphContent() {
               cy='500'
               r='400'
               fill='none'
-              stroke-width={viewport.zoomFactor() * 1}
+              stroke-width={viewport.zoomFactor()}
               class='pointer-events-none stroke-border'
             />
             <circle
@@ -221,7 +221,7 @@ export function GraphContent() {
               cy='500'
               r='600'
               fill='none'
-              stroke-width={viewport.zoomFactor() * 1}
+              stroke-width={viewport.zoomFactor()}
               class='pointer-events-none stroke-border'
             />
           </g>
