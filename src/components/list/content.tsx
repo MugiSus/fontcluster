@@ -21,6 +21,7 @@ import {
   getClusterTextColor,
 } from '../../lib/cluster-colors';
 import { FontItem } from './font-item';
+import { cn } from '../../lib/utils';
 
 const MAX_NEAREST_ITEMS = 120;
 const LIST_UPDATE_DEBOUNCE_MS = 400;
@@ -80,16 +81,17 @@ function FontItemView(props: FontItemViewProps) {
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
 
   return (
-    <FontItem
-      fontName={meta().font_name}
-      weightLabel={WEIGHT_LABELS[weight()].short}
-      clusterBackgroundClass={getClusterBackgroundColor(clusterId())}
-      clusterTextClass={getClusterTextColor(clusterId())}
-      sampleSrc={convertFileSrc(
-        `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
-      )}
-      class={props.class}
-    />
+    <div class={cn(props.class, 'animate-fade-in')}>
+      <FontItem
+        fontName={meta().font_name}
+        weightLabel={WEIGHT_LABELS[weight()].short}
+        clusterBackgroundClass={getClusterBackgroundColor(clusterId())}
+        clusterTextClass={getClusterTextColor(clusterId())}
+        sampleSrc={convertFileSrc(
+          `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
+        )}
+      />
+    </div>
   );
 }
 
