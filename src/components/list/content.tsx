@@ -22,7 +22,7 @@ import {
 } from '../../lib/cluster-colors';
 import { FontItem } from './font-item';
 
-const MAX_NEAREST_ITEMS = 80;
+const MAX_NEAREST_ITEMS = 120;
 const LIST_UPDATE_DEBOUNCE_MS = 400;
 
 interface PositionedFontItem {
