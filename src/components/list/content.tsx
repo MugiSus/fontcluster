@@ -98,6 +98,7 @@ export function ListContent() {
     null,
   );
   const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
+  let nearestItemsScrollElement: HTMLDivElement | undefined;
 
   const filteredItems = createMemo(() => {
     const data = appState.fonts.data;
@@ -122,6 +123,7 @@ export function ListContent() {
       setNearestItems(
         nextSelectedItem ? getNearestItems(items, nextSelectedItem) : [],
       );
+      nearestItemsScrollElement?.scrollTo({ top: 0 });
     }, LIST_UPDATE_DEBOUNCE_MS);
 
     onCleanup(() => window.clearTimeout(timeoutId));
@@ -147,7 +149,10 @@ export function ListContent() {
             <FontItemView item={item()} class='animate-fade-in border-b' />
           )}
         </Show>
-        <div class='min-h-0 flex-1 overflow-scroll'>
+        <div
+          ref={nearestItemsScrollElement}
+          class='min-h-0 flex-1 overflow-scroll'
+        >
           <ul class='w-full'>
             <Index each={nearestItems()}>
               {(item) => (
