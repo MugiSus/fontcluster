@@ -8,7 +8,7 @@ import {
 } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { quadtree } from 'd3-quadtree';
-import { SearchSlashIcon } from 'lucide-solid';
+import { MousePointerClickIcon } from 'lucide-solid';
 import { setSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
 import {
@@ -23,6 +23,7 @@ import {
 import { FontItem } from './font-item';
 
 const MAX_NEAREST_ITEMS = 80;
+const LIST_UPDATE_DEBOUNCE_MS = 400;
 
 interface PositionedFontItem {
   item: FontItemData;
@@ -36,32 +37,23 @@ interface FontItemViewProps {
   class?: string;
 }
 
-function getPosition(item: FontItemData) {
-  const position = item.computed?.positioning?.position;
-  const x = position?.[0];
-  const y = position?.[1];
-
-  if (typeof x !== 'number' || typeof y !== 'number') return null;
-  return { x, y };
-}
-
 function getNearestItems(items: FontItemData[], selectedItem: FontItemData) {
-  const selectedPosition = getPosition(selectedItem);
-  if (!selectedPosition) return [];
+  const selectedPosition = selectedItem.computed?.positioning?.position;
+  if (!selectedPosition?.[0] || !selectedPosition?.[1]) return [];
 
   const points: PositionedFontItem[] = [];
   for (const item of items) {
     const key = item.meta.safe_name;
     if (key === selectedItem.meta.safe_name) continue;
 
-    const position = getPosition(item);
-    if (!position) continue;
+    const position = item.computed?.positioning?.position;
+    if (!position?.[0] || !position?.[1]) continue;
 
     points.push({
       item,
       key,
-      x: position.x,
-      y: position.y,
+      x: position[0],
+      y: position[1],
     });
   }
 
@@ -72,7 +64,7 @@ function getNearestItems(items: FontItemData[], selectedItem: FontItemData) {
 
   const nearestItems: FontItemData[] = [];
   while (nearestItems.length < MAX_NEAREST_ITEMS) {
-    const nearest = tree.find(selectedPosition.x, selectedPosition.y);
+    const nearest = tree.find(selectedPosition[0], selectedPosition[1]);
     if (!nearest) break;
 
     tree.remove(nearest);
@@ -102,6 +94,9 @@ function FontItemView(props: FontItemViewProps) {
 }
 
 export function ListContent() {
+  const [selectedItem, setSelectedItem] = createSignal<FontItemData | null>(
+    null,
+  );
   const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
 
   const filteredItems = createMemo(() => {
@@ -114,17 +109,22 @@ export function ListContent() {
 
   createEffect(() => {
     const items = filteredItems();
-    const selectedItem = appState.ui.selectedFont;
-    if (!selectedItem) {
+    const selectedKey = appState.ui.selectedFontKey;
+    if (!selectedKey) {
+      setSelectedItem(null);
       setNearestItems([]);
       return;
     }
 
-    const frameId = requestAnimationFrame(() => {
-      setNearestItems(getNearestItems(items, selectedItem));
-    });
+    const timeoutId = window.setTimeout(() => {
+      const nextSelectedItem = appState.fonts.data[selectedKey] || null;
+      setSelectedItem(nextSelectedItem);
+      setNearestItems(
+        nextSelectedItem ? getNearestItems(items, nextSelectedItem) : [],
+      );
+    }, LIST_UPDATE_DEBOUNCE_MS);
 
-    onCleanup(() => cancelAnimationFrame(frameId));
+    onCleanup(() => window.clearTimeout(timeoutId));
   });
 
   const selectFont = (key: string) => {
@@ -134,16 +134,18 @@ export function ListContent() {
 
   const NoResultsFound = () => (
     <div class='inset-x-0 flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
-      <SearchSlashIcon />
-      No Results
+      <MousePointerClickIcon />
+      Select a font to see similar fonts
     </div>
   );
 
   return (
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
-      <Show when={filteredItems().length > 0} fallback={<NoResultsFound />}>
-        <Show when={appState.ui.selectedFont}>
-          {(item) => <FontItemView item={item()} class='border-b' />}
+      <Show when={nearestItems().length > 0} fallback={<NoResultsFound />}>
+        <Show when={selectedItem()}>
+          {(item) => (
+            <FontItemView item={item()} class='animate-fade-in border-b' />
+          )}
         </Show>
         <div class='min-h-0 flex-1 overflow-scroll'>
           <ul class='w-full'>

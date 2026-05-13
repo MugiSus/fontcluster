@@ -14,7 +14,7 @@ function App() {
   const isFullscreen = useIsFullscreen();
   const [panelState, setPanelState] = createStore<PanelState>({
     control: true,
-    list: false,
+    list: true,
     chat: false,
   });
   let cleanupAppEvents: (() => void) | undefined;
