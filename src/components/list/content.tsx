@@ -1,45 +1,11 @@
 import { createEffect, createSignal, Index, onCleanup, Show } from 'solid-js';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
-import { setSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
-import {
-  type FontItem as FontItemData,
-  type FontWeight,
-  WEIGHT_LABELS,
-} from '../../types/font';
-import {
-  getClusterBackgroundColor,
-  getClusterTextColor,
-} from '../../lib/cluster-colors';
+import { type FontItem as FontItemData } from '../../types/font';
 import { getNearestSelectableFontItems } from '../graph/font-point-index';
 import { FontItem } from './font-item';
 
 const LIST_UPDATE_DEBOUNCE_MS = 400;
-
-interface FontItemViewProps {
-  item: FontItemData;
-  class?: string;
-}
-
-function FontItemView(props: FontItemViewProps) {
-  const meta = () => props.item.meta;
-  const clusterId = () => props.item.computed?.clustering?.k;
-  const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
-
-  return (
-    <FontItem
-      fontName={meta().font_name}
-      weightLabel={WEIGHT_LABELS[weight()].short}
-      clusterBackgroundClass={getClusterBackgroundColor(clusterId())}
-      clusterTextClass={getClusterTextColor(clusterId())}
-      sampleSrc={convertFileSrc(
-        `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
-      )}
-      class={props.class}
-    />
-  );
-}
 
 export function ListContent() {
   const [selectedItem, setSelectedItem] = createSignal<FontItemData | null>(
@@ -77,11 +43,6 @@ export function ListContent() {
     onCleanup(() => window.clearTimeout(timeoutId));
   });
 
-  const selectFont = (key: string) => {
-    if (appState.ui.selectedFontKey === key) return;
-    setSelectedFontKey(key);
-  };
-
   const NoResultsFound = () => (
     <div class='flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
       <MousePointerClickIcon />
@@ -93,9 +54,7 @@ export function ListContent() {
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
       <Show when={nearestItems().length > 0} fallback={<NoResultsFound />}>
         <Show when={selectedItem()}>
-          {(item) => (
-            <FontItemView item={item()} class='animate-fade-in border-b' />
-          )}
+          {(item) => <FontItem item={item()} class='border-b' isCopyable />}
         </Show>
         <div
           ref={nearestItemsScrollElement}
@@ -104,11 +63,8 @@ export function ListContent() {
           <ul class='w-full'>
             <Index each={nearestItems()}>
               {(item) => (
-                <li
-                  data-font-name={item().meta.safe_name}
-                  onClick={() => selectFont(item().meta.safe_name)}
-                >
-                  <FontItemView item={item()} />
+                <li data-font-name={item().meta.safe_name}>
+                  <FontItem item={item()} isCopyable />
                 </li>
               )}
             </Index>
