@@ -1,13 +1,5 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  Index,
-  onCleanup,
-  Show,
-} from 'solid-js';
+import { createEffect, createSignal, Index, onCleanup, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { quadtree, type Quadtree } from 'd3-quadtree';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { setSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
@@ -20,78 +12,14 @@ import {
   getClusterBackgroundColor,
   getClusterTextColor,
 } from '../../lib/cluster-colors';
+import { getNearestSelectableFontItems } from '../graph/font-point-index';
 import { FontItem } from './font-item';
 
-const MAX_NEAREST_ITEMS = 120;
 const LIST_UPDATE_DEBOUNCE_MS = 400;
-
-interface PositionedFontItem {
-  item: FontItemData;
-  key: string;
-  x: number;
-  y: number;
-}
-
-interface NearestItemsIndex {
-  tree: Quadtree<PositionedFontItem>;
-}
 
 interface FontItemViewProps {
   item: FontItemData;
   class?: string;
-}
-
-function getFontPosition(item: FontItemData) {
-  const position = item.computed?.positioning?.position;
-  const x = position?.[0];
-  const y = position?.[1];
-
-  if (x == null || y == null) return null;
-  return { x, y };
-}
-
-function createNearestItemsIndex(items: FontItemData[]): NearestItemsIndex {
-  const points: PositionedFontItem[] = [];
-
-  for (const item of items) {
-    const position = getFontPosition(item);
-    if (!position) continue;
-
-    points.push({
-      item,
-      key: item.meta.safe_name,
-      x: position.x,
-      y: position.y,
-    });
-  }
-
-  return {
-    tree: quadtree<PositionedFontItem>()
-      .x((point) => point.x)
-      .y((point) => point.y)
-      .addAll(points),
-  };
-}
-
-function getNearestItems(index: NearestItemsIndex, selectedItem: FontItemData) {
-  const selectedPosition = selectedItem.computed?.positioning?.position;
-  const x = selectedPosition?.[0];
-  const y = selectedPosition?.[1];
-  if (x == null || y == null) return [];
-
-  const searchTree = index.tree.copy();
-  const nearestItems: FontItemData[] = [];
-  while (nearestItems.length < MAX_NEAREST_ITEMS && searchTree.size() > 0) {
-    const nearest = searchTree.find(x, y);
-    if (!nearest) break;
-
-    searchTree.remove(nearest);
-    if (nearest.key !== selectedItem.meta.safe_name) {
-      nearestItems.push(nearest.item);
-    }
-  }
-
-  return nearestItems;
 }
 
 function FontItemView(props: FontItemViewProps) {
@@ -120,21 +48,13 @@ export function ListContent() {
   const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
   let nearestItemsScrollElement: HTMLDivElement | undefined;
 
-  const filteredItems = createMemo(() => {
-    const data = appState.fonts.data;
-    if (Object.keys(data).length === 0) return [];
-    return Array.from(appState.fonts.filteredKeys)
-      .map((key) => data[key])
-      .filter((item): item is FontItemData => !!item);
-  });
-
-  const nearestItemsIndex = createMemo(() =>
-    createNearestItemsIndex(filteredItems()),
-  );
-
   createEffect(() => {
-    const index = nearestItemsIndex();
     const selectedKey = appState.ui.selectedFontKey;
+    const nextSelectedItem = selectedKey
+      ? appState.fonts.data[selectedKey] || null
+      : null;
+    const filteredKeys = appState.fonts.filteredKeys;
+
     if (!selectedKey) {
       setSelectedItem(null);
       setNearestItems([]);
@@ -142,11 +62,15 @@ export function ListContent() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      const nextSelectedItem = appState.fonts.data[selectedKey] || null;
+      if (!nextSelectedItem || filteredKeys.size === 0) {
+        setSelectedItem(nextSelectedItem);
+        setNearestItems([]);
+        return;
+      }
+
+      const items = getNearestSelectableFontItems(selectedKey);
       setSelectedItem(nextSelectedItem);
-      setNearestItems(
-        nextSelectedItem ? getNearestItems(index, nextSelectedItem) : [],
-      );
+      setNearestItems(items);
       nearestItemsScrollElement?.scrollTo({ top: 0 });
     }, LIST_UPDATE_DEBOUNCE_MS);
 
