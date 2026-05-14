@@ -52,27 +52,29 @@ export function getVisibleBounds(
 export function partitionVisiblePoints(
   points: GraphPointData[],
   filteredKeys: Set<string>,
-  activeWeights: Set<FontWeight>,
+  activeWeights: FontWeight[],
   bounds: GraphVisibleBounds,
 ): PartitionedVisiblePoints {
   const visibleFilteredPoints: GraphPointData[] = [];
   const visibleUnfilteredPoints: GraphPointData[] = [];
   const visibleActivePoints: GraphPointData[] = [];
 
+  const activeWeightSet = new Set(activeWeights);
+
   for (const point of points) {
-    const isWeightIncluded = activeWeights.has(
-      point.item.meta.weight as FontWeight,
-    );
     const isVisible =
       point.x >= bounds.minX &&
       point.x <= bounds.maxX &&
       point.y >= bounds.minY &&
       point.y <= bounds.maxY;
 
-    if (!isWeightIncluded || !isVisible) continue;
+    if (!isVisible) continue;
 
     visibleActivePoints.push(point);
-    if (filteredKeys.has(point.key)) {
+    if (
+      filteredKeys.has(point.key) &&
+      activeWeightSet.has(point.item.meta.weight as FontWeight)
+    ) {
       visibleFilteredPoints.push(point);
       continue;
     }

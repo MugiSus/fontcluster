@@ -1,7 +1,11 @@
 import { createStore } from 'solid-js/store';
 import { createMemo, createRoot } from 'solid-js';
 import Fuse from 'fuse.js';
-import { type FontItem, type SessionConfig } from './types/font';
+import {
+  type FontItem,
+  type FontWeight,
+  type SessionConfig,
+} from './types/font';
 
 export interface AppState {
   session: {
@@ -18,6 +22,7 @@ export interface AppState {
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
+    activeGraphWeights: FontWeight[];
   };
 }
 
@@ -106,6 +111,7 @@ export const [appState, setAppState] = createStore<AppState>({
       return this.selectedFont?.meta.family_name || null;
     },
     searchQuery: '',
+    activeGraphWeights: [400],
   },
 });
 
@@ -121,17 +127,23 @@ export const filteredKeysMemo = createRoot(() => {
   const memo = createMemo(() => {
     const q = appState.ui.searchQuery;
     const data = appState.fonts.data;
+    const activeWeights = new Set(appState.ui.activeGraphWeights);
     const keys = Object.keys(data);
     if (keys.length === 0) return new Set<string>();
+    if (activeWeights.size === 0) return new Set<string>();
 
-    if (!q) {
-      return new Set<string>(keys);
-    }
+    const queryMatchedKeys = q
+      ? fuse()
+          .search(q)
+          .map((r) => r.item.meta.safe_name)
+      : keys;
 
-    const result = fuse()
-      .search(q)
-      .map((r) => r.item.meta.safe_name);
-    return new Set<string>(result);
+    return new Set(
+      queryMatchedKeys.filter((key) => {
+        const item = data[key];
+        return item ? activeWeights.has(item.meta.weight as FontWeight) : false;
+      }),
+    );
   });
   return memo;
 });

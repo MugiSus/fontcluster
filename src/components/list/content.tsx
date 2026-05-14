@@ -7,7 +7,7 @@ import {
   Show,
 } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { quadtree } from 'd3-quadtree';
+import { quadtree, type Quadtree } from 'd3-quadtree';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { setSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
@@ -32,43 +32,63 @@ interface PositionedFontItem {
   y: number;
 }
 
+interface NearestItemsIndex {
+  tree: Quadtree<PositionedFontItem>;
+}
+
 interface FontItemViewProps {
   item: FontItemData;
   class?: string;
 }
 
-function getNearestItems(items: FontItemData[], selectedItem: FontItemData) {
-  const selectedPosition = selectedItem.computed?.positioning?.position;
-  if (!selectedPosition?.[0] || !selectedPosition?.[1]) return [];
+function getFontPosition(item: FontItemData) {
+  const position = item.computed?.positioning?.position;
+  const x = position?.[0];
+  const y = position?.[1];
 
+  if (x == null || y == null) return null;
+  return { x, y };
+}
+
+function createNearestItemsIndex(items: FontItemData[]): NearestItemsIndex {
   const points: PositionedFontItem[] = [];
-  for (const item of items) {
-    const key = item.meta.safe_name;
-    if (key === selectedItem.meta.safe_name) continue;
 
-    const position = item.computed?.positioning?.position;
-    if (!position?.[0] || !position?.[1]) continue;
+  for (const item of items) {
+    const position = getFontPosition(item);
+    if (!position) continue;
 
     points.push({
       item,
-      key,
-      x: position[0],
-      y: position[1],
+      key: item.meta.safe_name,
+      x: position.x,
+      y: position.y,
     });
   }
 
-  const tree = quadtree<PositionedFontItem>()
-    .x((point) => point.x)
-    .y((point) => point.y)
-    .addAll(points);
+  return {
+    tree: quadtree<PositionedFontItem>()
+      .x((point) => point.x)
+      .y((point) => point.y)
+      .addAll(points),
+  };
+}
 
+function getNearestItems(index: NearestItemsIndex, selectedItem: FontItemData) {
+  const selectedPosition = selectedItem.computed?.positioning?.position;
+  const x = selectedPosition?.[0];
+  const y = selectedPosition?.[1];
+  if (x == null || y == null) return [];
+
+  const searchTree = index.tree.copy();
   const nearestItems: FontItemData[] = [];
-  while (nearestItems.length < MAX_NEAREST_ITEMS) {
-    const nearest = tree.find(selectedPosition[0], selectedPosition[1]);
+  while (nearestItems.length < MAX_NEAREST_ITEMS && searchTree.size() > 0) {
+    const nearest = searchTree.find(x, y);
     if (!nearest) break;
 
-    tree.remove(nearest);
-    nearestItems.push(nearest.item);
+    searchTree.remove(nearest);
+    if (nearest.key !== selectedItem.meta.safe_name) {
+      nearestItems.push(nearest.item);
+    }
   }
 
   return nearestItems;
@@ -108,8 +128,12 @@ export function ListContent() {
       .filter((item): item is FontItemData => !!item);
   });
 
+  const nearestItemsIndex = createMemo(() =>
+    createNearestItemsIndex(filteredItems()),
+  );
+
   createEffect(() => {
-    const items = filteredItems();
+    const index = nearestItemsIndex();
     const selectedKey = appState.ui.selectedFontKey;
     if (!selectedKey) {
       setSelectedItem(null);
@@ -121,7 +145,7 @@ export function ListContent() {
       const nextSelectedItem = appState.fonts.data[selectedKey] || null;
       setSelectedItem(nextSelectedItem);
       setNearestItems(
-        nextSelectedItem ? getNearestItems(items, nextSelectedItem) : [],
+        nextSelectedItem ? getNearestItems(index, nextSelectedItem) : [],
       );
       nearestItemsScrollElement?.scrollTo({ top: 0 });
     }, LIST_UPDATE_DEBOUNCE_MS);
@@ -135,9 +159,9 @@ export function ListContent() {
   };
 
   const NoResultsFound = () => (
-    <div class='inset-x-0 flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
+    <div class='flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
       <MousePointerClickIcon />
-      Select a font to see similar fonts
+      <p class='text-xs'>Select a font to see similar fonts</p>
     </div>
   );
 

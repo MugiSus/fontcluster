@@ -14,6 +14,7 @@ import { GraphPoint } from './point';
 import { ZoomControls } from './zoom-controls';
 import { useElementSize } from '../../hooks/use-element-size';
 import { appState } from '../../store';
+import { setActiveGraphWeights } from '../../actions';
 import { type GraphCoordinate } from './types';
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
@@ -22,7 +23,6 @@ import { useGraphViewport } from './use-graph-viewport';
 export function GraphContent() {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
-  const [graphWeights, setGraphWeights] = createSignal<FontWeight[]>([400]);
   const [mouseSelectionPoint, setMouseSelectionPoint] =
     createSignal<GraphCoordinate | null>(null);
 
@@ -35,7 +35,7 @@ export function GraphContent() {
     const sessionWeights =
       (appState.session.config?.weights as FontWeight[]) || [];
     if (sessionWeights.length > 0) {
-      setGraphWeights(sessionWeights);
+      setActiveGraphWeights(sessionWeights);
     }
   });
 
@@ -44,7 +44,6 @@ export function GraphContent() {
     svgSize,
   });
   const graph = useGraphPoints({
-    graphWeights,
     svgSize,
     viewBox: viewport.viewBox,
     zoomFactor: viewport.zoomFactor,
@@ -147,10 +146,8 @@ export function GraphContent() {
           >
             <WeightSelector
               weights={(appState.session.config?.weights as FontWeight[]) || []}
-              defaultValue={
-                (appState.session.config?.weights as FontWeight[]) || []
-              }
-              onChange={setGraphWeights}
+              defaultValue={appState.ui.activeGraphWeights}
+              onChange={setActiveGraphWeights}
               isVertical
             />
           </Show>

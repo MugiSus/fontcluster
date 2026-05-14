@@ -6,7 +6,6 @@ import {
   createSignal,
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
-import { type FontWeight } from '../../types/font';
 import { appState } from '../../store';
 import { GRAPH_SIZE } from './constants';
 import {
@@ -21,7 +20,6 @@ import {
 } from './types';
 
 interface UseGraphPointsProps {
-  graphWeights: Accessor<FontWeight[]>;
   svgSize: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
@@ -84,18 +82,12 @@ export function useGraphPoints(props: UseGraphPointsProps) {
       });
   });
 
-  const activeWeightSet = createMemo(() => new Set(props.graphWeights()));
-
   const selectablePointTree = createMemo(() => {
-    const activeWeights = activeWeightSet();
     const filteredKeys = appState.fonts.filteredKeys;
     const points: GraphPointData[] = [];
 
     for (const point of allPoints()) {
-      if (
-        filteredKeys.has(point.key) &&
-        activeWeights.has(point.item.meta.weight as FontWeight)
-      ) {
+      if (filteredKeys.has(point.key)) {
         points.push(point);
       }
     }
@@ -124,7 +116,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     partitionVisiblePoints(
       allPoints(),
       appState.fonts.filteredKeys,
-      activeWeightSet(),
+      appState.ui.activeGraphWeights,
       visibleBounds(),
     ),
   );
