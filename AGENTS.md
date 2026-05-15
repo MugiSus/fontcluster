@@ -92,7 +92,12 @@ If a function begins coordinating multiple unrelated concerns, split it by respo
 
 Prefer immutable updates.
 
+Solid store and signal setters already no-op when the next value is identical to
+the current value. Do not add explicit equality guards only to avoid setting the
+same value again.
+
 Never mutate:
+
 - function arguments
 - imported module-level objects
 - global state outside the designated owner
