@@ -1,6 +1,7 @@
 import { CopyIcon } from 'lucide-solid';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { cn } from '../../lib/utils';
+import { copyFontTextSvg } from '../../lib/font-svg-clipboard';
 import { appState } from '../../store';
 import {
   type FontItem as FontItemData,
@@ -18,51 +19,17 @@ interface FontItemProps {
   class?: string | undefined;
 }
 
-function createHtmlTextElement(
-  familyName: string,
-  weight: number,
-  sampleText: string,
-) {
-  const spanElement = document.createElement('span');
-  spanElement.style.fontSize = '16px';
-  spanElement.style.whiteSpace = 'pre-wrap';
-  spanElement.style.fontFamily = familyName;
-  spanElement.style.fontWeight = weight.toString();
-  spanElement.textContent = sampleText;
-
-  return spanElement.outerHTML;
-}
-
-async function copyFontText(
-  familyName: string,
-  weight: number,
-  sampleText: string,
-) {
-  const htmlText = createHtmlTextElement(familyName, weight, sampleText);
-
-  await navigator.clipboard.write([
-    new ClipboardItem({
-      'text/plain': new Blob([familyName], {
-        type: 'text/plain',
-      }),
-      'text/html': new Blob([htmlText], {
-        type: 'text/html',
-      }),
-    }),
-  ]);
-}
-
 export function FontItem(props: FontItemProps) {
   const copySvgText = (event: MouseEvent) => {
     if (!props.isCopyable) return;
 
     event.preventDefault();
     event.stopPropagation();
-    void copyFontText(
-      props.item.meta.font_name,
-      props.item.meta.weight,
-      appState.session.config.preview_text,
-    ).catch((error) => {
+    void copyFontTextSvg({
+      familyName: props.item.meta.family_name,
+      weight: props.item.meta.weight,
+      text: appState.session.config.preview_text,
+    }).catch((error) => {
       console.error('Failed to copy font text:', error);
     });
   };
