@@ -7,10 +7,9 @@ import {
   Show,
 } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
-import { HistoryIcon, RefreshCwIcon } from 'lucide-solid';
+import { HistoryIcon, RefreshCwIcon, UndoIcon } from 'lucide-solid';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { toast } from 'solid-sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -51,9 +50,9 @@ const saveSeenCompletedSessions = (sessions: SeenCompletedSessions) => {
 export function SessionHistory(props: SessionHistoryProps) {
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
-  const [hiddenSessionIds, setHiddenSessionIds] = createSignal<Set<string>>(
-    new Set(),
-  );
+  const [pendingDeletedSessionIds, setPendingDeletedSessionIds] = createSignal<
+    Set<string>
+  >(new Set());
   const [isLoadingSessions, setIsLoadingSessions] = createSignal(false);
   const [runningSessionIds, setRunningSessionIds] = createSignal<Set<string>>(
     new Set(),
@@ -62,7 +61,6 @@ export function SessionHistory(props: SessionHistoryProps) {
     createSignal<SeenCompletedSessions>(loadSeenCompletedSessions());
   const [sessionHistory, setSessionHistory] = createStore<SessionConfig[]>([]);
   const committedDeletes = new Set<string>();
-  const cancelledDeletes = new Set<string>();
 
   const refetchSessionHistory = async () => {
     setIsLoadingSessions(true);
@@ -93,15 +91,9 @@ export function SessionHistory(props: SessionHistoryProps) {
     await Promise.all([refetchSessionHistory(), refetchRunningSessionIds()]);
   };
 
-  const visibleSessions = createMemo(() =>
-    sessionHistory.filter(
-      (session) => !hiddenSessionIds().has(session.session_id),
-    ),
-  );
-
   const sortedSessions = createMemo<SessionConfig[]>(() => {
     const runningIds = runningSessionIds();
-    return visibleSessions().sort(
+    return [...sessionHistory].sort(
       (a, b) =>
         Number(runningIds.has(b.session_id)) -
           Number(runningIds.has(a.session_id)) ||
@@ -115,7 +107,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     seenCompletedSessions()[session.session_id] !== session.modified_at;
 
   const hasRunningSession = () =>
-    visibleSessions().some((session) =>
+    sessionHistory.some((session) =>
       runningSessionIds().has(session.session_id),
     );
 
@@ -197,6 +189,12 @@ export function SessionHistory(props: SessionHistoryProps) {
   void refetchSessions();
 
   const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      const pendingDeletes = pendingDeletedSessionIds();
+      setPendingDeletedSessionIds(new Set<string>());
+      void commitPendingDeletes(pendingDeletes);
+    }
+
     setOpen(nextOpen);
     if (nextOpen) {
       void refetchSessions();
@@ -217,7 +215,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         markSessionSeen(session.session_id, session.modified_at);
       }
       setCurrentSessionId(sessionId);
-      setOpen(false);
+      handleOpenChange(false);
     } catch (error) {
       console.error('Failed to select session:', error);
     } finally {
@@ -243,7 +241,6 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const deleteSession = async (sessionId: string) => {
-    if (cancelledDeletes.has(sessionId)) return;
     if (committedDeletes.has(sessionId)) return;
     committedDeletes.add(sessionId);
 
@@ -261,14 +258,14 @@ export function SessionHistory(props: SessionHistoryProps) {
       }
 
       committedDeletes.delete(sessionId);
-      setHiddenSessionIds((prev) => {
+      setPendingDeletedSessionIds((prev) => {
         const next = new Set(prev);
         next.delete(sessionId);
         return next;
       });
     } catch (error) {
       committedDeletes.delete(sessionId);
-      setHiddenSessionIds((prev) => {
+      setPendingDeletedSessionIds((prev) => {
         const next = new Set(prev);
         next.delete(sessionId);
         return next;
@@ -279,31 +276,43 @@ export function SessionHistory(props: SessionHistoryProps) {
 
   const handleDeleteClick = (session: SessionConfig) => {
     const sessionId = session.session_id;
-    cancelledDeletes.delete(sessionId);
-    setHiddenSessionIds((prev) => new Set(prev).add(sessionId));
+    setPendingDeletedSessionIds((prev) => new Set(prev).add(sessionId));
+  };
 
-    toast(`Session deleted: '${session.preview_text}'`, {
-      description: 'The session data will be permanently lost.',
-      action: {
-        label: 'Undo',
-        onClick: () => {
-          cancelledDeletes.add(sessionId);
-          setHiddenSessionIds((prev) => {
-            const next = new Set(prev);
-            next.delete(sessionId);
-            return next;
-          });
-        },
-      },
-      duration: 5000,
-      onDismiss: () => {
-        void deleteSession(sessionId);
-      },
-      onAutoClose: () => {
-        void deleteSession(sessionId);
-      },
+  const undoDeleteSession = (sessionId: string) => {
+    setPendingDeletedSessionIds((prev) => {
+      const next = new Set(prev);
+      next.delete(sessionId);
+      return next;
     });
   };
+
+  const commitPendingDeletes = async (sessionIds: Set<string>) => {
+    if (sessionIds.size === 0) return;
+
+    await Promise.all(
+      [...sessionIds].map((sessionId) => deleteSession(sessionId)),
+    );
+  };
+
+  const PendingDeleteItem = (itemProps: {
+    sessionId: string;
+    sampleText: string;
+  }) => (
+    <div class='flex items-center justify-between rounded-sm px-3 py-4 text-xs text-muted-foreground'>
+      <span>Session deleted for '{itemProps.sampleText}'</span>
+      <Button
+        type='button'
+        variant='ghost'
+        size='sm'
+        class='h-6 gap-1 px-2 text-xs text-muted-foreground'
+        onClick={() => undoDeleteSession(itemProps.sessionId)}
+      >
+        <UndoIcon class='size-3' />
+        Undo
+      </Button>
+    </div>
+  );
 
   return (
     <DropdownMenu open={open()} onOpenChange={handleOpenChange}>
@@ -321,7 +330,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         <Show
           when={
             !hasRunningSession() &&
-            visibleSessions().some(isUnseenCompletedSession)
+            sessionHistory.some(isUnseenCompletedSession)
           }
         >
           <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-blue-500' />
@@ -358,21 +367,33 @@ export function SessionHistory(props: SessionHistoryProps) {
           <div class='max-h-[30rem] overflow-y-auto'>
             <For each={sortedSessions()}>
               {(session) => (
-                <SessionHistoryItem
-                  session={session}
-                  isCurrentSession={session.session_id === appState.session.id}
-                  isRunning={runningSessionIds().has(session.session_id)}
-                  isUnread={isUnseenCompletedSession(session)}
-                  isRestoring={isRestoring()}
-                  onDeleteClick={() => handleDeleteClick(session)}
-                  onContinueProcessing={() =>
-                    continueSessionProcessing(session)
+                <Show
+                  when={!pendingDeletedSessionIds().has(session.session_id)}
+                  fallback={
+                    <PendingDeleteItem
+                      sessionId={session.session_id}
+                      sampleText={session.preview_text}
+                    />
                   }
-                  onSelectSession={() => {
-                    selectSession(session.session_id);
-                  }}
-                  onStopRun={() => void stopCurrentRun(session.session_id)}
-                />
+                >
+                  <SessionHistoryItem
+                    session={session}
+                    isCurrentSession={
+                      session.session_id === appState.session.id
+                    }
+                    isRunning={runningSessionIds().has(session.session_id)}
+                    isUnread={isUnseenCompletedSession(session)}
+                    isRestoring={isRestoring()}
+                    onDeleteClick={() => handleDeleteClick(session)}
+                    onContinueProcessing={() =>
+                      continueSessionProcessing(session)
+                    }
+                    onSelectSession={() => {
+                      selectSession(session.session_id);
+                    }}
+                    onStopRun={() => void stopCurrentRun(session.session_id)}
+                  />
+                </Show>
               )}
             </For>
           </div>
