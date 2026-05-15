@@ -164,7 +164,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
         </div>
       </div>
       <Show when={!isComplete()}>
-        <div class='space-y-1'>
+        <div class='flex flex-col gap-1.5 pt-2'>
           <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
             <div
               class='h-full rounded-full bg-primary transition-[width] duration-500'
