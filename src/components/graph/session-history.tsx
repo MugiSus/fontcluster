@@ -7,16 +7,11 @@ import {
   Show,
 } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
-import { HistoryIcon, RefreshCwIcon, UndoIcon } from 'lucide-solid';
+import { HistoryIcon, UndoIcon } from 'lucide-solid';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -339,20 +334,6 @@ export function SessionHistory(props: SessionHistoryProps) {
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='flex items-center justify-between gap-2'>
           <span>History</span>
-          <Tooltip>
-            <TooltipTrigger
-              as={Button<'button'>}
-              size='icon'
-              variant='ghost'
-              class='size-7'
-              onClick={() => {
-                void refetchSessions();
-              }}
-            >
-              <RefreshCwIcon class='size-3.5' />
-            </TooltipTrigger>
-            <TooltipContent>Refresh history</TooltipContent>
-          </Tooltip>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
