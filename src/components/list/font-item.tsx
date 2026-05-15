@@ -13,7 +13,7 @@ export function FontItem(props: FontItemProps) {
   return (
     <div
       class={cn(
-        'flex h-20 w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5',
+        'flex h-20 w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 transition-colors hover:bg-muted',
         props.class,
       )}
     >
