@@ -1,11 +1,7 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { resolveGoogleFontFilePath } from './font-source-resolver';
-
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const XML_NS = 'http://www.w3.org/XML/1998/namespace';
 const SVG_MIME_TYPE = 'image/svg+xml';
 const TEXT_MIME_TYPE = 'text/plain';
-const EMBEDDED_FONT_FAMILY = 'FontCluster Clipboard Font';
 const FONT_SIZE = 96;
 const LINE_HEIGHT = 1.2;
 const PADDING = 8;
@@ -15,11 +11,6 @@ interface FontTextSvgClipboardOptions {
   familyName: string;
   weight: number;
   text: string;
-}
-
-interface EmbeddedFont {
-  dataUrl: string;
-  format: string;
 }
 
 interface SvgTextDocument {
@@ -32,27 +23,6 @@ interface SvgBounds {
   y: number;
   width: number;
   height: number;
-}
-
-function getFontFormat(fontPath: string): string | null {
-  const extension = fontPath.split('.').pop()?.toLowerCase();
-
-  switch (extension) {
-    case 'otf':
-      return 'opentype';
-    case 'ttf':
-      return 'truetype';
-    case 'woff':
-      return 'woff';
-    case 'woff2':
-      return 'woff2';
-    default:
-      return null;
-  }
-}
-
-function shouldEmbedFont(fontPath: string): boolean {
-  return fontPath.replaceAll('\\', '/').includes('/google_fonts/');
 }
 
 function escapeCssString(value: string): string {
@@ -76,14 +46,8 @@ function dedupeValues(values: string[]): string[] {
   return result;
 }
 
-function createFontFamilyValue(
-  options: FontTextSvgClipboardOptions,
-  embeddedFont: EmbeddedFont | null,
-): string {
-  const fontFamilies = dedupeValues([
-    embeddedFont ? EMBEDDED_FONT_FAMILY : '',
-    options.familyName,
-  ]);
+function createFontFamilyValue(options: FontTextSvgClipboardOptions): string {
+  const fontFamilies = dedupeValues([options.familyName]);
 
   return [...fontFamilies.map(quoteCssString), 'sans-serif'].join(', ');
 }
@@ -99,35 +63,16 @@ function splitSvgTextLines(text: string): string[] {
   return text.split(/\r\n|\r|\n/);
 }
 
-function createSvgTextDocument(
-  options: FontTextSvgClipboardOptions,
-  embeddedFont: EmbeddedFont | null,
-): SvgTextDocument {
+function createSvgTextDocument(options: FontTextSvgClipboardOptions) {
   const svgElement = document.createElementNS(SVG_NS, 'svg');
   svgElement.setAttribute('xmlns', SVG_NS);
   svgElement.setAttribute('version', '1.1');
-
-  if (embeddedFont) {
-    const styleElement = document.createElementNS(SVG_NS, 'style');
-    styleElement.textContent = [
-      '@font-face {',
-      `font-family: ${quoteCssString(EMBEDDED_FONT_FAMILY)};`,
-      `src: url("${escapeCssString(embeddedFont.dataUrl)}") format("${embeddedFont.format}");`,
-      `font-weight: ${options.weight};`,
-      'font-style: normal;',
-      '}',
-    ].join('');
-    svgElement.append(styleElement);
-  }
 
   const textElement = document.createElementNS(SVG_NS, 'text');
   textElement.setAttributeNS(XML_NS, 'xml:space', 'preserve');
   textElement.setAttribute('x', '0');
   textElement.setAttribute('y', '0');
-  textElement.setAttribute(
-    'font-family',
-    createFontFamilyValue(options, embeddedFont),
-  );
+  textElement.setAttribute('font-family', createFontFamilyValue(options));
   textElement.setAttribute('font-size', FONT_SIZE.toString());
   textElement.setAttribute('font-weight', options.weight.toString());
   textElement.setAttribute('fill', '#000000');
@@ -149,72 +94,6 @@ function createSvgTextDocument(
   return { svgElement, textElement };
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read font data URL.'));
-      }
-    });
-    reader.addEventListener('error', () => {
-      reject(reader.error ?? new Error('Failed to read font data.'));
-    });
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function createEmbeddedFont(options: FontTextSvgClipboardOptions) {
-  const fontPath = resolveGoogleFontFilePath(
-    options.familyName,
-    options.weight,
-  );
-  if (!fontPath || !shouldEmbedFont(fontPath)) return null;
-
-  const format = getFontFormat(fontPath);
-  if (!format) return null;
-
-  try {
-    const response = await fetch(convertFileSrc(fontPath));
-    if (!response.ok) return null;
-
-    const sourceBlob = await response.blob();
-    const dataUrl = await blobToDataUrl(
-      new Blob([sourceBlob], { type: sourceBlob.type || 'font/ttf' }),
-    );
-
-    return { dataUrl, format };
-  } catch {
-    return null;
-  }
-}
-
-async function loadFontForMeasurement(
-  embeddedFont: EmbeddedFont | null,
-  weight: number,
-): Promise<FontFace | null> {
-  if (!embeddedFont || !('FontFace' in window) || !document.fonts) return null;
-
-  const fontFace = new FontFace(
-    EMBEDDED_FONT_FAMILY,
-    `url("${escapeCssString(embeddedFont.dataUrl)}") format("${embeddedFont.format}")`,
-    {
-      style: 'normal',
-      weight: weight.toString(),
-    },
-  );
-
-  try {
-    await fontFace.load();
-    document.fonts.add(fontFace);
-    return fontFace;
-  } catch {
-    return null;
-  }
-}
-
 function estimateSvgTextBounds(lines: string[]): SvgBounds {
   const maxLength = Math.max(
     1,
@@ -233,13 +112,8 @@ function estimateSvgTextBounds(lines: string[]): SvgBounds {
 async function measureSvgText(
   options: FontTextSvgClipboardOptions,
   svgDocument: SvgTextDocument,
-  embeddedFont: EmbeddedFont | null,
 ): Promise<SvgBounds> {
   const { svgElement, textElement } = svgDocument;
-  const measurementFont = await loadFontForMeasurement(
-    embeddedFont,
-    options.weight,
-  );
 
   svgElement.style.position = 'fixed';
   svgElement.style.left = '-10000px';
@@ -253,10 +127,7 @@ async function measureSvgText(
     if (document.fonts) {
       await document.fonts
         .load(
-          `${options.weight} ${FONT_SIZE}px ${createFontFamilyValue(
-            options,
-            embeddedFont,
-          )}`,
+          `${options.weight} ${FONT_SIZE}px ${createFontFamilyValue(options)}`,
         )
         .catch(() => undefined);
     }
@@ -267,9 +138,6 @@ async function measureSvgText(
     }
   } finally {
     svgElement.remove();
-    if (measurementFont) {
-      document.fonts.delete(measurementFont);
-    }
   }
 
   return estimateSvgTextBounds(splitSvgTextLines(options.text));
@@ -292,9 +160,8 @@ function applySvgBounds(svgElement: SVGSVGElement, bounds: SvgBounds): void {
 async function createFontTextSvg(
   options: FontTextSvgClipboardOptions,
 ): Promise<string> {
-  const embeddedFont = await createEmbeddedFont(options);
-  const svgDocument = createSvgTextDocument(options, embeddedFont);
-  const bounds = await measureSvgText(options, svgDocument, embeddedFont);
+  const svgDocument = createSvgTextDocument(options);
+  const bounds = await measureSvgText(options, svgDocument);
   applySvgBounds(svgDocument.svgElement, bounds);
 
   return new XMLSerializer().serializeToString(svgDocument.svgElement);
