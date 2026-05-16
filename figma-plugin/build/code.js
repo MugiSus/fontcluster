@@ -60,7 +60,15 @@ function stylePriority(style, targetWeight) {
         regularName: normalizedStyle === 'regular' ? 0 : 1,
     };
 }
-function findFigmaFontName(availableFonts, payload) {
+async function getRenderedFontWeight(probe, fontName) {
+    await figma.loadFontAsync(fontName);
+    probe.fontName = fontName;
+    probe.characters = 'A';
+    return typeof probe.fontWeight === 'number'
+        ? probe.fontWeight
+        : styleWeight(fontName.style);
+}
+async function findFigmaFontName(availableFonts, payload) {
     var _a;
     const familyCandidates = new Set(getFamilyCandidates(payload).map(normalizeName));
     const matchingFonts = availableFonts
@@ -68,40 +76,52 @@ function findFigmaFontName(availableFonts, payload) {
         .filter((fontName) => familyCandidates.has(normalizeName(fontName.family)));
     if (matchingFonts.length === 0)
         return null;
+    const probe = figma.createText();
     const targetWeight = Number(payload.weight) || 400;
-    const bestMatch = matchingFonts
-        .map((fontName) => {
-        const priority = stylePriority(fontName.style, targetWeight);
-        return {
-            fontName,
-            weightDistance: Math.abs(styleWeight(fontName.style) - targetWeight),
-            exactMatch: priority.exactMatch,
-            italic: priority.italic,
-            regularName: priority.regularName,
-            styleName: fontName.style,
-        };
-    })
-        .sort((a, b) => {
-        if (a.exactMatch !== b.exactMatch)
-            return a.exactMatch - b.exactMatch;
-        if (a.weightDistance !== b.weightDistance) {
-            return a.weightDistance - b.weightDistance;
+    probe.visible = false;
+    try {
+        const weightedFonts = [];
+        for (const fontName of matchingFonts) {
+            const priority = stylePriority(fontName.style, targetWeight);
+            const renderedWeight = await getRenderedFontWeight(probe, fontName).catch(() => styleWeight(fontName.style));
+            weightedFonts.push({
+                fontName,
+                weightDistance: Math.abs(renderedWeight - targetWeight),
+                exactMatch: priority.exactMatch,
+                italic: priority.italic,
+                regularName: priority.regularName,
+                renderedWeight,
+                styleName: fontName.style,
+            });
         }
-        if (a.italic !== b.italic)
-            return a.italic - b.italic;
-        if (a.regularName !== b.regularName) {
-            return a.regularName - b.regularName;
-        }
-        return a.styleName.localeCompare(b.styleName);
-    })[0];
-    return (_a = bestMatch === null || bestMatch === void 0 ? void 0 : bestMatch.fontName) !== null && _a !== void 0 ? _a : null;
+        const bestMatch = weightedFonts.sort((a, b) => {
+            if (a.weightDistance !== b.weightDistance) {
+                return a.weightDistance - b.weightDistance;
+            }
+            if (a.exactMatch !== b.exactMatch)
+                return a.exactMatch - b.exactMatch;
+            if (a.italic !== b.italic)
+                return a.italic - b.italic;
+            if (a.regularName !== b.regularName) {
+                return a.regularName - b.regularName;
+            }
+            if (a.renderedWeight !== b.renderedWeight) {
+                return a.renderedWeight - b.renderedWeight;
+            }
+            return a.styleName.localeCompare(b.styleName);
+        })[0];
+        return (_a = bestMatch === null || bestMatch === void 0 ? void 0 : bestMatch.fontName) !== null && _a !== void 0 ? _a : null;
+    }
+    finally {
+        probe.remove();
+    }
 }
 function postApplyResult(message) {
     figma.ui.postMessage(message);
 }
 async function applyFont(payload, sequence) {
     const availableFonts = await figma.listAvailableFontsAsync();
-    const fontName = findFigmaFontName(availableFonts, payload);
+    const fontName = await findFigmaFontName(availableFonts, payload);
     if (!fontName) {
         figma.notify(`Font not available in Figma: ${payload.familyName}`);
         postApplyResult({
