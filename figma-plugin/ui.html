@@ -68,7 +68,7 @@
         const message = event.data.pluginMessage;
         if (!message || message.type !== 'apply-result') return;
 
-        setStatus(message.ok ? `Applied ${message.message}` : message.message);
+        setStatus(message.message);
       };
 
       pollBridge();

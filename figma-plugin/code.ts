@@ -22,149 +22,33 @@ interface ApplyFontMessage {
   sequence: number;
 }
 
-interface ApplyFontResultMessage {
-  type: 'apply-result';
-  sequence: number;
-  ok: boolean;
-  message: string;
-}
-
-type StylePriority = {
-  exactMatch: number;
-  italic: number;
-  regularName: number;
-};
-
-const WEIGHT_STYLE_NAMES: Record<number, string[]> = {
-  100: ['thin'],
-  200: ['extralight', 'extra light', 'ultralight', 'ultra light'],
-  300: ['light'],
-  400: ['regular', 'normal', 'book'],
-  500: ['medium'],
-  600: ['semibold', 'semi bold', 'demibold', 'demi bold'],
-  700: ['bold'],
-  800: ['extrabold', 'extra bold', 'ultrabold', 'ultra bold'],
-  900: ['black', 'heavy'],
-};
-
 figma.showUI(__html__, { width: 280, height: 112 });
-
-function normalizeName(value: string): string {
-  return value.toLowerCase().replace(/[\s_-]+/g, '');
-}
-
-function unique(values: string[]): string[] {
-  return Array.from(new Set(values.filter(Boolean)));
-}
-
-function getFamilyCandidates(payload: FontclusterFontPayload): string[] {
-  return unique([
-    payload.familyName,
-    payload.fontName,
-    ...Object.values(payload.preferredFamilyNames),
-    ...Object.values(payload.familyNames),
-  ]);
-}
-
-function getStyleCandidates(payload: FontclusterFontPayload): string[] {
-  return unique([
-    payload.styleName,
-    ...Object.values(payload.preferredStyleNames),
-    ...Object.values(payload.styleNames),
-  ]);
-}
-
-function styleWeight(style: string): number {
-  const normalized = normalizeName(style);
-
-  if (normalized.includes('extrabold') || normalized.includes('ultrabold')) {
-    return 800;
-  }
-  if (normalized.includes('semibold') || normalized.includes('demibold')) {
-    return 600;
-  }
-  if (normalized.includes('extralight') || normalized.includes('ultralight')) {
-    return 200;
-  }
-  if (normalized.includes('thin')) return 100;
-  if (normalized.includes('light')) return 300;
-  if (normalized.includes('medium')) return 500;
-  if (normalized.includes('bold')) return 700;
-  if (normalized.includes('black') || normalized.includes('heavy')) return 900;
-
-  return 400;
-}
-
-function stylePriority(style: string, targetWeight: number): StylePriority {
-  const normalizedStyle = normalizeName(style);
-  const targetStyles = WEIGHT_STYLE_NAMES[targetWeight] ?? [];
-  const exactMatch = targetStyles.some(
-    (candidate) => normalizeName(candidate) === normalizedStyle,
-  );
-
-  return {
-    exactMatch: exactMatch ? 0 : 1,
-    italic: normalizedStyle.includes('italic') ? 1 : 0,
-    regularName: normalizedStyle === 'regular' ? 0 : 1,
-  };
-}
 
 function findFigmaFontName(
   availableFonts: Font[],
   payload: FontclusterFontPayload,
 ): FontName | null {
-  const familyCandidates = new Set(
-    getFamilyCandidates(payload).map(normalizeName),
+  const familyCandidates = new Set([
+    payload.familyName,
+    payload.fontName,
+    ...Object.values(payload.preferredFamilyNames),
+    ...Object.values(payload.familyNames),
+  ]);
+  const styleCandidates = new Set([
+    payload.styleName,
+    ...Object.values(payload.preferredStyleNames),
+    ...Object.values(payload.styleNames),
+  ]);
+
+  return (
+    availableFonts
+      .map((font) => font.fontName)
+      .find(
+        (fontName) =>
+          familyCandidates.has(fontName.family) &&
+          styleCandidates.has(fontName.style),
+      ) ?? null
   );
-
-  const matchingFonts = availableFonts
-    .map((font) => font.fontName)
-    .filter((fontName) => familyCandidates.has(normalizeName(fontName.family)));
-
-  if (matchingFonts.length === 0) return null;
-
-  const styleCandidates = getStyleCandidates(payload).map(normalizeName);
-  const targetWeight = Number(payload.weight) || 400;
-  const weightedFonts = matchingFonts.map((fontName) => {
-    const priority = stylePriority(fontName.style, targetWeight);
-    const inferredWeight = styleWeight(fontName.style);
-    const styleIndex = styleCandidates.indexOf(normalizeName(fontName.style));
-
-    return {
-      fontName,
-      styleMatch: styleIndex === -1 ? 1 : 0,
-      styleIndex: styleIndex === -1 ? Number.MAX_SAFE_INTEGER : styleIndex,
-      weightDistance: Math.abs(inferredWeight - targetWeight),
-      exactMatch: priority.exactMatch,
-      italic: priority.italic,
-      regularName: priority.regularName,
-      inferredWeight,
-      styleName: fontName.style,
-    };
-  });
-
-  const bestMatch = weightedFonts.sort((a, b) => {
-    if (a.styleMatch !== b.styleMatch) return a.styleMatch - b.styleMatch;
-    if (a.styleIndex !== b.styleIndex) return a.styleIndex - b.styleIndex;
-    if (a.weightDistance !== b.weightDistance) {
-      return a.weightDistance - b.weightDistance;
-    }
-    if (a.exactMatch !== b.exactMatch) return a.exactMatch - b.exactMatch;
-    if (a.italic !== b.italic) return a.italic - b.italic;
-    if (a.regularName !== b.regularName) {
-      return a.regularName - b.regularName;
-    }
-    if (a.inferredWeight !== b.inferredWeight) {
-      return a.inferredWeight - b.inferredWeight;
-    }
-    return a.styleName.localeCompare(b.styleName);
-  })[0];
-
-  return bestMatch?.fontName ?? null;
-}
-
-function postApplyResult(message: ApplyFontResultMessage): void {
-  figma.ui.postMessage(message);
 }
 
 async function applyFont(
@@ -172,11 +56,14 @@ async function applyFont(
   sequence: number,
 ): Promise<void> {
   const availableFonts = await figma.listAvailableFontsAsync();
+  const selectedTextNodes = figma.currentPage.selection.filter(
+    (node): node is TextNode => node.type === 'TEXT',
+  );
   const fontName = findFigmaFontName(availableFonts, payload);
 
   if (!fontName) {
     figma.notify(`Font not available in Figma: ${payload.familyName}`);
-    postApplyResult({
+    figma.ui.postMessage({
       type: 'apply-result',
       sequence,
       ok: false,
@@ -185,16 +72,13 @@ async function applyFont(
     return;
   }
 
-  await figma.loadFontAsync(fontName);
-
-  const selectedTextNodes = figma.currentPage.selection.filter(
-    (node): node is TextNode => node.type === 'TEXT',
-  );
   let createdTextNode: TextNode | null = null;
   const targets: TextNode[] =
     selectedTextNodes.length > 0
       ? selectedTextNodes
       : [(createdTextNode = figma.createText())];
+
+  await figma.loadFontAsync(fontName);
 
   for (const node of targets) {
     if (!node.parent) {
@@ -205,39 +89,47 @@ async function applyFont(
 
     node.fontName = fontName;
     if (node === createdTextNode) {
+      node.fontSize = 16;
       node.characters =
         payload.previewText.trim() || payload.fontName || payload.familyName;
     }
   }
 
+  const resultMessage = `Applied ${fontName.family} ${fontName.style}`;
+
   figma.currentPage.selection = targets;
   figma.viewport.scrollAndZoomIntoView(targets);
-  figma.notify(`Applied ${fontName.family} ${fontName.style}`);
-  postApplyResult({
+  figma.commitUndo();
+  figma.notify(resultMessage);
+  figma.ui.postMessage({
     type: 'apply-result',
     sequence,
     ok: true,
-    message: `${fontName.family} ${fontName.style}`,
+    message: resultMessage,
   });
-}
-
-function isApplyFontMessage(message: unknown): message is ApplyFontMessage {
-  if (!message || typeof message !== 'object') return false;
-
-  return (message as { type?: unknown }).type === 'apply-font';
 }
 
 figma.ui.onmessage = (message: unknown) => {
-  if (!isApplyFontMessage(message)) return;
+  if (
+    !message ||
+    typeof message !== 'object' ||
+    (message as { type?: unknown }).type !== 'apply-font'
+  ) {
+    return;
+  }
 
-  applyFont(message.payload, message.sequence).catch((error: unknown) => {
-    console.error(error);
-    figma.notify('Failed to apply Fontcluster font');
-    postApplyResult({
-      type: 'apply-result',
-      sequence: message.sequence,
-      ok: false,
-      message: String(error),
-    });
-  });
+  const applyMessage = message as ApplyFontMessage;
+
+  applyFont(applyMessage.payload, applyMessage.sequence).catch(
+    (error: unknown) => {
+      console.error(error);
+      figma.notify('Failed to apply Fontcluster font');
+      figma.ui.postMessage({
+        type: 'apply-result',
+        sequence: applyMessage.sequence,
+        ok: false,
+        message: String(error),
+      });
+    },
+  );
 };

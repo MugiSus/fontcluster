@@ -30,12 +30,13 @@ export function GraphContent() {
   let pendingMouseSelectionPoint: GraphCoordinate | null = null;
   let mouseSelectionAnimationFrame: number | undefined;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
+  const sessionWeights = () =>
+    (appState.session.config?.weights as FontWeight[]) || [];
 
   createEffect(() => {
-    const sessionWeights =
-      (appState.session.config?.weights as FontWeight[]) || [];
-    if (sessionWeights.length > 0) {
-      setActiveGraphWeights(sessionWeights);
+    const weights = sessionWeights();
+    if (weights.length > 0) {
+      setActiveGraphWeights(weights);
     }
   });
 
@@ -139,14 +140,14 @@ export function GraphContent() {
           onMouseDown={(event) => event.stopPropagation()}
         >
           <Show
-            when={(
-              (appState.session.config?.weights as FontWeight[]) || []
-            ).join(',')}
+            when={
+              sessionWeights().length > 1 ? sessionWeights().join(',') : false
+            }
             keyed
           >
             <WeightSelector
-              weights={(appState.session.config?.weights as FontWeight[]) || []}
-              defaultValue={appState.ui.activeGraphWeights}
+              weights={sessionWeights()}
+              defaultValue={sessionWeights()}
               onChange={setActiveGraphWeights}
               isVertical
             />
