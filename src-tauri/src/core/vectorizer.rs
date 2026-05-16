@@ -4,7 +4,7 @@ use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
-use ndarray::Array4;
+use ndarray::{s, Array4};
 use ort::{
     ep, inputs,
     session::{
@@ -25,6 +25,7 @@ const MODEL_REPO_DIR: &str = "repvit_m1.dist_in1k";
 const MODEL_FILE_NAME: &str = "model.onnx";
 const DEFAULT_INPUT_SIZE: u32 = 224;
 const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
+const MODEL_BATCH_SIZE: usize = 8;
 const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
 const DEFAULT_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
 const DEFAULT_STD: [f32; 3] = [0.229, 0.224, 0.225];
@@ -73,44 +74,24 @@ impl Vectorizer {
             png_files.len() as i32,
         );
 
-        let preprocess_chunk_size = rayon::current_num_threads().max(1);
         println!(
-            "🚀 Vectorizer: preprocessing {} images at a time",
-            preprocess_chunk_size
+            "🚀 Vectorizer: running ONNX inference with batch size {}",
+            MODEL_BATCH_SIZE
         );
 
-        for chunk in png_files.chunks(preprocess_chunk_size) {
+        for chunk in png_files.chunks(MODEL_BATCH_SIZE) {
             if state.is_cancelled.load(Ordering::Relaxed) {
                 return Ok(());
             }
 
-            let prepared = preprocess_images(chunk, &self.spec);
-            for result in prepared {
+            let mut prepared_images = Vec::new();
+            for result in preprocess_images(chunk, &self.spec) {
                 if state.is_cancelled.load(Ordering::Relaxed) {
                     return Ok(());
                 }
 
                 match result {
-                    Ok(prepared) => {
-                        let path = prepared.path.clone();
-                        match self.process_prepared_image(prepared) {
-                            Ok(_) => progress_events::increase_numerator(
-                                events,
-                                state,
-                                ProgressStage::Vectorization,
-                                1,
-                            ),
-                            Err(e) => {
-                                println!("❌ Vectorization failed for {:?}: {}", path, e);
-                                progress_events::decrease_denominator(
-                                    events,
-                                    state,
-                                    ProgressStage::Vectorization,
-                                    1,
-                                );
-                            }
-                        }
-                    }
+                    Ok(prepared) => prepared_images.push(prepared),
                     Err((path, e)) => {
                         println!("❌ Vectorization failed for {:?}: {}", path, e);
                         progress_events::decrease_denominator(
@@ -120,6 +101,29 @@ impl Vectorizer {
                             1,
                         );
                     }
+                }
+            }
+
+            if prepared_images.is_empty() {
+                continue;
+            }
+
+            let prepared_count = prepared_images.len();
+            match self.process_prepared_images(prepared_images) {
+                Ok(processed_count) => progress_events::increase_numerator(
+                    events,
+                    state,
+                    ProgressStage::Vectorization,
+                    processed_count as i32,
+                ),
+                Err(e) => {
+                    println!("❌ Vectorization failed for batch: {}", e);
+                    progress_events::decrease_denominator(
+                        events,
+                        state,
+                        ProgressStage::Vectorization,
+                        prepared_count as i32,
+                    );
                 }
             }
         }
@@ -132,11 +136,11 @@ impl Vectorizer {
         Ok(())
     }
 
-    fn process_prepared_image(&self, prepared: PreparedImage) -> Result<()> {
-        let PreparedImage { path, input } = prepared;
-        let tensor = tensor_from_input(input)?;
+    fn process_prepared_images(&self, prepared_images: Vec<PreparedImage>) -> Result<usize> {
+        let prepared_count = prepared_images.len();
+        let tensor = tensor_from_inputs(&prepared_images)?;
 
-        let feature = {
+        let features = {
             let mut session = self
                 .session
                 .lock()
@@ -145,13 +149,17 @@ impl Vectorizer {
                 .run(inputs![tensor])
                 .map_err(|err| AppError::Processing(err.to_string()))?;
 
-            let feature = select_embedding_from_outputs(&outputs)?;
+            let features = select_embeddings_from_outputs(&outputs, prepared_count)?;
             drop(outputs);
             self.log_provider_profile_once(&mut session);
-            feature
+            features
         };
 
-        write_feature_vector(path, &feature)
+        for (prepared, feature) in prepared_images.into_iter().zip(features) {
+            write_feature_vector(prepared.path, &feature)?;
+        }
+
+        Ok(prepared_count)
     }
 
     fn log_provider_profile_once(&self, session: &mut Session) {
@@ -185,7 +193,7 @@ fn load_session(model_path: &Path) -> Result<Session> {
         .with_intra_threads(1)
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = builder
-        .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, 1)
+        .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = configure_execution_providers(builder)?;
     builder = configure_provider_profiling(builder)?;
@@ -343,7 +351,32 @@ async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
     })
 }
 
-fn tensor_from_input(input: Array4<f32>) -> Result<Tensor<f32>> {
+fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> {
+    let first_input = prepared_images
+        .first()
+        .ok_or_else(|| AppError::Processing("Cannot run inference with an empty batch".into()))?;
+    let shape = first_input.input.shape();
+    if shape.len() != 4 || shape[0] != 1 {
+        return Err(AppError::Processing(format!(
+            "Prepared image input must be [1, channels, height, width], got {:?}",
+            shape
+        )));
+    }
+
+    let mut input = Array4::<f32>::zeros((MODEL_BATCH_SIZE, shape[1], shape[2], shape[3]));
+    for (batch_index, prepared) in prepared_images.iter().enumerate() {
+        if prepared.input.shape() != shape {
+            return Err(AppError::Processing(format!(
+                "Prepared image input shape mismatch: expected {:?}, got {:?}",
+                shape,
+                prepared.input.shape()
+            )));
+        }
+        input
+            .slice_mut(s![batch_index, .., .., ..])
+            .assign(&prepared.input.slice(s![0, .., .., ..]));
+    }
+
     let shape = input.shape().to_vec();
     let (input_data, input_offset) = input.into_raw_vec_and_offset();
     debug_assert_eq!(input_offset, Some(0));
@@ -532,7 +565,10 @@ fn fill_nchw_input(
     Ok(())
 }
 
-fn select_embedding_from_outputs(outputs: &ort::session::SessionOutputs<'_>) -> Result<Vec<f32>> {
+fn select_embeddings_from_outputs(
+    outputs: &ort::session::SessionOutputs<'_>,
+    expected_count: usize,
+) -> Result<Vec<Vec<f32>>> {
     let output = outputs
         .get(PREFERRED_EMBEDDING_OUTPUT_NAME)
         .ok_or_else(|| {
@@ -542,10 +578,14 @@ fn select_embedding_from_outputs(outputs: &ort::session::SessionOutputs<'_>) -> 
             ))
         })?;
 
-    extract_feature_output(PREFERRED_EMBEDDING_OUTPUT_NAME, output)
+    extract_feature_outputs(PREFERRED_EMBEDDING_OUTPUT_NAME, output, expected_count)
 }
 
-fn extract_feature_output(name: &str, output: &ort::value::DynValue) -> Result<Vec<f32>> {
+fn extract_feature_outputs(
+    name: &str,
+    output: &ort::value::DynValue,
+    expected_count: usize,
+) -> Result<Vec<Vec<f32>>> {
     let array = output
         .try_extract_array::<f32>()
         .map_err(|err| AppError::Processing(err.to_string()))?;
@@ -560,7 +600,19 @@ fn extract_feature_output(name: &str, output: &ort::value::DynValue) -> Result<V
             name, shape
         )));
     }
+    if shape[0] < expected_count {
+        return Err(AppError::Processing(format!(
+            "Output '{}' batch size {} is smaller than expected {}",
+            name, shape[0], expected_count
+        )));
+    }
 
     let feature_dim = shape[1];
-    Ok(data[..feature_dim].to_vec())
+    Ok((0..expected_count)
+        .map(|batch_index| {
+            let start = batch_index * feature_dim;
+            let end = start + feature_dim;
+            data[start..end].to_vec()
+        })
+        .collect())
 }
