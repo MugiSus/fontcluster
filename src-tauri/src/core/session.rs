@@ -7,9 +7,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Child;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
+
+use super::figma_bridge::FigmaFontPayload;
 
 #[derive(Clone)]
 pub struct RunningJob {
@@ -22,6 +24,8 @@ pub struct AppState {
     pub current_session: Arc<Mutex<Option<SessionConfig>>>,
     pub current_job_children: Arc<Mutex<HashMap<String, RunningJob>>>,
     pub is_cancelled: Arc<AtomicBool>,
+    pub figma_bridge_payload: Arc<Mutex<Option<FigmaFontPayload>>>,
+    pub figma_bridge_sequence: Arc<AtomicU64>,
 }
 
 impl AppState {
@@ -30,6 +34,8 @@ impl AppState {
             current_session: Arc::new(Mutex::new(None)),
             current_job_children: Arc::new(Mutex::new(HashMap::new())),
             is_cancelled: Arc::new(AtomicBool::new(false)),
+            figma_bridge_payload: Arc::new(Mutex::new(None)),
+            figma_bridge_sequence: Arc::new(AtomicU64::new(0)),
         }
     }
 

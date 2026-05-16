@@ -2,6 +2,7 @@ import { createEffect, createSignal, Index, onCleanup, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { setSelectedFontKey } from '../../actions';
+import { sendFontToFigma } from '../../lib/figma-bridge';
 import { appState } from '../../store';
 import {
   type FontItem as FontItemData,
@@ -77,9 +78,15 @@ export function ListContent() {
     onCleanup(() => window.clearTimeout(timeoutId));
   });
 
-  const selectFont = (key: string) => {
-    if (appState.ui.selectedFontKey === key) return;
-    setSelectedFontKey(key);
+  const selectFont = (item: FontItemData) => {
+    const key = item.meta.safe_name;
+    if (appState.ui.selectedFontKey !== key) {
+      setSelectedFontKey(key);
+    }
+
+    void sendFontToFigma(item.meta).catch((error) => {
+      console.error('Failed to send font to Figma:', error);
+    });
   };
 
   const NoResultsFound = () => (
@@ -94,7 +101,9 @@ export function ListContent() {
       <Show when={nearestItems().length > 0} fallback={<NoResultsFound />}>
         <Show when={selectedItem()}>
           {(item) => (
-            <FontItemView item={item()} class='animate-fade-in border-b' />
+            <div onClick={() => selectFont(item())}>
+              <FontItemView item={item()} class='animate-fade-in border-b' />
+            </div>
           )}
         </Show>
         <div
@@ -106,7 +115,7 @@ export function ListContent() {
               {(item) => (
                 <li
                   data-font-name={item().meta.safe_name}
-                  onClick={() => selectFont(item().meta.safe_name)}
+                  onClick={() => selectFont(item())}
                 >
                   <FontItemView item={item()} />
                 </li>
