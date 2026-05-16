@@ -16,10 +16,7 @@ use ort::{
 use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Mutex,
-};
+use std::sync::{atomic::Ordering, Mutex};
 
 const MODEL_REPO_DIR: &str = "repvit_m1.dist_in1k";
 const MODEL_FILE_NAME: &str = "model.onnx";
@@ -33,7 +30,6 @@ const DEFAULT_STD: [f32; 3] = [0.229, 0.224, 0.225];
 pub struct Vectorizer {
     session: Mutex<Session>,
     spec: ModelSpec,
-    provider_profile_logged: AtomicBool,
 }
 
 struct PreparedImage {
@@ -52,7 +48,6 @@ impl Vectorizer {
         Ok(Self {
             session: Mutex::new(session),
             spec,
-            provider_profile_logged: AtomicBool::new(false),
         })
     }
 
@@ -149,10 +144,7 @@ impl Vectorizer {
                 .run(inputs![tensor])
                 .map_err(|err| AppError::Processing(err.to_string()))?;
 
-            let features = select_embeddings_from_outputs(&outputs, prepared_count)?;
-            drop(outputs);
-            self.log_provider_profile_once(&mut session);
-            features
+            select_embeddings_from_outputs(&outputs, prepared_count)?
         };
 
         for (prepared, feature) in prepared_images.into_iter().zip(features) {
@@ -160,22 +152,6 @@ impl Vectorizer {
         }
 
         Ok(prepared_count)
-    }
-
-    fn log_provider_profile_once(&self, session: &mut Session) {
-        if self.provider_profile_logged.swap(true, Ordering::Relaxed) {
-            return;
-        }
-
-        #[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
-        {
-            if let Err(err) = log_provider_profile(session) {
-                println!(
-                    "⚠️ Vectorizer: failed to inspect ONNX Runtime provider profile: {}",
-                    err
-                );
-            }
-        }
     }
 }
 
@@ -196,7 +172,6 @@ fn load_session(model_path: &Path) -> Result<Session> {
         .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = configure_execution_providers(builder)?;
-    builder = configure_provider_profiling(builder)?;
 
     let session = builder
         .commit_from_file(model_path)
@@ -233,96 +208,6 @@ fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuild
     {
         Ok(builder)
     }
-}
-
-fn configure_provider_profiling(builder: SessionBuilder) -> Result<SessionBuilder> {
-    #[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
-    {
-        let path =
-            std::env::temp_dir().join(format!("fontcluster-ort-profile-{}", std::process::id()));
-        builder
-            .with_profiling(path)
-            .map_err(|err| AppError::Processing(err.to_string()))
-    }
-
-    #[cfg(not(all(target_vendor = "apple", target_arch = "aarch64")))]
-    {
-        Ok(builder)
-    }
-}
-
-#[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
-fn log_provider_profile(session: &mut Session) -> Result<()> {
-    let profile_path = session
-        .end_profiling()
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-    let profile_json = fs::read_to_string(&profile_path).map_err(|err| {
-        AppError::Io(format!(
-            "Failed to read ONNX Runtime profile {}: {}",
-            profile_path, err
-        ))
-    })?;
-    let profile: serde_json::Value = serde_json::from_str(&profile_json).map_err(|err| {
-        AppError::Processing(format!("Failed to parse ONNX Runtime profile: {err}"))
-    })?;
-
-    let Some(events) = profile.as_array() else {
-        println!(
-            "Vectorizer: ONNX Runtime profile did not contain event records: {}",
-            profile_path
-        );
-        return Ok(());
-    };
-
-    let mut provider_counts = std::collections::BTreeMap::<String, usize>::new();
-    let mut provider_durations_us = std::collections::BTreeMap::<String, u64>::new();
-    for event in events {
-        let Some(provider) = event
-            .get("args")
-            .and_then(|args| args.get("provider"))
-            .and_then(|provider| provider.as_str())
-        else {
-            continue;
-        };
-        let provider = provider.to_string();
-        *provider_counts.entry(provider.clone()).or_default() += 1;
-        *provider_durations_us.entry(provider).or_default() += event
-            .get("dur")
-            .and_then(|duration| duration.as_u64())
-            .unwrap_or(0);
-    }
-
-    if provider_counts.is_empty() {
-        println!(
-            "Vectorizer: ONNX Runtime profile contained no provider assignments: {}",
-            profile_path
-        );
-        return Ok(());
-    }
-
-    let summary = provider_counts
-        .iter()
-        .map(|(provider, count)| {
-            let duration_ms =
-                provider_durations_us.get(provider).copied().unwrap_or(0) as f64 / 1000.0;
-            format!("{provider}={count} ({duration_ms:.3}ms)")
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    println!(
-        "Vectorizer: ONNX Runtime provider profile: {summary}; profile={}",
-        profile_path
-    );
-
-    if provider_counts.contains_key("CoreMLExecutionProvider") {
-        println!("Vectorizer: confirmed inference executed through CoreMLExecutionProvider");
-    } else {
-        println!(
-            "Vectorizer: CoreMLExecutionProvider was registered, but this profiled inference did not run on CoreML"
-        );
-    }
-
-    Ok(())
 }
 
 async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
