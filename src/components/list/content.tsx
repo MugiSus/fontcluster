@@ -84,7 +84,10 @@ export function ListContent() {
       setSelectedFontKey(key);
     }
 
-    void sendFontToFigma(item.meta).catch((error) => {
+    void sendFontToFigma(
+      item.meta,
+      appState.session.config.preview_text || '',
+    ).catch((error) => {
       console.error('Failed to send font to Figma:', error);
     });
   };

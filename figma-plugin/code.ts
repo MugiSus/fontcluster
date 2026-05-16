@@ -8,6 +8,7 @@ interface FontclusterFontPayload {
   familyName: string;
   familyNames: Record<string, string>;
   preferredFamilyNames: Record<string, string>;
+  previewText: string;
   weight: number;
   weights: string[];
 }
@@ -166,11 +167,13 @@ async function applyFont(
   const selectedTextNodes = figma.currentPage.selection.filter(
     (node): node is TextNode => node.type === 'TEXT',
   );
+  let createdTextNode: TextNode | null = null;
   const targets: TextNode[] =
-    selectedTextNodes.length > 0 ? selectedTextNodes : [figma.createText()];
+    selectedTextNodes.length > 0
+      ? selectedTextNodes
+      : [(createdTextNode = figma.createText())];
 
   for (const node of targets) {
-    const isNewNode = !node.parent;
     if (!node.parent) {
       figma.currentPage.appendChild(node);
       node.x = figma.viewport.center.x;
@@ -178,8 +181,9 @@ async function applyFont(
     }
 
     node.fontName = fontName;
-    if (isNewNode) {
-      node.characters = payload.fontName || payload.familyName;
+    if (node === createdTextNode) {
+      node.characters =
+        payload.previewText.trim() || payload.fontName || payload.familyName;
     }
   }
 

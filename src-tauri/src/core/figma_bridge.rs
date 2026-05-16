@@ -20,6 +20,7 @@ pub struct FigmaFontPayload {
     pub family_name: String,
     pub family_names: HashMap<String, String>,
     pub preferred_family_names: HashMap<String, String>,
+    pub preview_text: String,
     pub weight: i32,
     pub weights: Vec<String>,
 }

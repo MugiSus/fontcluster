@@ -114,17 +114,20 @@ async function applyFont(payload, sequence) {
     }
     await figma.loadFontAsync(fontName);
     const selectedTextNodes = figma.currentPage.selection.filter((node) => node.type === 'TEXT');
-    const targets = selectedTextNodes.length > 0 ? selectedTextNodes : [figma.createText()];
+    let createdTextNode = null;
+    const targets = selectedTextNodes.length > 0
+        ? selectedTextNodes
+        : [(createdTextNode = figma.createText())];
     for (const node of targets) {
-        const isNewNode = !node.parent;
         if (!node.parent) {
             figma.currentPage.appendChild(node);
             node.x = figma.viewport.center.x;
             node.y = figma.viewport.center.y;
         }
         node.fontName = fontName;
-        if (isNewNode) {
-            node.characters = payload.fontName || payload.familyName;
+        if (node === createdTextNode) {
+            node.characters =
+                payload.previewText.trim() || payload.fontName || payload.familyName;
         }
     }
     figma.currentPage.selection = targets;

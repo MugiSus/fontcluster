@@ -9,12 +9,14 @@ export interface FigmaFontPayload {
   familyName: string;
   familyNames: Record<string, string>;
   preferredFamilyNames: Record<string, string>;
+  previewText: string;
   weight: number;
   weights: string[];
 }
 
 export function createFigmaFontPayload(
   metadata: FontMetadata,
+  previewText: string,
 ): FigmaFontPayload {
   return {
     source: 'fontcluster',
@@ -24,13 +26,17 @@ export function createFigmaFontPayload(
     familyName: metadata.family_name,
     familyNames: metadata.family_names,
     preferredFamilyNames: metadata.preferred_family_names,
+    previewText,
     weight: metadata.weight,
     weights: metadata.weights,
   };
 }
 
-export function sendFontToFigma(metadata: FontMetadata): Promise<number> {
+export function sendFontToFigma(
+  metadata: FontMetadata,
+  previewText: string,
+): Promise<number> {
   return invoke<number>('send_font_to_figma', {
-    payload: createFigmaFontPayload(metadata),
+    payload: createFigmaFontPayload(metadata, previewText),
   });
 }
