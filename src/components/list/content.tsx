@@ -1,7 +1,6 @@
 import { createEffect, createSignal, Index, onCleanup, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
-import { setSelectedFontKey } from '../../actions';
 import { sendFontToFigma } from '../../lib/figma-bridge';
 import { appState } from '../../store';
 import {
@@ -79,12 +78,7 @@ export function ListContent() {
   });
 
   const selectFont = (item: FontItemData) => {
-    const key = item.meta.safe_name;
-    if (appState.ui.selectedFontKey !== key) {
-      setSelectedFontKey(key);
-    }
-
-    void sendFontToFigma(
+    sendFontToFigma(
       item.meta,
       appState.session.config.preview_text || '',
     ).catch((error) => {

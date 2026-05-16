@@ -173,6 +173,12 @@ pub struct FontMetadata {
     pub family_name: String,
     pub family_names: HashMap<String, String>,
     pub preferred_family_names: HashMap<String, String>,
+    #[serde(default)]
+    pub style_name: String,
+    #[serde(default)]
+    pub style_names: HashMap<String, String>,
+    #[serde(default)]
+    pub preferred_style_names: HashMap<String, String>,
     pub publishers: HashMap<String, String>,
     pub designers: HashMap<String, String>,
     pub weight: i32,

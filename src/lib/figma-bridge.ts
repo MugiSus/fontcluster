@@ -9,6 +9,9 @@ export interface FigmaFontPayload {
   familyName: string;
   familyNames: Record<string, string>;
   preferredFamilyNames: Record<string, string>;
+  styleName: string;
+  styleNames: Record<string, string>;
+  preferredStyleNames: Record<string, string>;
   previewText: string;
   weight: number;
   weights: string[];
@@ -26,6 +29,9 @@ export function createFigmaFontPayload(
     familyName: metadata.family_name,
     familyNames: metadata.family_names,
     preferredFamilyNames: metadata.preferred_family_names,
+    styleName: metadata.style_name || '',
+    styleNames: metadata.style_names || {},
+    preferredStyleNames: metadata.preferred_style_names || {},
     previewText,
     weight: metadata.weight,
     weights: metadata.weights,

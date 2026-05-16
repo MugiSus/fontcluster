@@ -2,7 +2,7 @@
   "name": "Fontcluster Apply Font",
   "id": "fontcluster-apply-font",
   "api": "1.0.0",
-  "main": "build/code.js",
+  "main": "dist/code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",

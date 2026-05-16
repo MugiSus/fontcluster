@@ -12,6 +12,8 @@ pub struct ExtractedMeta {
     pub display_name: String,
     pub family_names: HashMap<String, String>,
     pub preferred_family_names: HashMap<String, String>,
+    pub style_names: HashMap<String, String>,
+    pub preferred_style_names: HashMap<String, String>,
     pub publishers: HashMap<String, String>,
     pub designers: HashMap<String, String>,
     pub actual_weight: i32,
@@ -86,6 +88,16 @@ impl Discoverer {
             .clone()
     }
 
+    fn internal_style_name(meta: &ExtractedMeta) -> String {
+        meta.preferred_style_names
+            .get("1033")
+            .or_else(|| meta.style_names.get("1033"))
+            .or_else(|| meta.preferred_style_names.values().next())
+            .or_else(|| meta.style_names.values().next())
+            .cloned()
+            .unwrap_or_else(|| "Regular".to_string())
+    }
+
     pub fn analyze_font_data(
         data: &[u8],
         index: u32,
@@ -111,6 +123,8 @@ impl Discoverer {
         // 2. Metadata Extraction
         let mut fams = HashMap::new();
         let mut prefs = HashMap::new();
+        let mut styles = HashMap::new();
+        let mut preferred_styles = HashMap::new();
         let mut pubs = HashMap::new();
         let mut dess = HashMap::new();
         let mut full_name = None;
@@ -130,6 +144,9 @@ impl Discoverer {
                     1 => {
                         fams.insert(lang_id, val);
                     }
+                    2 => {
+                        styles.insert(lang_id, val);
+                    }
                     4 => {
                         if full_name.is_none() || rec.language_id == 1033 {
                             full_name = Some(val);
@@ -137,6 +154,9 @@ impl Discoverer {
                     } // Prefer English for display_name
                     16 => {
                         prefs.insert(lang_id, val);
+                    }
+                    17 => {
+                        preferred_styles.insert(lang_id, val);
                     }
                     8 => {
                         pubs.insert(lang_id, val);
@@ -155,6 +175,8 @@ impl Discoverer {
             display_name: full_name.unwrap_or_else(|| "Unknown".to_string()),
             family_names: fams,
             preferred_family_names: prefs,
+            style_names: styles,
+            preferred_style_names: preferred_styles,
             publishers: pubs,
             designers: dess,
             actual_weight,
@@ -311,6 +333,9 @@ impl Discoverer {
                                     family_name: family_name.clone(),
                                     family_names: meta.family_names.clone(),
                                     preferred_family_names: meta.preferred_family_names.clone(),
+                                    style_name: Self::internal_style_name(meta),
+                                    style_names: meta.style_names.clone(),
+                                    preferred_style_names: meta.preferred_style_names.clone(),
                                     publishers: meta.publishers.clone(),
                                     designers: meta.designers.clone(),
                                     weight: tw,

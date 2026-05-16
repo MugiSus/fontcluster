@@ -8,6 +8,9 @@ interface FontclusterFontPayload {
   familyName: string;
   familyNames: Record<string, string>;
   preferredFamilyNames: Record<string, string>;
+  styleName: string;
+  styleNames: Record<string, string>;
+  preferredStyleNames: Record<string, string>;
   previewText: string;
   weight: number;
   weights: string[];
@@ -63,6 +66,14 @@ function getFamilyCandidates(payload: FontclusterFontPayload): string[] {
   ]);
 }
 
+function getStyleCandidates(payload: FontclusterFontPayload): string[] {
+  return unique([
+    payload.styleName,
+    ...Object.values(payload.preferredStyleNames),
+    ...Object.values(payload.styleNames),
+  ]);
+}
+
 function styleWeight(style: string): number {
   const normalized = normalizeName(style);
 
@@ -98,23 +109,10 @@ function stylePriority(style: string, targetWeight: number): StylePriority {
   };
 }
 
-async function getRenderedFontWeight(
-  probe: TextNode,
-  fontName: FontName,
-): Promise<number> {
-  await figma.loadFontAsync(fontName);
-  probe.fontName = fontName;
-  probe.characters = 'A';
-
-  return typeof probe.fontWeight === 'number'
-    ? probe.fontWeight
-    : styleWeight(fontName.style);
-}
-
-async function findFigmaFontName(
+function findFigmaFontName(
   availableFonts: Font[],
   payload: FontclusterFontPayload,
-): Promise<FontName | null> {
+): FontName | null {
   const familyCandidates = new Set(
     getFamilyCandidates(payload).map(normalizeName),
   );
@@ -125,50 +123,44 @@ async function findFigmaFontName(
 
   if (matchingFonts.length === 0) return null;
 
-  const probe = figma.createText();
+  const styleCandidates = getStyleCandidates(payload).map(normalizeName);
   const targetWeight = Number(payload.weight) || 400;
+  const weightedFonts = matchingFonts.map((fontName) => {
+    const priority = stylePriority(fontName.style, targetWeight);
+    const inferredWeight = styleWeight(fontName.style);
+    const styleIndex = styleCandidates.indexOf(normalizeName(fontName.style));
 
-  probe.visible = false;
+    return {
+      fontName,
+      styleMatch: styleIndex === -1 ? 1 : 0,
+      styleIndex: styleIndex === -1 ? Number.MAX_SAFE_INTEGER : styleIndex,
+      weightDistance: Math.abs(inferredWeight - targetWeight),
+      exactMatch: priority.exactMatch,
+      italic: priority.italic,
+      regularName: priority.regularName,
+      inferredWeight,
+      styleName: fontName.style,
+    };
+  });
 
-  try {
-    const weightedFonts = [];
-
-    for (const fontName of matchingFonts) {
-      const priority = stylePriority(fontName.style, targetWeight);
-      const renderedWeight = await getRenderedFontWeight(probe, fontName).catch(
-        () => styleWeight(fontName.style),
-      );
-
-      weightedFonts.push({
-        fontName,
-        weightDistance: Math.abs(renderedWeight - targetWeight),
-        exactMatch: priority.exactMatch,
-        italic: priority.italic,
-        regularName: priority.regularName,
-        renderedWeight,
-        styleName: fontName.style,
-      });
+  const bestMatch = weightedFonts.sort((a, b) => {
+    if (a.styleMatch !== b.styleMatch) return a.styleMatch - b.styleMatch;
+    if (a.styleIndex !== b.styleIndex) return a.styleIndex - b.styleIndex;
+    if (a.weightDistance !== b.weightDistance) {
+      return a.weightDistance - b.weightDistance;
     }
+    if (a.exactMatch !== b.exactMatch) return a.exactMatch - b.exactMatch;
+    if (a.italic !== b.italic) return a.italic - b.italic;
+    if (a.regularName !== b.regularName) {
+      return a.regularName - b.regularName;
+    }
+    if (a.inferredWeight !== b.inferredWeight) {
+      return a.inferredWeight - b.inferredWeight;
+    }
+    return a.styleName.localeCompare(b.styleName);
+  })[0];
 
-    const bestMatch = weightedFonts.sort((a, b) => {
-      if (a.weightDistance !== b.weightDistance) {
-        return a.weightDistance - b.weightDistance;
-      }
-      if (a.exactMatch !== b.exactMatch) return a.exactMatch - b.exactMatch;
-      if (a.italic !== b.italic) return a.italic - b.italic;
-      if (a.regularName !== b.regularName) {
-        return a.regularName - b.regularName;
-      }
-      if (a.renderedWeight !== b.renderedWeight) {
-        return a.renderedWeight - b.renderedWeight;
-      }
-      return a.styleName.localeCompare(b.styleName);
-    })[0];
-
-    return bestMatch?.fontName ?? null;
-  } finally {
-    probe.remove();
-  }
+  return bestMatch?.fontName ?? null;
 }
 
 function postApplyResult(message: ApplyFontResultMessage): void {
@@ -180,7 +172,7 @@ async function applyFont(
   sequence: number,
 ): Promise<void> {
   const availableFonts = await figma.listAvailableFontsAsync();
-  const fontName = await findFigmaFontName(availableFonts, payload);
+  const fontName = findFigmaFontName(availableFonts, payload);
 
   if (!fontName) {
     figma.notify(`Font not available in Figma: ${payload.familyName}`);
