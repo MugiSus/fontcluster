@@ -37,6 +37,11 @@ struct PreparedImage {
     input: Array4<f32>,
 }
 
+struct BatchResult {
+    prepared_images: Vec<PreparedImage>,
+    failed_count: usize,
+}
+
 impl Vectorizer {
     pub fn new() -> Result<Self> {
         let model_dir = resolve_model_dir()?;
@@ -79,32 +84,18 @@ impl Vectorizer {
                 return Ok(());
             }
 
-            let mut prepared_images = Vec::new();
-            for result in preprocess_images(chunk, &self.spec) {
-                if state.is_cancelled.load(Ordering::Relaxed) {
-                    return Ok(());
-                }
-
-                match result {
-                    Ok(prepared) => prepared_images.push(prepared),
-                    Err((path, e)) => {
-                        println!("❌ Vectorization failed for {:?}: {}", path, e);
-                        progress_events::decrease_denominator(
-                            events,
-                            state,
-                            ProgressStage::Vectorization,
-                            1,
-                        );
-                    }
-                }
+            let batch = prepare_batch(chunk, &self.spec);
+            decrease_progress_denominator(events, state, batch.failed_count);
+            if state.is_cancelled.load(Ordering::Relaxed) {
+                return Ok(());
             }
 
-            if prepared_images.is_empty() {
+            if batch.prepared_images.is_empty() {
                 continue;
             }
 
-            let prepared_count = prepared_images.len();
-            match self.process_prepared_images(prepared_images) {
+            let prepared_count = batch.prepared_images.len();
+            match self.process_prepared_images(batch.prepared_images) {
                 Ok(processed_count) => progress_events::increase_numerator(
                     events,
                     state,
@@ -133,25 +124,22 @@ impl Vectorizer {
 
     fn process_prepared_images(&self, prepared_images: Vec<PreparedImage>) -> Result<usize> {
         let prepared_count = prepared_images.len();
-        let tensor = tensor_from_inputs(&prepared_images)?;
-
-        let features = {
-            let mut session = self
-                .session
-                .lock()
-                .expect("ONNX session mutex should not be poisoned");
-            let outputs = session
-                .run(inputs![tensor])
-                .map_err(|err| AppError::Processing(err.to_string()))?;
-
-            select_embeddings_from_outputs(&outputs, prepared_count)?
-        };
-
-        for (prepared, feature) in prepared_images.into_iter().zip(features) {
-            write_feature_vector(prepared.path, &feature)?;
-        }
-
+        let features = self.run_batch_inference(&prepared_images)?;
+        write_feature_vectors(prepared_images, features)?;
         Ok(prepared_count)
+    }
+
+    fn run_batch_inference(&self, prepared_images: &[PreparedImage]) -> Result<Vec<Vec<f32>>> {
+        let tensor = tensor_from_inputs(prepared_images)?;
+        let mut session = self
+            .session
+            .lock()
+            .expect("ONNX session mutex should not be poisoned");
+        let outputs = session
+            .run(inputs![tensor])
+            .map_err(|err| AppError::Processing(err.to_string()))?;
+
+        select_embeddings_from_outputs(&outputs, prepared_images.len())
     }
 }
 
@@ -236,6 +224,26 @@ async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
     })
 }
 
+fn prepare_batch(paths: &[PathBuf], spec: &ModelSpec) -> BatchResult {
+    let mut prepared_images = Vec::new();
+    let mut failed_count = 0;
+
+    for result in preprocess_images(paths, spec) {
+        match result {
+            Ok(prepared) => prepared_images.push(prepared),
+            Err((path, e)) => {
+                failed_count += 1;
+                println!("❌ Vectorization failed for {:?}: {}", path, e);
+            }
+        }
+    }
+
+    BatchResult {
+        prepared_images,
+        failed_count,
+    }
+}
+
 fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> {
     let first_input = prepared_images
         .first()
@@ -270,6 +278,25 @@ fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> 
         .map_err(|err| AppError::Processing(err.to_string()))
 }
 
+fn write_feature_vectors(
+    prepared_images: Vec<PreparedImage>,
+    features: Vec<Vec<f32>>,
+) -> Result<()> {
+    if prepared_images.len() != features.len() {
+        return Err(AppError::Processing(format!(
+            "Feature count {} does not match prepared image count {}",
+            features.len(),
+            prepared_images.len()
+        )));
+    }
+
+    for (prepared, feature) in prepared_images.into_iter().zip(features) {
+        write_feature_vector(prepared.path, &feature)?;
+    }
+
+    Ok(())
+}
+
 fn write_feature_vector(path: PathBuf, feature: &[f32]) -> Result<()> {
     let mut bin_path = path;
     bin_path.set_file_name("vector.bin");
@@ -281,6 +308,12 @@ fn write_feature_vector(path: PathBuf, feature: &[f32]) -> Result<()> {
         ))
     })?;
     Ok(())
+}
+
+fn decrease_progress_denominator(events: &impl EventSink, state: &AppState, count: usize) {
+    for _ in 0..count {
+        progress_events::decrease_denominator(events, state, ProgressStage::Vectorization, 1);
+    }
 }
 
 fn preprocess_images(
