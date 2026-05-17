@@ -16,7 +16,7 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
-    "figma:build": "tsc -p figma-plugin/tsconfig.json",
+    "figma:build": "tsc -p src-plugin-figma/tsconfig.json",
     "typecheck": "tsc --noEmit",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
   },
