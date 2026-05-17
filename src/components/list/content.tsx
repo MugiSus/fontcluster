@@ -20,6 +20,7 @@ const LIST_UPDATE_DEBOUNCE_MS = 400;
 interface FontItemViewProps {
   item: FontItemData;
   class?: string;
+  onClick?: (() => void) | undefined;
 }
 
 function FontItemView(props: FontItemViewProps) {
@@ -37,6 +38,7 @@ function FontItemView(props: FontItemViewProps) {
         `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
       )}
       class={props.class}
+      onClick={props.onClick}
     />
   );
 }
@@ -77,7 +79,7 @@ export function ListContent() {
     onCleanup(() => window.clearTimeout(timeoutId));
   });
 
-  const selectFont = (item: FontItemData) => {
+  const sendFontItem = (item: FontItemData) => {
     sendFontToFigma(
       item.meta,
       appState.session.config.preview_text || '',
@@ -98,9 +100,11 @@ export function ListContent() {
       <Show when={nearestItems().length > 0} fallback={<NoResultsFound />}>
         <Show when={selectedItem()}>
           {(item) => (
-            <div onClick={() => selectFont(item())}>
-              <FontItemView item={item()} class='animate-fade-in border-b' />
-            </div>
+            <FontItemView
+              item={item()}
+              class='animate-fade-in border-b'
+              onClick={() => sendFontItem(item())}
+            />
           )}
         </Show>
         <div
@@ -110,11 +114,11 @@ export function ListContent() {
           <ul class='w-full'>
             <Index each={nearestItems()}>
               {(item) => (
-                <li
-                  data-font-name={item().meta.safe_name}
-                  onClick={() => selectFont(item())}
-                >
-                  <FontItemView item={item()} />
+                <li data-font-name={item().meta.safe_name}>
+                  <FontItemView
+                    item={item()}
+                    onClick={() => sendFontItem(item())}
+                  />
                 </li>
               )}
             </Index>

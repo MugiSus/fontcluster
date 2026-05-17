@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils';
+import { Button } from '../ui/button';
 
 interface FontItemProps {
   fontName: string;
@@ -7,15 +8,20 @@ interface FontItemProps {
   clusterTextClass: string;
   sampleSrc: string;
   class?: string | undefined;
+  onClick?: (() => void) | undefined;
 }
 
 export function FontItem(props: FontItemProps) {
   return (
-    <div
+    <Button
+      type='button'
+      variant='ghost'
       class={cn(
-        'flex h-20 w-full cursor-pointer flex-col items-start gap-2 pb-3.5 pt-2.5 transition-colors hover:bg-muted',
+        'flex h-20 w-full flex-col items-start justify-start gap-2 rounded-none px-0 pb-3.5 pt-2.5 shadow-none hover:bg-muted',
         props.class,
       )}
+      onClick={props.onClick}
+      aria-label={`Apply ${props.fontName} ${props.weightLabel} to Figma`}
     >
       <div class='flex items-center gap-2 px-4 font-semibold'>
         <div class={`h-3.5 w-1 rounded-full ${props.clusterBackgroundClass}`} />
@@ -32,6 +38,6 @@ export function FontItem(props: FontItemProps) {
         alt={`Font preview for ${props.fontName}`}
         decoding='async'
       />
-    </div>
+    </Button>
   );
 }
