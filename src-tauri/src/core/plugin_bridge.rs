@@ -1,59 +1,61 @@
+use crate::config::SessionConfig;
 use crate::error::{AppError, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::sync::atomic::Ordering;
 use std::thread;
 
 use super::session::AppState;
 
-pub const FIGMA_BRIDGE_PORT: u16 = 38653;
+pub const PLUGIN_BRIDGE_PORT: u16 = 38653;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FigmaFontPayload {
-    pub source: String,
-    pub version: u8,
+pub struct PluginFontMetadata {
     pub safe_name: String,
     pub font_name: String,
     pub family_name: String,
     pub family_names: HashMap<String, String>,
     pub preferred_family_names: HashMap<String, String>,
+    #[serde(default)]
     pub style_name: String,
+    #[serde(default)]
     pub style_names: HashMap<String, String>,
+    #[serde(default)]
     pub preferred_style_names: HashMap<String, String>,
-    pub preview_text: String,
+    pub publishers: HashMap<String, String>,
+    pub designers: HashMap<String, String>,
     pub weight: i32,
     pub weights: Vec<String>,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct FigmaBridgeResponse {
-    sequence: u64,
-    font: Option<FigmaFontPayload>,
+struct PluginDataResponse {
+    session: Option<SessionConfig>,
+    font: Option<PluginFontMetadata>,
+    modified_date: Option<DateTime<Utc>>,
 }
 
-pub fn start_figma_bridge_server(state: AppState) {
+pub fn start_plugin_bridge_server(state: AppState) {
     thread::spawn(move || {
-        if let Err(error) = run_figma_bridge_server(state) {
-            eprintln!("Failed to start Figma bridge server: {error}");
+        if let Err(error) = run_plugin_bridge_server(state) {
+            eprintln!("Failed to start plugin bridge server: {error}");
         }
     });
 }
 
-fn run_figma_bridge_server(state: AppState) -> Result<()> {
-    let listener = TcpListener::bind(("localhost", FIGMA_BRIDGE_PORT)).map_err(|e| {
+fn run_plugin_bridge_server(state: AppState) -> Result<()> {
+    let listener = TcpListener::bind(("localhost", PLUGIN_BRIDGE_PORT)).map_err(|e| {
         AppError::Network(format!(
-            "Failed to bind Figma bridge on localhost:{FIGMA_BRIDGE_PORT}: {e}"
+            "Failed to bind plugin bridge on localhost:{PLUGIN_BRIDGE_PORT}: {e}"
         ))
     })?;
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => handle_stream(stream, &state),
-            Err(error) => eprintln!("Figma bridge connection error: {error}"),
+            Err(error) => eprintln!("Plugin bridge connection error: {error}"),
         }
     }
 
@@ -74,21 +76,34 @@ fn handle_stream(mut stream: TcpStream, state: &AppState) {
         return;
     }
 
-    if !first_line.starts_with("GET /latest ") {
-        write_response(&mut stream, 404, "Not Found", "text/plain", "Not found");
+    if first_line.starts_with("GET /data ") {
+        let session = state
+            .current_session
+            .lock()
+            .map(|session| session.clone())
+            .unwrap_or(None);
+        let font = state
+            .plugin_bridge_font
+            .lock()
+            .map(|payload| payload.clone())
+            .unwrap_or(None);
+        let modified_date = state
+            .plugin_bridge_modified_date
+            .lock()
+            .map(|modified_date| *modified_date)
+            .unwrap_or(None);
+        let body = serde_json::to_string(&PluginDataResponse {
+            session,
+            font,
+            modified_date,
+        })
+        .unwrap_or_else(|_| "{\"session\":null,\"font\":null,\"modified_date\":null}".to_string());
+
+        write_response(&mut stream, 200, "OK", "application/json", &body);
         return;
     }
 
-    let font = state
-        .figma_bridge_payload
-        .lock()
-        .map(|payload| payload.clone())
-        .unwrap_or(None);
-    let sequence = state.figma_bridge_sequence.load(Ordering::SeqCst);
-    let body = serde_json::to_string(&FigmaBridgeResponse { sequence, font })
-        .unwrap_or_else(|_| "{\"sequence\":0,\"font\":null}".to_string());
-
-    write_response(&mut stream, 200, "OK", "application/json", &body);
+    write_response(&mut stream, 404, "Not Found", "text/plain", "Not found");
 }
 
 fn write_response(

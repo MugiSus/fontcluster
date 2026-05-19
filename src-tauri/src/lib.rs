@@ -98,7 +98,7 @@ fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new();
-    crate::core::start_figma_bridge_server(app_state.clone());
+    crate::core::start_plugin_bridge_server(app_state.clone());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -123,7 +123,7 @@ pub fn run() {
             crate::commands::stop_jobs,
             crate::commands::get_font_items,
             crate::commands::get_system_fonts,
-            crate::commands::send_font_to_figma,
+            crate::commands::send_font_to_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

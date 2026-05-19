@@ -21,7 +21,7 @@ export function FontItem(props: FontItemProps) {
         props.class,
       )}
       onClick={props.onClick}
-      aria-label={`Apply ${props.fontName} ${props.weightLabel} to Figma`}
+      aria-label={`Apply ${props.fontName} ${props.weightLabel} to plugins`}
     >
       <div class='flex items-center gap-2 px-4 font-semibold'>
         <div class={`h-3.5 w-1 rounded-full ${props.clusterBackgroundClass}`} />

@@ -1,7 +1,7 @@
 import { createEffect, createSignal, Index, onCleanup, Show } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
-import { sendFontToFigma } from '../../lib/figma-bridge';
+import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
 import {
   type FontItem as FontItemData,
@@ -80,11 +80,8 @@ export function ListContent() {
   });
 
   const sendFontItem = (item: FontItemData) => {
-    sendFontToFigma(
-      item.meta,
-      appState.session.config.preview_text || '',
-    ).catch((error) => {
-      console.error('Failed to send font to Figma:', error);
+    sendFontToPlugin(item.meta).catch((error) => {
+      console.error('Failed to send font to plugins:', error);
     });
   };
 
