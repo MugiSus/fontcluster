@@ -2,9 +2,17 @@ use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
 use crate::core::AppState;
 use crate::error::Result;
 use chrono::{DateTime, Utc};
+use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use tauri::{command, State};
+
+const SESSION_HISTORY_LIMIT: usize = 20;
+
+struct StoredSession {
+    session: SessionConfig,
+    path: PathBuf,
+}
 
 #[command]
 pub async fn create_new_session(
@@ -58,7 +66,13 @@ pub async fn get_available_sessions() -> Result<String> {
 }
 
 #[command]
-pub async fn get_session_history() -> Result<Vec<SessionConfig>> {
+pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<SessionConfig>> {
+    let mut sessions = read_stored_sessions()?;
+    prune_session_history(&mut sessions, &state)?;
+    Ok(sessions.into_iter().map(|stored| stored.session).collect())
+}
+
+fn read_stored_sessions() -> Result<Vec<StoredSession>> {
     let base = AppState::get_base_dir()?.join("Generated");
     if !base.exists() {
         return Ok(Vec::new());
@@ -79,12 +93,48 @@ pub async fn get_session_history() -> Result<Vec<SessionConfig>> {
         if let Ok(session) =
             serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?)
         {
-            sessions.push(session);
+            sessions.push(StoredSession { session, path });
         }
     }
 
-    sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    sessions.sort_by(|a, b| b.session.modified_at.cmp(&a.session.modified_at));
     Ok(sessions)
+}
+
+fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) -> Result<()> {
+    if sessions.len() <= SESSION_HISTORY_LIMIT {
+        return Ok(());
+    }
+
+    let current_session_id = state
+        .current_session
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|session| session.session_id.clone());
+    let running_session_ids = state
+        .current_job_children
+        .lock()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect::<HashSet<_>>();
+
+    let mut retained = Vec::with_capacity(SESSION_HISTORY_LIMIT);
+    for (index, stored) in std::mem::take(sessions).into_iter().enumerate() {
+        let session_id = &stored.session.session_id;
+        let is_protected = current_session_id.as_ref() == Some(session_id)
+            || running_session_ids.contains(session_id);
+        if index < SESSION_HISTORY_LIMIT || is_protected {
+            retained.push(stored);
+            continue;
+        }
+
+        fs::remove_dir_all(&stored.path)?;
+    }
+
+    *sessions = retained;
+    Ok(())
 }
 
 #[command]
