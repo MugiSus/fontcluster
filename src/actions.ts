@@ -134,6 +134,9 @@ const notifyJobComplete = (sessionId: string) => {
 export const setSelectedFontKey = (key: string | null) =>
   setAppState('ui', 'selectedFontKey', key);
 
+export const setHoveredFontKey = (key: string | null) =>
+  setAppState('ui', 'hoveredFontKey', key);
+
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 

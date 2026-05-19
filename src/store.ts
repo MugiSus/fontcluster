@@ -19,6 +19,7 @@ export interface AppState {
   };
   ui: {
     selectedFontKey: string | null;
+    hoveredFontKey: string | null;
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
@@ -103,6 +104,7 @@ export const [appState, setAppState] = createStore<AppState>({
   },
   ui: {
     selectedFontKey: null,
+    hoveredFontKey: null,
     get selectedFont(): FontItem | null {
       const key = this.selectedFontKey;
       return key ? appState.fonts.data[key] || null : null;

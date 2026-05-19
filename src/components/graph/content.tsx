@@ -58,6 +58,7 @@ export function GraphContent() {
 
   const isSelected = createSelector(() => appState.ui.selectedFontKey);
   const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
+  const isHovered = createSelector(() => appState.ui.hoveredFontKey);
 
   const queueMouseSelectionPoint = (point: GraphCoordinate | null) => {
     pendingMouseSelectionPoint = point;
@@ -235,6 +236,7 @@ export function GraphContent() {
                   x={point.x}
                   y={point.y}
                   isSelected={isSelected(point.key)}
+                  isHovered={isHovered(point.key)}
                   isFamilySelected={isFamilySelected(
                     point.item.meta.family_name,
                   )}
@@ -262,6 +264,7 @@ export function GraphContent() {
                 x={point.x}
                 y={point.y}
                 isSelected={isSelected(point.key)}
+                isHovered={isHovered(point.key)}
                 isFamilySelected={isFamilySelected(point.item.meta.family_name)}
                 sessionDirectory={appState.session.directory}
                 zoomFactor={viewport.zoomFactor()}

@@ -3,6 +3,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
+import { setHoveredFontKey } from '../../actions';
 import {
   type FontItem as FontItemData,
   type FontWeight,
@@ -21,6 +22,8 @@ interface FontItemViewProps {
   item: FontItemData;
   class?: string;
   onClick?: (() => void) | undefined;
+  onMouseEnter?: (() => void) | undefined;
+  onMouseLeave?: (() => void) | undefined;
 }
 
 function FontItemView(props: FontItemViewProps) {
@@ -39,6 +42,8 @@ function FontItemView(props: FontItemViewProps) {
       )}
       class={props.class}
       onClick={props.onClick}
+      onMouseEnter={props.onMouseEnter}
+      onMouseLeave={props.onMouseLeave}
     />
   );
 }
@@ -101,6 +106,8 @@ export function ListContent() {
               item={item()}
               class='animate-fade-in border-b'
               onClick={() => sendFontItem(item())}
+              onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
+              onMouseLeave={() => setHoveredFontKey(null)}
             />
           )}
         </Show>
@@ -115,6 +122,10 @@ export function ListContent() {
                   <FontItemView
                     item={item()}
                     onClick={() => sendFontItem(item())}
+                    onMouseEnter={() =>
+                      setHoveredFontKey(item().meta.safe_name)
+                    }
+                    onMouseLeave={() => setHoveredFontKey(null)}
                   />
                 </li>
               )}

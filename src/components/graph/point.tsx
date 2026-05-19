@@ -10,6 +10,7 @@ interface GraphPointProps {
   x: number;
   y: number;
   isSelected: boolean;
+  isHovered: boolean;
   isFamilySelected: boolean;
   sessionDirectory: string;
   zoomFactor: number;
@@ -34,10 +35,10 @@ export function GraphPoint(props: GraphPointProps) {
     >
       <Show when={!props.shouldShowImage && !props.isSelected}>
         <rect
-          x={props.isFamilySelected ? -3 : -1.5}
-          y={props.isFamilySelected ? -3 : -1.5}
-          width={props.isFamilySelected ? 6 : 3}
-          height={props.isFamilySelected ? 6 : 3}
+          x={props.isHovered || props.isFamilySelected ? -3 : -1.5}
+          y={props.isHovered || props.isFamilySelected ? -3 : -1.5}
+          width={props.isHovered || props.isFamilySelected ? 6 : 3}
+          height={props.isHovered || props.isFamilySelected ? 6 : 3}
           transform='rotate(45)'
           class='pointer-events-none fill-current'
         />
@@ -45,7 +46,9 @@ export function GraphPoint(props: GraphPointProps) {
 
       <Show
         when={
-          !props.isSelected && props.isFamilySelected && !props.shouldShowImage
+          !props.isSelected &&
+          (props.isHovered || props.isFamilySelected) &&
+          !props.shouldShowImage
         }
       >
         <line
@@ -66,11 +69,13 @@ export function GraphPoint(props: GraphPointProps) {
         />
       </Show>
 
-      <Show when={props.isSelected || props.isFamilySelected}>
+      <Show
+        when={props.isSelected || props.isHovered || props.isFamilySelected}
+      >
         <circle
           cx={0}
           cy={0}
-          r={props.isSelected ? 40 : 24}
+          r={props.isSelected ? 40 : props.isHovered ? 20 : 24}
           fill='transparent'
           stroke='currentColor'
           stroke-width={1.5}

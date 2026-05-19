@@ -10,6 +10,8 @@ interface FontItemProps {
   sampleSrc: string;
   class?: string | undefined;
   onClick?: (() => void) | undefined;
+  onMouseEnter?: (() => void) | undefined;
+  onMouseLeave?: (() => void) | undefined;
 }
 
 export function FontItem(props: FontItemProps) {
@@ -22,6 +24,8 @@ export function FontItem(props: FontItemProps) {
         props.class,
       )}
       onClick={props.onClick}
+      onMouseEnter={props.onMouseEnter}
+      onMouseLeave={props.onMouseLeave}
       aria-label={`Apply ${props.fontName} ${props.weightLabel} to plugins`}
     >
       <div class='flex items-center gap-2 font-semibold'>
