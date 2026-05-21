@@ -182,8 +182,8 @@ export function ControlContent() {
                 )}
               >
                 <SelectHiddenSelect />
-                <SelectTrigger class='h-8 border-none bg-background px-3 py-2 text-right shadow-sm hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-                  <SelectValue<DiscoveryFontSetOption>>
+                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                  <SelectValue<DiscoveryFontSetOption> class='mr-2 min-w-0 flex-1 text-right'>
                     {(state) => state.selectedOption().label}
                   </SelectValue>
                 </SelectTrigger>
