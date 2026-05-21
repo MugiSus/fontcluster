@@ -17,7 +17,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "figma:build": "tsc -p src-plugin-figma/tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
   },
   "license": "GPL-2.0-or-later",
