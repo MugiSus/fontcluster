@@ -1,10 +1,11 @@
 // @ts-check
-import eslint from '@eslint/js'
-import tseslint from 'typescript-eslint'
-import solid from 'eslint-plugin-solid/configs/typescript'
-import prettierConfig from 'eslint-config-prettier'
-import prettierPlugin from 'eslint-plugin-prettier'
-import tailwindcss from 'eslint-plugin-tailwindcss'
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import solid from 'eslint-plugin-solid/configs/typescript';
+import prettierConfig from 'eslint-config-prettier';
+import prettierPlugin from 'eslint-plugin-prettier';
+import tailwindcss from 'eslint-plugin-tailwindcss';
+import unusedImports from 'eslint-plugin-unused-imports';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -15,7 +16,8 @@ export default tseslint.config(
     ...solid,
     plugins: {
       ...solid.plugins,
-      prettier: prettierPlugin,
+      'prettier': prettierPlugin,
+      'unused-imports': unusedImports,
     },
     languageOptions: {
       parserOptions: {
@@ -24,8 +26,19 @@ export default tseslint.config(
     },
     rules: {
       ...solid.rules,
+      '@typescript-eslint/no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'error',
+        {
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          vars: 'all',
+          varsIgnorePattern: '^_',
+        },
+      ],
       'prettier/prettier': 'error',
     },
   },
   prettierConfig,
-)
+);
