@@ -24,33 +24,16 @@ import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
 
-interface DiscoveryFontSetOption {
-  value: FontSet;
-  label: string;
-}
-
-const DISCOVERY_FONT_SET_OPTIONS: DiscoveryFontSetOption[] = [
-  { value: 'system_fonts', label: 'Installed Fonts' },
-  { value: 'google_fonts_popular100', label: 'Google Fonts top 100' },
-  { value: 'google_fonts_popular200', label: 'Google Fonts top 200' },
-  { value: 'google_fonts_popular300', label: 'Google Fonts top 300' },
-  { value: 'google_fonts_popular500', label: 'Google Fonts top 500' },
-  { value: 'google_fonts_popular1000', label: 'Google Fonts top 1000' },
-  { value: 'google_fonts_popular1500', label: 'Google Fonts top 1500' },
-  { value: 'google_fonts_all', label: 'All Google Fonts' },
-];
-
-const DEFAULT_DISCOVERY_FONT_SET_OPTION: DiscoveryFontSetOption = {
-  value: 'google_fonts_popular300',
-  label: 'Google Fonts top 300',
+const FONT_SET_LABELS = {
+  system_fonts: 'Installed Fonts',
+  google_fonts_popular100: 'Google Fonts top 100',
+  google_fonts_popular200: 'Google Fonts top 200',
+  google_fonts_popular300: 'Google Fonts top 300',
+  google_fonts_popular500: 'Google Fonts top 500',
+  google_fonts_popular1000: 'Google Fonts top 1000',
+  google_fonts_popular1500: 'Google Fonts top 1500',
+  google_fonts_all: 'All Google Fonts',
 };
-
-function getDiscoveryFontSetOption(value: FontSet): DiscoveryFontSetOption {
-  return (
-    DISCOVERY_FONT_SET_OPTIONS.find((option) => option.value === value) ??
-    DEFAULT_DISCOVERY_FONT_SET_OPTION
-  );
-}
 
 export function ControlContent() {
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
@@ -168,23 +151,27 @@ export function ControlContent() {
             <TextProperty label='source' class='mr-1 gap-0.5'>
               <Select
                 name='discovery-font-set'
-                options={DISCOVERY_FONT_SET_OPTIONS}
-                optionValue='value'
-                optionTextValue='label'
-                defaultValue={getDiscoveryFontSetOption(
+                options={Object.keys(FONT_SET_LABELS) as FontSet[]}
+                optionTextValue={(fontSet) => FONT_SET_LABELS[fontSet]}
+                defaultValue={
                   appState.session.config?.algorithm?.discovery?.font_set ??
-                    'google_fonts_popular300',
-                )}
+                  'google_fonts_popular300'
+                }
                 itemComponent={(props) => (
-                  <SelectItem item={props.item}>
-                    {props.item.rawValue.label}
-                  </SelectItem>
+                  <>
+                    <SelectItem item={props.item}>
+                      {FONT_SET_LABELS[props.item.rawValue]}
+                    </SelectItem>
+                    <Show when={props.item.rawValue === 'system_fonts'}>
+                      <div class='my-1 w-full border-t' />
+                    </Show>
+                  </>
                 )}
               >
                 <SelectHiddenSelect />
                 <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-                  <SelectValue<DiscoveryFontSetOption> class='mr-2 min-w-0 flex-1 text-right'>
-                    {(state) => state.selectedOption().label}
+                  <SelectValue<FontSet> class='mr-2.5 min-w-0 flex-1 text-right'>
+                    {(state) => FONT_SET_LABELS[state.selectedOption()]}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent />
