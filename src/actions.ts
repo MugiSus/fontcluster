@@ -137,6 +137,9 @@ export const setSelectedFontKey = (key: string | null) =>
 export const setHoveredFontKey = (key: string | null) =>
   setAppState('ui', 'hoveredFontKey', key);
 
+export const setSentFontItemKey = (key: string | null) =>
+  setAppState('ui', 'sentFontItemKey', key);
+
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 

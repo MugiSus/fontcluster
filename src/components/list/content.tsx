@@ -10,7 +10,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
-import { setHoveredFontKey } from '../../actions';
+import { setHoveredFontKey, setSentFontItemKey } from '../../actions';
 import {
   type FontItem as FontItemData,
   type FontWeight,
@@ -62,10 +62,7 @@ export function ListContent() {
     null,
   );
   const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
-  const [sentFontItemKey, setSentFontItemKey] = createSignal<string | null>(
-    null,
-  );
-  const isSentFontItem = createSelector(sentFontItemKey);
+  const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
   let nearestItemsScrollElement: HTMLDivElement | undefined;
 
   createEffect(() => {
