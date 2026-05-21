@@ -1,5 +1,13 @@
 import { createSignal, onCleanup, Show } from 'solid-js';
 import { Button } from '../ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectHiddenSelect,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
 import { ArrowRightIcon, TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '../weight-selector';
@@ -15,6 +23,34 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
+
+interface DiscoveryFontSetOption {
+  value: FontSet;
+  label: string;
+}
+
+const DISCOVERY_FONT_SET_OPTIONS: DiscoveryFontSetOption[] = [
+  { value: 'system_fonts', label: 'Installed Fonts' },
+  { value: 'google_fonts_popular100', label: 'Google Fonts top 100' },
+  { value: 'google_fonts_popular200', label: 'Google Fonts top 200' },
+  { value: 'google_fonts_popular300', label: 'Google Fonts top 300' },
+  { value: 'google_fonts_popular500', label: 'Google Fonts top 500' },
+  { value: 'google_fonts_popular1000', label: 'Google Fonts top 1000' },
+  { value: 'google_fonts_popular1500', label: 'Google Fonts top 1500' },
+  { value: 'google_fonts_all', label: 'All Google Fonts' },
+];
+
+const DEFAULT_DISCOVERY_FONT_SET_OPTION: DiscoveryFontSetOption = {
+  value: 'google_fonts_popular300',
+  label: 'Google Fonts top 300',
+};
+
+function getDiscoveryFontSetOption(value: FontSet): DiscoveryFontSetOption {
+  return (
+    DISCOVERY_FONT_SET_OPTIONS.find((option) => option.value === value) ??
+    DEFAULT_DISCOVERY_FONT_SET_OPTION
+  );
+}
 
 export function ControlContent() {
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
@@ -130,36 +166,29 @@ export function ControlContent() {
             contentClass='grid grid-cols-1 gap-2'
           >
             <TextProperty label='source' class='mr-1 gap-0.5'>
-              <select
+              <Select
                 name='discovery-font-set'
-                class='flex h-8 w-full rounded-md border border-none border-input bg-background px-3 py-2 text-right text-sm shadow-sm transition-colors [text-align-last:right] file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus-visible:border-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-                value={
+                options={DISCOVERY_FONT_SET_OPTIONS}
+                optionValue='value'
+                optionTextValue='label'
+                defaultValue={getDiscoveryFontSetOption(
                   appState.session.config?.algorithm?.discovery?.font_set ??
-                  'google_fonts_popular300'
-                }
+                    'google_fonts_popular300',
+                )}
+                itemComponent={(props) => (
+                  <SelectItem item={props.item}>
+                    {props.item.rawValue.label}
+                  </SelectItem>
+                )}
               >
-                <option value='system_fonts'>Installed Fonts</option>
-                <hr />
-                <option value='google_fonts_popular100'>
-                  Google Fonts top 100
-                </option>
-                <option value='google_fonts_popular200'>
-                  Google Fonts top 200
-                </option>
-                <option value='google_fonts_popular300'>
-                  Google Fonts top 300
-                </option>
-                <option value='google_fonts_popular500'>
-                  Google Fonts top 500
-                </option>
-                <option value='google_fonts_popular1000'>
-                  Google Fonts top 1000
-                </option>
-                <option value='google_fonts_popular1500'>
-                  Google Fonts top 1500
-                </option>
-                <option value='google_fonts_all'>All Google Fonts</option>
-              </select>
+                <SelectHiddenSelect />
+                <SelectTrigger class='h-8 border-none bg-background px-3 py-2 text-right shadow-sm hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                  <SelectValue<DiscoveryFontSetOption>>
+                    {(state) => state.selectedOption().label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
             </TextProperty>
           </ControlPropertySection>
 
