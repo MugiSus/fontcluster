@@ -1,4 +1,11 @@
-import { createEffect, createSignal, Index, onCleanup, Show } from 'solid-js';
+import {
+  createEffect,
+  createSelector,
+  createSignal,
+  Index,
+  onCleanup,
+  Show,
+} from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
@@ -21,6 +28,7 @@ const LIST_UPDATE_DEBOUNCE_MS = 400;
 interface FontItemViewProps {
   item: FontItemData;
   class?: string;
+  isSentFontItem?: boolean | undefined;
   onClick?: (() => void) | undefined;
   onMouseEnter?: (() => void) | undefined;
   onMouseLeave?: (() => void) | undefined;
@@ -41,6 +49,7 @@ function FontItemView(props: FontItemViewProps) {
         `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
       )}
       class={props.class}
+      isSentFontItem={props.isSentFontItem}
       onClick={props.onClick}
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
@@ -53,6 +62,10 @@ export function ListContent() {
     null,
   );
   const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
+  const [sentFontItemKey, setSentFontItemKey] = createSignal<string | null>(
+    null,
+  );
+  const isSentFontItem = createSelector(sentFontItemKey);
   let nearestItemsScrollElement: HTMLDivElement | undefined;
 
   createEffect(() => {
@@ -85,9 +98,12 @@ export function ListContent() {
   });
 
   const sendFontItem = (item: FontItemData) => {
-    sendFontToPlugin(item.meta).catch((error) => {
-      console.error('Failed to send font to plugins:', error);
-    });
+    const key = item.meta.safe_name;
+    sendFontToPlugin(item.meta)
+      .then(() => setSentFontItemKey(key))
+      .catch((error) => {
+        console.error('Failed to send font to plugins:', error);
+      });
   };
 
   const NoResultsFound = () => (
@@ -105,6 +121,7 @@ export function ListContent() {
             <FontItemView
               item={item()}
               class='animate-fade-in border-b'
+              isSentFontItem={isSentFontItem(item().meta.safe_name)}
               onClick={() => sendFontItem(item())}
               onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
               onMouseLeave={() => setHoveredFontKey(null)}
@@ -121,6 +138,7 @@ export function ListContent() {
                 <li data-font-name={item().meta.safe_name}>
                   <FontItemView
                     item={item()}
+                    isSentFontItem={isSentFontItem(item().meta.safe_name)}
                     onClick={() => sendFontItem(item())}
                     onMouseEnter={() =>
                       setHoveredFontKey(item().meta.safe_name)

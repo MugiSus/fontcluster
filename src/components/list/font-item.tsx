@@ -1,4 +1,4 @@
-import { ArrowRightIcon } from 'lucide-solid';
+import { ArrowRightIcon, CheckIcon } from 'lucide-solid';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 
@@ -9,6 +9,7 @@ interface FontItemProps {
   clusterTextClass: string;
   sampleSrc: string;
   class?: string | undefined;
+  isSentFontItem?: boolean | undefined;
   onClick?: (() => void) | undefined;
   onMouseEnter?: (() => void) | undefined;
   onMouseLeave?: (() => void) | undefined;
@@ -43,7 +44,20 @@ export function FontItem(props: FontItemProps) {
         alt={`Font preview for ${props.fontName}`}
         decoding='async'
       />
-      <ArrowRightIcon class='absolute right-3 top-1/2 -translate-y-1/2 text-border transition-colors group-hover:text-muted-foreground' />
+      <ArrowRightIcon
+        class={cn(
+          'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground opacity-0',
+          !props.isSentFontItem && 'transition-opacity group-hover:opacity-100',
+        )}
+        stroke-width={1.5}
+      />
+      <CheckIcon
+        class={cn(
+          'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground',
+          props.isSentFontItem ? 'opacity-100' : 'opacity-0 transition-opacity',
+        )}
+        stroke-width={1.5}
+      />
     </Button>
   );
 }
