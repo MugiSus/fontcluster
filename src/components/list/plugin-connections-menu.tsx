@@ -1,5 +1,5 @@
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
-import { CableIcon } from 'lucide-solid';
+import { CableIcon, FigmaIcon, PenToolIcon } from 'lucide-solid';
 
 import {
   DropdownMenu,
@@ -16,21 +16,21 @@ import {
 } from '@/lib/plugin-bridge';
 import { cn } from '@/lib/utils';
 
-const CONNECTION_REFRESH_INTERVAL_MS = 5000;
-
-function shortPluginId(pluginId: string) {
-  return pluginId.length > 20 ? `${pluginId.slice(0, 20)}...` : pluginId;
-}
+const CONNECTION_REFRESH_INTERVAL_MS = 1000;
 
 function formatLastSeen(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
-  return date.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function hostLabel(host: string) {
+  if (host === 'figma') return 'Figma';
+  if (host === 'illustrator') return 'Illustrator';
+  return host;
 }
 
 export function PluginConnectionsMenu() {
@@ -105,28 +105,26 @@ export function PluginConnectionsMenu() {
               <div class='max-h-72 overflow-y-auto'>
                 <For each={plugins()}>
                   {(plugin) => (
-                    <div class='rounded-sm p-2 text-xs'>
-                      <div class='flex items-center justify-between gap-2'>
-                        <span class='min-w-0 truncate font-medium'>
-                          {plugin.plugin_name}
+                    <div class='relative rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
+                      <div class='flex min-w-0 items-center gap-2'>
+                        <span class='shrink-0 text-muted-foreground'>
+                          <Show
+                            when={plugin.host === 'figma'}
+                            fallback={<PenToolIcon class='size-4' />}
+                          >
+                            <FigmaIcon class='size-4' />
+                          </Show>
                         </span>
-                        <span class='shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-xxs uppercase text-muted-foreground'>
-                          {plugin.host}
+                        <span class='shrink-0 text-sm font-medium leading-5'>
+                          {hostLabel(plugin.host)}
                         </span>
-                      </div>
-                      <div class='mt-1 flex items-center justify-between gap-2 text-muted-foreground'>
-                        <span class='min-w-0 truncate'>
-                          {shortPluginId(plugin.plugin_id)}
+                        <span class='min-w-0 truncate text-muted-foreground'>
+                          {plugin.document_name || 'Untitled'}
                         </span>
                         <span class='shrink-0'>
                           {formatLastSeen(plugin.last_seen)}
                         </span>
                       </div>
-                      <Show when={plugin.version}>
-                        <div class='mt-1 truncate text-muted-foreground'>
-                          v{plugin.version}
-                        </div>
-                      </Show>
                     </div>
                   )}
                 </For>

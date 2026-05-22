@@ -10,7 +10,7 @@ use std::thread;
 use super::session::AppState;
 
 pub const PLUGIN_BRIDGE_PORT: u16 = 38653;
-const PLUGIN_CONNECTION_TIMEOUT_SECONDS: i64 = 15;
+const PLUGIN_CONNECTION_TIMEOUT_SECONDS: i64 = 5;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginFontMetadata {
@@ -43,7 +43,7 @@ pub struct PluginConnection {
     pub plugin_id: String,
     pub plugin_name: String,
     pub host: String,
-    pub version: Option<String>,
+    pub document_name: Option<String>,
     pub last_seen: DateTime<Utc>,
 }
 
@@ -52,7 +52,7 @@ struct PluginHeartbeatRequest {
     plugin_id: String,
     plugin_name: String,
     host: String,
-    version: Option<String>,
+    document_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -148,7 +148,7 @@ fn handle_stream(mut stream: TcpStream, state: &AppState) {
                         plugin_id: heartbeat.plugin_id,
                         plugin_name: heartbeat.plugin_name,
                         host: heartbeat.host,
-                        version: heartbeat.version,
+                        document_name: heartbeat.document_name,
                         last_seen: now,
                     },
                 );

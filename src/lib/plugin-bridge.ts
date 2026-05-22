@@ -5,7 +5,7 @@ export interface PluginConnection {
   plugin_id: string;
   plugin_name: string;
   host: string;
-  version: string | null;
+  document_name: string | null;
   last_seen: string;
 }
 
