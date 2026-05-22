@@ -1,6 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { FontMetadata } from '@/types/font';
 
+export interface PluginConnection {
+  plugin_id: string;
+  plugin_name: string;
+  host: string;
+  version: string | null;
+  last_seen: string;
+}
+
+interface PluginConnectionsResponse {
+  plugins: PluginConnection[];
+}
+
 export function sendFontToPlugin(metadata: FontMetadata): Promise<string> {
   return invoke<string>('send_font_to_plugin', {
     payload: {
@@ -18,4 +30,8 @@ export function sendFontToPlugin(metadata: FontMetadata): Promise<string> {
       weights: metadata.weights,
     },
   });
+}
+
+export function getConnectedPlugins(): Promise<PluginConnectionsResponse> {
+  return invoke<PluginConnectionsResponse>('get_connected_plugins');
 }

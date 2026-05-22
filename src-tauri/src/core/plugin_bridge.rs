@@ -10,6 +10,7 @@ use std::thread;
 use super::session::AppState;
 
 pub const PLUGIN_BRIDGE_PORT: u16 = 38653;
+const PLUGIN_CONNECTION_TIMEOUT_SECONDS: i64 = 15;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginFontMetadata {
@@ -35,6 +36,28 @@ struct PluginDataResponse {
     session: Option<SessionConfig>,
     font: Option<PluginFontMetadata>,
     modified_date: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PluginConnection {
+    pub plugin_id: String,
+    pub plugin_name: String,
+    pub host: String,
+    pub version: Option<String>,
+    pub last_seen: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PluginHeartbeatRequest {
+    plugin_id: String,
+    plugin_name: String,
+    host: String,
+    version: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct PluginHeartbeatResponse {
+    ok: bool,
 }
 
 pub fn start_plugin_bridge_server(state: AppState) {
@@ -63,7 +86,7 @@ fn run_plugin_bridge_server(state: AppState) -> Result<()> {
 }
 
 fn handle_stream(mut stream: TcpStream, state: &AppState) {
-    let mut buffer = [0_u8; 1024];
+    let mut buffer = [0_u8; 4096];
     let Ok(size) = stream.read(&mut buffer) else {
         return;
     };
@@ -103,7 +126,65 @@ fn handle_stream(mut stream: TcpStream, state: &AppState) {
         return;
     }
 
+    if first_line.starts_with("POST /heartbeat ") {
+        let body = request.split("\r\n\r\n").nth(1).unwrap_or_default();
+        let Ok(heartbeat) = serde_json::from_str::<PluginHeartbeatRequest>(body) else {
+            write_response(
+                &mut stream,
+                400,
+                "Bad Request",
+                "text/plain",
+                "Invalid JSON",
+            );
+            return;
+        };
+
+        let now = Utc::now();
+        match state.plugin_connections.lock() {
+            Ok(mut connections) => {
+                connections.insert(
+                    heartbeat.plugin_id.clone(),
+                    PluginConnection {
+                        plugin_id: heartbeat.plugin_id,
+                        plugin_name: heartbeat.plugin_name,
+                        host: heartbeat.host,
+                        version: heartbeat.version,
+                        last_seen: now,
+                    },
+                );
+
+                let body = serde_json::to_string(&PluginHeartbeatResponse { ok: true })
+                    .unwrap_or_else(|_| "{\"ok\":true}".to_string());
+                write_response(&mut stream, 200, "OK", "application/json", &body);
+            }
+            Err(_) => write_response(
+                &mut stream,
+                500,
+                "Internal Server Error",
+                "text/plain",
+                "Failed to lock plugin connections",
+            ),
+        }
+        return;
+    }
+
     write_response(&mut stream, 404, "Not Found", "text/plain", "Not found");
+}
+
+pub fn get_active_plugin_connections(state: &AppState) -> Result<Vec<PluginConnection>> {
+    let now = Utc::now();
+    let mut connections = state
+        .plugin_connections
+        .lock()
+        .map_err(|_| AppError::Processing("Failed to lock plugin connections".to_string()))?;
+
+    connections.retain(|_, connection| {
+        now.signed_duration_since(connection.last_seen)
+            .num_seconds()
+            <= PLUGIN_CONNECTION_TIMEOUT_SECONDS
+    });
+
+    Ok(connections.values().cloned().collect())
 }
 
 fn write_response(
@@ -118,7 +199,7 @@ fn write_response(
         Content-Type: {content_type}\r\n\
         Content-Length: {}\r\n\
         Access-Control-Allow-Origin: *\r\n\
-        Access-Control-Allow-Methods: GET, OPTIONS\r\n\
+        Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
         Access-Control-Allow-Headers: Content-Type\r\n\
         Cache-Control: no-store\r\n\
         Connection: close\r\n\
