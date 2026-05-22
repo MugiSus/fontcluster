@@ -332,9 +332,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         </Show>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
-        <DropdownMenuLabel class='flex items-center justify-between gap-2'>
-          <span>History</span>
-        </DropdownMenuLabel>
+        <DropdownMenuLabel class='font-medium'>History</DropdownMenuLabel>
         <DropdownMenuSeparator />
 
         <Show
