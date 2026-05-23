@@ -1,9 +1,8 @@
-use crate::config::ClusteringConfig;
+use crate::config::{ClusteringConfig, ClusteringMethod};
 use crate::error::{AppError, Result};
+use kodama::{linkage, Method as KodamaMethod};
 use ndarray::Array2;
 use petal_decomposition::PcaBuilder;
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
 
 pub enum EmbeddingEngine {
     Pca { dimensions: usize },
@@ -65,52 +64,6 @@ impl ClusteringEngine {
     }
 }
 
-#[derive(Debug, Clone)]
-struct AgglomerativeCluster {
-    members: Vec<usize>,
-    active: bool,
-}
-
-impl AgglomerativeCluster {
-    fn size(&self) -> usize {
-        self.members.len()
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct QueueItem {
-    distance: f32,
-    left: usize,
-    right: usize,
-}
-
-impl PartialEq for QueueItem {
-    fn eq(&self, other: &Self) -> bool {
-        self.distance.to_bits() == other.distance.to_bits()
-            && self.left == other.left
-            && self.right == other.right
-    }
-}
-
-impl Eq for QueueItem {}
-
-impl PartialOrd for QueueItem {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for QueueItem {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other
-            .distance
-            .partial_cmp(&self.distance)
-            .unwrap_or(Ordering::Equal)
-            .then_with(|| other.left.cmp(&self.left))
-            .then_with(|| other.right.cmp(&self.right))
-    }
-}
-
 fn agglomerative_clustering(
     points: Array2<f32>,
     config: &ClusteringConfig,
@@ -134,28 +87,15 @@ fn agglomerative_clustering(
     }
 
     let normalized = normalize_points(&points);
-    let mut clusters = (0..n)
-        .map(|i| AgglomerativeCluster {
-            members: vec![i],
-            active: true,
-        })
-        .collect::<Vec<_>>();
-    let mut distances = vec![vec![f32::INFINITY; n]; n];
-    let mut queue = BinaryHeap::new();
+    let mut condensed = Vec::with_capacity((n * (n - 1)) / 2);
 
     for i in 0..n {
         for j in (i + 1)..n {
-            let distance = point_distance(&normalized, i, j);
-            distances[i][j] = distance;
-            distances[j][i] = distance;
-            queue.push(QueueItem {
-                distance,
-                left: i,
-                right: j,
-            });
+            condensed.push(point_distance(&normalized, i, j));
         }
     }
 
+    let dendrogram = linkage(&mut condensed, n, kodama_method(config.method));
     let mut active_count = n;
     let target_cluster_count = if config.target_cluster_count > 0 {
         Some(config.target_cluster_count.clamp(1, n))
@@ -168,58 +108,50 @@ fn agglomerative_clustering(
         None
     };
 
-    while should_continue_merging(active_count, target_cluster_count, distance_threshold) {
-        let Some(next) = pop_active_pair(&mut queue, &clusters) else {
-            break;
-        };
+    let mut clusters = vec![Vec::new(); (2 * n) - 1];
+    let mut active = vec![false; (2 * n) - 1];
+    for i in 0..n {
+        clusters[i].push(i);
+        active[i] = true;
+    }
 
+    for (step_index, step) in dendrogram.steps().iter().enumerate() {
+        if active_count <= 1 {
+            break;
+        }
+        if let Some(target_cluster_count) = target_cluster_count {
+            if active_count <= target_cluster_count {
+                break;
+            }
+        } else if distance_threshold.is_none() {
+            break;
+        }
         if let Some(threshold) = distance_threshold {
-            if next.distance > threshold {
+            if step.dissimilarity > threshold {
                 break;
             }
         }
 
-        let left_size = clusters[next.left].size();
-        let right_size = clusters[next.right].size();
+        let new_label = n + step_index;
+        let left = step.cluster1;
+        let right = step.cluster2;
+        let left_size = clusters[left].len();
+        let right_size = clusters[right].len();
         let mut members = Vec::with_capacity(left_size + right_size);
-        members.extend_from_slice(&clusters[next.left].members);
-        members.extend_from_slice(&clusters[next.right].members);
-
-        clusters[next.left].active = false;
-        clusters[next.right].active = false;
-        clusters.push(AgglomerativeCluster {
-            members,
-            active: true,
-        });
+        members.extend_from_slice(&clusters[left]);
+        members.extend_from_slice(&clusters[right]);
+        clusters[new_label] = members;
+        active[left] = false;
+        active[right] = false;
+        active[new_label] = true;
         active_count -= 1;
-
-        let new_index = clusters.len() - 1;
-        for row in distances.iter_mut() {
-            row.push(f32::INFINITY);
-        }
-        distances.push(vec![f32::INFINITY; new_index + 1]);
-
-        for other in 0..new_index {
-            if !clusters[other].active {
-                continue;
-            }
-            let distance = average_linkage_distance(
-                &distances, next.left, next.right, left_size, right_size, other,
-            );
-            distances[new_index][other] = distance;
-            distances[other][new_index] = distance;
-            queue.push(QueueItem {
-                distance,
-                left: other,
-                right: new_index,
-            });
-        }
     }
 
-    let mut active_clusters = clusters
+    let mut active_clusters = active
         .iter()
-        .filter(|cluster| cluster.active)
-        .map(|cluster| cluster.members.clone())
+        .enumerate()
+        .filter(|(_, is_active)| **is_active)
+        .map(|(cluster_index, _)| clusters[cluster_index].clone())
         .collect::<Vec<_>>();
     active_clusters.sort_by_key(|members| members.iter().copied().min().unwrap_or(usize::MAX));
 
@@ -269,49 +201,74 @@ fn point_distance(points: &Array2<f32>, left: usize, right: usize) -> f32 {
         .sqrt()
 }
 
-fn should_continue_merging(
-    active_count: usize,
-    target_cluster_count: Option<usize>,
-    distance_threshold: Option<f32>,
-) -> bool {
-    if active_count <= 1 {
-        return false;
-    }
-    if let Some(target_cluster_count) = target_cluster_count {
-        active_count > target_cluster_count
-    } else {
-        distance_threshold.is_some()
+fn kodama_method(method: ClusteringMethod) -> KodamaMethod {
+    match method {
+        ClusteringMethod::Single => KodamaMethod::Single,
+        ClusteringMethod::Complete => KodamaMethod::Complete,
+        ClusteringMethod::Average => KodamaMethod::Average,
+        ClusteringMethod::Weighted => KodamaMethod::Weighted,
+        ClusteringMethod::Ward => KodamaMethod::Ward,
+        ClusteringMethod::Centroid => KodamaMethod::Centroid,
+        ClusteringMethod::Median => KodamaMethod::Median,
     }
 }
 
-fn pop_active_pair(
-    queue: &mut BinaryHeap<QueueItem>,
-    clusters: &[AgglomerativeCluster],
-) -> Option<QueueItem> {
-    while let Some(item) = queue.pop() {
-        if clusters
-            .get(item.left)
-            .is_some_and(|cluster| cluster.active)
-            && clusters
-                .get(item.right)
-                .is_some_and(|cluster| cluster.active)
-        {
-            return Some(item);
-        }
-    }
-    None
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-fn average_linkage_distance(
-    distances: &[Vec<f32>],
-    left: usize,
-    right: usize,
-    left_size: usize,
-    right_size: usize,
-    other: usize,
-) -> f32 {
-    let total_size = left_size + right_size;
-    let left_distance = distances[left][other];
-    let right_distance = distances[right][other];
-    (left_distance * left_size as f32 + right_distance * right_size as f32) / total_size as f32
+    fn paired_points() -> Array2<f32> {
+        Array2::from_shape_vec((4, 2), vec![0.0, 0.0, 0.0, 0.1, 1.0, 1.0, 1.0, 1.1]).unwrap()
+    }
+
+    #[test]
+    fn clusters_by_distance_threshold() {
+        let result = agglomerative_clustering(
+            paired_points(),
+            &ClusteringConfig {
+                method: ClusteringMethod::Average,
+                preprocessing_dimensions: 2,
+                distance_threshold: 0.2,
+                target_cluster_count: 0,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.cluster_count, 2);
+        assert_eq!(result.labels, vec![0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn clusters_by_target_count_without_threshold() {
+        let result = agglomerative_clustering(
+            paired_points(),
+            &ClusteringConfig {
+                method: ClusteringMethod::Average,
+                preprocessing_dimensions: 2,
+                distance_threshold: 0.0,
+                target_cluster_count: 2,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.cluster_count, 2);
+        assert_eq!(result.labels, vec![0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn distance_threshold_limits_target_count_merging() {
+        let result = agglomerative_clustering(
+            paired_points(),
+            &ClusteringConfig {
+                method: ClusteringMethod::Average,
+                preprocessing_dimensions: 2,
+                distance_threshold: 0.05,
+                target_cluster_count: 2,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.cluster_count, 4);
+        assert_eq!(result.labels, vec![0, 1, 2, 3]);
+    }
 }

@@ -57,14 +57,29 @@ impl Default for FontSet {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ClusteringConfig {
+    pub method: ClusteringMethod,
     pub preprocessing_dimensions: usize,
     pub distance_threshold: f32,
     pub target_cluster_count: usize,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ClusteringMethod {
+    Single,
+    Complete,
+    #[default]
+    Average,
+    Weighted,
+    Ward,
+    Centroid,
+    Median,
+}
+
 impl Default for ClusteringConfig {
     fn default() -> Self {
         Self {
+            method: ClusteringMethod::Average,
             preprocessing_dimensions: 64,
             distance_threshold: 0.4,
             target_cluster_count: 0,

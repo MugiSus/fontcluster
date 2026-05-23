@@ -16,10 +16,20 @@ export const WEIGHT_LABELS: Record<
 };
 
 export interface ClusteringOptions {
+  method: ClusteringMethod;
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
 }
+
+export type ClusteringMethod =
+  | 'single'
+  | 'complete'
+  | 'average'
+  | 'weighted'
+  | 'ward'
+  | 'centroid'
+  | 'median';
 
 export interface ImageOptions {
   font_size: number;

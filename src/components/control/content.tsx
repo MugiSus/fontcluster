@@ -16,6 +16,7 @@ import {
   type AlgorithmConfig,
   type ProcessStatus,
   type FontSet,
+  type ClusteringMethod,
 } from '../../types/font';
 import { appState } from '../../store';
 import { runProcessingJobs } from '../../actions';
@@ -33,6 +34,16 @@ const FONT_SET_LABELS = {
   google_fonts_popular1000: 'Google Fonts top 1000',
   google_fonts_popular1500: 'Google Fonts top 1500',
   google_fonts_all: 'All Google Fonts',
+};
+
+const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
+  single: 'Single',
+  complete: 'Complete',
+  average: 'Average',
+  weighted: 'Weighted',
+  ward: 'Ward',
+  centroid: 'Centroid',
+  median: 'Median',
 };
 
 export function ControlContent() {
@@ -86,6 +97,9 @@ export function ControlContent() {
         font_size: Number(formdata.get('image-font-size')) || 224,
       },
       clustering: {
+        method: (formdata.get('clustering-method') ??
+          appState.session.config?.algorithm?.clustering?.method ??
+          'average') as ClusteringMethod,
         preprocessing_dimensions: Number(
           formdata.get('clustering-preprocessing-dimensions') || 128,
         ),
@@ -201,7 +215,7 @@ export function ControlContent() {
             onStepRun={() => handleRun('generated')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              RepVit M1.0 on ONNX Runtime
+              RepVit M1.0 to 384D
             </div>
           </ControlPropertySection>
 
@@ -211,7 +225,7 @@ export function ControlContent() {
             onStepRun={() => handleRun('vectorized')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              PCA 384D {'->'} 2D
+              PCA from 384D to 2D
             </div>
           </ControlPropertySection>
 
@@ -221,8 +235,36 @@ export function ControlContent() {
             onStepRun={() => handleRun('positioned')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              Agglomerative Clustering
+              Agglomerative Hierarchical Clustering
             </div>
+            <TextProperty label='method' class='mr-1 gap-0.5'>
+              <Select
+                name='clustering-method'
+                options={
+                  Object.keys(CLUSTERING_METHOD_LABELS) as ClusteringMethod[]
+                }
+                optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
+                defaultValue={
+                  appState.session.config?.algorithm?.clustering?.method ??
+                  'average'
+                }
+                itemComponent={(props) => (
+                  <SelectItem item={props.item}>
+                    {CLUSTERING_METHOD_LABELS[props.item.rawValue]}
+                  </SelectItem>
+                )}
+              >
+                <SelectHiddenSelect />
+                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                  <SelectValue<ClusteringMethod> class='mr-2.5 min-w-0 flex-1 text-right'>
+                    {(state) =>
+                      CLUSTERING_METHOD_LABELS[state.selectedOption()]
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </TextProperty>
             <NumberProperty
               label='PCA dimensions'
               name='clustering-preprocessing-dimensions'
