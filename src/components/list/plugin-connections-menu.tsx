@@ -72,15 +72,15 @@ export function PluginConnectionsMenu() {
             <Show
               when={plugins.length > 0}
               fallback={
-                <div class='space-y-2 px-3 py-2 text-xs font-light text-muted-foreground'>
+                <div class='space-y-2 p-2 text-xs font-light text-muted-foreground'>
                   <p>No plugins connected.</p>
                   <p>
-                    Fontcluster plugins can apply the Font directly to your
-                    design in Figma or Illustrator.
+                    Fontcluster plugins can apply the selected font directly to
+                    your design in Figma or Illustrator.
                   </p>
                   <p>
-                    Install a plugin, open it in the design app, then click
-                    items in the list below.
+                    Install a plugin, run it in the design app, then click items
+                    in the list below.
                   </p>
                 </div>
               }
@@ -109,9 +109,14 @@ export function PluginConnectionsMenu() {
                         </svg>
                       </div>
                     </Show>
-                    <p class='min-w-0 truncate'>
-                      {plugin.document_name || 'Untitled'}
-                    </p>
+                    <Show
+                      when={plugin.document_name}
+                      fallback={
+                        <p class='text-muted-foreground'>No document</p>
+                      }
+                    >
+                      <p class='min-w-0 truncate'>{plugin.document_name}</p>
+                    </Show>
                     <p class='ml-auto text-muted-foreground'>
                       {plugin.host === 'figma' ? 'Figma' : 'Illustrator'}
                     </p>
