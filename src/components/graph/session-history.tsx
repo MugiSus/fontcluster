@@ -16,7 +16,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { appState, DEFAULT_SESSION_CONFIG } from '@/store';
@@ -332,8 +331,9 @@ export function SessionHistory(props: SessionHistoryProps) {
         </Show>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
-        <DropdownMenuLabel class='font-medium'>History</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuLabel class='text-xs font-medium'>
+          Session history
+        </DropdownMenuLabel>
 
         <Show
           when={sortedSessions().length > 0}
