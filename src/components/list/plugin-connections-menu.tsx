@@ -5,8 +5,6 @@ import { CableIcon, PenToolIcon } from 'lucide-solid';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -67,22 +65,18 @@ export function PluginConnectionsMenu() {
             <CableIcon class='size-3.5' />
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-72 p-1'>
-            <DropdownMenuLabel class='font-medium'>
-              Plugin connections
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
             <Show
               when={plugins.length > 0}
               fallback={
-                <div class='space-y-2 px-2 py-3 text-xs text-muted-foreground'>
+                <div class='space-y-2 px-3 py-2 text-xs font-light text-muted-foreground'>
                   <p>No plugins connected.</p>
                   <p>
-                    Fontcluster plugins apply the selected List item in Figma or
-                    Illustrator.
+                    Fontcluster plugins can apply the Font directly to your
+                    design in Figma or Illustrator.
                   </p>
                   <p>
-                    Install a plugin, open it in the design app, then keep it
-                    running while Fontcluster is open.
+                    Install a plugin, open it in the design app, then click
+                    items in the list below.
                   </p>
                 </div>
               }
