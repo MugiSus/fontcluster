@@ -88,6 +88,6 @@ jobs:
           releaseName: 'FontCluster ${{ github.ref_name }}'
           includeUpdaterJson: true
           releaseBody: 'See the assets to download the latest version.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
