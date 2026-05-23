@@ -167,6 +167,7 @@ export function ControlContent() {
                 name='discovery-font-set'
                 options={Object.keys(FONT_SET_LABELS) as FontSet[]}
                 optionTextValue={(fontSet) => FONT_SET_LABELS[fontSet]}
+                disallowEmptySelection
                 defaultValue={
                   appState.session.config?.algorithm?.discovery?.font_set ??
                   'google_fonts_popular300'
@@ -215,7 +216,7 @@ export function ControlContent() {
             onStepRun={() => handleRun('generated')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              RepVit M1.0 to 384D
+              RepVit-M1.0
             </div>
           </ControlPropertySection>
 
@@ -225,7 +226,7 @@ export function ControlContent() {
             onStepRun={() => handleRun('vectorized')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              PCA from 384D to 2D
+              PCA
             </div>
           </ControlPropertySection>
 
@@ -244,6 +245,7 @@ export function ControlContent() {
                   Object.keys(CLUSTERING_METHOD_LABELS) as ClusteringMethod[]
                 }
                 optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
+                disallowEmptySelection
                 defaultValue={
                   appState.session.config?.algorithm?.clustering?.method ??
                   'average'
