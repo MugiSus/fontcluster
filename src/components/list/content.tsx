@@ -63,7 +63,7 @@ export function ListContent() {
   );
   const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
-  let nearestItemsScrollElement: HTMLDivElement | undefined;
+  let nearestItemsScrollElement: HTMLUListElement | undefined;
 
   createEffect(() => {
     const selectedKey = appState.ui.selectedFontKey;
@@ -112,41 +112,37 @@ export function ListContent() {
 
   return (
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
-      <Show when={nearestItems().length > 0} fallback={<NoResultsFound />}>
-        <Show when={selectedItem()}>
-          {(item) => (
-            <FontItemView
-              item={item()}
-              class='animate-fade-in border-b'
-              isSentFontItem={isSentFontItem(item().meta.safe_name)}
-              onClick={() => sendFontItem(item())}
-              onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
-              onMouseLeave={() => setHoveredFontKey(null)}
-            />
-          )}
-        </Show>
-        <div
+      <Show when={selectedItem()}>
+        {(item) => (
+          <FontItemView
+            item={item()}
+            class='animate-fade-in border-b'
+            isSentFontItem={isSentFontItem(item().meta.safe_name)}
+            onClick={() => sendFontItem(item())}
+            onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
+            onMouseLeave={() => setHoveredFontKey(null)}
+          />
+        )}
+      </Show>
+      <Show when={selectedItem()} fallback={<NoResultsFound />}>
+        <ul
           ref={nearestItemsScrollElement}
-          class='min-h-0 flex-1 overflow-scroll'
+          class='min-h-0 w-full flex-1 overflow-scroll'
         >
-          <ul class='w-full'>
-            <Index each={nearestItems()}>
-              {(item) => (
-                <li data-font-name={item().meta.safe_name}>
-                  <FontItemView
-                    item={item()}
-                    isSentFontItem={isSentFontItem(item().meta.safe_name)}
-                    onClick={() => sendFontItem(item())}
-                    onMouseEnter={() =>
-                      setHoveredFontKey(item().meta.safe_name)
-                    }
-                    onMouseLeave={() => setHoveredFontKey(null)}
-                  />
-                </li>
-              )}
-            </Index>
-          </ul>
-        </div>
+          <Index each={nearestItems()}>
+            {(item) => (
+              <li data-font-name={item().meta.safe_name}>
+                <FontItemView
+                  item={item()}
+                  isSentFontItem={isSentFontItem(item().meta.safe_name)}
+                  onClick={() => sendFontItem(item())}
+                  onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
+                  onMouseLeave={() => setHoveredFontKey(null)}
+                />
+              </li>
+            )}
+          </Index>
+        </ul>
       </Show>
     </div>
   );
