@@ -59,15 +59,18 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
 
   const progressValue = () => {
     const progress = session().status.progress;
+    const isInstalledFont =
+      session().algorithm?.discovery?.font_set === 'system_fonts';
+
     const weightedProgress =
       sectionRatio(progress.download) * 0.1 +
-      sectionRatio(progress.discovery) * 0.1 +
+      sectionRatio(progress.discovery) * (isInstalledFont ? 0.2 : 0.1) +
       sectionRatio(progress.generation) * 0.15 +
       sectionRatio(progress.vectorization) * 0.6 +
       sectionRatio(progress.clustering) * 0.025 +
       sectionRatio(progress.position) * 0.025;
 
-    return Math.min(1, Math.max(0, weightedProgress / 1));
+    return Math.min(1, Math.max(0, weightedProgress));
   };
 
   return (
