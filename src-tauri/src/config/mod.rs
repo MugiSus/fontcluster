@@ -176,9 +176,6 @@ pub struct PositioningData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusteringData {
     pub k: i32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub outlier_score: Option<f32>,
-    pub is_outlier: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

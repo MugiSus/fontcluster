@@ -1,6 +1,6 @@
 use crate::config::{AlgorithmConfig, ProcessStatus};
 use crate::core::{
-    AppState, Clusterer, Discoverer, EventSink, GoogleFontsDownloader, ImageGenerator, Positioner,
+    clusterer, AppState, Discoverer, EventSink, GoogleFontsDownloader, ImageGenerator, Positioner,
     RunningJob, StdoutEventSink, Vectorizer,
 };
 use crate::error::{AppError, Result};
@@ -336,7 +336,7 @@ pub async fn run_jobs_pipeline(
         }
         println!("✨ Starting clustering...");
         events.emit_unit("clustering_start")?;
-        Clusterer::cluster_all(&events, state).await?;
+        clusterer::cluster_all(&events, state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());

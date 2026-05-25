@@ -104,8 +104,6 @@ export interface PositioningData {
 
 export interface ClusteringData {
   k: number;
-  outlier_score?: number;
-  is_outlier: boolean;
 }
 
 export interface ComputedData {

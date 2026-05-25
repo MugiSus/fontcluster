@@ -1,9 +1,10 @@
 use crate::commands::progress::progress_events;
 use crate::config::{ComputedData, PositioningData, ProgressStage};
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
-use crate::core::{AppState, EmbeddingEngine, EventSink};
+use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
+use petal_decomposition::PcaBuilder;
 use std::fs;
 
 const POSITIONING_DIMENSIONS: usize = 2;
@@ -13,7 +14,6 @@ pub struct Positioner;
 impl Positioner {
     pub async fn position_all(events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
-        let engine = EmbeddingEngine::pca(POSITIONING_DIMENSIONS);
         let session_dir = session_dir.clone();
         let events = events.clone();
         let state_clone = state.clone();
@@ -55,7 +55,7 @@ impl Positioner {
             let embedding = if n_samples < 2 || n_features < 2 {
                 Array2::zeros((n_samples, POSITIONING_DIMENSIONS))
             } else {
-                engine.embed(data)?
+                pca_embedding(data, POSITIONING_DIMENSIONS)?
             };
 
             progress_events::reset_progress(&events, &state_clone, ProgressStage::Position);
@@ -93,4 +93,25 @@ impl Positioner {
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Positioned)?;
         Ok(())
     }
+}
+
+fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
+    let (n_samples, n_features) = data.dim();
+    if n_samples < 2 {
+        return Err(AppError::Processing(
+            "PCA requires at least two feature vectors".into(),
+        ));
+    }
+    if n_features < 2 {
+        return Err(AppError::Processing(
+            "PCA requires at least two features".into(),
+        ));
+    }
+
+    let dimensions = dimensions.clamp(1, n_samples.min(n_features));
+
+    PcaBuilder::new(dimensions)
+        .build()
+        .fit_transform(&data)
+        .map_err(|e| AppError::Processing(e.to_string()))
 }
