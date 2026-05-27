@@ -86,7 +86,7 @@ export function ListFontItem(props: ListFontItemProps) {
       <img
         class={cn(
           'block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0',
-          props.previewText && !previewPath() && 'opacity-20',
+          props.previewText && !previewPath() && 'opacity-25',
         )}
         src={sampleSrc()}
         alt={`Font preview for ${meta().font_name}`}
