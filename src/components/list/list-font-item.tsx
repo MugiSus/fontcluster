@@ -28,6 +28,7 @@ export function ListFontItem(props: ListFontItemProps) {
   const meta = () => props.item.meta;
   const clusterId = () => props.item.computed?.clustering?.k;
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
+
   const defaultSampleSrc = createMemo(() =>
     convertFileSrc(
       `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
@@ -83,7 +84,10 @@ export function ListFontItem(props: ListFontItemProps) {
         </div>
       </div>
       <img
-        class='block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0'
+        class={cn(
+          'block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0',
+          props.previewText && !previewPath() && 'opacity-20',
+        )}
         src={sampleSrc()}
         alt={`Font preview for ${meta().font_name}`}
         decoding='async'
