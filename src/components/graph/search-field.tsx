@@ -41,7 +41,7 @@ export function GraphSearchField() {
               as={Button<'button'>}
               variant='ghost'
               size='icon'
-              class='absolute left-1 top-0.5 size-6 rounded-full'
+              class='absolute left-1 top-0.5 size-6 rounded-full text-muted-foreground'
               onClick={handleClear}
             >
               <XIcon class='size-3.5' />
