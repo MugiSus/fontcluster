@@ -35,18 +35,16 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
   });
 
   return (
-    <TextField class='w-full gap-0'>
-      <div class='relative'>
-        <SwatchBookIcon class='absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-        <TextFieldInput
-          type='text'
-          value={inputValue()}
-          placeholder={props.placeholder}
-          onInput={(event) => handleValueChange(event.currentTarget.value)}
-          class='h-12 rounded-none border-0 border-b bg-background pl-10 pr-4 text-left text-sm shadow-none hover:bg-background focus:bg-background focus:outline-none'
-          spellcheck='false'
-        />
-      </div>
+    <TextField class='relative w-full gap-0'>
+      <SwatchBookIcon class='absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+      <TextFieldInput
+        type='text'
+        value={inputValue()}
+        placeholder={props.placeholder}
+        onInput={(event) => handleValueChange(event.currentTarget.value)}
+        class='h-12 rounded-none border-0 border-b bg-background pl-10 pr-4 text-left text-sm shadow-none hover:bg-background focus:bg-background focus:outline-none'
+        spellcheck='false'
+      />
     </TextField>
   );
 }
