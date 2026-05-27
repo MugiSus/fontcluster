@@ -2,8 +2,6 @@ import { createEffect, createSignal, onCleanup } from 'solid-js';
 import { SwatchBookIcon } from 'lucide-solid';
 import { TextField, TextFieldInput } from '@/components/ui/text-field';
 
-const PREVIEW_TEXT_DEBOUNCE_MS = 250;
-
 interface ListPreviewTextFieldProps {
   value: string;
   placeholder: string;
@@ -29,7 +27,7 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
     }
     debounceTimer = window.setTimeout(() => {
       onValueChange(value);
-    }, PREVIEW_TEXT_DEBOUNCE_MS);
+    }, 500);
   };
 
   onCleanup(() => {

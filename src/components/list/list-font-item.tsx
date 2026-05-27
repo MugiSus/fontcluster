@@ -43,7 +43,12 @@ export function ListFontItem(props: ListFontItemProps) {
     },
     async (payload) => {
       if (!payload) return null;
-      return await invoke<string>('render_font_preview', { payload });
+      return await invoke<string>('render_font_preview', { payload }).catch(
+        (error) => {
+          console.error('Failed to render font preview:', error);
+          return null;
+        },
+      );
     },
   );
   const sampleSrc = createMemo(() => {

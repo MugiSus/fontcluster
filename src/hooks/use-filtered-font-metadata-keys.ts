@@ -18,7 +18,7 @@ export function useFilteredFontMetadataKeys(
     }
     debounceTimer = window.setTimeout(() => {
       setAppState('ui', 'searchQuery', value);
-    }, 250);
+    }, 500);
   };
 
   // Handle side effects (scroll into view and callback)

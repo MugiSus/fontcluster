@@ -3,6 +3,7 @@ use crate::error::{AppError, Result};
 use image::ImageEncoder;
 use std::fs::{self, File};
 use std::io::BufWriter;
+use std::panic::{self, AssertUnwindSafe};
 use std::path::Path;
 use std::sync::Arc;
 use swash::scale::image::{Content, Image};
@@ -38,6 +39,24 @@ impl FontRenderer {
     }
 
     pub fn render_to_path(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
+        match panic::catch_unwind(AssertUnwindSafe(|| {
+            self.render_to_path_inner(font_path, font_index, path)
+        })) {
+            Ok(result) => result,
+            Err(payload) => {
+                let message = if let Some(message) = payload.downcast_ref::<&str>() {
+                    (*message).to_string()
+                } else if let Some(message) = payload.downcast_ref::<String>() {
+                    message.clone()
+                } else {
+                    "unknown panic".to_string()
+                };
+                Err(AppError::Font(format!("Font renderer panicked: {message}")))
+            }
+        }
+    }
+
+    fn render_to_path_inner(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
         let font_data = std::fs::read(font_path).map_err(|e| {
             AppError::Io(format!(
                 "Failed to read font file {}: {}",
