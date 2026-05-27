@@ -123,6 +123,7 @@ pub fn run() {
             crate::commands::stop_jobs,
             crate::commands::get_font_items,
             crate::commands::get_system_fonts,
+            crate::commands::render_font_preview,
             crate::commands::send_font_to_plugin,
             crate::commands::get_connected_plugins,
         ])

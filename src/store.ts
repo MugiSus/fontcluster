@@ -24,6 +24,7 @@ export interface AppState {
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
+    listPreviewText: string;
     activeGraphWeights: FontWeight[];
   };
 }
@@ -116,6 +117,7 @@ export const [appState, setAppState] = createStore<AppState>({
       return this.selectedFont?.meta.family_name || null;
     },
     searchQuery: '',
+    listPreviewText: '',
     activeGraphWeights: [400],
   },
 });

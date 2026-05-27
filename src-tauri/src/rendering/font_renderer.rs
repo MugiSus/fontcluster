@@ -1,7 +1,7 @@
 use crate::config::{RenderConfig, GLYPH_PADDING};
 use crate::error::{AppError, Result};
 use image::ImageEncoder;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::Path;
 use std::sync::Arc;
@@ -28,6 +28,16 @@ impl FontRenderer {
     }
 
     pub fn render_sample(&self, font_path: &Path, font_index: u32, safe_name: &str) -> Result<()> {
+        let path = self
+            .config
+            .output_dir
+            .join("samples")
+            .join(safe_name)
+            .join("sample.png");
+        self.render_to_path(font_path, font_index, &path)
+    }
+
+    pub fn render_to_path(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
         let font_data = std::fs::read(font_path).map_err(|e| {
             AppError::Io(format!(
                 "Failed to read font file {}: {}",
@@ -161,12 +171,9 @@ impl FontRenderer {
             ));
         }
 
-        let path = self
-            .config
-            .output_dir
-            .join("samples")
-            .join(safe_name)
-            .join("sample.png");
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         let writer = BufWriter::new(File::create(path)?);
         let encoder = image::codecs::png::PngEncoder::new_with_quality(
             writer,

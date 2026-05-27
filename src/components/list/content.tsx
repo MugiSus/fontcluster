@@ -6,62 +6,24 @@ import {
   onCleanup,
   Show,
 } from 'solid-js';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
-import { setHoveredFontKey, setSentFontItemKey } from '../../actions';
 import {
-  type FontItem as FontItemData,
-  type FontWeight,
-  WEIGHT_LABELS,
-} from '../../types/font';
-import {
-  getClusterBackgroundColor,
-  getClusterTextColor,
-} from '../../lib/cluster-colors';
+  setHoveredFontKey,
+  setListPreviewText,
+  setSentFontItemKey,
+} from '../../actions';
+import { type FontItem } from '../../types/font';
 import { getNearestSelectableFontItems } from '../graph/font-point-index';
-import { FontItem } from './font-item';
+import { ListFontItem } from './list-font-item';
+import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_UPDATE_DEBOUNCE_MS = 400;
 
-interface FontItemViewProps {
-  item: FontItemData;
-  class?: string;
-  isSentFontItem?: boolean | undefined;
-  onClick?: (() => void) | undefined;
-  onMouseEnter?: (() => void) | undefined;
-  onMouseLeave?: (() => void) | undefined;
-}
-
-function FontItemView(props: FontItemViewProps) {
-  const meta = () => props.item.meta;
-  const clusterId = () => props.item.computed?.clustering?.k;
-  const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
-
-  return (
-    <FontItem
-      fontName={meta().font_name}
-      weightLabel={WEIGHT_LABELS[weight()].short}
-      clusterBackgroundClass={getClusterBackgroundColor(clusterId())}
-      clusterTextClass={getClusterTextColor(clusterId())}
-      sampleSrc={convertFileSrc(
-        `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
-      )}
-      class={props.class}
-      isSentFontItem={props.isSentFontItem}
-      onClick={props.onClick}
-      onMouseEnter={props.onMouseEnter}
-      onMouseLeave={props.onMouseLeave}
-    />
-  );
-}
-
 export function ListContent() {
-  const [selectedItem, setSelectedItem] = createSignal<FontItemData | null>(
-    null,
-  );
-  const [nearestItems, setNearestItems] = createSignal<FontItemData[]>([]);
+  const [selectedItem, setSelectedItem] = createSignal<FontItem | null>(null);
+  const [nearestItems, setNearestItems] = createSignal<FontItem[]>([]);
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
   let nearestItemsScrollElement: HTMLUListElement | undefined;
 
@@ -94,7 +56,7 @@ export function ListContent() {
     onCleanup(() => window.clearTimeout(timeoutId));
   });
 
-  const sendFontItem = (item: FontItemData) => {
+  const sendFontItem = (item: FontItem) => {
     const key = item.meta.safe_name;
     sendFontToPlugin(item.meta)
       .then(() => setSentFontItemKey(key))
@@ -112,10 +74,16 @@ export function ListContent() {
 
   return (
     <div class='flex h-full flex-1 flex-col overflow-hidden'>
+      <ListPreviewTextField
+        value={appState.ui.listPreviewText}
+        placeholder={appState.session.config.preview_text || 'A'}
+        onValueChange={setListPreviewText}
+      />
       <Show when={selectedItem()}>
         {(item) => (
-          <FontItemView
+          <ListFontItem
             item={item()}
+            previewText={appState.ui.listPreviewText}
             class='animate-fade-in border-b'
             isSentFontItem={isSentFontItem(item().meta.safe_name)}
             onClick={() => sendFontItem(item())}
@@ -132,8 +100,9 @@ export function ListContent() {
           <Index each={nearestItems()}>
             {(item) => (
               <li data-font-name={item().meta.safe_name}>
-                <FontItemView
+                <ListFontItem
                   item={item()}
+                  previewText={appState.ui.listPreviewText}
                   isSentFontItem={isSentFontItem(item().meta.safe_name)}
                   onClick={() => sendFontItem(item())}
                   onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}

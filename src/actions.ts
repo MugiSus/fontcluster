@@ -140,6 +140,9 @@ export const setHoveredFontKey = (key: string | null) =>
 export const setSentFontItemKey = (key: string | null) =>
   setAppState('ui', 'sentFontItemKey', key);
 
+export const setListPreviewText = (text: string) =>
+  setAppState('ui', 'listPreviewText', text);
+
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
