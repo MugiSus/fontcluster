@@ -12,7 +12,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
-use super::plugin_bridge::{PluginConnection, PluginFontMetadata};
+use super::plugin_bridge::PluginConnection;
 
 #[derive(Clone)]
 pub struct RunningJob {
@@ -25,7 +25,7 @@ pub struct AppState {
     pub current_session: Arc<Mutex<Option<SessionConfig>>>,
     pub current_job_children: Arc<Mutex<HashMap<String, RunningJob>>>,
     pub is_cancelled: Arc<AtomicBool>,
-    pub plugin_bridge_font: Arc<Mutex<Option<PluginFontMetadata>>>,
+    pub plugin_bridge_font: Arc<Mutex<Option<FontMetadata>>>,
     pub plugin_bridge_modified_date: Arc<Mutex<Option<DateTime<Utc>>>>,
     pub plugin_connections: Arc<Mutex<HashMap<String, PluginConnection>>>,
 }

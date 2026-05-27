@@ -1,8 +1,7 @@
-use crate::config::SessionConfig;
+use crate::config::{FontMetadata, SessionConfig};
 use crate::error::{AppError, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
@@ -12,49 +11,10 @@ use super::session::AppState;
 pub const PLUGIN_BRIDGE_PORT: u16 = 38653;
 const PLUGIN_CONNECTION_TIMEOUT_SECONDS: i64 = 5;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PluginFontMetadata {
-    pub safe_name: String,
-    pub font_name: String,
-    pub family_name: String,
-    pub family_names: HashMap<String, String>,
-    pub preferred_family_names: HashMap<String, String>,
-    #[serde(default)]
-    pub style_name: String,
-    #[serde(default)]
-    pub style_names: HashMap<String, String>,
-    #[serde(default)]
-    pub preferred_style_names: HashMap<String, String>,
-    pub publishers: HashMap<String, String>,
-    pub designers: HashMap<String, String>,
-    #[serde(default)]
-    pub copyright: Option<String>,
-    #[serde(default)]
-    pub trademark: Option<String>,
-    #[serde(default)]
-    pub version: Option<String>,
-    #[serde(default)]
-    pub postscript_name: Option<String>,
-    #[serde(default)]
-    pub description: Option<String>,
-    #[serde(default)]
-    pub vendor_url: Option<String>,
-    #[serde(default)]
-    pub designer_url: Option<String>,
-    #[serde(default)]
-    pub license: Option<String>,
-    #[serde(default)]
-    pub license_url: Option<String>,
-    #[serde(default)]
-    pub sample_text: Option<String>,
-    pub weight: i32,
-    pub weights: Vec<String>,
-}
-
 #[derive(Debug, Serialize)]
 struct PluginDataResponse {
     session: Option<SessionConfig>,
-    font: Option<PluginFontMetadata>,
+    font: Option<FontMetadata>,
     modified_date: Option<DateTime<Utc>>,
 }
 

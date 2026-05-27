@@ -129,11 +129,11 @@ export interface FontMetadata {
   description?: string | null;
   vendor_url?: string | null;
   designer_url?: string | null;
-  license?: string | null;
-  license_url?: string | null;
   sample_text?: string | null;
   weight: number;
   weights: string[];
+  path?: string | null;
+  font_index: number;
 }
 
 export interface FontItem {

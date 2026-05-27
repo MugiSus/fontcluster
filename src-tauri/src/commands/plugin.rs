@@ -1,4 +1,5 @@
-use crate::core::{get_active_plugin_connections, AppState, PluginConnection, PluginFontMetadata};
+use crate::config::FontMetadata;
+use crate::core::{get_active_plugin_connections, AppState, PluginConnection};
 use crate::error::{AppError, Result};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -10,10 +11,7 @@ pub struct PluginConnectionsResponse {
 }
 
 #[tauri::command]
-pub fn send_font_to_plugin(
-    state: State<AppState>,
-    payload: PluginFontMetadata,
-) -> Result<DateTime<Utc>> {
+pub fn send_font_to_plugin(state: State<AppState>, payload: FontMetadata) -> Result<DateTime<Utc>> {
     let modified_date = Utc::now();
     let mut font = state
         .plugin_bridge_font

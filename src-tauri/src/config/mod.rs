@@ -208,10 +208,6 @@ pub struct FontMetadata {
     #[serde(default)]
     pub designer_url: Option<String>,
     #[serde(default)]
-    pub license: Option<String>,
-    #[serde(default)]
-    pub license_url: Option<String>,
-    #[serde(default)]
     pub sample_text: Option<String>,
     pub weight: i32,
     pub weights: Vec<String>,
