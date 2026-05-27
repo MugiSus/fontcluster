@@ -202,12 +202,14 @@ async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
     let session_dir_display = session_dir.display().to_string();
     tokio::task::spawn_blocking(move || {
         let mut png_files = Vec::new();
-        for entry in jwalk::WalkDir::new(session_dir.join("samples"))
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.file_type().is_dir() {
-                let png = entry.path().join("sample.png");
+        let samples_dir = session_dir.join("samples");
+        if let Ok(entries) = std::fs::read_dir(samples_dir) {
+            for entry in entries.filter_map(|entry| entry.ok()) {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                let png = path.join("sample.png");
                 if png.exists() {
                     png_files.push(png);
                 }

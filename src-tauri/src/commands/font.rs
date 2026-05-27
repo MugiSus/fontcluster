@@ -27,12 +27,17 @@ pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> R
 
 #[command]
 pub async fn get_system_fonts() -> Result<Vec<String>> {
-    let source = font_kit::source::SystemSource::new();
-    let families = source.all_families()?;
-    let mut fonts: Vec<String> = families
-        .into_iter()
-        .filter(|f| !f.to_lowercase().contains("emoji") && !f.to_lowercase().contains("icon"))
+    let mut db = fontdb::Database::new();
+    db.load_system_fonts();
+    let mut fonts: Vec<String> = db
+        .faces()
+        .flat_map(|face| face.families.iter().map(|(family, _)| family.clone()))
+        .filter(|family| {
+            let family = family.to_lowercase();
+            !family.contains("emoji") && !family.contains("icon")
+        })
         .collect();
     fonts.sort();
+    fonts.dedup();
     Ok(fonts)
 }

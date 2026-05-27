@@ -193,6 +193,26 @@ pub struct FontMetadata {
     pub preferred_style_names: HashMap<String, String>,
     pub publishers: HashMap<String, String>,
     pub designers: HashMap<String, String>,
+    #[serde(default)]
+    pub copyright: Option<String>,
+    #[serde(default)]
+    pub trademark: Option<String>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub postscript_name: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub vendor_url: Option<String>,
+    #[serde(default)]
+    pub designer_url: Option<String>,
+    #[serde(default)]
+    pub license: Option<String>,
+    #[serde(default)]
+    pub license_url: Option<String>,
+    #[serde(default)]
+    pub sample_text: Option<String>,
     pub weight: i32,
     pub weights: Vec<String>,
     pub path: Option<PathBuf>,

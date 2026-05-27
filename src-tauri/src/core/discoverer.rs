@@ -2,10 +2,11 @@ use crate::commands::progress::progress_events;
 use crate::config::ProgressStage;
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
-// use futures::StreamExt as _;
+use fontdb::{FaceInfo, Source};
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use swash::{FontRef, StringId};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExtractedMeta {
@@ -16,9 +17,19 @@ pub struct ExtractedMeta {
     pub preferred_style_names: HashMap<String, String>,
     pub publishers: HashMap<String, String>,
     pub designers: HashMap<String, String>,
+    pub copyright: Option<String>,
+    pub trademark: Option<String>,
+    pub version: Option<String>,
+    pub postscript_name: Option<String>,
+    pub description: Option<String>,
+    pub vendor_url: Option<String>,
+    pub designer_url: Option<String>,
+    pub license: Option<String>,
+    pub license_url: Option<String>,
+    pub sample_text: Option<String>,
     pub actual_weight: i32,
     pub available_weights: Vec<String>,
-    pub path: std::path::PathBuf,
+    pub path: PathBuf,
     pub font_index: u32,
 }
 
@@ -29,71 +40,70 @@ impl Discoverer {
         Self {}
     }
 
-    fn get_font_files() -> Vec<std::path::PathBuf> {
-        let mut search_dirs = Vec::new();
-        if cfg!(target_os = "macos") {
-            search_dirs.push(std::path::PathBuf::from("/System/Library/Fonts"));
-            search_dirs.push(std::path::PathBuf::from("/Library/Fonts"));
-            if let Some(user_font_dir) = dirs::font_dir() {
-                search_dirs.push(user_font_dir);
-            }
-        } else if cfg!(target_os = "windows") {
-            if let Some(win_dir) = std::env::var_os("WINDIR") {
-                search_dirs.push(std::path::PathBuf::from(win_dir).join("Fonts"));
-            }
-        } else {
-            // Basic Linux paths
-            search_dirs.push(std::path::PathBuf::from("/usr/share/fonts"));
-            search_dirs.push(std::path::PathBuf::from("/usr/local/share/fonts"));
-            if let Some(user_font_dir) = dirs::font_dir() {
-                search_dirs.push(user_font_dir);
-            }
-        }
-
-        let mut files = Vec::new();
-        for dir in search_dirs {
-            Self::walk_dir(&dir, &mut files);
-        }
-        files
-    }
-
-    fn walk_dir(dir: &std::path::PathBuf, files: &mut Vec<std::path::PathBuf>) {
-        for entry in jwalk::WalkDir::new(dir)
-            .follow_links(true)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            if entry.file_type().is_file() {
-                if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
-                    let ext = ext.to_lowercase();
-                    if ext == "ttf" || ext == "otf" || ext == "ttc" || ext == "otc" {
-                        files.push(entry.path());
-                    }
-                }
-            }
-        }
-    }
-
     fn google_font_family_from_path(path: &Path) -> Option<String> {
         let stem = path.file_stem()?.to_str()?;
         let family = stem.split_once("_Weight")?.0;
         Some(family.replace('_', " "))
     }
 
+    fn localized_value(font: &FontRef<'_>, id: StringId) -> Option<String> {
+        let strings = font.localized_strings();
+        strings
+            .find_by_id(id, Some("en-US"))
+            .or_else(|| strings.find_by_id(id, Some("en")))
+            .or_else(|| strings.find_by_id(id, None))
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty())
+    }
+
+    fn localized_map(font: &FontRef<'_>, id: StringId) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        for string in font.localized_strings() {
+            if string.id() == id && string.is_decodable() {
+                let value = string.to_string();
+                if !value.is_empty() {
+                    let language = string.language();
+                    map.insert(
+                        if language.is_empty() {
+                            "und".to_string()
+                        } else {
+                            language.to_string()
+                        },
+                        value,
+                    );
+                }
+            }
+        }
+        map
+    }
+
+    fn source_bytes_and_path(source: &Source) -> Result<(Vec<u8>, PathBuf)> {
+        match source {
+            Source::File(path) => Ok((fs::read(path)?, path.clone())),
+            Source::SharedFile(path, data) => Ok((data.as_ref().as_ref().to_vec(), path.clone())),
+            Source::Binary(_) => Err(AppError::Font(
+                "Font source has no file path and cannot be rendered later".into(),
+            )),
+        }
+    }
+
+    fn preferred(map: &HashMap<String, String>) -> Option<&String> {
+        map.get("en-US")
+            .or_else(|| map.get("en"))
+            .or_else(|| map.get("1033"))
+            .or_else(|| map.values().next())
+    }
+
     fn internal_family_name(meta: &ExtractedMeta) -> String {
-        meta.preferred_family_names
-            .get("1033")
-            .or_else(|| meta.family_names.get("1033"))
+        Self::preferred(&meta.preferred_family_names)
+            .or_else(|| Self::preferred(&meta.family_names))
             .unwrap_or(&meta.display_name)
             .clone()
     }
 
     fn internal_style_name(meta: &ExtractedMeta) -> String {
-        meta.preferred_style_names
-            .get("1033")
-            .or_else(|| meta.style_names.get("1033"))
-            .or_else(|| meta.preferred_style_names.values().next())
-            .or_else(|| meta.style_names.values().next())
+        Self::preferred(&meta.preferred_style_names)
+            .or_else(|| Self::preferred(&meta.style_names))
             .cloned()
             .unwrap_or_else(|| "Regular".to_string())
     }
@@ -102,17 +112,15 @@ impl Discoverer {
         data: &[u8],
         index: u32,
         target_text: &str,
-        path: std::path::PathBuf,
+        path: PathBuf,
+        face: &FaceInfo,
     ) -> Result<ExtractedMeta> {
-        let face = ttf_parser::Face::parse(data, index)
-            .map_err(|e| AppError::Font(format!("Failed to parse font with ttf-parser: {}", e)))?;
+        let font = FontRef::from_index(data, index as usize)
+            .ok_or_else(|| AppError::Font(format!("Failed to parse font {}", path.display())))?;
 
-        // 1. Glyph Check
         for ch in target_text.chars() {
-            let gid = face
-                .glyph_index(ch)
-                .ok_or_else(|| AppError::Font(format!("No glyph for {}", ch)))?;
-            if gid.0 == 0 && ch != '\0' && ch != '\u{FFFD}' {
+            let gid = font.charmap().map(ch);
+            if gid == 0 && ch != '\0' && ch != '\u{FFFD}' {
                 return Err(AppError::Font(format!(
                     "Font fallback detected for character '{}' (missing in cmap)",
                     ch
@@ -120,66 +128,52 @@ impl Discoverer {
             }
         }
 
-        // 2. Metadata Extraction
-        let mut fams = HashMap::new();
-        let mut prefs = HashMap::new();
-        let mut styles = HashMap::new();
-        let mut preferred_styles = HashMap::new();
-        let mut pubs = HashMap::new();
-        let mut dess = HashMap::new();
-        let mut full_name = None;
+        let family_names = Self::localized_map(&font, StringId::Family);
+        let preferred_family_names = Self::localized_map(&font, StringId::TypographicFamily);
+        let style_names = Self::localized_map(&font, StringId::SubFamily);
+        let preferred_style_names = Self::localized_map(&font, StringId::TypographicSubFamily);
+        let publishers = Self::localized_map(&font, StringId::Manufacturer);
+        let designers = Self::localized_map(&font, StringId::Designer);
+        let display_name = Self::localized_value(&font, StringId::Full)
+            .or_else(|| Self::localized_value(&font, StringId::CompatibleFull))
+            .or_else(|| face.families.first().map(|(name, _)| name.clone()))
+            .unwrap_or_else(|| face.post_script_name.clone());
 
-        for rec in face.names().into_iter() {
-            let lang_id = rec.language_id.to_string();
-            let name_id = rec.name_id;
-            if let Some(val) = rec.to_string() {
-                if val.contains("LastResort") || val.starts_with('.') {
-                    return Err(AppError::Font(format!(
-                        "Skipping system internal font: {}",
-                        val
-                    )));
-                }
-
-                match name_id {
-                    1 => {
-                        fams.insert(lang_id, val);
-                    }
-                    2 => {
-                        styles.insert(lang_id, val);
-                    }
-                    4 => {
-                        if full_name.is_none() || rec.language_id == 1033 {
-                            full_name = Some(val);
-                        }
-                    } // Prefer English for display_name
-                    16 => {
-                        prefs.insert(lang_id, val);
-                    }
-                    17 => {
-                        preferred_styles.insert(lang_id, val);
-                    }
-                    8 => {
-                        pubs.insert(lang_id, val);
-                    }
-                    9 => {
-                        dess.insert(lang_id, val);
-                    }
-                    _ => {}
-                }
+        for value in family_names
+            .values()
+            .chain(preferred_family_names.values())
+            .chain(style_names.values())
+            .chain(preferred_style_names.values())
+            .chain(std::iter::once(&display_name))
+        {
+            if value.contains("LastResort") || value.starts_with('.') {
+                return Err(AppError::Font(format!(
+                    "Skipping system internal font: {}",
+                    value
+                )));
             }
         }
 
-        let actual_weight = face.weight().to_number() as i32;
-
         Ok(ExtractedMeta {
-            display_name: full_name.unwrap_or_else(|| "Unknown".to_string()),
-            family_names: fams,
-            preferred_family_names: prefs,
-            style_names: styles,
-            preferred_style_names: preferred_styles,
-            publishers: pubs,
-            designers: dess,
-            actual_weight,
+            display_name,
+            family_names,
+            preferred_family_names,
+            style_names,
+            preferred_style_names,
+            publishers,
+            designers,
+            copyright: Self::localized_value(&font, StringId::Copyright),
+            trademark: Self::localized_value(&font, StringId::Trademark),
+            version: Self::localized_value(&font, StringId::Version),
+            postscript_name: Self::localized_value(&font, StringId::PostScript)
+                .or_else(|| Some(face.post_script_name.clone())),
+            description: Self::localized_value(&font, StringId::Description),
+            vendor_url: Self::localized_value(&font, StringId::VendorUrl),
+            designer_url: Self::localized_value(&font, StringId::DesignerUrl),
+            license: Self::localized_value(&font, StringId::License),
+            license_url: Self::localized_value(&font, StringId::LicenseUrl),
+            sample_text: Self::localized_value(&font, StringId::SampleText),
+            actual_weight: face.weight.0 as i32,
             available_weights: Vec::new(),
             path,
             font_index: index,
@@ -212,28 +206,27 @@ impl Discoverer {
             .join(&session_id);
 
         let is_google_fonts = !matches!(font_set, crate::config::FontSet::SystemFonts);
-        let font_files = match font_set {
+        let mut db = fontdb::Database::new();
+        match font_set {
             crate::config::FontSet::SystemFonts => {
-                println!("🔍 Scanning system for font files...");
-                Self::get_font_files()
+                println!("🔍 Loading system fonts with fontdb...");
+                db.load_system_fonts();
             }
             _ => {
-                println!("🔍 Using cached Google Fonts...");
-                let mut files = Vec::new();
-                Self::walk_dir(&session_dir.join("google_fonts"), &mut files);
-                files
+                println!("🔍 Loading cached Google Fonts with fontdb...");
+                db.load_fonts_dir(session_dir.join("google_fonts"));
             }
-        };
+        }
 
-        let total_files = font_files.len();
-        println!("🔍 Found {} font files", total_files);
+        let font_faces: Vec<FaceInfo> = db.faces().cloned().collect();
+        println!("🔍 Found {} font faces", font_faces.len());
 
         progress_events::reset_progress(events, state, ProgressStage::Discovery);
         progress_events::set_progress_denominator(
             events,
             state,
             ProgressStage::Discovery,
-            total_files as i32,
+            font_faces.len() as i32,
         );
 
         let events = events.clone();
@@ -245,35 +238,28 @@ impl Discoverer {
 
         let discovered =
             tokio::task::spawn_blocking(move || -> Result<HashMap<i32, Vec<String>>> {
-                let mut results = Vec::new();
-                for path in font_files {
+                let mut all_metas = Vec::new();
+                for face in font_faces {
                     if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
                         return Ok(HashMap::new());
                     }
 
-                    let mut local_metas = Vec::new();
-                    if let Ok(file) = fs::File::open(&path) {
-                        if let Ok(mmap) = unsafe { memmap2::Mmap::map(&file) } {
-                            let count = ttf_parser::fonts_in_collection(&mmap).unwrap_or(1);
-                            for i in 0..count {
-                                if let Ok(meta) =
-                                    Self::analyze_font_data(&mmap, i, &preview_text, path.clone())
-                                {
-                                    local_metas.push(meta);
-                                }
-                            }
+                    if let Ok((data, path)) = Self::source_bytes_and_path(&face.source) {
+                        if let Ok(meta) =
+                            Self::analyze_font_data(&data, face.index, &preview_text, path, &face)
+                        {
+                            all_metas.push(meta);
                         }
                     }
+
                     progress_events::increase_numerator(
                         &events,
                         &state_clone,
                         ProgressStage::Discovery,
                         1,
                     );
-                    results.push(local_metas);
                 }
 
-                let all_metas: Vec<ExtractedMeta> = results.into_iter().flatten().collect();
                 println!(
                     "🔍 Analyzed {} fonts. Grouping by family...",
                     all_metas.len()
@@ -338,6 +324,16 @@ impl Discoverer {
                                     preferred_style_names: meta.preferred_style_names.clone(),
                                     publishers: meta.publishers.clone(),
                                     designers: meta.designers.clone(),
+                                    copyright: meta.copyright.clone(),
+                                    trademark: meta.trademark.clone(),
+                                    version: meta.version.clone(),
+                                    postscript_name: meta.postscript_name.clone(),
+                                    description: meta.description.clone(),
+                                    vendor_url: meta.vendor_url.clone(),
+                                    designer_url: meta.designer_url.clone(),
+                                    license: meta.license.clone(),
+                                    license_url: meta.license_url.clone(),
+                                    sample_text: meta.sample_text.clone(),
                                     weight: tw,
                                     weights: available_weights.clone(),
                                     path: Some(meta.path.clone()),

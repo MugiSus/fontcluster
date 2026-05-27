@@ -122,6 +122,16 @@ export interface FontMetadata {
   preferred_style_names?: Record<string, string>;
   publishers: Record<string, string>;
   designers: Record<string, string>;
+  copyright?: string | null;
+  trademark?: string | null;
+  version?: string | null;
+  postscript_name?: string | null;
+  description?: string | null;
+  vendor_url?: string | null;
+  designer_url?: string | null;
+  license?: string | null;
+  license_url?: string | null;
+  sample_text?: string | null;
   weight: number;
   weights: string[];
 }

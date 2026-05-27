@@ -43,9 +43,8 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-font-kit = "0.14"
+fontdb = "0.23"
 google-fonts-subsets = "0.202602.1"
-pathfinder_geometry = "0.5"
 image = { version = "0.25", default-features = false, features = ["png"] }
 dirs = "6"
 tokio = { version = "1", features = ["rt"] }
@@ -60,10 +59,8 @@ uuid = { version = "1.0", features = ["v7", "serde"] }
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.23.2"
-ttf-parser = "0.25.1"
-memmap2 = "0.9"
 rayon = "1.10"
-jwalk = "0.8"
+swash = "0.2"
 mimalloc = "0.1"
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls"] }
 regex = "1.12.2"

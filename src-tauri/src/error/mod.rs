@@ -59,21 +59,3 @@ impl From<image::ImageError> for AppError {
         AppError::Image(e.to_string())
     }
 }
-
-impl From<font_kit::error::SelectionError> for AppError {
-    fn from(e: font_kit::error::SelectionError) -> Self {
-        AppError::Font(e.to_string())
-    }
-}
-
-impl From<font_kit::error::FontLoadingError> for AppError {
-    fn from(e: font_kit::error::FontLoadingError) -> Self {
-        AppError::Font(e.to_string())
-    }
-}
-
-impl From<font_kit::error::GlyphLoadingError> for AppError {
-    fn from(e: font_kit::error::GlyphLoadingError) -> Self {
-        AppError::Processing(e.to_string())
-    }
-}

@@ -1,13 +1,22 @@
 use crate::config::{RenderConfig, GLYPH_PADDING};
 use crate::error::{AppError, Result};
-use font_kit::canvas::{Canvas, Format, RasterizationOptions};
-use font_kit::hinting::HintingOptions;
 use image::ImageEncoder;
-use pathfinder_geometry::transform2d::Transform2F;
-use pathfinder_geometry::vector::{Vector2F, Vector2I};
 use std::fs::File;
 use std::io::BufWriter;
+use std::path::Path;
 use std::sync::Arc;
+use swash::scale::image::{Content, Image};
+use swash::scale::{Render, ScaleContext, Source, StrikeWith};
+use swash::shape::{Direction, ShapeContext};
+use swash::text::Script;
+use swash::zeno::{Format, Vector};
+use swash::{FontRef, GlyphId};
+
+struct RenderedGlyph {
+    image: Image,
+    x: i32,
+    y: i32,
+}
 
 pub struct FontRenderer {
     config: Arc<RenderConfig>,
@@ -18,72 +27,138 @@ impl FontRenderer {
         Self { config }
     }
 
-    pub fn render_sample(&self, font: &font_kit::font::Font, safe_name: &str) -> Result<()> {
-        let scale = self.config.font_size / font.metrics().units_per_em as f32;
-        let mut glyph_data = Vec::new();
-        let font_data = font
-            .copy_font_data()
-            .ok_or_else(|| AppError::Font("Failed to get font data for glyph check".to_string()))?;
-        let face = ttf_parser::Face::parse(&font_data, 0)
-            .map_err(|e| AppError::Font(format!("Failed to parse font with ttf-parser: {}", e)))?;
+    pub fn render_sample(&self, font_path: &Path, font_index: u32, safe_name: &str) -> Result<()> {
+        let font_data = std::fs::read(font_path).map_err(|e| {
+            AppError::Io(format!(
+                "Failed to read font file {}: {}",
+                font_path.display(),
+                e
+            ))
+        })?;
+        let font = FontRef::from_index(&font_data, font_index as usize).ok_or_else(|| {
+            AppError::Font(format!(
+                "Failed to parse font face {} in {}",
+                font_index,
+                font_path.display()
+            ))
+        })?;
 
         for ch in self.config.text.chars() {
-            let gid = face
-                .glyph_index(ch)
-                .ok_or_else(|| AppError::Font(format!("No glyph for {}", ch)))?;
-            if gid.0 == 0 && ch != '\0' && ch != '\u{FFFD}' {
+            let gid = font.charmap().map(ch);
+            if gid == 0 && ch != '\0' && ch != '\u{FFFD}' {
                 return Err(AppError::Font(format!(
                     "Font fallback detected for character '{}' (missing in cmap)",
                     ch
                 )));
             }
-
-            let fk_gid = gid.0 as u32;
-            let advance = font.advance(fk_gid)?;
-            let bounds = font.typographic_bounds(fk_gid)?;
-            glyph_data.push((
-                fk_gid,
-                (advance.x() * scale) as i32,
-                bounds.max_y() * scale,
-                bounds.min_y() * scale,
-            ));
         }
 
-        let total_width: i32 = glyph_data.iter().map(|g| g.1).sum();
-        let (min_y, max_y) = glyph_data
-            .iter()
-            .fold((f32::MAX, f32::MIN), |(min, max), g| {
-                (min.min(g.3), max.max(g.2))
-            });
-        let height = (max_y - min_y + 2.0 * GLYPH_PADDING) as i32;
-        let baseline_y = max_y + GLYPH_PADDING;
+        let script = swash::text::analyze(self.config.text.chars())
+            .map(|(properties, _)| properties.script())
+            .find(|script| !matches!(script, Script::Common | Script::Inherited | Script::Unknown))
+            .unwrap_or(Script::Latin);
+        let mut shape_context = ShapeContext::new();
+        let mut shaper = shape_context
+            .builder(font)
+            .size(self.config.font_size)
+            .script(script)
+            .direction(Direction::LeftToRight)
+            .build();
+        shaper.add_str(&self.config.text);
 
-        let mut canvas = Canvas::new(Vector2I::new(total_width, height), Format::A8);
-        let mut x_off = 0.0;
-        for (gid, width, _, _) in glyph_data {
-            font.rasterize_glyph(
-                &mut canvas,
-                gid,
-                self.config.font_size,
-                Transform2F::from_translation(Vector2F::new(x_off, baseline_y)),
-                HintingOptions::None,
-                RasterizationOptions::GrayscaleAa,
-            )?;
-            x_off += width as f32;
+        let mut glyphs = Vec::<(GlyphId, f32, f32)>::new();
+        let mut pen_x = 0.0;
+        shaper.shape_with(|cluster| {
+            for glyph in cluster.glyphs {
+                glyphs.push((glyph.id, pen_x + glyph.x, glyph.y));
+                pen_x += glyph.advance;
+            }
+        });
+
+        let mut scale_context = ScaleContext::new();
+        let mut scaler = scale_context
+            .builder(font)
+            .size(self.config.font_size)
+            .hint(true)
+            .build();
+        let sources = [
+            Source::ColorOutline(0),
+            Source::ColorBitmap(StrikeWith::BestFit),
+            Source::Outline,
+        ];
+        let mut rendered = Vec::new();
+        let mut min_x = i32::MAX;
+        let mut min_y = i32::MAX;
+        let mut max_x = i32::MIN;
+        let mut max_y = i32::MIN;
+
+        for (glyph_id, x, y) in glyphs {
+            let offset = Vector::new(x.fract(), y.fract());
+            let image = Render::new(&sources)
+                .format(Format::Alpha)
+                .offset(offset)
+                .render(&mut scaler, glyph_id);
+            if let Some(image) = image {
+                if image.placement.width == 0 || image.placement.height == 0 {
+                    continue;
+                }
+
+                let left = x.floor() as i32 + image.placement.left;
+                let top = -(y.floor() as i32) - image.placement.top;
+                let right = left + image.placement.width as i32;
+                let bottom = top + image.placement.height as i32;
+                min_x = min_x.min(left);
+                min_y = min_y.min(top);
+                max_x = max_x.max(right);
+                max_y = max_y.max(bottom);
+                rendered.push(RenderedGlyph {
+                    image,
+                    x: left,
+                    y: top,
+                });
+            }
         }
 
-        if canvas.pixels.iter().all(|&p| p == 0) {
+        if rendered.is_empty() {
             return Err(AppError::Font(
                 "Empty render result (no visible glyphs)".into(),
             ));
         }
 
-        // Convert A8 canvas to La8 (Luminance + Alpha) image buffer
-        // Luminance is always 255 (white), Alpha is the canvas pixel value
-        let mut la8_pixels = Vec::with_capacity(canvas.pixels.len() * 2);
-        for &alpha in &canvas.pixels {
-            la8_pixels.push(255); // Luminance
-            la8_pixels.push(alpha); // Alpha
+        let padding = GLYPH_PADDING.ceil() as i32;
+        let width = (max_x - min_x + padding * 2).max(1) as u32;
+        let height = (max_y - min_y + padding * 2).max(1) as u32;
+        let mut la8_pixels = vec![0u8; (width * height * 2) as usize];
+
+        for rendered_glyph in rendered {
+            let image = rendered_glyph.image;
+            let dst_x = rendered_glyph.x - min_x + padding;
+            let dst_y = rendered_glyph.y - min_y + padding;
+            for row in 0..image.placement.height as i32 {
+                for col in 0..image.placement.width as i32 {
+                    let x = dst_x + col;
+                    let y = dst_y + row;
+                    if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
+                        continue;
+                    }
+
+                    let source_index = (row as u32 * image.placement.width + col as u32) as usize;
+                    let alpha = match image.content {
+                        Content::Mask => image.data[source_index],
+                        Content::Color | Content::SubpixelMask => image.data[source_index * 4 + 3],
+                    };
+                    let target_index = ((y as u32 * width + x as u32) * 2) as usize;
+                    la8_pixels[target_index] = 255;
+                    la8_pixels[target_index + 1] =
+                        la8_pixels[target_index + 1].saturating_add(alpha);
+                }
+            }
+        }
+
+        if la8_pixels.chunks_exact(2).all(|pixel| pixel[1] == 0) {
+            return Err(AppError::Font(
+                "Empty render result (no visible pixels)".into(),
+            ));
         }
 
         let path = self
@@ -98,12 +173,7 @@ impl FontRenderer {
             image::codecs::png::CompressionType::Fast,
             image::codecs::png::FilterType::NoFilter,
         );
-        encoder.write_image(
-            &la8_pixels,
-            total_width as u32,
-            height as u32,
-            image::ExtendedColorType::La8,
-        )?;
+        encoder.write_image(&la8_pixels, width, height, image::ExtendedColorType::La8)?;
 
         Ok(())
     }
