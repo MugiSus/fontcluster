@@ -1,11 +1,12 @@
 import {
   createEffect,
+  For,
   createSelector,
   createSignal,
-  Index,
   onCleanup,
   Show,
 } from 'solid-js';
+import { createVirtualizer } from '@tanstack/solid-virtual';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
@@ -20,12 +21,21 @@ import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_UPDATE_DEBOUNCE_MS = 400;
+const LIST_ITEM_HEIGHT = 80;
 
 export function ListContent() {
   const [selectedItem, setSelectedItem] = createSignal<FontItem | null>(null);
   const [nearestItems, setNearestItems] = createSignal<FontItem[]>([]);
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
-  let nearestItemsScrollElement: HTMLUListElement | undefined;
+  let nearestItemsScrollElement: HTMLDivElement | undefined;
+  const virtualizer = createVirtualizer({
+    get count() {
+      return nearestItems().length;
+    },
+    getScrollElement: () => nearestItemsScrollElement ?? null,
+    estimateSize: () => LIST_ITEM_HEIGHT,
+    overscan: 6,
+  });
 
   createEffect(() => {
     const selectedKey = appState.ui.selectedFontKey;
@@ -93,25 +103,47 @@ export function ListContent() {
         )}
       </Show>
       <Show when={selectedItem()} fallback={<NoResultsFound />}>
-        <ul
+        <div
           ref={nearestItemsScrollElement}
           class='min-h-0 w-full flex-1 overflow-scroll'
         >
-          <Index each={nearestItems()}>
-            {(item) => (
-              <li data-font-name={item().meta.safe_name}>
-                <ListFontItem
-                  item={item()}
-                  previewText={appState.ui.listPreviewText}
-                  isSentFontItem={isSentFontItem(item().meta.safe_name)}
-                  onClick={() => sendFontItem(item())}
-                  onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
-                  onMouseLeave={() => setHoveredFontKey(null)}
-                />
-              </li>
-            )}
-          </Index>
-        </ul>
+          <ul
+            class='relative w-full'
+            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          >
+            <For each={virtualizer.getVirtualItems()}>
+              {(virtualItem) => {
+                const item = () => nearestItems()[virtualItem.index];
+                return (
+                  <Show when={item()}>
+                    {(fontItem) => (
+                      <li
+                        data-font-name={fontItem().meta.safe_name}
+                        class='absolute left-0 top-0 w-full'
+                        style={{
+                          transform: `translateY(${virtualItem.start}px)`,
+                        }}
+                      >
+                        <ListFontItem
+                          item={fontItem()}
+                          previewText={appState.ui.listPreviewText}
+                          isSentFontItem={isSentFontItem(
+                            fontItem().meta.safe_name,
+                          )}
+                          onClick={() => sendFontItem(fontItem())}
+                          onMouseEnter={() =>
+                            setHoveredFontKey(fontItem().meta.safe_name)
+                          }
+                          onMouseLeave={() => setHoveredFontKey(null)}
+                        />
+                      </li>
+                    )}
+                  </Show>
+                );
+              }}
+            </For>
+          </ul>
+        </div>
       </Show>
     </div>
   );
