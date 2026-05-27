@@ -17,6 +17,7 @@ import { Button } from '../ui/button';
 interface ListFontItemProps {
   item: FontItem;
   previewText: string;
+  previewFontSize: number;
   class?: string | undefined;
   isSentFontItem?: boolean | undefined;
   onClick?: (() => void) | undefined;
@@ -40,6 +41,7 @@ export function ListFontItem(props: ListFontItemProps) {
       return {
         font: meta(),
         text: props.previewText,
+        font_size: props.previewFontSize,
       };
     },
     async (payload) => {

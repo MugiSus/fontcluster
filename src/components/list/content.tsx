@@ -22,6 +22,7 @@ import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_UPDATE_DEBOUNCE_MS = 400;
 const LIST_ITEM_HEIGHT = 80;
+const LIST_PREVIEW_FONT_SIZE = 64;
 
 export function ListContent() {
   const [selectedItem, setSelectedItem] = createSignal<FontItem | null>(null);
@@ -94,6 +95,7 @@ export function ListContent() {
           <ListFontItem
             item={item()}
             previewText={appState.ui.listPreviewText}
+            previewFontSize={LIST_PREVIEW_FONT_SIZE}
             class='animate-fade-in border-b'
             isSentFontItem={isSentFontItem(item().meta.safe_name)}
             onClick={() => sendFontItem(item())}
@@ -127,6 +129,7 @@ export function ListContent() {
                         <ListFontItem
                           item={fontItem()}
                           previewText={appState.ui.listPreviewText}
+                          previewFontSize={LIST_PREVIEW_FONT_SIZE}
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}
