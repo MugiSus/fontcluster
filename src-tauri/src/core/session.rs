@@ -214,9 +214,7 @@ fn progress_section_mut(
     stage: ProgressStage,
 ) -> &mut ProgressSection {
     match stage {
-        ProgressStage::Download => &mut progress.download,
-        ProgressStage::Discovery => &mut progress.discovery,
-        ProgressStage::Generation => &mut progress.generation,
+        ProgressStage::Rendering => &mut progress.rendering,
         ProgressStage::Vectorization => &mut progress.vectorization,
         ProgressStage::Clustering => &mut progress.clustering,
         ProgressStage::Position => &mut progress.position,

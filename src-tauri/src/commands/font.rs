@@ -100,11 +100,11 @@ fn render_font_preview_blocking(
         payload.text
     };
     let font_size = payload.font_size;
-    let font_path = payload
+    let font_file_metadata = payload
         .font
         .path
-        .ok_or_else(|| AppError::Processing("No path in font metadata".into()))?;
-    let font_file_metadata = fs::metadata(&font_path).ok();
+        .as_ref()
+        .and_then(|path| fs::metadata(path).ok());
     let font_file_len = font_file_metadata
         .as_ref()
         .map(|metadata| metadata.len())
@@ -115,8 +115,11 @@ fn render_font_preview_blocking(
         .map(|duration| (duration.as_secs(), duration.subsec_nanos()));
 
     let mut hasher = DefaultHasher::new();
-    font_path.hash(&mut hasher);
+    payload.font.source.hash(&mut hasher);
+    payload.font.path.hash(&mut hasher);
     payload.font.safe_name.hash(&mut hasher);
+    payload.font.family_name.hash(&mut hasher);
+    payload.font.weight.hash(&mut hasher);
     payload.font.font_index.hash(&mut hasher);
     font_size.to_bits().hash(&mut hasher);
     font_file_len.hash(&mut hasher);
@@ -155,17 +158,28 @@ fn render_font_preview_blocking(
         font_size,
         output_dir: cache_root,
     }));
-    match renderer.render_to_path(&font_path, payload.font.font_index, temporary_output.path()) {
-        Ok(()) => {}
-        Err(AppError::MissingGlyph(_)) if payload.font.source == FontSource::GoogleFonts => {
-            let font = download_google_font_subset_temp(
-                &payload.font.family_name,
-                payload.font.weight,
-                &text,
-            )?;
-            renderer.render_to_path(font.path(), 0, temporary_output.path())?;
+    if let Some(font_path) = payload.font.path.as_ref().filter(|path| path.exists()) {
+        match renderer.render_to_path(font_path, payload.font.font_index, temporary_output.path()) {
+            Ok(()) => {}
+            Err(AppError::MissingGlyph(_)) if payload.font.source == FontSource::GoogleFonts => {
+                let font = download_google_font_subset_temp(
+                    &payload.font.family_name,
+                    payload.font.weight,
+                    &text,
+                )?;
+                renderer.render_to_path(font.path(), 0, temporary_output.path())?;
+            }
+            Err(error) => return Err(error),
         }
-        Err(error) => return Err(error),
+    } else if payload.font.source == FontSource::GoogleFonts {
+        let font = download_google_font_subset_temp(
+            &payload.font.family_name,
+            payload.font.weight,
+            &text,
+        )?;
+        renderer.render_to_path(font.path(), 0, temporary_output.path())?;
+    } else {
+        return Err(AppError::Processing("No path in font metadata".into()));
     }
 
     let mut preview_cache = preview_cache_state

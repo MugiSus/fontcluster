@@ -1,6 +1,5 @@
-use crate::commands::progress::progress_events;
-use crate::config::{FontSet, ProgressStage};
-use crate::core::{AppState, EventSink};
+use crate::config::FontSet;
+use crate::core::AppState;
 use crate::error::{AppError, Result};
 use reqwest::blocking::Client;
 use serde::Deserialize;
@@ -228,27 +227,12 @@ impl GoogleFontsDownloader {
         Self {}
     }
 
-    pub fn should_run(state: &AppState) -> Result<bool> {
-        let guard = state.current_session.lock().unwrap();
-        let session = guard
-            .as_ref()
-            .ok_or_else(|| AppError::Processing("No active session".into()))?;
-        let font_set = session
-            .algorithm
-            .as_ref()
-            .and_then(|a| a.discovery.as_ref())
-            .map(|d| d.font_set.clone())
-            .unwrap_or_default();
-
-        Ok(!matches!(font_set, FontSet::SystemFonts))
-    }
-
-    pub async fn download_fonts(
+    pub async fn download_fonts_to_dir(
         &self,
-        events: &impl EventSink,
         state: &AppState,
+        output_dir: PathBuf,
     ) -> Result<Vec<PathBuf>> {
-        let (font_set, preview_text, target_weights, session_id) = {
+        let (font_set, preview_text, target_weights) = {
             let guard = state.current_session.lock().unwrap();
             let session = guard
                 .as_ref()
@@ -256,32 +240,18 @@ impl GoogleFontsDownloader {
             let font_set = session
                 .algorithm
                 .as_ref()
-                .and_then(|a| a.discovery.as_ref())
-                .map(|d| d.font_set.clone())
+                .and_then(|a| a.rendering.as_ref())
+                .map(|rendering| rendering.font_set.clone())
                 .unwrap_or_default();
 
             (
                 font_set,
                 session.preview_text.clone(),
                 session.weights.clone(),
-                session.session_id.clone(),
             )
         };
-        let session_dir = AppState::get_base_dir()?
-            .join("Generated")
-            .join(&session_id);
-        let events = events.clone();
-        let state = state.clone();
-
         tokio::task::spawn_blocking(move || {
-            download_fonts_impl(
-                &font_set,
-                &preview_text,
-                &session_dir,
-                &target_weights,
-                &events,
-                &state,
-            )
+            download_fonts_impl(&font_set, &preview_text, &output_dir, &target_weights)
         })
         .await
         .map_err(|e| AppError::Processing(e.to_string()))?
@@ -291,10 +261,8 @@ impl GoogleFontsDownloader {
 fn download_fonts_impl(
     font_set: &FontSet,
     target_text: &str,
-    session_dir: &Path,
+    output_dir: &Path,
     target_weights: &[i32],
-    events: &impl EventSink,
-    state: &AppState,
 ) -> Result<Vec<PathBuf>> {
     let all_fonts = load_google_fonts_metadata()?;
 
@@ -330,8 +298,7 @@ fn download_fonts_impl(
         target_fonts.len()
     );
 
-    let cache_dir = session_dir.join("google_fonts");
-    fs::create_dir_all(&cache_dir)
+    fs::create_dir_all(output_dir)
         .map_err(|e| AppError::Io(format!("Failed to create cache dir: {}", e)))?;
 
     let client = Client::builder()
@@ -342,19 +309,8 @@ fn download_fonts_impl(
     use rayon::prelude::*;
     let downloaded_paths: Arc<Mutex<Vec<PathBuf>>> = Arc::new(Mutex::new(Vec::new()));
     let client = Arc::new(client);
-    let progress_events_sink = events.clone();
-    progress_events::reset_progress(events, state, ProgressStage::Download);
-    progress_events::set_progress_denominator(
-        events,
-        state,
-        ProgressStage::Download,
-        target_fonts.len() as i32,
-    );
-
     target_fonts.par_iter().for_each(|font| {
         let client = Arc::clone(&client);
-        let progress_events_sink = progress_events_sink.clone();
-        let state = state.clone();
 
         for &req_weight in target_weights {
             let Some(api_weight) = google_font_api_weight(req_weight, &font.variants) else {
@@ -372,7 +328,7 @@ fn download_fonts_impl(
                 Ok(font_bytes) => {
                     let file_name =
                         format!("{}_Weight{}.ttf", font.family.replace(' ', "_"), req_weight);
-                    let path = cache_dir.join(&file_name);
+                    let path = output_dir.join(&file_name);
                     if let Ok(mut file) = fs::File::create(&path) {
                         if file.write_all(&font_bytes).is_ok() {
                             downloaded_paths.lock().unwrap().push(path);
@@ -384,12 +340,6 @@ fn download_fonts_impl(
                 }
             }
         }
-        progress_events::increase_numerator(
-            &progress_events_sink,
-            &state,
-            ProgressStage::Download,
-            1,
-        );
     });
 
     let paths = Arc::try_unwrap(downloaded_paths)

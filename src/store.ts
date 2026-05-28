@@ -70,9 +70,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
     clusters_amount: 0,
     samples_amount: 0,
     progress: {
-      download: { numerator: 0, denominator: 1 },
-      discovery: { numerator: 0, denominator: 1 },
-      generation: { numerator: 0, denominator: 1 },
+      rendering: { numerator: 0, denominator: 1 },
       vectorization: { numerator: 0, denominator: 1 },
       clustering: { numerator: 0, denominator: 1 },
       position: { numerator: 0, denominator: 1 },
@@ -81,8 +79,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   weights: [400],
   discovered_fonts: {},
   algorithm: {
-    discovery: { font_set: 'google_fonts_popular300' },
-    image: { font_size: 224 },
+    rendering: { font_set: 'google_fonts_popular300', font_size: 224 },
     clustering: {
       method: 'average',
       preprocessing_dimensions: 4,

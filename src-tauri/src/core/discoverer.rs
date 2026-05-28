@@ -1,6 +1,5 @@
-use crate::commands::progress::progress_events;
-use crate::config::{FontSource, ProgressStage};
-use crate::core::{AppState, EventSink};
+use crate::config::FontSource;
+use crate::core::AppState;
 use crate::error::{AppError, Result};
 use fontdb::{FaceInfo, Source};
 use std::collections::HashMap;
@@ -176,10 +175,23 @@ impl Discoverer {
         })
     }
 
-    pub async fn discover_fonts(
+    pub async fn discover_fonts(&self, state: &AppState) -> Result<HashMap<i32, Vec<String>>> {
+        self.discover_fonts_with_google_fonts_dir(state, None).await
+    }
+
+    pub async fn discover_fonts_from_google_fonts_dir(
         &self,
-        events: &impl EventSink,
         state: &AppState,
+        google_fonts_dir: PathBuf,
+    ) -> Result<HashMap<i32, Vec<String>>> {
+        self.discover_fonts_with_google_fonts_dir(state, Some(google_fonts_dir))
+            .await
+    }
+
+    async fn discover_fonts_with_google_fonts_dir(
+        &self,
+        state: &AppState,
+        google_fonts_dir: Option<PathBuf>,
     ) -> Result<HashMap<i32, Vec<String>>> {
         let (preview_text, target_weights, session_id, font_set) = {
             let guard = state.current_session.lock().unwrap();
@@ -187,8 +199,8 @@ impl Discoverer {
             let font_set = s
                 .algorithm
                 .as_ref()
-                .and_then(|a| a.discovery.as_ref())
-                .map(|d| d.font_set.clone())
+                .and_then(|a| a.rendering.as_ref())
+                .map(|rendering| rendering.font_set.clone())
                 .unwrap_or_default();
             (
                 s.preview_text.clone(),
@@ -209,27 +221,20 @@ impl Discoverer {
                 db.load_system_fonts();
             }
             _ => {
-                println!("🔍 Loading cached Google Fonts with fontdb...");
-                db.load_fonts_dir(session_dir.join("google_fonts"));
+                let google_fonts_dir = google_fonts_dir.ok_or_else(|| {
+                    AppError::Processing("Google Fonts directory was not prepared".into())
+                })?;
+                println!("🔍 Loading temporary Google Fonts with fontdb...");
+                db.load_fonts_dir(google_fonts_dir);
             }
         }
 
         let font_faces: Vec<FaceInfo> = db.faces().cloned().collect();
         println!("🔍 Found {} font faces", font_faces.len());
 
-        progress_events::reset_progress(events, state, ProgressStage::Discovery);
-        progress_events::set_progress_denominator(
-            events,
-            state,
-            ProgressStage::Discovery,
-            font_faces.len() as i32,
-        );
-
-        let events = events.clone();
         let preview_text = preview_text.clone();
         let target_weights = target_weights.clone();
         let session_dir = session_dir.clone();
-        let state_clone = state.clone();
         let is_cancelled = state.is_cancelled.clone();
 
         let discovered =
@@ -247,13 +252,6 @@ impl Discoverer {
                             all_metas.push(meta);
                         }
                     }
-
-                    progress_events::increase_numerator(
-                        &events,
-                        &state_clone,
-                        ProgressStage::Discovery,
-                        1,
-                    );
                 }
 
                 println!(

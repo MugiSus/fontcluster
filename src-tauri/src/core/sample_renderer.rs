@@ -1,29 +1,27 @@
 use crate::commands::progress::progress_events;
-use crate::config::{ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
+use crate::config::{FontSource, ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-pub struct ImageGenerator {}
+pub struct SampleRenderer {}
 
-impl ImageGenerator {
+impl SampleRenderer {
     pub fn new() -> Self {
         Self {}
     }
 
-    // discover_fonts moved to discoverer.rs
-
-    pub async fn generate_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
+    pub async fn render_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let (discovered_fonts, session_id, text, font_size) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
             let font_size = s
                 .algorithm
                 .as_ref()
-                .and_then(|a| a.image.as_ref())
-                .map(|i| i.font_size)
+                .and_then(|a| a.rendering.as_ref())
+                .map(|rendering| rendering.font_size)
                 .unwrap_or(DEFAULT_FONT_SIZE);
             (
                 s.discovered_fonts.clone(),
@@ -43,16 +41,16 @@ impl ImageGenerator {
             }
         }
 
-        println!("📋 Total image generation tasks: {}", tasks.len());
+        println!("📋 Total sample rendering tasks: {}", tasks.len());
         if tasks.is_empty() {
-            println!("⚠️ No fonts discovered for weights. Skipping generation.");
+            println!("⚠️ No fonts discovered for weights. Skipping rendering.");
         }
 
-        progress_events::reset_progress(events, state, ProgressStage::Generation);
+        progress_events::reset_progress(events, state, ProgressStage::Rendering);
         progress_events::set_progress_denominator(
             events,
             state,
-            ProgressStage::Generation,
+            ProgressStage::Rendering,
             tasks.len() as i32,
         );
 
@@ -81,7 +79,7 @@ impl ImageGenerator {
                     );
 
                     let res: Result<()> = (|| {
-                        let meta = crate::core::session::load_font_metadata(
+                        let mut meta = crate::core::session::load_font_metadata(
                             &render_config.output_dir,
                             &safe_name,
                         )?;
@@ -91,6 +89,13 @@ impl ImageGenerator {
 
                         let renderer = FontRenderer::new(Arc::clone(&render_config));
                         renderer.render_sample(&path, meta.font_index, &safe_name)?;
+                        if meta.source == FontSource::GoogleFonts {
+                            meta.path = None;
+                            crate::core::session::save_font_metadata(
+                                &render_config.output_dir,
+                                &meta,
+                            )?;
+                        }
                         Ok(())
                     })();
 
@@ -98,7 +103,7 @@ impl ImageGenerator {
                         Ok(_) => progress_events::increase_numerator(
                             &events,
                             &state_clone,
-                            ProgressStage::Generation,
+                            ProgressStage::Rendering,
                             1,
                         ),
                         Err(e) => {
@@ -111,7 +116,7 @@ impl ImageGenerator {
                             progress_events::decrease_denominator(
                                 &events,
                                 &state_clone,
-                                ProgressStage::Generation,
+                                ProgressStage::Rendering,
                                 1,
                             );
                         }
@@ -126,7 +131,7 @@ impl ImageGenerator {
             return Ok(());
         }
 
-        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Generated)?;
+        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Rendered)?;
         Ok(())
     }
 }

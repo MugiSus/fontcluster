@@ -1,7 +1,7 @@
-use crate::config::{AlgorithmConfig, ProcessStatus};
+use crate::config::{AlgorithmConfig, FontSet, ProcessStatus};
 use crate::core::{
-    clusterer, AppState, Discoverer, EventSink, GoogleFontsDownloader, ImageGenerator, Positioner,
-    RunningJob, StdoutEventSink, Vectorizer,
+    clusterer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner, RunningJob,
+    SampleRenderer, StdoutEventSink, Vectorizer,
 };
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -224,66 +224,56 @@ pub async fn run_jobs_pipeline(
     };
     events.emit_string("session_started", id.clone())?;
 
-    // Step 0: Download Google Fonts
+    // Step 0: Render samples
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-    if status == ProcessStatus::Empty && GoogleFontsDownloader::should_run(&state)? {
+    if status == ProcessStatus::Empty {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        println!("⬇️ Starting Google Fonts download...");
-        events.emit_unit("download_start")?;
-        let downloader = GoogleFontsDownloader::new();
-        downloader.download_fonts(&events, state).await?;
+        println!("🖼️ Starting sample rendering...");
+        events.emit_unit("font_rendering_start")?;
 
-        if state.is_cancelled.load(Ordering::Relaxed) {
-            return Ok("Cancelled".into());
-        }
-        state.update_status(|s| s.process_status = ProcessStatus::Downloaded)?;
-        events.emit_string("download_complete", id.clone())?;
-    }
-
-    // Step 1: Discovery
-    let status = {
-        let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
-    };
-    if status == ProcessStatus::Empty || status == ProcessStatus::Downloaded {
-        if state.is_cancelled.load(Ordering::Relaxed) {
-            return Ok("Cancelled".into());
-        }
-        println!("🔍 Starting discovery...");
-        events.emit_unit("discovery_start")?;
+        let font_set = {
+            let guard = state.current_session.lock().unwrap();
+            guard
+                .as_ref()
+                .and_then(|session| session.algorithm.as_ref())
+                .and_then(|algorithm| algorithm.rendering.as_ref())
+                .map(|rendering| rendering.font_set.clone())
+                .unwrap_or_default()
+        };
         let disc = Discoverer::new();
-        disc.discover_fonts(&events, state).await?;
+        let google_fonts_dir = if matches!(font_set, FontSet::SystemFonts) {
+            None
+        } else {
+            let temp_dir =
+                tempfile::TempDir::new().map_err(|error| AppError::Io(error.to_string()))?;
+            GoogleFontsDownloader::new()
+                .download_fonts_to_dir(state, temp_dir.path().to_path_buf())
+                .await?;
+            Some(temp_dir)
+        };
+
+        if let Some(google_fonts_dir) = google_fonts_dir.as_ref() {
+            disc.discover_fonts_from_google_fonts_dir(state, google_fonts_dir.path().to_path_buf())
+                .await?;
+        } else {
+            disc.discover_fonts(state).await?;
+        }
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        state.update_status(|s| s.process_status = ProcessStatus::Discovered)?;
-        events.emit_string("discovery_complete", id.clone())?;
-    }
-
-    // Step 2: Images
-    let status = {
-        let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
-    };
-    if status == ProcessStatus::Discovered {
-        if state.is_cancelled.load(Ordering::Relaxed) {
-            return Ok("Cancelled".into());
-        }
-        println!("🖼️ Starting image generation...");
-        events.emit_unit("font_generation_start")?;
-        let gen = ImageGenerator::new();
-        gen.generate_all(&events, state).await?;
+        let renderer = SampleRenderer::new();
+        renderer.render_all(&events, state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        events.emit_string("font_generation_complete", id.clone())?;
+        events.emit_string("font_rendering_complete", id.clone())?;
     }
 
     // Step 3: Vectors
@@ -291,7 +281,7 @@ pub async fn run_jobs_pipeline(
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-    if status == ProcessStatus::Generated {
+    if status == ProcessStatus::Rendered {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }

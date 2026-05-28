@@ -17,12 +17,8 @@ export const getProcessStatusBadge = (status: string) => {
       return { text: 'Positioned', variant: 'outline' } as const;
     case 'vectorized':
       return { text: 'Vectorized', variant: 'outline' } as const;
-    case 'generated':
-      return { text: 'Generated', variant: 'outline' } as const;
-    case 'discovered':
-      return { text: 'Discovered', variant: 'outline' } as const;
-    case 'downloaded':
-      return { text: 'Downloaded', variant: 'outline' } as const;
+    case 'rendered':
+      return { text: 'Rendered', variant: 'outline' } as const;
     default:
       return { text: 'Empty', variant: 'error' } as const;
   }
@@ -59,13 +55,9 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
 
   const progressValue = () => {
     const progress = session().status.progress;
-    const isInstalledFont =
-      session().algorithm?.discovery?.font_set === 'system_fonts';
 
     const weightedProgress =
-      sectionRatio(progress.download) * 0.1 +
-      sectionRatio(progress.discovery) * (isInstalledFont ? 0.2 : 0.1) +
-      sectionRatio(progress.generation) * 0.15 +
+      sectionRatio(progress.rendering) * 0.15 +
       sectionRatio(progress.vectorization) * 0.6 +
       sectionRatio(progress.clustering) * 0.025 +
       sectionRatio(progress.position) * 0.025;

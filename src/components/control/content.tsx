@@ -88,13 +88,11 @@ export function ControlContent() {
     ) as FontWeight[];
 
     const algorithm: AlgorithmConfig = {
-      discovery: {
-        font_set: (formdata.get('discovery-font-set') ??
-          appState.session.config?.algorithm?.discovery?.font_set ??
+      rendering: {
+        font_set: (formdata.get('rendering-font-set') ??
+          appState.session.config?.algorithm?.rendering?.font_set ??
           'google_fonts_popular300') as FontSet,
-      },
-      image: {
-        font_size: Number(formdata.get('image-font-size')) || 224,
+        font_size: Number(formdata.get('rendering-font-size')) || 224,
       },
       clustering: {
         method: (formdata.get('clustering-method') ??
@@ -156,20 +154,18 @@ export function ControlContent() {
       <Show when={appState.session.config.session_id || true} keyed>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
-            title='discover'
+            title='render'
             disabled={isRunCooldown()}
             onStepRun={() => handleRun('empty')}
-            class='group/section space-y-1.5'
-            contentClass='grid grid-cols-1 gap-2'
           >
             <TextProperty label='source' class='mr-1 gap-0.5'>
               <Select
-                name='discovery-font-set'
+                name='rendering-font-set'
                 options={Object.keys(FONT_SET_LABELS) as FontSet[]}
                 optionTextValue={(fontSet) => FONT_SET_LABELS[fontSet]}
                 disallowEmptySelection
                 defaultValue={
-                  appState.session.config?.algorithm?.discovery?.font_set ??
+                  appState.session.config?.algorithm?.rendering?.font_set ??
                   'google_fonts_popular300'
                 }
                 itemComponent={(props) => (
@@ -192,18 +188,11 @@ export function ControlContent() {
                 <SelectContent />
               </Select>
             </TextProperty>
-          </ControlPropertySection>
-
-          <ControlPropertySection
-            title='generate'
-            disabled={isRunCooldown()}
-            onStepRun={() => handleRun('discovered')}
-          >
             <NumberProperty
               label='font size'
-              name='image-font-size'
+              name='rendering-font-size'
               defaultValue={
-                appState.session.config?.algorithm?.image?.font_size ?? 224
+                appState.session.config?.algorithm?.rendering?.font_size ?? 224
               }
               step={1}
               minValue={1}
@@ -213,7 +202,7 @@ export function ControlContent() {
           <ControlPropertySection
             title='analyze'
             disabled={isRunCooldown()}
-            onStepRun={() => handleRun('generated')}
+            onStepRun={() => handleRun('rendered')}
           >
             <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
               RepVit-M1.0

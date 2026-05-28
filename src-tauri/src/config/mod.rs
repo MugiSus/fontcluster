@@ -24,15 +24,24 @@ pub struct SessionConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct AlgorithmConfig {
-    pub discovery: Option<DiscoveryConfig>,
-    pub image: Option<ImageConfig>,
+    pub rendering: Option<RenderingConfig>,
     pub clustering: Option<ClusteringConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
-pub struct DiscoveryConfig {
+pub struct RenderingConfig {
     pub font_set: FontSet,
+    pub font_size: f32,
+}
+
+impl Default for RenderingConfig {
+    fn default() -> Self {
+        Self {
+            font_set: FontSet::default(),
+            font_size: DEFAULT_FONT_SIZE,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -87,28 +96,12 @@ impl Default for ClusteringConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct ImageConfig {
-    pub font_size: f32,
-}
-
-impl Default for ImageConfig {
-    fn default() -> Self {
-        Self {
-            font_size: DEFAULT_FONT_SIZE,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ProcessStatus {
     #[default]
     Empty,
-    Downloaded,
-    Discovered,
-    Generated,
+    Rendered,
     Vectorized,
     Positioned,
     Clustered,
@@ -126,9 +119,7 @@ pub struct ProcessingStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(default)]
 pub struct ProcessingProgress {
-    pub download: ProgressSection,
-    pub discovery: ProgressSection,
-    pub generation: ProgressSection,
+    pub rendering: ProgressSection,
     pub vectorization: ProgressSection,
     pub clustering: ProgressSection,
     pub position: ProgressSection,
@@ -152,9 +143,7 @@ impl Default for ProgressSection {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressStage {
-    Download,
-    Discovery,
-    Generation,
+    Rendering,
     Vectorization,
     Clustering,
     Position,
@@ -217,7 +206,7 @@ pub struct FontMetadata {
     pub font_index: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum FontSource {
     #[default]

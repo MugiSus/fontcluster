@@ -31,10 +31,6 @@ export type ClusteringMethod =
   | 'centroid'
   | 'median';
 
-export interface ImageOptions {
-  font_size: number;
-}
-
 export type FontSet =
   | 'system_fonts'
   | 'google_fonts_popular100'
@@ -45,21 +41,19 @@ export type FontSet =
   | 'google_fonts_popular1500'
   | 'google_fonts_all';
 
-export interface DiscoveryOptions {
+export interface RenderingOptions {
   font_set: FontSet;
+  font_size: number;
 }
 
 export interface AlgorithmConfig {
-  discovery: DiscoveryOptions | null;
-  image: ImageOptions | null;
+  rendering: RenderingOptions | null;
   clustering: ClusteringOptions | null;
 }
 
 export type ProcessStatus =
   | 'empty'
-  | 'downloaded'
-  | 'discovered'
-  | 'generated'
+  | 'rendered'
   | 'vectorized'
   | 'positioned'
   | 'clustered';
@@ -90,9 +84,7 @@ export interface SessionProgressSection {
 }
 
 export interface SessionProgress {
-  download: SessionProgressSection;
-  discovery: SessionProgressSection;
-  generation: SessionProgressSection;
+  rendering: SessionProgressSection;
   vectorization: SessionProgressSection;
   clustering: SessionProgressSection;
   position: SessionProgressSection;
