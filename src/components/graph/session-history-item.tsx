@@ -57,10 +57,10 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
     const progress = session().status.progress;
 
     const weightedProgress =
-      sectionRatio(progress.rendering) * 0.15 +
+      sectionRatio(progress.rendering) * 0.2 +
       sectionRatio(progress.vectorization) * 0.6 +
-      sectionRatio(progress.clustering) * 0.025 +
-      sectionRatio(progress.position) * 0.025;
+      sectionRatio(progress.clustering) * 0.1 +
+      sectionRatio(progress.position) * 0.1;
 
     return Math.min(1, Math.max(0, weightedProgress));
   };

@@ -7,6 +7,17 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use swash::{FontRef, StringId};
 
+#[derive(Debug, Clone)]
+pub struct FontRenderSource {
+    pub path: PathBuf,
+    pub font_index: u32,
+}
+
+pub struct DiscoveryResult {
+    pub discovered_fonts: HashMap<i32, Vec<String>>,
+    pub render_sources: HashMap<String, FontRenderSource>,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExtractedMeta {
     pub display_name: String,
@@ -175,7 +186,7 @@ impl Discoverer {
         })
     }
 
-    pub async fn discover_fonts(&self, state: &AppState) -> Result<HashMap<i32, Vec<String>>> {
+    pub async fn discover_fonts(&self, state: &AppState) -> Result<DiscoveryResult> {
         self.discover_fonts_with_google_fonts_dir(state, None).await
     }
 
@@ -183,7 +194,7 @@ impl Discoverer {
         &self,
         state: &AppState,
         google_fonts_dir: PathBuf,
-    ) -> Result<HashMap<i32, Vec<String>>> {
+    ) -> Result<DiscoveryResult> {
         self.discover_fonts_with_google_fonts_dir(state, Some(google_fonts_dir))
             .await
     }
@@ -192,7 +203,7 @@ impl Discoverer {
         &self,
         state: &AppState,
         google_fonts_dir: Option<PathBuf>,
-    ) -> Result<HashMap<i32, Vec<String>>> {
+    ) -> Result<DiscoveryResult> {
         let (preview_text, target_weights, session_id, font_set) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
@@ -237,134 +248,147 @@ impl Discoverer {
         let session_dir = session_dir.clone();
         let is_cancelled = state.is_cancelled.clone();
 
-        let discovered =
-            tokio::task::spawn_blocking(move || -> Result<HashMap<i32, Vec<String>>> {
-                let mut all_metas = Vec::new();
-                for face in font_faces {
+        let discovered = tokio::task::spawn_blocking(move || -> Result<DiscoveryResult> {
+            let mut all_metas = Vec::new();
+            for face in font_faces {
+                if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Ok(DiscoveryResult {
+                        discovered_fonts: HashMap::new(),
+                        render_sources: HashMap::new(),
+                    });
+                }
+
+                if let Ok((data, path)) = Self::source_bytes_and_path(&face.source) {
+                    if let Ok(meta) =
+                        Self::analyze_font_data(&data, face.index, &preview_text, path, &face)
+                    {
+                        all_metas.push(meta);
+                    }
+                }
+            }
+
+            println!(
+                "🔍 Analyzed {} fonts. Grouping by family...",
+                all_metas.len()
+            );
+
+            let mut families: HashMap<String, Vec<ExtractedMeta>> = HashMap::new();
+            for meta in all_metas {
+                let family_name = if is_google_fonts {
+                    Self::google_font_family_from_path(&meta.path)
+                        .unwrap_or_else(|| Self::internal_family_name(&meta))
+                } else {
+                    Self::internal_family_name(&meta)
+                };
+                families.entry(family_name).or_default().push(meta);
+            }
+
+            use rayon::prelude::*;
+            let target_weights_ref = &target_weights;
+            let session_dir_ref = &session_dir;
+
+            let discovered_pairs: Vec<(i32, String, String, FontRenderSource)> = families
+                .into_par_iter()
+                .map(|(family_name, family_metas)| {
                     if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
-                        return Ok(HashMap::new());
+                        return Vec::new();
                     }
 
-                    if let Ok((data, path)) = Self::source_bytes_and_path(&face.source) {
-                        if let Ok(meta) =
-                            Self::analyze_font_data(&data, face.index, &preview_text, path, &face)
-                        {
-                            all_metas.push(meta);
-                        }
-                    }
-                }
+                    let mut local_discovered = Vec::new();
+                    let available_weights: Vec<String> = family_metas
+                        .iter()
+                        .map(|m| format!("Weight({})", m.actual_weight))
+                        .collect();
 
-                println!(
-                    "🔍 Analyzed {} fonts. Grouping by family...",
-                    all_metas.len()
-                );
-
-                let mut families: HashMap<String, Vec<ExtractedMeta>> = HashMap::new();
-                for meta in all_metas {
-                    let family_name = if is_google_fonts {
-                        Self::google_font_family_from_path(&meta.path)
-                            .unwrap_or_else(|| Self::internal_family_name(&meta))
-                    } else {
-                        Self::internal_family_name(&meta)
-                    };
-                    families.entry(family_name).or_default().push(meta);
-                }
-
-                use rayon::prelude::*;
-                let target_weights_ref = &target_weights;
-                let session_dir_ref = &session_dir;
-
-                let discovered_pairs: Vec<(i32, String)> = families
-                    .into_par_iter()
-                    .map(|(family_name, family_metas)| {
-                        if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
-                            return Vec::new();
-                        }
-
-                        let mut local_discovered = Vec::new();
-                        let available_weights: Vec<String> = family_metas
+                    for &tw in target_weights_ref {
+                        let best = family_metas
                             .iter()
-                            .map(|m| format!("Weight({})", m.actual_weight))
-                            .collect();
-
-                        for &tw in target_weights_ref {
-                            let best = family_metas
-                                .iter()
-                                .filter(|m| {
-                                    let diff = m.actual_weight - tw;
-                                    if tw < 400 {
-                                        diff > -50 && diff <= 50
-                                    } else if tw > 400 {
-                                        diff >= -50 && diff < 50
-                                    } else {
-                                        diff > -50 && diff < 50
-                                    }
-                                })
-                                .min_by_key(|m| (m.actual_weight - tw).abs());
-
-                            if let Some(meta) = best {
-                                let safe_name = crate::config::FontMetadata::generate_safe_name(
-                                    &family_name,
-                                    tw,
-                                );
-                                let font_meta = crate::config::FontMetadata {
-                                    source: if is_google_fonts {
-                                        FontSource::GoogleFonts
-                                    } else {
-                                        FontSource::System
-                                    },
-                                    safe_name,
-                                    font_name: meta.display_name.clone(),
-                                    family_name: family_name.clone(),
-                                    family_names: meta.family_names.clone(),
-                                    preferred_family_names: meta.preferred_family_names.clone(),
-                                    style_name: Self::internal_style_name(meta),
-                                    style_names: meta.style_names.clone(),
-                                    preferred_style_names: meta.preferred_style_names.clone(),
-                                    publishers: meta.publishers.clone(),
-                                    designers: meta.designers.clone(),
-                                    copyright: meta.copyright.clone(),
-                                    trademark: meta.trademark.clone(),
-                                    version: meta.version.clone(),
-                                    postscript_name: meta.postscript_name.clone(),
-                                    description: meta.description.clone(),
-                                    vendor_url: meta.vendor_url.clone(),
-                                    designer_url: meta.designer_url.clone(),
-                                    sample_text: meta.sample_text.clone(),
-                                    weight: tw,
-                                    weights: available_weights.clone(),
-                                    path: Some(meta.path.clone()),
-                                    font_index: meta.font_index,
-                                };
-
-                                if let Err(e) = crate::core::session::save_font_metadata(
-                                    session_dir_ref,
-                                    &font_meta,
-                                ) {
-                                    eprintln!("Failed to save font metadata: {}", e);
+                            .filter(|m| {
+                                let diff = m.actual_weight - tw;
+                                if tw < 400 {
+                                    diff > -50 && diff <= 50
+                                } else if tw > 400 {
+                                    diff >= -50 && diff < 50
                                 } else {
-                                    local_discovered.push((tw, family_name.clone()));
+                                    diff > -50 && diff < 50
                                 }
+                            })
+                            .min_by_key(|m| (m.actual_weight - tw).abs());
+
+                        if let Some(meta) = best {
+                            let safe_name =
+                                crate::config::FontMetadata::generate_safe_name(&family_name, tw);
+                            let font_meta = crate::config::FontMetadata {
+                                source: if is_google_fonts {
+                                    FontSource::GoogleFonts
+                                } else {
+                                    FontSource::System
+                                },
+                                safe_name,
+                                font_name: meta.display_name.clone(),
+                                family_name: family_name.clone(),
+                                family_names: meta.family_names.clone(),
+                                preferred_family_names: meta.preferred_family_names.clone(),
+                                style_name: Self::internal_style_name(meta),
+                                style_names: meta.style_names.clone(),
+                                preferred_style_names: meta.preferred_style_names.clone(),
+                                publishers: meta.publishers.clone(),
+                                designers: meta.designers.clone(),
+                                copyright: meta.copyright.clone(),
+                                trademark: meta.trademark.clone(),
+                                version: meta.version.clone(),
+                                postscript_name: meta.postscript_name.clone(),
+                                description: meta.description.clone(),
+                                vendor_url: meta.vendor_url.clone(),
+                                designer_url: meta.designer_url.clone(),
+                                sample_text: meta.sample_text.clone(),
+                                weight: tw,
+                                weights: available_weights.clone(),
+                                font_index: meta.font_index,
+                            };
+                            let render_source = FontRenderSource {
+                                path: meta.path.clone(),
+                                font_index: meta.font_index,
+                            };
+
+                            if let Err(e) = crate::core::session::save_font_metadata(
+                                session_dir_ref,
+                                &font_meta,
+                            ) {
+                                eprintln!("Failed to save font metadata: {}", e);
+                            } else {
+                                local_discovered.push((
+                                    tw,
+                                    family_name.clone(),
+                                    font_meta.safe_name.clone(),
+                                    render_source,
+                                ));
                             }
                         }
-                        local_discovered
-                    })
-                    .flatten()
-                    .collect();
-
-                let mut discovered = HashMap::new();
-                for w in &target_weights {
-                    discovered.insert(*w, Vec::new());
-                }
-                for (tw, family_name) in discovered_pairs {
-                    if let Some(list) = discovered.get_mut(&tw) {
-                        list.push(family_name);
                     }
+                    local_discovered
+                })
+                .flatten()
+                .collect();
+
+            let mut discovered = HashMap::new();
+            let mut render_sources = HashMap::new();
+            for w in &target_weights {
+                discovered.insert(*w, Vec::new());
+            }
+            for (tw, family_name, safe_name, render_source) in discovered_pairs {
+                if let Some(list) = discovered.get_mut(&tw) {
+                    list.push(family_name);
                 }
-                Ok(discovered)
+                render_sources.insert(safe_name, render_source);
+            }
+            Ok(DiscoveryResult {
+                discovered_fonts: discovered,
+                render_sources,
             })
-            .await
-            .map_err(|e| AppError::Processing(e.to_string()))??;
+        })
+        .await
+        .map_err(|e| AppError::Processing(e.to_string()))??;
 
         if state
             .is_cancelled
@@ -373,17 +397,17 @@ impl Discoverer {
             return Ok(discovered);
         }
 
-        let total_discovered: usize = discovered.values().map(|v| v.len()).sum();
+        let total_discovered: usize = discovered.discovered_fonts.values().map(|v| v.len()).sum();
         println!(
             "✅ Discovery complete. Discovered {} font-weight pairs.",
             total_discovered
         );
-        for (w, list) in &discovered {
+        for (w, list) in &discovered.discovered_fonts {
             println!("   Weight {}: {} families", w, list.len());
         }
 
         state.update_session(|session| {
-            session.discovered_fonts = discovered.clone();
+            session.discovered_fonts = discovered.discovered_fonts.clone();
         })?;
 
         Ok(discovered)

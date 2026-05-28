@@ -40,7 +40,7 @@ export function ListFontItem(props: ListFontItemProps) {
   );
   const [previewPath] = createResource(
     () => {
-      if (!shouldRenderPreview() || !meta().path) return null;
+      if (!shouldRenderPreview()) return null;
       return {
         font: meta(),
         text: props.previewText,

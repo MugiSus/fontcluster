@@ -6,12 +6,12 @@ use crate::rendering::FontRenderer;
 use ritecache::{DiskCacheError, LruDiskCache};
 use serde::Deserialize;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::UNIX_EPOCH;
 use tauri::{command, State};
 use tauri::{AppHandle, Manager};
 
@@ -20,6 +20,7 @@ const PREVIEW_CACHE_SIZE_LIMIT: u64 = 500 * 1024 * 1024;
 #[derive(Default)]
 pub struct FontPreviewCacheState {
     cache: Mutex<Option<LruDiskCache>>,
+    system_fonts: Mutex<Option<SystemFontResolver>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,6 +28,96 @@ pub struct RenderFontPreviewPayload {
     font: FontMetadata,
     text: String,
     font_size: f32,
+}
+
+struct SystemFontFace {
+    path: PathBuf,
+    font_index: u32,
+    weight: i32,
+    families: Vec<String>,
+}
+
+struct SystemFontResolver {
+    faces: Vec<SystemFontFace>,
+    by_postscript_name: HashMap<String, (PathBuf, u32)>,
+}
+
+impl SystemFontResolver {
+    fn new() -> Self {
+        let mut db = fontdb::Database::new();
+        db.load_system_fonts();
+
+        let mut faces = Vec::new();
+        let mut by_postscript_name = HashMap::new();
+        for face in db.faces() {
+            let path = match &face.source {
+                fontdb::Source::File(path) => path,
+                fontdb::Source::SharedFile(path, _) => path,
+                fontdb::Source::Binary(_) => continue,
+            };
+            let path = path.to_path_buf();
+            by_postscript_name.insert(face.post_script_name.clone(), (path.clone(), face.index));
+            faces.push(SystemFontFace {
+                path,
+                font_index: face.index,
+                weight: face.weight.0 as i32,
+                families: face
+                    .families
+                    .iter()
+                    .map(|(family, _)| family.clone())
+                    .collect(),
+            });
+        }
+
+        Self {
+            faces,
+            by_postscript_name,
+        }
+    }
+
+    fn resolve(&self, font: &FontMetadata) -> Result<(PathBuf, u32)> {
+        if let Some((path, font_index)) = font
+            .postscript_name
+            .as_ref()
+            .and_then(|postscript_name| self.by_postscript_name.get(postscript_name))
+        {
+            return Ok((path.clone(), *font_index));
+        }
+
+        let face = self
+            .faces
+            .iter()
+            .find(|face| {
+                (face.weight - font.weight).abs() <= 50
+                    && face.families.iter().any(|family| {
+                        family == &font.family_name
+                            || font.family_names.values().any(|name| name == family)
+                            || font
+                                .preferred_family_names
+                                .values()
+                                .any(|name| name == family)
+                    })
+            })
+            .ok_or_else(|| {
+                AppError::Processing(format!("Failed to resolve system font {}", font.font_name))
+            })?;
+
+        Ok((face.path.clone(), face.font_index))
+    }
+}
+
+fn resolve_system_font(
+    preview_cache_state: &FontPreviewCacheState,
+    font: &FontMetadata,
+) -> Result<(PathBuf, u32)> {
+    let mut resolver = preview_cache_state
+        .system_fonts
+        .lock()
+        .map_err(|_| AppError::Processing("System font resolver lock poisoned".into()))?;
+    if resolver.is_none() {
+        *resolver = Some(SystemFontResolver::new());
+    }
+    resolver.as_ref().unwrap().resolve(font)
 }
 
 #[command]
@@ -100,25 +191,29 @@ fn render_font_preview_blocking(
         payload.text
     };
     let font_size = payload.font_size;
-    let font_file_metadata = payload
-        .font
-        .path
+    let resolved_system_font = if payload.font.source == FontSource::System {
+        Some(resolve_system_font(preview_cache_state, &payload.font)?)
+    } else {
+        None
+    };
+    let font_file_metadata = resolved_system_font
         .as_ref()
-        .and_then(|path| fs::metadata(path).ok());
+        .and_then(|(path, _)| fs::metadata(path).ok());
     let font_file_len = font_file_metadata
         .as_ref()
         .map(|metadata| metadata.len())
         .unwrap_or_default();
     let font_file_modified = font_file_metadata
         .and_then(|metadata| metadata.modified().ok())
-        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+        .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|duration| (duration.as_secs(), duration.subsec_nanos()));
 
     let mut hasher = DefaultHasher::new();
     payload.font.source.hash(&mut hasher);
-    payload.font.path.hash(&mut hasher);
     payload.font.safe_name.hash(&mut hasher);
+    payload.font.font_name.hash(&mut hasher);
     payload.font.family_name.hash(&mut hasher);
+    payload.font.postscript_name.hash(&mut hasher);
     payload.font.weight.hash(&mut hasher);
     payload.font.font_index.hash(&mut hasher);
     font_size.to_bits().hash(&mut hasher);
@@ -158,28 +253,24 @@ fn render_font_preview_blocking(
         font_size,
         output_dir: cache_root,
     }));
-    if let Some(font_path) = payload.font.path.as_ref().filter(|path| path.exists()) {
-        match renderer.render_to_path(font_path, payload.font.font_index, temporary_output.path()) {
-            Ok(()) => {}
-            Err(AppError::MissingGlyph(_)) if payload.font.source == FontSource::GoogleFonts => {
-                let font = download_google_font_subset_temp(
-                    &payload.font.family_name,
-                    payload.font.weight,
-                    &text,
-                )?;
-                renderer.render_to_path(font.path(), 0, temporary_output.path())?;
-            }
-            Err(error) => return Err(error),
+    match payload.font.source {
+        FontSource::System => {
+            let (font_path, font_index) = resolved_system_font.ok_or_else(|| {
+                AppError::Processing(format!(
+                    "Failed to resolve system font {}",
+                    payload.font.font_name
+                ))
+            })?;
+            renderer.render_to_path(&font_path, font_index, temporary_output.path())?;
         }
-    } else if payload.font.source == FontSource::GoogleFonts {
-        let font = download_google_font_subset_temp(
-            &payload.font.family_name,
-            payload.font.weight,
-            &text,
-        )?;
-        renderer.render_to_path(font.path(), 0, temporary_output.path())?;
-    } else {
-        return Err(AppError::Processing("No path in font metadata".into()));
+        FontSource::GoogleFonts => {
+            let font = download_google_font_subset_temp(
+                &payload.font.family_name,
+                payload.font.weight,
+                &text,
+            )?;
+            renderer.render_to_path(font.path(), 0, temporary_output.path())?;
+        }
     }
 
     let mut preview_cache = preview_cache_state

@@ -1,8 +1,9 @@
 use crate::commands::progress::progress_events;
-use crate::config::{FontSource, ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
-use crate::core::{AppState, EventSink};
+use crate::config::{ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
+use crate::core::{AppState, EventSink, FontRenderSource};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
+use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
@@ -13,7 +14,12 @@ impl SampleRenderer {
         Self {}
     }
 
-    pub async fn render_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
+    pub async fn render_all(
+        &self,
+        events: &impl EventSink,
+        state: &AppState,
+        render_sources: HashMap<String, FontRenderSource>,
+    ) -> Result<()> {
         let (discovered_fonts, session_id, text, font_size) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
@@ -79,23 +85,19 @@ impl SampleRenderer {
                     );
 
                     let res: Result<()> = (|| {
-                        let mut meta = crate::core::session::load_font_metadata(
-                            &render_config.output_dir,
-                            &safe_name,
-                        )?;
-                        let path = meta
-                            .path
-                            .ok_or_else(|| AppError::Processing("No path in metadata".into()))?;
+                        let render_source = render_sources.get(&safe_name).ok_or_else(|| {
+                            AppError::Processing(format!(
+                                "No render source for font metadata {}",
+                                safe_name
+                            ))
+                        })?;
 
                         let renderer = FontRenderer::new(Arc::clone(&render_config));
-                        renderer.render_sample(&path, meta.font_index, &safe_name)?;
-                        if meta.source == FontSource::GoogleFonts {
-                            meta.path = None;
-                            crate::core::session::save_font_metadata(
-                                &render_config.output_dir,
-                                &meta,
-                            )?;
-                        }
+                        renderer.render_sample(
+                            &render_source.path,
+                            render_source.font_index,
+                            &safe_name,
+                        )?;
                         Ok(())
                     })();
 

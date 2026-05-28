@@ -202,7 +202,6 @@ pub struct FontMetadata {
     pub sample_text: Option<String>,
     pub weight: i32,
     pub weights: Vec<String>,
-    pub path: Option<PathBuf>,
     pub font_index: u32,
 }
 

@@ -257,18 +257,20 @@ pub async fn run_jobs_pipeline(
             Some(temp_dir)
         };
 
-        if let Some(google_fonts_dir) = google_fonts_dir.as_ref() {
+        let discovery = if let Some(google_fonts_dir) = google_fonts_dir.as_ref() {
             disc.discover_fonts_from_google_fonts_dir(state, google_fonts_dir.path().to_path_buf())
-                .await?;
+                .await?
         } else {
-            disc.discover_fonts(state).await?;
-        }
+            disc.discover_fonts(state).await?
+        };
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
         let renderer = SampleRenderer::new();
-        renderer.render_all(&events, state).await?;
+        renderer
+            .render_all(&events, state, discovery.render_sources)
+            .await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());

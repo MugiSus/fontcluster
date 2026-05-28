@@ -127,7 +127,6 @@ export interface FontMetadata {
   sample_text?: string | null;
   weight: number;
   weights: string[];
-  path?: string | null;
   font_index: number;
 }
 
