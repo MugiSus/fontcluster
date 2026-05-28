@@ -20,15 +20,18 @@ import { getNearestSelectableFontItems } from '../graph/font-point-index';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
-const LIST_UPDATE_DEBOUNCE_MS = 400;
+const LIST_UPDATE_DEBOUNCE = 400;
+const LIST_PREVIEW_SCROLL_DEBOUNCE = 400;
 const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;
 
 export function ListContent() {
   const [selectedItem, setSelectedItem] = createSignal<FontItem | null>(null);
   const [nearestItems, setNearestItems] = createSignal<FontItem[]>([]);
+  const [canRenderListPreviews, setCanRenderListPreviews] = createSignal(true);
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
   let nearestItemsScrollElement: HTMLDivElement | undefined;
+  let listPreviewScrollTimer: number | undefined;
   const virtualizer = createVirtualizer({
     get count() {
       return nearestItems().length;
@@ -62,9 +65,21 @@ export function ListContent() {
       setSelectedItem(nextSelectedItem);
       setNearestItems(items);
       nearestItemsScrollElement?.scrollTo({ top: 0 });
-    }, LIST_UPDATE_DEBOUNCE_MS);
+    }, LIST_UPDATE_DEBOUNCE);
 
     onCleanup(() => window.clearTimeout(timeoutId));
+  });
+
+  const handleNearestItemsScroll = () => {
+    setCanRenderListPreviews(false);
+    if (listPreviewScrollTimer) window.clearTimeout(listPreviewScrollTimer);
+    listPreviewScrollTimer = window.setTimeout(() => {
+      setCanRenderListPreviews(true);
+    }, LIST_PREVIEW_SCROLL_DEBOUNCE);
+  };
+
+  onCleanup(() => {
+    if (listPreviewScrollTimer) window.clearTimeout(listPreviewScrollTimer);
   });
 
   const sendFontItem = (item: FontItem) => {
@@ -108,6 +123,7 @@ export function ListContent() {
         <div
           ref={nearestItemsScrollElement}
           class='min-h-0 w-full flex-1 overflow-y-scroll'
+          onScroll={handleNearestItemsScroll}
         >
           <ul
             class='relative w-full'
@@ -130,6 +146,7 @@ export function ListContent() {
                           item={fontItem()}
                           previewText={appState.ui.listPreviewText}
                           previewFontSize={LIST_PREVIEW_FONT_SIZE}
+                          previewEnabled={canRenderListPreviews()}
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}

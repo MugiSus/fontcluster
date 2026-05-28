@@ -14,6 +14,8 @@ interface ListPreviewTextFieldProps {
   onValueChange: (value: string) => void;
 }
 
+const LIST_PREVIEW_TEXT_DEBOUNCE = 500;
+
 export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
   const [inputValue, setInputValue] = createSignal('');
   let onValueChange: (value: string) => void = () => {};
@@ -33,7 +35,7 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
     }
     debounceTimer = window.setTimeout(() => {
       onValueChange(value);
-    }, 500);
+    }, LIST_PREVIEW_TEXT_DEBOUNCE);
   };
 
   const handleClear = () => {
