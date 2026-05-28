@@ -1,5 +1,5 @@
 use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
-use crate::core::AppState;
+use crate::core::{read_session_config_from_document, AppState, SESSION_DOCUMENT_EXTENSION};
 use crate::error::Result;
 use chrono::{DateTime, Utc};
 use std::collections::HashSet;
@@ -42,7 +42,7 @@ pub async fn get_session_info(
 
 #[command]
 pub async fn get_available_sessions() -> Result<String> {
-    let base = AppState::get_base_dir()?.join("Generated");
+    let base = AppState::get_generated_dir()?;
     if !base.exists() {
         return Ok("[]".into());
     }
@@ -50,14 +50,13 @@ pub async fn get_available_sessions() -> Result<String> {
     let mut sessions = Vec::new();
     for entry in fs::read_dir(base)? {
         let path = entry?.path();
-        if path.is_dir() {
-            let config_path = path.join("config.json");
-            if config_path.exists() {
-                if let Ok(s) =
-                    serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?)
-                {
-                    sessions.push(s);
-                }
+        if path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
+        {
+            if let Ok(s) = read_session_config_from_document(&path) {
+                sessions.push(s);
             }
         }
     }
@@ -73,7 +72,7 @@ pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<Sessi
 }
 
 fn read_stored_sessions() -> Result<Vec<StoredSession>> {
-    let base = AppState::get_base_dir()?.join("Generated");
+    let base = AppState::get_generated_dir()?;
     if !base.exists() {
         return Ok(Vec::new());
     }
@@ -81,18 +80,15 @@ fn read_stored_sessions() -> Result<Vec<StoredSession>> {
     let mut sessions = Vec::new();
     for entry in fs::read_dir(base)? {
         let path = entry?.path();
-        if !path.is_dir() {
-            continue;
-        }
-
-        let config_path = path.join("config.json");
-        if !config_path.exists() {
-            continue;
-        }
-
-        if let Ok(session) =
-            serde_json::from_str::<SessionConfig>(&fs::read_to_string(config_path)?)
+        if !path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
         {
+            continue;
+        }
+
+        if let Ok(session) = read_session_config_from_document(&path) {
             sessions.push(StoredSession { session, path });
         }
     }
@@ -130,7 +126,7 @@ fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) ->
             continue;
         }
 
-        fs::remove_dir_all(&stored.path)?;
+        fs::remove_file(&stored.path)?;
     }
 
     *sessions = retained;
@@ -145,7 +141,7 @@ pub async fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<S
 
 #[command]
 pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<String>> {
-    let base = AppState::get_base_dir()?.join("Generated");
+    let base = AppState::get_generated_dir()?;
 
     let mut latest: Option<(DateTime<Utc>, String)> = None;
     let mut has_sessions = false;
@@ -153,19 +149,20 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
         if let Ok(entries) = fs::read_dir(&base) {
             for entry in entries.filter_map(|e| e.ok()) {
                 let path = entry.path();
-                if path.is_dir() {
-                    let config_path = path.join("config.json");
-                    if let Ok(content) = fs::read_to_string(&config_path) {
-                        if let Ok(s) = serde_json::from_str::<SessionConfig>(&content) {
-                            has_sessions = true;
-                            if s.status.process_status != ProcessStatus::Clustered {
-                                continue;
-                            }
+                if path
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
+                {
+                    if let Ok(s) = read_session_config_from_document(&path) {
+                        has_sessions = true;
+                        if s.status.process_status != ProcessStatus::Clustered {
+                            continue;
+                        }
 
-                            let current_time = s.modified_at;
-                            if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
-                                latest = Some((current_time, s.session_id));
-                            }
+                        let current_time = s.modified_at;
+                        if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
+                            latest = Some((current_time, s.session_id));
                         }
                     }
                 }
@@ -184,17 +181,24 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
 #[command]
 #[allow(non_snake_case)]
 pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
-    AppState::get_base_dir().map(|d| d.join("Generated").join(sessionId))
+    let path = AppState::get_session_cache_dir(&sessionId)?;
+    if path.exists() {
+        Ok(path)
+    } else {
+        AppState::prepare_session_cache(&sessionId)
+    }
 }
 
 #[command]
 #[allow(non_snake_case)]
 pub async fn delete_session(sessionUuid: String) -> Result<bool> {
-    let path = AppState::get_base_dir()?
-        .join("Generated")
-        .join(sessionUuid);
+    let path = AppState::get_session_document_path(&sessionUuid)?;
+    let cache_path = AppState::get_session_cache_dir(&sessionUuid)?;
     if path.exists() {
-        fs::remove_dir_all(path)?;
+        fs::remove_file(path)?;
+        if cache_path.exists() {
+            fs::remove_dir_all(cache_path)?;
+        }
         Ok(true)
     } else {
         Ok(false)

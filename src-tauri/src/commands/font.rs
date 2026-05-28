@@ -123,7 +123,10 @@ fn resolve_system_font(
 #[command]
 #[allow(non_snake_case)]
 pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
-    let session_dir = AppState::get_base_dir()?.join("Generated").join(sessionId);
+    let session_dir = AppState::get_session_cache_dir(&sessionId)?;
+    if !session_dir.exists() {
+        AppState::prepare_session_cache(&sessionId)?;
+    }
     let samples_dir = session_dir.join("samples");
     let mut map = std::collections::HashMap::new();
 

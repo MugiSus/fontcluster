@@ -271,6 +271,7 @@ pub async fn run_jobs_pipeline(
         renderer
             .render_all(&events, state, discovery.render_sources)
             .await?;
+        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -291,6 +292,7 @@ pub async fn run_jobs_pipeline(
         events.emit_unit("vectorization_start")?;
         let vec = Vectorizer::new()?;
         vec.vectorize_all(&events, state).await?;
+        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -310,6 +312,7 @@ pub async fn run_jobs_pipeline(
         println!("📍 Starting positioning...");
         events.emit_unit("positioning_start")?;
         Positioner::position_all(&events, state).await?;
+        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -329,6 +332,7 @@ pub async fn run_jobs_pipeline(
         println!("✨ Starting clustering...");
         events.emit_unit("clustering_start")?;
         clusterer::cluster_all(&events, state).await?;
+        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());

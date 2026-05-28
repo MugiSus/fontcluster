@@ -100,6 +100,9 @@ fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new();
+    if let Err(error) = AppState::prune_unsupported_sessions() {
+        eprintln!("Failed to prune unsupported sessions: {}", error);
+    }
     crate::core::start_plugin_bridge_server(app_state.clone());
 
     tauri::Builder::default()
