@@ -39,7 +39,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
 
     const weightedProgress =
       sectionRatio(progress.rendering) * 0.2 +
-      sectionRatio(progress.vectorization) * 0.6 +
+      sectionRatio(progress.analysis) * 0.6 +
       sectionRatio(progress.clustering) * 0.1 +
       sectionRatio(progress.position) * 0.1;
 
@@ -51,9 +51,19 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
       <div class='flex items-start justify-between gap-2'>
         <div class='flex min-w-0 flex-col gap-1'>
           <div class='flex min-w-0 items-center gap-2'>
-            <span class='font-bold capitalize text-muted-foreground'>
-              {session().status.process_status}
-            </span>
+            <Show when={!isComplete()}>
+              <span class='font-bold capitalize text-muted-foreground'>
+                {isRunning()
+                  ? session().status.process_status === 'empty'
+                    ? 'Rendering'
+                    : session().status.process_status === 'rendered'
+                      ? 'Analyzing'
+                      : session().status.process_status === 'analyzed'
+                        ? 'Positioning'
+                        : 'Clustering'
+                  : 'Stopped'}
+              </span>
+            </Show>
             <time class='truncate text-muted-foreground'>
               {new Date(session().modified_at).toLocaleString('ja-JP', {
                 year: 'numeric',
@@ -99,9 +109,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
                 size='icon'
                 variant='ghost'
                 class='size-7 rounded-full'
-                disabled={
-                  props.isCurrentSession || props.isRestoring || !canRestore()
-                }
+                disabled={props.isRestoring || !canRestore()}
                 onClick={props.onSelectSession}
               >
                 <RotateCcwIcon class='size-3.5' />

@@ -54,7 +54,7 @@ export interface AlgorithmConfig {
 export type ProcessStatus =
   | 'empty'
   | 'rendered'
-  | 'vectorized'
+  | 'analyzed'
   | 'positioned'
   | 'clustered';
 
@@ -85,7 +85,7 @@ export interface SessionProgressSection {
 
 export interface SessionProgress {
   rendering: SessionProgressSection;
-  vectorization: SessionProgressSection;
+  analysis: SessionProgressSection;
   clustering: SessionProgressSection;
   position: SessionProgressSection;
 }

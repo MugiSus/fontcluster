@@ -7,7 +7,7 @@ pub mod plugin_bridge;
 pub mod positioner;
 pub mod sample_renderer;
 pub mod session;
-pub mod vectorizer;
+pub mod analyzer;
 
 pub use clusterer::*;
 pub use discoverer::*;
@@ -18,4 +18,4 @@ pub use plugin_bridge::*;
 pub use positioner::*;
 pub use sample_renderer::*;
 pub use session::*;
-pub use vectorizer::*;
+pub use analyzer::*;

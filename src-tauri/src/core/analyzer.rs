@@ -27,7 +27,7 @@ const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
 const DEFAULT_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
 const DEFAULT_STD: [f32; 3] = [0.229, 0.224, 0.225];
 
-pub struct Vectorizer {
+pub struct Analyzer {
     session: Mutex<Session>,
     spec: ModelSpec,
 }
@@ -42,7 +42,7 @@ struct BatchResult {
     failed_count: usize,
 }
 
-impl Vectorizer {
+impl Analyzer {
     pub fn new() -> Result<Self> {
         let model_dir = resolve_model_dir()?;
         let model_path = model_dir.join(MODEL_FILE_NAME);
@@ -56,26 +56,26 @@ impl Vectorizer {
         })
     }
 
-    pub async fn vectorize_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
+    pub async fn analyze_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
         let png_files = collect_sample_paths(session_dir).await?;
 
-        println!("🔍 Vectorizer: Found {} images to process", png_files.len());
+        println!("🔍 Analyzer: Found {} images to process", png_files.len());
         if png_files.is_empty() {
-            println!("⚠️ Vectorizer: No images found");
+            println!("⚠️ Analyzer: No images found");
             return Ok(());
         }
 
-        progress_events::reset_progress(events, state, ProgressStage::Vectorization);
+        progress_events::reset_progress(events, state, ProgressStage::Analysis);
         progress_events::set_progress_denominator(
             events,
             state,
-            ProgressStage::Vectorization,
+            ProgressStage::Analysis,
             png_files.len() as i32,
         );
 
         println!(
-            "🚀 Vectorizer: running ONNX inference with batch size {}",
+            "🚀 Analyzer: running ONNX inference with batch size {}",
             MODEL_BATCH_SIZE
         );
 
@@ -99,15 +99,15 @@ impl Vectorizer {
                 Ok(processed_count) => progress_events::increase_numerator(
                     events,
                     state,
-                    ProgressStage::Vectorization,
+                    ProgressStage::Analysis,
                     processed_count as i32,
                 ),
                 Err(e) => {
-                    println!("❌ Vectorization failed for batch: {}", e);
+                    println!("❌ Analysis failed for batch: {}", e);
                     progress_events::decrease_denominator(
                         events,
                         state,
-                        ProgressStage::Vectorization,
+                        ProgressStage::Analysis,
                         prepared_count as i32,
                     );
                 }
@@ -118,7 +118,7 @@ impl Vectorizer {
             return Ok(());
         }
 
-        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Vectorized)?;
+        state.update_status(|s| s.process_status = crate::config::ProcessStatus::Analyzed)?;
         Ok(())
     }
 
@@ -145,7 +145,7 @@ impl Vectorizer {
 
 fn load_session(model_path: &Path) -> Result<Session> {
     println!(
-        "🚀 Vectorizer: loading ONNX model from {}",
+        "🚀 Analyzer: loading ONNX model from {}",
         model_path.display()
     );
 
@@ -166,10 +166,10 @@ fn load_session(model_path: &Path) -> Result<Session> {
         .map_err(|err| AppError::Processing(err.to_string()))?;
 
     for input in session.inputs() {
-        println!("📥 Vectorizer input: {:?}", input);
+        println!("📥 Analyzer input: {:?}", input);
     }
     for output in session.outputs() {
-        println!("📤 Vectorizer output: {:?}", output);
+        println!("📤 Analyzer output: {:?}", output);
     }
 
     Ok(session)
@@ -185,7 +185,7 @@ fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuild
             .with_specialization_strategy(ep::coreml::SpecializationStrategy::FastPrediction);
         let available = ep::ExecutionProvider::is_available(&coreml)
             .map_err(|err| AppError::Processing(err.to_string()))?;
-        println!("🚀 Vectorizer: CoreML EP available={available}");
+        println!("🚀 Analyzer: CoreML EP available={available}");
 
         builder
             .with_execution_providers([coreml.build().error_on_failure()])
@@ -235,7 +235,7 @@ fn prepare_batch(paths: &[PathBuf], spec: &ModelSpec) -> BatchResult {
             Ok(prepared) => prepared_images.push(prepared),
             Err((path, e)) => {
                 failed_count += 1;
-                println!("❌ Vectorization failed for {:?}: {}", path, e);
+                println!("❌ Analysis failed for {:?}: {}", path, e);
             }
         }
     }
@@ -314,7 +314,7 @@ fn write_feature_vector(path: PathBuf, feature: &[f32]) -> Result<()> {
 
 fn decrease_progress_denominator(events: &impl EventSink, state: &AppState, count: usize) {
     for _ in 0..count {
-        progress_events::decrease_denominator(events, state, ProgressStage::Vectorization, 1);
+        progress_events::decrease_denominator(events, state, ProgressStage::Analysis, 1);
     }
 }
 

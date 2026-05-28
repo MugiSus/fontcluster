@@ -71,7 +71,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
     samples_amount: 0,
     progress: {
       rendering: { numerator: 0, denominator: 1 },
-      vectorization: { numerator: 0, denominator: 1 },
+      analysis: { numerator: 0, denominator: 1 },
       clustering: { numerator: 0, denominator: 1 },
       position: { numerator: 0, denominator: 1 },
     },

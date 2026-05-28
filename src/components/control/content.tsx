@@ -215,9 +215,9 @@ export function ControlContent() {
             title='position'
             disabled={
               isRunCooldown() &&
-              appState.session.config.status.process_status !== 'vectorized'
+              appState.session.config.status.process_status !== 'analyzed'
             }
-            onStepRun={() => handleRun('vectorized')}
+            onStepRun={() => handleRun('analyzed')}
           />
 
           <ControlPropertySection

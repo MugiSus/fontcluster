@@ -102,7 +102,7 @@ pub enum ProcessStatus {
     #[default]
     Empty,
     Rendered,
-    Vectorized,
+    Analyzed,
     Positioned,
     Clustered,
 }
@@ -120,7 +120,7 @@ pub struct ProcessingStatus {
 #[serde(default)]
 pub struct ProcessingProgress {
     pub rendering: ProgressSection,
-    pub vectorization: ProgressSection,
+    pub analysis: ProgressSection,
     pub clustering: ProgressSection,
     pub position: ProgressSection,
 }
@@ -144,7 +144,7 @@ impl Default for ProgressSection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProgressStage {
     Rendering,
-    Vectorization,
+    Analysis,
     Clustering,
     Position,
 }

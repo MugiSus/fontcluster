@@ -1,7 +1,7 @@
 use crate::config::{AlgorithmConfig, FontSet, ProcessStatus};
 use crate::core::{
     clusterer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner, RunningJob,
-    SampleRenderer, StdoutEventSink, Vectorizer,
+    Analyzer, SampleRenderer, StdoutEventSink,
 };
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -287,15 +287,15 @@ pub async fn run_jobs_pipeline(
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        println!("📐 Starting vectorization...");
-        events.emit_unit("vectorization_start")?;
-        let vec = Vectorizer::new()?;
-        vec.vectorize_all(&events, state).await?;
+        println!("📐 Starting analysis...");
+        events.emit_unit("analysis_start")?;
+        let analyzer = Analyzer::new()?;
+        analyzer.analyze_all(&events, state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
-        events.emit_string("vectorization_complete", id.clone())?;
+        events.emit_string("analysis_complete", id.clone())?;
     }
 
     // Step 4: Positioning
@@ -303,7 +303,7 @@ pub async fn run_jobs_pipeline(
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
-    if status == ProcessStatus::Vectorized {
+    if status == ProcessStatus::Analyzed {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }

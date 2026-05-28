@@ -470,7 +470,7 @@ fn progress_section_mut(
 ) -> &mut ProgressSection {
     match stage {
         ProgressStage::Rendering => &mut progress.rendering,
-        ProgressStage::Vectorization => &mut progress.vectorization,
+        ProgressStage::Analysis => &mut progress.analysis,
         ProgressStage::Clustering => &mut progress.clustering,
         ProgressStage::Position => &mut progress.position,
     }
