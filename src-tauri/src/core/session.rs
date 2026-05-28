@@ -425,9 +425,21 @@ impl AppState {
 }
 
 fn remove_dir_all_best_effort(path: &Path) {
-    if !path.exists() {
+    let Ok(metadata) = fs::symlink_metadata(path) else {
+        return;
+    };
+
+    if !metadata.is_dir() {
+        if let Err(error) = fs::remove_file(path) {
+            eprintln!(
+                "⚠️ Failed to remove {} (will be cleaned at next startup): {}",
+                path.display(),
+                error
+            );
+        }
         return;
     }
+
     if fs::remove_dir_all(path).is_ok() {
         return;
     }
