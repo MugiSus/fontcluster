@@ -121,42 +121,45 @@ export function ControlContent() {
 
   return (
     <form onSubmit={handleSubmit} class='flex h-full min-h-0 flex-1 flex-col'>
-      <div class='flex flex-col gap-2 border-b p-4'>
-        <TextField class='relative grid w-full items-center gap-1'>
-          <TextFieldLabel
-            for='preview-text'
-            class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
-          >
-            <TypeIcon class='mb-0.5 size-3.5' />
-            Text
-          </TextFieldLabel>
-          <TextFieldInput
-            type='text'
-            name='preview-text'
-            id='preview-text'
-            value={appState.session.config.preview_text || 'A'}
-            placeholder='A'
-            spellcheck='false'
-            class='h-9 text-[15px]'
-          />
-        </TextField>
-        <TextField class='grid w-full items-center gap-1'>
-          <Show when={appState.session.config.session_id || 'session_id'} keyed>
-            <WeightSelector
-              weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-              defaultValue={appState.session.config.weights as FontWeight[]}
-              isCompact
-            />
-          </Show>
-        </TextField>
-      </div>
-
       <Show when={appState.session.config.session_id || true} keyed>
+        <div class='flex flex-col gap-2 border-b p-4'>
+          <TextField class='relative grid w-full items-center gap-1'>
+            <TextFieldLabel
+              for='preview-text'
+              class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
+            >
+              <TypeIcon class='mb-0.5 size-3.5' />
+              Text
+            </TextFieldLabel>
+            <TextFieldInput
+              type='text'
+              name='preview-text'
+              id='preview-text'
+              value={appState.session.config.preview_text || 'A'}
+              placeholder='A'
+              spellcheck='false'
+              class='h-9 text-[15px]'
+            />
+          </TextField>
+          <TextField class='grid w-full items-center gap-1'>
+            <Show
+              when={appState.session.config.session_id || 'session_id'}
+              keyed
+            >
+              <WeightSelector
+                weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
+                defaultValue={appState.session.config.weights as FontWeight[]}
+                isCompact
+              />
+            </Show>
+          </TextField>
+        </div>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
             title='render'
             disabled={isRunCooldown()}
             onStepRun={() => handleRun('empty')}
+            isRunnable={false}
           >
             <TextProperty label='source' class='mr-1 gap-0.5'>
               <Select
@@ -201,19 +204,28 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='analyze'
-            disabled={isRunCooldown()}
+            disabled={
+              isRunCooldown() &&
+              appState.session.config.status.process_status !== 'rendered'
+            }
             onStepRun={() => handleRun('rendered')}
           />
 
           <ControlPropertySection
             title='position'
-            disabled={isRunCooldown()}
+            disabled={
+              isRunCooldown() &&
+              appState.session.config.status.process_status !== 'vectorized'
+            }
             onStepRun={() => handleRun('vectorized')}
           />
 
           <ControlPropertySection
-            title='clusterize'
-            disabled={isRunCooldown()}
+            title='cluster'
+            disabled={
+              isRunCooldown() &&
+              appState.session.config.status.process_status !== 'positioned'
+            }
             onStepRun={() => handleRun('positioned')}
           >
             <TextProperty label='method' class='mr-1 gap-0.5'>

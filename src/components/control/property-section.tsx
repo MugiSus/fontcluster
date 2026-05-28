@@ -1,4 +1,4 @@
-import type { JSX } from 'solid-js';
+import { Show, type JSX } from 'solid-js';
 
 import { StepForwardIcon } from 'lucide-solid';
 
@@ -9,6 +9,7 @@ type ControlPropertySectionProps = {
   title: string;
   children?: JSX.Element;
   onStepRun: () => void;
+  isRunnable?: boolean;
   disabled?: boolean | undefined;
   class?: string | undefined;
   contentClass?: string | undefined;
@@ -19,19 +20,21 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
     <div class={props.class ?? 'group/section flex flex-col gap-2'}>
       <div class='flex items-center gap-1'>
         <div class='text-xs font-semibold capitalize'>{props.title}</div>
-        <Tooltip>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant='ghost'
-            size='icon'
-            disabled={props.disabled}
-            class='invisible mb-px size-4 text-xs group-hover/section:visible'
-            onClick={props.onStepRun}
-          >
-            <StepForwardIcon class='size-3.5 max-h-3.5' />
-          </TooltipTrigger>
-          <TooltipContent>Run from this step</TooltipContent>
-        </Tooltip>
+        <Show when={props.isRunnable !== false}>
+          <Tooltip>
+            <TooltipTrigger
+              as={Button<'button'>}
+              variant='ghost'
+              size='icon'
+              disabled={props.disabled}
+              class='invisible mb-px size-4 text-xs group-hover/section:visible'
+              onClick={props.onStepRun}
+            >
+              <StepForwardIcon class='size-3.5 max-h-3.5' />
+            </TooltipTrigger>
+            <TooltipContent>Run from this step</TooltipContent>
+          </Tooltip>
+        </Show>
       </div>
       <div class={props.contentClass ?? 'flex flex-col gap-0.5'}>
         {props.children}

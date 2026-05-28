@@ -1,6 +1,5 @@
 import { Show } from 'solid-js';
 import { PlayIcon, RotateCcwIcon, SquareIcon, Trash2Icon } from 'lucide-solid';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -8,21 +7,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { type SessionConfig, type SessionProgressSection } from '@/types/font';
-
-export const getProcessStatusBadge = (status: string) => {
-  switch (status) {
-    case 'clustered':
-      return { text: 'Complete', variant: 'default' } as const;
-    case 'positioned':
-      return { text: 'Positioned', variant: 'outline' } as const;
-    case 'vectorized':
-      return { text: 'Vectorized', variant: 'outline' } as const;
-    case 'rendered':
-      return { text: 'Rendered', variant: 'outline' } as const;
-    default:
-      return { text: 'Empty', variant: 'error' } as const;
-  }
-};
 
 interface SessionHistoryItemProps {
   session: SessionConfig;
@@ -38,9 +22,6 @@ interface SessionHistoryItemProps {
 
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const session = () => props.session;
-  const badge = () => {
-    return getProcessStatusBadge(session().status.process_status);
-  };
   const isRunning = () => props.isRunning;
 
   const isComplete = () => session()?.status.process_status === 'clustered';
@@ -68,13 +49,14 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   return (
     <article class='relative rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
       <div class='flex items-start justify-between gap-2'>
-        <div class='min-w-0 space-y-1'>
+        <div class='flex min-w-0 flex-col gap-1'>
           <div class='flex min-w-0 items-center gap-2'>
-            <Badge variant={badge().variant} class='shrink-0 px-1.5 py-0' round>
-              {badge().text}
-            </Badge>
+            <span class='font-bold capitalize text-muted-foreground'>
+              {session().status.process_status}
+            </span>
             <time class='truncate text-muted-foreground'>
               {new Date(session().modified_at).toLocaleString('ja-JP', {
+                year: 'numeric',
                 month: '2-digit',
                 day: '2-digit',
                 hour: '2-digit',
