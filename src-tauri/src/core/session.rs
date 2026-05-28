@@ -11,7 +11,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Child;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use uuid::Uuid;
 use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
@@ -21,6 +21,12 @@ use super::plugin_bridge::PluginConnection;
 pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
 const MIN_SUPPORTED_SESSION_VERSION: &str = "0.13.0";
 const SESSION_CONFIG_FILE: &str = "config.json";
+
+static SESSION_VIEW_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+fn session_view_lock() -> &'static Mutex<()> {
+    SESSION_VIEW_LOCK.get_or_init(|| Mutex::new(()))
+}
 
 #[derive(Clone)]
 pub struct RunningJob {

@@ -82,8 +82,8 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
     rendering: { font_set: 'google_fonts_popular300', font_size: 224 },
     clustering: {
       method: 'average',
-      preprocessing_dimensions: 4,
-      distance_threshold: 0.6,
+      preprocessing_dimensions: 8,
+      distance_threshold: 0.5,
       target_cluster_count: 0,
     },
   },

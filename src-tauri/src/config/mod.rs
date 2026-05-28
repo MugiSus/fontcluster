@@ -89,8 +89,8 @@ impl Default for ClusteringConfig {
     fn default() -> Self {
         Self {
             method: ClusteringMethod::Average,
-            preprocessing_dimensions: 64,
-            distance_threshold: 0.4,
+            preprocessing_dimensions: 8,
+            distance_threshold: 0.5,
             target_cluster_count: 0,
         }
     }
