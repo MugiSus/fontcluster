@@ -4,7 +4,9 @@ pub mod core;
 pub mod error;
 pub mod rendering;
 
+use crate::commands::font::FontPreviewCacheState;
 use crate::core::AppState;
+use std::sync::Arc;
 use tauri::{
     menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Emitter,
@@ -105,6 +107,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(app_state)
+        .manage(Arc::new(FontPreviewCacheState::default()))
         .setup(|app| {
             app.set_menu(create_menu(app.handle())?)?;
             Ok(())

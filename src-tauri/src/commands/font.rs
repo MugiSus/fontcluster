@@ -3,48 +3,30 @@ use crate::core::google_fonts_downloader::download_google_font_subset_temp;
 use crate::core::{session::load_font_data, AppState};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
+use ritecache::{DiskCacheError, LruDiskCache};
 use serde::Deserialize;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::sync::Mutex;
+use std::time::UNIX_EPOCH;
 use tauri::{command, State};
 use tauri::{AppHandle, Manager};
 
-const PREVIEW_CACHE_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
+const PREVIEW_CACHE_SIZE_LIMIT: u64 = 500 * 1024 * 1024;
+
+#[derive(Default)]
+pub struct FontPreviewCacheState {
+    cache: Mutex<Option<LruDiskCache>>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct RenderFontPreviewPayload {
     font: FontMetadata,
     text: String,
     font_size: f32,
-}
-
-fn prune_old_font_preview_cache(cache_dir: &std::path::Path) {
-    let Ok(entries) = fs::read_dir(cache_dir) else {
-        return;
-    };
-    let cutoff = SystemTime::now()
-        .checked_sub(PREVIEW_CACHE_TTL)
-        .unwrap_or(UNIX_EPOCH);
-
-    for entry in entries.filter_map(|entry| entry.ok()) {
-        let path = entry.path();
-        if path.extension().and_then(|extension| extension.to_str()) != Some("png") {
-            continue;
-        }
-        let Ok(metadata) = entry.metadata() else {
-            continue;
-        };
-        let Ok(modified) = metadata.modified() else {
-            continue;
-        };
-        if modified < cutoff {
-            let _ = fs::remove_file(path);
-        }
-    }
 }
 
 #[command]
@@ -90,6 +72,7 @@ pub async fn get_system_fonts() -> Result<Vec<String>> {
 pub async fn render_font_preview(
     app: AppHandle,
     _state: State<'_, AppState>,
+    preview_cache_state: State<'_, Arc<FontPreviewCacheState>>,
     payload: RenderFontPreviewPayload,
 ) -> Result<String> {
     let cache_dir = app
@@ -98,13 +81,17 @@ pub async fn render_font_preview(
         .map_err(|e| AppError::Io(format!("Failed to resolve app cache dir: {e}")))?
         .join("font-previews");
 
-    tokio::task::spawn_blocking(move || render_font_preview_blocking(cache_dir, payload))
-        .await
-        .map_err(|e| AppError::Processing(e.to_string()))?
+    let preview_cache_state = Arc::clone(preview_cache_state.inner());
+    tokio::task::spawn_blocking(move || {
+        render_font_preview_blocking(cache_dir, &preview_cache_state, payload)
+    })
+    .await
+    .map_err(|e| AppError::Processing(e.to_string()))?
 }
 
 fn render_font_preview_blocking(
     cache_dir: PathBuf,
+    preview_cache_state: &FontPreviewCacheState,
     payload: RenderFontPreviewPayload,
 ) -> Result<String> {
     let text = if payload.text.is_empty() {
@@ -137,28 +124,59 @@ fn render_font_preview_blocking(
     text.hash(&mut hasher);
     let cache_key = hasher.finish();
 
-    prune_old_font_preview_cache(&cache_dir);
-    let output_path = cache_dir.join(format!("{}_{cache_key:016x}.png", payload.font.safe_name));
+    let output_key = format!("{}_{cache_key:016x}.png", payload.font.safe_name);
 
-    if !output_path.exists() {
-        let renderer = FontRenderer::new(Arc::new(RenderConfig {
-            text: text.clone(),
-            font_size,
-            output_dir: cache_dir.clone(),
-        }));
-        match renderer.render_to_path(&font_path, payload.font.font_index, &output_path) {
-            Ok(()) => {}
-            Err(AppError::MissingGlyph(_)) if payload.font.source == FontSource::GoogleFonts => {
-                let font = download_google_font_subset_temp(
-                    &payload.font.family_name,
-                    payload.font.weight,
-                    &text,
-                )?;
-                renderer.render_to_path(font.path(), 0, &output_path)?;
-            }
-            Err(error) => return Err(error),
+    let (cache_root, output_path) = {
+        let mut preview_cache = preview_cache_state
+            .cache
+            .lock()
+            .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?;
+        if preview_cache.is_none() {
+            *preview_cache = Some(
+                LruDiskCache::new(cache_dir, PREVIEW_CACHE_SIZE_LIMIT)
+                    .map_err(|error| AppError::Io(error.to_string()))?,
+            );
         }
+        let preview_cache = preview_cache.as_mut().unwrap();
+        let cache_root = preview_cache.path().to_path_buf();
+        let output_path = cache_root.join(&output_key);
+        match preview_cache.get_file(&output_key) {
+            Ok(_) => return Ok(output_path.to_string_lossy().into_owned()),
+            Err(DiskCacheError::FileNotInCache) => {}
+            Err(error) => return Err(AppError::Io(error.to_string())),
+        }
+        (cache_root, output_path)
+    };
+
+    let temporary_output =
+        tempfile::NamedTempFile::new().map_err(|error| AppError::Io(error.to_string()))?;
+    let renderer = FontRenderer::new(Arc::new(RenderConfig {
+        text: text.clone(),
+        font_size,
+        output_dir: cache_root,
+    }));
+    match renderer.render_to_path(&font_path, payload.font.font_index, temporary_output.path()) {
+        Ok(()) => {}
+        Err(AppError::MissingGlyph(_)) if payload.font.source == FontSource::GoogleFonts => {
+            let font = download_google_font_subset_temp(
+                &payload.font.family_name,
+                payload.font.weight,
+                &text,
+            )?;
+            renderer.render_to_path(font.path(), 0, temporary_output.path())?;
+        }
+        Err(error) => return Err(error),
     }
+
+    let mut preview_cache = preview_cache_state
+        .cache
+        .lock()
+        .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?;
+    preview_cache
+        .as_mut()
+        .ok_or_else(|| AppError::Processing("Font preview cache is not initialized".into()))?
+        .insert_file(&output_key, temporary_output.path().as_os_str())
+        .map_err(|error| AppError::Io(error.to_string()))?;
 
     Ok(output_path.to_string_lossy().into_owned())
 }
