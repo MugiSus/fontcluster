@@ -94,6 +94,13 @@ fn collect_stored_sessions() -> Result<Vec<StoredSession>> {
             if !path.is_dir() {
                 continue;
             }
+            let is_hidden = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with('.'));
+            if is_hidden {
+                continue;
+            }
             if let Ok(session) = read_session_config_from_dir(&path) {
                 sessions
                     .entry(session.session_id.clone())

@@ -116,43 +116,50 @@ impl AppState {
     }
 
     pub fn ensure_session_view(id: &str) -> Result<PathBuf> {
+        let _guard = session_view_lock()
+            .lock()
+            .map_err(|_| crate::error::AppError::Processing("Session view lock poisoned".into()))?;
+
+        let document_path = Self::get_session_document_path(id)?;
         let processing = Self::get_session_processing_dir(id)?;
+
+        if document_path.exists() {
+            if processing.exists() {
+                remove_dir_all_best_effort(&processing);
+            }
+            let current = Self::get_session_current_dir(id)?;
+            if current.exists() {
+                return Ok(current);
+            }
+            let current_root = Self::get_session_current_root()?;
+            if current_root.exists() {
+                fs::remove_dir_all(&current_root).map_err(|e| {
+                    crate::error::AppError::Io(format!(
+                        "Failed to clear current session cache {}: {}",
+                        current_root.display(),
+                        e
+                    ))
+                })?;
+            }
+            fs::create_dir_all(&current).map_err(|e| {
+                crate::error::AppError::Io(format!(
+                    "Failed to create current session dir {}: {}",
+                    current.display(),
+                    e
+                ))
+            })?;
+            extract_document_to_dir(&document_path, &current)?;
+            return Ok(current);
+        }
+
         if processing.exists() {
             return Ok(processing);
         }
 
-        let current = Self::get_session_current_dir(id)?;
-        if current.exists() {
-            return Ok(current);
-        }
-
-        let document_path = Self::get_session_document_path(id)?;
-        if !document_path.exists() {
-            return Err(crate::error::AppError::Processing(format!(
-                "Session {} not found",
-                id
-            )));
-        }
-
-        let current_root = Self::get_session_current_root()?;
-        if current_root.exists() {
-            fs::remove_dir_all(&current_root).map_err(|e| {
-                crate::error::AppError::Io(format!(
-                    "Failed to clear current session cache {}: {}",
-                    current_root.display(),
-                    e
-                ))
-            })?;
-        }
-        fs::create_dir_all(&current).map_err(|e| {
-            crate::error::AppError::Io(format!(
-                "Failed to create current session dir {}: {}",
-                current.display(),
-                e
-            ))
-        })?;
-        extract_document_to_dir(&document_path, &current)?;
-        Ok(current)
+        Err(crate::error::AppError::Processing(format!(
+            "Session {} not found",
+            id
+        )))
     }
 
     pub fn reconcile_session_storage() -> Result<()> {
@@ -160,34 +167,26 @@ impl AppState {
         if processing_root.exists() {
             for entry in fs::read_dir(&processing_root)? {
                 let path = entry?.path();
+                let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+                    continue;
+                };
+                if file_name.starts_with('.') {
+                    remove_dir_all_best_effort(&path);
+                    continue;
+                }
                 if !path.is_dir() {
                     continue;
                 }
-                let Some(id) = path.file_name().and_then(|name| name.to_str()) else {
-                    continue;
-                };
-                let document_path = Self::get_session_document_path(id)?;
+                let document_path = Self::get_session_document_path(file_name)?;
                 if document_path.exists() {
-                    fs::remove_dir_all(&path).map_err(|e| {
-                        crate::error::AppError::Io(format!(
-                            "Failed to remove orphaned processing dir {}: {}",
-                            path.display(),
-                            e
-                        ))
-                    })?;
+                    remove_dir_all_best_effort(&path);
                 }
             }
         }
 
         let current_root = Self::get_session_current_root()?;
         if current_root.exists() {
-            fs::remove_dir_all(&current_root).map_err(|e| {
-                crate::error::AppError::Io(format!(
-                    "Failed to clear current session cache {}: {}",
-                    current_root.display(),
-                    e
-                ))
-            })?;
+            remove_dir_all_best_effort(&current_root);
         }
         Ok(())
     }
@@ -302,24 +301,20 @@ impl AppState {
     }
 
     pub fn load_session_for_processing(&self, id: &str) -> Result<()> {
+        let _guard = session_view_lock()
+            .lock()
+            .map_err(|_| crate::error::AppError::Processing("Session view lock poisoned".into()))?;
+
         let processing_dir = Self::get_session_processing_dir(id)?;
-        if !processing_dir.exists() {
-            let document_path = Self::get_session_document_path(id)?;
-            if !document_path.exists() {
-                return Err(crate::error::AppError::Processing(format!(
-                    "Session {} not found",
-                    id
-                )));
+        let document_path = Self::get_session_document_path(id)?;
+
+        if document_path.exists() {
+            if processing_dir.exists() {
+                remove_dir_all_best_effort(&processing_dir);
             }
             let current_dir = Self::get_session_current_dir(id)?;
             if current_dir.exists() {
-                fs::remove_dir_all(&current_dir).map_err(|e| {
-                    crate::error::AppError::Io(format!(
-                        "Failed to clear stale current session dir {}: {}",
-                        current_dir.display(),
-                        e
-                    ))
-                })?;
+                remove_dir_all_best_effort(&current_dir);
             }
             fs::create_dir_all(&processing_dir).map_err(|e| {
                 crate::error::AppError::Io(format!(
@@ -336,10 +331,16 @@ impl AppState {
                     e
                 ))
             })?;
+        } else if !processing_dir.exists() {
+            return Err(crate::error::AppError::Processing(format!(
+                "Session {} not found",
+                id
+            )));
         }
+
         let session = read_session_config_from_dir(&processing_dir)?;
-        let mut guard = self.current_session.lock().unwrap();
-        *guard = Some(session);
+        let mut current = self.current_session.lock().unwrap();
+        *current = Some(session);
         Ok(())
     }
 
@@ -353,13 +354,7 @@ impl AppState {
         }
         let document_path = Self::get_session_document_path(id)?;
         pack_dir_to_document(&processing_dir, &document_path)?;
-        fs::remove_dir_all(&processing_dir).map_err(|e| {
-            crate::error::AppError::Io(format!(
-                "Failed to remove processing dir {} after finalize: {}",
-                processing_dir.display(),
-                e
-            ))
-        })?;
+        remove_dir_all_best_effort(&processing_dir);
         Ok(())
     }
 
@@ -426,6 +421,38 @@ impl AppState {
             )));
         }
         write_session_config_atomic(session, &processing_dir)
+    }
+}
+
+fn remove_dir_all_best_effort(path: &Path) {
+    if !path.exists() {
+        return;
+    }
+    if fs::remove_dir_all(path).is_ok() {
+        return;
+    }
+    let parent = match path.parent() {
+        Some(parent) => parent,
+        None => return,
+    };
+    let file_name = match path.file_name().and_then(|name| name.to_str()) {
+        Some(name) => name,
+        None => return,
+    };
+    let trash_path = parent.join(format!(".{file_name}.removing-{}", Uuid::now_v7()));
+    if fs::rename(path, &trash_path).is_err() {
+        eprintln!(
+            "⚠️ Failed to remove directory {} (will be cleaned at next startup)",
+            path.display()
+        );
+        return;
+    }
+    if let Err(error) = fs::remove_dir_all(&trash_path) {
+        eprintln!(
+            "⚠️ Failed to remove renamed directory {} (will be cleaned at next startup): {}",
+            trash_path.display(),
+            error
+        );
     }
 }
 
