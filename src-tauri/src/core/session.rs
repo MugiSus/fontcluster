@@ -109,7 +109,7 @@ impl AppState {
             return Ok(processing);
         }
         let current = Self::get_session_current_dir(id)?;
-        if current.exists() {
+        if has_session_config(&current) {
             return Ok(current);
         }
         Self::ensure_session_view(id)
@@ -131,18 +131,11 @@ impl AppState {
                 remove_dir_all_best_effort(&processing);
             }
             let current = Self::get_session_current_dir(id)?;
-            if current.exists() {
+            if has_session_config(&current) {
                 return Ok(current);
             }
-            let current_root = Self::get_session_current_root()?;
-            if current_root.exists() {
-                fs::remove_dir_all(&current_root).map_err(|e| {
-                    crate::error::AppError::Io(format!(
-                        "Failed to clear current session cache {}: {}",
-                        current_root.display(),
-                        e
-                    ))
-                })?;
+            if current.exists() {
+                remove_dir_all_best_effort(&current);
             }
             fs::create_dir_all(&current).map_err(|e| {
                 crate::error::AppError::Io(format!(
