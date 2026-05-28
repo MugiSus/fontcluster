@@ -38,7 +38,7 @@ export function ListContent() {
     },
     getScrollElement: () => nearestItemsScrollElement ?? null,
     estimateSize: () => LIST_ITEM_HEIGHT,
-    overscan: 6,
+    overscan: 2,
   });
 
   createEffect(() => {
