@@ -103,6 +103,9 @@ pub fn run() {
     if let Err(error) = AppState::prune_unsupported_sessions() {
         eprintln!("Failed to prune unsupported sessions: {}", error);
     }
+    if let Err(error) = AppState::reconcile_session_storage() {
+        eprintln!("Failed to reconcile session storage: {}", error);
+    }
     crate::core::start_plugin_bridge_server(app_state.clone());
 
     tauri::Builder::default()

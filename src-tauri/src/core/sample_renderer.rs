@@ -36,7 +36,7 @@ impl SampleRenderer {
                 font_size,
             )
         };
-        let session_dir = AppState::get_session_cache_dir(&session_id)?;
+        let session_dir = AppState::get_session_processing_dir(&session_id)?;
 
         let mut tasks = Vec::new();
         for (weight, families) in discovered_fonts {

@@ -220,7 +220,7 @@ impl Discoverer {
                 font_set,
             )
         };
-        let session_dir = AppState::get_session_cache_dir(&session_id)?;
+        let session_dir = AppState::get_session_processing_dir(&session_id)?;
 
         let is_google_fonts = !matches!(font_set, crate::config::FontSet::SystemFonts);
         let mut db = fontdb::Database::new();

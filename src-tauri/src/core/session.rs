@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use semver::Version;
 use std::collections::HashMap;
 use std::fs;
-use std::io::{Cursor, Read, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Child;
 use std::sync::atomic::AtomicBool;
@@ -20,8 +20,7 @@ use super::plugin_bridge::PluginConnection;
 
 pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
 const MIN_SUPPORTED_SESSION_VERSION: &str = "0.13.0";
-const SESSION_CONFIG_ENTRY: &str = "config.json";
-const SESSION_SAMPLES_ENTRY: &str = "samples.zip";
+const SESSION_CONFIG_FILE: &str = "config.json";
 
 #[derive(Clone)]
 pub struct RunningJob {
@@ -71,8 +70,20 @@ impl AppState {
             .ok_or_else(|| crate::error::AppError::Io("Cache dir not found".into()))
     }
 
-    pub fn get_session_cache_dir(id: &str) -> Result<PathBuf> {
-        Ok(Self::get_session_cache_root()?.join(id))
+    pub fn get_session_processing_root() -> Result<PathBuf> {
+        Ok(Self::get_session_cache_root()?.join("Processing"))
+    }
+
+    pub fn get_session_processing_dir(id: &str) -> Result<PathBuf> {
+        Ok(Self::get_session_processing_root()?.join(id))
+    }
+
+    pub fn get_session_current_root() -> Result<PathBuf> {
+        Ok(Self::get_session_cache_root()?.join("Current"))
+    }
+
+    pub fn get_session_current_dir(id: &str) -> Result<PathBuf> {
+        Ok(Self::get_session_current_root()?.join(id))
     }
 
     pub fn get_session_dir(&self) -> Result<PathBuf> {
@@ -83,48 +94,99 @@ impl AppState {
         let session = guard
             .as_ref()
             .ok_or_else(|| crate::error::AppError::Processing("No active session".into()))?;
-        let path = Self::get_session_cache_dir(&session.session_id)?;
-        if !path.exists() {
-            std::fs::create_dir_all(&path).map_err(|e| {
-                crate::error::AppError::Io(format!(
-                    "Failed to create session dir {}: {}",
-                    path.display(),
-                    e
-                ))
-            })?;
-        }
-        Ok(path)
+        Self::resolve_session_dir(&session.session_id)
     }
 
-    pub fn prepare_session_cache(id: &str) -> Result<PathBuf> {
-        let cache_root = Self::get_session_cache_root()?;
-        if cache_root.exists() {
-            fs::remove_dir_all(&cache_root).map_err(|e| {
+    pub fn resolve_session_dir(id: &str) -> Result<PathBuf> {
+        let processing = Self::get_session_processing_dir(id)?;
+        if processing.exists() {
+            return Ok(processing);
+        }
+        let current = Self::get_session_current_dir(id)?;
+        if current.exists() {
+            return Ok(current);
+        }
+        Self::ensure_session_view(id)
+    }
+
+    pub fn ensure_session_view(id: &str) -> Result<PathBuf> {
+        let processing = Self::get_session_processing_dir(id)?;
+        if processing.exists() {
+            return Ok(processing);
+        }
+
+        let current = Self::get_session_current_dir(id)?;
+        if current.exists() {
+            return Ok(current);
+        }
+
+        let document_path = Self::get_session_document_path(id)?;
+        if !document_path.exists() {
+            return Err(crate::error::AppError::Processing(format!(
+                "Session {} not found",
+                id
+            )));
+        }
+
+        let current_root = Self::get_session_current_root()?;
+        if current_root.exists() {
+            fs::remove_dir_all(&current_root).map_err(|e| {
                 crate::error::AppError::Io(format!(
-                    "Failed to clear session cache {}: {}",
-                    cache_root.display(),
+                    "Failed to clear current session cache {}: {}",
+                    current_root.display(),
                     e
                 ))
             })?;
         }
-        let session_dir = cache_root.join(id);
-        fs::create_dir_all(session_dir.join("samples")).map_err(|e| {
+        fs::create_dir_all(&current).map_err(|e| {
             crate::error::AppError::Io(format!(
-                "Failed to create session cache {}: {}",
-                session_dir.display(),
+                "Failed to create current session dir {}: {}",
+                current.display(),
                 e
             ))
         })?;
-        Self::extract_session_samples(id, &session_dir)?;
-        Ok(session_dir)
+        extract_document_to_dir(&document_path, &current)?;
+        Ok(current)
+    }
+
+    pub fn reconcile_session_storage() -> Result<()> {
+        let processing_root = Self::get_session_processing_root()?;
+        if processing_root.exists() {
+            for entry in fs::read_dir(&processing_root)? {
+                let path = entry?.path();
+                if !path.is_dir() {
+                    continue;
+                }
+                let Some(id) = path.file_name().and_then(|name| name.to_str()) else {
+                    continue;
+                };
+                let document_path = Self::get_session_document_path(id)?;
+                if document_path.exists() {
+                    fs::remove_dir_all(&path).map_err(|e| {
+                        crate::error::AppError::Io(format!(
+                            "Failed to remove orphaned processing dir {}: {}",
+                            path.display(),
+                            e
+                        ))
+                    })?;
+                }
+            }
+        }
+
+        let current_root = Self::get_session_current_root()?;
+        if current_root.exists() {
+            fs::remove_dir_all(&current_root).map_err(|e| {
+                crate::error::AppError::Io(format!(
+                    "Failed to clear current session cache {}: {}",
+                    current_root.display(),
+                    e
+                ))
+            })?;
+        }
+        Ok(())
     }
 
     pub fn prune_unsupported_sessions() -> Result<()> {
-        let generated_dir = Self::get_generated_dir()?;
-        if !generated_dir.exists() {
-            return Ok(());
-        }
-
         let min_version = Version::parse(MIN_SUPPORTED_SESSION_VERSION).map_err(|e| {
             crate::error::AppError::Processing(format!(
                 "Invalid minimum supported session version: {}",
@@ -132,33 +194,47 @@ impl AppState {
             ))
         })?;
 
-        for entry in fs::read_dir(&generated_dir)? {
-            let path = entry?.path();
-            if !is_session_document_path(&path) {
-                if path.is_dir() {
-                    fs::remove_dir_all(&path)?;
-                } else {
+        let generated_dir = Self::get_generated_dir()?;
+        if generated_dir.exists() {
+            for entry in fs::read_dir(&generated_dir)? {
+                let path = entry?.path();
+                if !is_session_document_path(&path) {
+                    if path.is_dir() {
+                        fs::remove_dir_all(&path)?;
+                    } else {
+                        fs::remove_file(&path)?;
+                    }
+                    continue;
+                }
+
+                let remove = match read_session_config_from_document(&path) {
+                    Ok(session) => parse_session_version(&session)
+                        .map(|version| version < min_version)
+                        .unwrap_or(true),
+                    Err(_) => true,
+                };
+                if remove {
                     fs::remove_file(&path)?;
                 }
-                continue;
             }
+        }
 
-            let remove = match read_session_config_from_document(&path) {
-                Ok(session) => {
-                    let version =
-                        Version::parse(session.modified_app_version.trim_start_matches('v'))
-                            .or_else(|_| {
-                                Version::parse(session.app_version.trim_start_matches('v'))
-                            });
-                    match version {
-                        Ok(version) => version < min_version,
-                        Err(_) => true,
-                    }
+        let processing_root = Self::get_session_processing_root()?;
+        if processing_root.exists() {
+            for entry in fs::read_dir(&processing_root)? {
+                let path = entry?.path();
+                if !path.is_dir() {
+                    continue;
                 }
-                Err(_) => true,
-            };
-            if remove {
-                fs::remove_file(&path)?;
+                let remove = match read_session_config_from_dir(&path) {
+                    Ok(session) => parse_session_version(&session)
+                        .map(|version| version < min_version)
+                        .unwrap_or(true),
+                    Err(_) => true,
+                };
+                if remove {
+                    fs::remove_dir_all(&path)?;
+                }
             }
         }
 
@@ -185,16 +261,15 @@ impl AppState {
             status: ProcessingStatus::default(),
         };
 
-        let generated_dir = Self::get_generated_dir()?;
-        fs::create_dir_all(&generated_dir).map_err(|e| {
+        let processing_dir = Self::get_session_processing_dir(&id)?;
+        fs::create_dir_all(processing_dir.join("samples")).map_err(|e| {
             crate::error::AppError::Io(format!(
-                "Failed to create Generated dir {}: {}",
-                generated_dir.display(),
+                "Failed to create session processing dir {}: {}",
+                processing_dir.display(),
                 e
             ))
         })?;
-        let session_dir = Self::prepare_session_cache(&id)?;
-        write_session_document_config(&session)?;
+        write_session_config_atomic(&session, &processing_dir)?;
 
         let mut guard = self.current_session.lock().unwrap();
         *guard = Some(session);
@@ -203,19 +278,82 @@ impl AppState {
         println!("📂 Session ID: {}", id);
         println!(
             "📍 Absolute Path: {}",
-            session_dir.canonicalize().unwrap_or(session_dir).display()
+            processing_dir
+                .canonicalize()
+                .unwrap_or(processing_dir)
+                .display()
         );
 
         Ok(id)
     }
 
     pub fn load_session(&self, id: &str) -> Result<()> {
-        let document_path = Self::get_session_document_path(id)?;
-        let session = read_session_config_from_document(&document_path)?;
-        Self::prepare_session_cache(id)?;
-
+        let session_dir = Self::ensure_session_view(id)?;
+        let session = read_session_config_from_dir(&session_dir)?;
         let mut guard = self.current_session.lock().unwrap();
         *guard = Some(session);
+        Ok(())
+    }
+
+    pub fn load_session_for_processing(&self, id: &str) -> Result<()> {
+        let processing_dir = Self::get_session_processing_dir(id)?;
+        if !processing_dir.exists() {
+            let document_path = Self::get_session_document_path(id)?;
+            if !document_path.exists() {
+                return Err(crate::error::AppError::Processing(format!(
+                    "Session {} not found",
+                    id
+                )));
+            }
+            let current_dir = Self::get_session_current_dir(id)?;
+            if current_dir.exists() {
+                fs::remove_dir_all(&current_dir).map_err(|e| {
+                    crate::error::AppError::Io(format!(
+                        "Failed to clear stale current session dir {}: {}",
+                        current_dir.display(),
+                        e
+                    ))
+                })?;
+            }
+            fs::create_dir_all(&processing_dir).map_err(|e| {
+                crate::error::AppError::Io(format!(
+                    "Failed to create session processing dir {}: {}",
+                    processing_dir.display(),
+                    e
+                ))
+            })?;
+            extract_document_to_dir(&document_path, &processing_dir)?;
+            fs::remove_file(&document_path).map_err(|e| {
+                crate::error::AppError::Io(format!(
+                    "Failed to remove session document {}: {}",
+                    document_path.display(),
+                    e
+                ))
+            })?;
+        }
+        let session = read_session_config_from_dir(&processing_dir)?;
+        let mut guard = self.current_session.lock().unwrap();
+        *guard = Some(session);
+        Ok(())
+    }
+
+    pub fn finalize_session(&self, id: &str) -> Result<()> {
+        let processing_dir = Self::get_session_processing_dir(id)?;
+        if !processing_dir.exists() {
+            return Err(crate::error::AppError::Processing(format!(
+                "Cannot finalize session {}: processing dir does not exist",
+                id
+            )));
+        }
+        let document_path = Self::get_session_document_path(id)?;
+        pack_dir_to_document(&processing_dir, &document_path)?;
+        fs::remove_dir_all(&processing_dir).map_err(|e| {
+            crate::error::AppError::Io(format!(
+                "Failed to remove processing dir {} after finalize: {}",
+                processing_dir.display(),
+                e
+            ))
+        })?;
         Ok(())
     }
 
@@ -274,15 +412,14 @@ impl AppState {
     }
 
     fn save_session(&self, session: &SessionConfig) -> Result<()> {
-        write_session_document_config(session)
-    }
-
-    pub fn persist_current_session_document(&self) -> Result<()> {
-        let guard = self.current_session.lock().unwrap();
-        let session = guard
-            .as_ref()
-            .ok_or_else(|| crate::error::AppError::Processing("No active session".into()))?;
-        write_session_document(session)
+        let processing_dir = Self::get_session_processing_dir(&session.session_id)?;
+        if !processing_dir.exists() {
+            return Err(crate::error::AppError::Processing(format!(
+                "Cannot save session {}: processing dir does not exist",
+                session.session_id
+            )));
+        }
+        write_session_config_atomic(session, &processing_dir)
     }
 }
 
@@ -298,10 +435,15 @@ fn progress_section_mut(
     }
 }
 
-fn is_session_document_path(path: &Path) -> bool {
+pub fn is_session_document_path(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
+}
+
+fn parse_session_version(session: &SessionConfig) -> std::result::Result<Version, semver::Error> {
+    Version::parse(session.modified_app_version.trim_start_matches('v'))
+        .or_else(|_| Version::parse(session.app_version.trim_start_matches('v')))
 }
 
 pub fn read_session_config_from_document(path: &Path) -> Result<SessionConfig> {
@@ -319,11 +461,11 @@ pub fn read_session_config_from_document(path: &Path) -> Result<SessionConfig> {
             e
         ))
     })?;
-    let mut config = archive.by_name(SESSION_CONFIG_ENTRY).map_err(|e| {
+    let mut config = archive.by_name(SESSION_CONFIG_FILE).map_err(|e| {
         crate::error::AppError::Processing(format!(
             "Session document {} does not contain {}: {}",
             path.display(),
-            SESSION_CONFIG_ENTRY,
+            SESSION_CONFIG_FILE,
             e
         ))
     })?;
@@ -331,7 +473,7 @@ pub fn read_session_config_from_document(path: &Path) -> Result<SessionConfig> {
     config.read_to_string(&mut content).map_err(|e| {
         crate::error::AppError::Io(format!(
             "Failed to read {} from {}: {}",
-            SESSION_CONFIG_ENTRY,
+            SESSION_CONFIG_FILE,
             path.display(),
             e
         ))
@@ -339,129 +481,158 @@ pub fn read_session_config_from_document(path: &Path) -> Result<SessionConfig> {
     Ok(serde_json::from_str(&content)?)
 }
 
-fn read_samples_zip_from_document(path: &Path) -> Result<Option<Vec<u8>>> {
-    if !path.exists() {
-        return Ok(None);
-    }
+pub fn read_session_config_from_dir(dir: &Path) -> Result<SessionConfig> {
+    let config_path = dir.join(SESSION_CONFIG_FILE);
+    let content = fs::read_to_string(&config_path).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to read session config {}: {}",
+            config_path.display(),
+            e
+        ))
+    })?;
+    Ok(serde_json::from_str(&content)?)
+}
 
-    let file = fs::File::open(path)?;
+fn write_session_config_atomic(session: &SessionConfig, dir: &Path) -> Result<()> {
+    fs::create_dir_all(dir).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to create session dir {}: {}",
+            dir.display(),
+            e
+        ))
+    })?;
+    let content = serde_json::to_string_pretty(session)?;
+    let mut temporary = tempfile::NamedTempFile::new_in(dir).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to create temporary session config in {}: {}",
+            dir.display(),
+            e
+        ))
+    })?;
+    temporary
+        .as_file_mut()
+        .write_all(content.as_bytes())
+        .map_err(|e| {
+            crate::error::AppError::Io(format!("Failed to write temporary session config: {}", e))
+        })?;
+    let config_path = dir.join(SESSION_CONFIG_FILE);
+    temporary.persist(&config_path).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to persist session config {}: {}",
+            config_path.display(),
+            e
+        ))
+    })?;
+    Ok(())
+}
+
+fn extract_document_to_dir(document_path: &Path, dir: &Path) -> Result<()> {
+    let file = fs::File::open(document_path).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to open session document {}: {}",
+            document_path.display(),
+            e
+        ))
+    })?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| {
         crate::error::AppError::Processing(format!(
             "Invalid session document {}: {}",
-            path.display(),
+            document_path.display(),
             e
         ))
     })?;
-    let Ok(mut samples) = archive.by_name(SESSION_SAMPLES_ENTRY) else {
-        return Ok(None);
-    };
-    let mut bytes = Vec::new();
-    samples.read_to_end(&mut bytes).map_err(|e| {
-        crate::error::AppError::Io(format!(
-            "Failed to read {} from {}: {}",
-            SESSION_SAMPLES_ENTRY,
-            path.display(),
-            e
-        ))
-    })?;
-    Ok(Some(bytes))
-}
 
-fn empty_samples_zip() -> Result<Vec<u8>> {
-    let mut cursor = Cursor::new(Vec::new());
-    let writer = zip::ZipWriter::new(&mut cursor);
-    writer
-        .finish()
-        .map_err(|e| crate::error::AppError::Processing(format!("Failed to create zip: {}", e)))?;
-    Ok(cursor.into_inner())
-}
-
-fn pack_samples_zip(session_dir: &Path) -> Result<Vec<u8>> {
-    let samples_dir = session_dir.join("samples");
-    if !samples_dir.exists() {
-        return empty_samples_zip();
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(|e| {
+            crate::error::AppError::Processing(format!(
+                "Failed to read entry {} from {}: {}",
+                i,
+                document_path.display(),
+                e
+            ))
+        })?;
+        let Some(enclosed) = entry.enclosed_name().map(|path| path.to_owned()) else {
+            continue;
+        };
+        let output_path = dir.join(enclosed);
+        if entry.name().ends_with('/') {
+            fs::create_dir_all(&output_path)?;
+            continue;
+        }
+        if let Some(parent) = output_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut output = fs::File::create(&output_path).map_err(|e| {
+            crate::error::AppError::Io(format!(
+                "Failed to write extracted file {}: {}",
+                output_path.display(),
+                e
+            ))
+        })?;
+        std::io::copy(&mut entry, &mut output)?;
     }
+    Ok(())
+}
 
-    let mut cursor = Cursor::new(Vec::new());
+fn pack_dir_to_document(dir: &Path, document_path: &Path) -> Result<()> {
+    let parent = document_path
+        .parent()
+        .ok_or_else(|| crate::error::AppError::Io("Document path has no parent".into()))?;
+    fs::create_dir_all(parent).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to create Generated dir {}: {}",
+            parent.display(),
+            e
+        ))
+    })?;
+    let temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to create temporary session document in {}: {}",
+            parent.display(),
+            e
+        ))
+    })?;
     {
-        let mut writer = zip::ZipWriter::new(&mut cursor);
+        let mut writer = zip::ZipWriter::new(temporary.as_file());
         let options =
-            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
-        for entry in WalkDir::new(&samples_dir)
+        let mut entries: Vec<PathBuf> = WalkDir::new(dir)
             .into_iter()
             .filter_map(|entry| entry.ok())
             .filter(|entry| entry.file_type().is_file())
-        {
-            let path = entry.path();
-            let relative_path = path.strip_prefix(&samples_dir).map_err(|e| {
+            .map(|entry| entry.path().to_path_buf())
+            .collect();
+        entries.sort();
+
+        for path in entries {
+            let relative_path = path.strip_prefix(dir).map_err(|e| {
                 crate::error::AppError::Processing(format!(
-                    "Failed to build samples zip path {}: {}",
+                    "Failed to build relative path for {}: {}",
                     path.display(),
                     e
                 ))
             })?;
-            let zip_path = Path::new("samples").join(relative_path);
-            writer
-                .start_file(zip_path.to_string_lossy().as_ref(), options)
-                .map_err(|e| {
-                    crate::error::AppError::Processing(format!(
-                        "Failed to start samples zip entry {}: {}",
-                        zip_path.display(),
-                        e
-                    ))
-                })?;
-            let mut file = fs::File::open(path)?;
+            let entry_name = relative_path
+                .components()
+                .map(|component| component.as_os_str().to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("/");
+            writer.start_file(&entry_name, options).map_err(|e| {
+                crate::error::AppError::Processing(format!(
+                    "Failed to start zip entry {}: {}",
+                    entry_name, e
+                ))
+            })?;
+            let mut file = fs::File::open(&path).map_err(|e| {
+                crate::error::AppError::Io(format!(
+                    "Failed to open {} for packing: {}",
+                    path.display(),
+                    e
+                ))
+            })?;
             std::io::copy(&mut file, &mut writer)?;
         }
-        writer.finish().map_err(|e| {
-            crate::error::AppError::Processing(format!("Failed to finish samples zip: {}", e))
-        })?;
-    }
-    Ok(cursor.into_inner())
-}
-
-fn write_session_document_config(session: &SessionConfig) -> Result<()> {
-    let document_path = AppState::get_session_document_path(&session.session_id)?;
-    let samples_zip =
-        read_samples_zip_from_document(&document_path)?.unwrap_or(empty_samples_zip()?);
-    write_session_document_with_samples(session, &samples_zip)
-}
-
-fn write_session_document(session: &SessionConfig) -> Result<()> {
-    let session_dir = AppState::get_session_cache_dir(&session.session_id)?;
-    let samples_zip = pack_samples_zip(&session_dir)?;
-    write_session_document_with_samples(session, &samples_zip)
-}
-
-fn write_session_document_with_samples(session: &SessionConfig, samples_zip: &[u8]) -> Result<()> {
-    let generated_dir = AppState::get_generated_dir()?;
-    fs::create_dir_all(&generated_dir)?;
-    let document_path = AppState::get_session_document_path(&session.session_id)?;
-    let temporary_document = tempfile::NamedTempFile::new_in(&generated_dir).map_err(|e| {
-        crate::error::AppError::Io(format!(
-            "Failed to create temporary session document in {}: {}",
-            generated_dir.display(),
-            e
-        ))
-    })?;
-
-    {
-        let mut writer = zip::ZipWriter::new(fs::File::create(temporary_document.path())?);
-        let options =
-            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        writer
-            .start_file(SESSION_CONFIG_ENTRY, options)
-            .map_err(|e| {
-                crate::error::AppError::Processing(format!("Failed to write config entry: {}", e))
-            })?;
-        writer.write_all(serde_json::to_string_pretty(session)?.as_bytes())?;
-        writer
-            .start_file(SESSION_SAMPLES_ENTRY, options)
-            .map_err(|e| {
-                crate::error::AppError::Processing(format!("Failed to write samples entry: {}", e))
-            })?;
-        writer.write_all(samples_zip)?;
         writer.finish().map_err(|e| {
             crate::error::AppError::Processing(format!(
                 "Failed to finish session document {}: {}",
@@ -470,8 +641,7 @@ fn write_session_document_with_samples(session: &SessionConfig, samples_zip: &[u
             ))
         })?;
     }
-
-    temporary_document.persist(&document_path).map_err(|e| {
+    temporary.persist(document_path).map_err(|e| {
         crate::error::AppError::Io(format!(
             "Failed to persist session document {}: {}",
             document_path.display(),
@@ -479,52 +649,6 @@ fn write_session_document_with_samples(session: &SessionConfig, samples_zip: &[u
         ))
     })?;
     Ok(())
-}
-
-impl AppState {
-    fn extract_session_samples(id: &str, session_dir: &Path) -> Result<()> {
-        let document_path = Self::get_session_document_path(id)?;
-        if !document_path.exists() {
-            return Ok(());
-        }
-
-        let Some(samples_zip) = read_samples_zip_from_document(&document_path)? else {
-            return Ok(());
-        };
-        let reader = Cursor::new(samples_zip);
-        let mut archive = zip::ZipArchive::new(reader).map_err(|e| {
-            crate::error::AppError::Processing(format!(
-                "Invalid {} in {}: {}",
-                SESSION_SAMPLES_ENTRY,
-                document_path.display(),
-                e
-            ))
-        })?;
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i).map_err(|e| {
-                crate::error::AppError::Processing(format!(
-                    "Failed to read samples zip index {}: {}",
-                    i, e
-                ))
-            })?;
-            let Some(enclosed_path) = file.enclosed_name().map(|path| path.to_owned()) else {
-                continue;
-            };
-            let output_path = session_dir.join(enclosed_path);
-            if file.name().ends_with('/') {
-                fs::create_dir_all(&output_path)?;
-                continue;
-            }
-            if let Some(parent) = output_path.parent() {
-                fs::create_dir_all(parent)?;
-            }
-            let mut output = fs::File::create(&output_path)?;
-            std::io::copy(&mut file, &mut output)?;
-        }
-
-        Ok(())
-    }
 }
 
 pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()> {

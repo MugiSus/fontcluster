@@ -1,17 +1,24 @@
 use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
-use crate::core::{read_session_config_from_document, AppState, SESSION_DOCUMENT_EXTENSION};
+use crate::core::{
+    is_session_document_path, read_session_config_from_dir, read_session_config_from_document,
+    AppState,
+};
 use crate::error::Result;
-use chrono::{DateTime, Utc};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use tauri::{command, State};
 
 const SESSION_HISTORY_LIMIT: usize = 20;
 
+enum StoredSessionLocation {
+    Document(PathBuf),
+    Processing(PathBuf),
+}
+
 struct StoredSession {
     session: SessionConfig,
-    path: PathBuf,
+    location: StoredSessionLocation,
 }
 
 #[command]
@@ -42,59 +49,63 @@ pub async fn get_session_info(
 
 #[command]
 pub async fn get_available_sessions() -> Result<String> {
-    let base = AppState::get_generated_dir()?;
-    if !base.exists() {
-        return Ok("[]".into());
-    }
-
-    let mut sessions = Vec::new();
-    for entry in fs::read_dir(base)? {
-        let path = entry?.path();
-        if path
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
-        {
-            if let Ok(s) = read_session_config_from_document(&path) {
-                sessions.push(s);
-            }
-        }
-    }
+    let mut sessions: Vec<SessionConfig> = collect_stored_sessions()?
+        .into_iter()
+        .map(|stored| stored.session)
+        .collect();
     sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     Ok(serde_json::to_string(&sessions)?)
 }
 
 #[command]
 pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<SessionConfig>> {
-    let mut sessions = read_stored_sessions()?;
+    let mut sessions = collect_stored_sessions()?;
+    sessions.sort_by(|a, b| b.session.modified_at.cmp(&a.session.modified_at));
     prune_session_history(&mut sessions, &state)?;
     Ok(sessions.into_iter().map(|stored| stored.session).collect())
 }
 
-fn read_stored_sessions() -> Result<Vec<StoredSession>> {
-    let base = AppState::get_generated_dir()?;
-    if !base.exists() {
-        return Ok(Vec::new());
+fn collect_stored_sessions() -> Result<Vec<StoredSession>> {
+    let mut sessions: HashMap<String, StoredSession> = HashMap::new();
+
+    let generated_dir = AppState::get_generated_dir()?;
+    if generated_dir.exists() {
+        for entry in fs::read_dir(&generated_dir)? {
+            let path = entry?.path();
+            if !is_session_document_path(&path) {
+                continue;
+            }
+            if let Ok(session) = read_session_config_from_document(&path) {
+                sessions.insert(
+                    session.session_id.clone(),
+                    StoredSession {
+                        session,
+                        location: StoredSessionLocation::Document(path),
+                    },
+                );
+            }
+        }
     }
 
-    let mut sessions = Vec::new();
-    for entry in fs::read_dir(base)? {
-        let path = entry?.path();
-        if !path
-            .extension()
-            .and_then(|extension| extension.to_str())
-            .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
-        {
-            continue;
-        }
-
-        if let Ok(session) = read_session_config_from_document(&path) {
-            sessions.push(StoredSession { session, path });
+    let processing_root = AppState::get_session_processing_root()?;
+    if processing_root.exists() {
+        for entry in fs::read_dir(&processing_root)? {
+            let path = entry?.path();
+            if !path.is_dir() {
+                continue;
+            }
+            if let Ok(session) = read_session_config_from_dir(&path) {
+                sessions
+                    .entry(session.session_id.clone())
+                    .or_insert(StoredSession {
+                        session,
+                        location: StoredSessionLocation::Processing(path),
+                    });
+            }
         }
     }
 
-    sessions.sort_by(|a, b| b.session.modified_at.cmp(&a.session.modified_at));
-    Ok(sessions)
+    Ok(sessions.into_values().collect())
 }
 
 fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) -> Result<()> {
@@ -126,7 +137,10 @@ fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) ->
             continue;
         }
 
-        fs::remove_file(&stored.path)?;
+        match &stored.location {
+            StoredSessionLocation::Document(path) => fs::remove_file(path)?,
+            StoredSessionLocation::Processing(path) => fs::remove_dir_all(path)?,
+        }
     }
 
     *sessions = retained;
@@ -141,66 +155,47 @@ pub async fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<S
 
 #[command]
 pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<String>> {
-    let base = AppState::get_generated_dir()?;
+    let sessions = collect_stored_sessions()?;
+    let has_sessions = !sessions.is_empty();
 
-    let mut latest: Option<(DateTime<Utc>, String)> = None;
-    let mut has_sessions = false;
-    if base.exists() {
-        if let Ok(entries) = fs::read_dir(&base) {
-            for entry in entries.filter_map(|e| e.ok()) {
-                let path = entry.path();
-                if path
-                    .extension()
-                    .and_then(|extension| extension.to_str())
-                    .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
-                {
-                    if let Ok(s) = read_session_config_from_document(&path) {
-                        has_sessions = true;
-                        if s.status.process_status != ProcessStatus::Clustered {
-                            continue;
-                        }
-
-                        let current_time = s.modified_at;
-                        if latest.is_none() || current_time > latest.as_ref().unwrap().0 {
-                            latest = Some((current_time, s.session_id));
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let latest = sessions
+        .into_iter()
+        .map(|stored| stored.session)
+        .filter(|session| session.status.process_status == ProcessStatus::Clustered)
+        .max_by_key(|session| session.modified_at)
+        .map(|session| session.session_id);
 
     if latest.is_none() && !has_sessions {
         println!("✨ No existing sessions found. Attempting to extract example session...");
         return crate::core::extract_example_session(&app);
     }
 
-    Ok(latest.map(|(_, id)| id))
+    Ok(latest)
 }
 
 #[command]
 #[allow(non_snake_case)]
 pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
-    let path = AppState::get_session_cache_dir(&sessionId)?;
-    if path.exists() {
-        Ok(path)
-    } else {
-        AppState::prepare_session_cache(&sessionId)
-    }
+    AppState::resolve_session_dir(&sessionId)
 }
 
 #[command]
 #[allow(non_snake_case)]
 pub async fn delete_session(sessionUuid: String) -> Result<bool> {
-    let path = AppState::get_session_document_path(&sessionUuid)?;
-    let cache_path = AppState::get_session_cache_dir(&sessionUuid)?;
-    if path.exists() {
-        fs::remove_file(path)?;
-        if cache_path.exists() {
-            fs::remove_dir_all(cache_path)?;
-        }
-        Ok(true)
-    } else {
-        Ok(false)
+    let mut deleted = false;
+    let document_path = AppState::get_session_document_path(&sessionUuid)?;
+    if document_path.exists() {
+        fs::remove_file(&document_path)?;
+        deleted = true;
     }
+    let processing_dir = AppState::get_session_processing_dir(&sessionUuid)?;
+    if processing_dir.exists() {
+        fs::remove_dir_all(&processing_dir)?;
+        deleted = true;
+    }
+    let current_dir = AppState::get_session_current_dir(&sessionUuid)?;
+    if current_dir.exists() {
+        fs::remove_dir_all(&current_dir)?;
+    }
+    Ok(deleted)
 }

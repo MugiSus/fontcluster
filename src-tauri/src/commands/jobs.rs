@@ -211,7 +211,7 @@ pub async fn run_jobs_pipeline(
 
     // Initialize or load session
     let id = if let Some(sid) = request.session_id {
-        state.load_session(&sid)?;
+        state.load_session_for_processing(&sid)?;
         state.update_session_config(
             request.text,
             request.weights,
@@ -271,7 +271,6 @@ pub async fn run_jobs_pipeline(
         renderer
             .render_all(&events, state, discovery.render_sources)
             .await?;
-        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -292,7 +291,6 @@ pub async fn run_jobs_pipeline(
         events.emit_unit("vectorization_start")?;
         let vec = Vectorizer::new()?;
         vec.vectorize_all(&events, state).await?;
-        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -312,7 +310,6 @@ pub async fn run_jobs_pipeline(
         println!("📍 Starting positioning...");
         events.emit_unit("positioning_start")?;
         Positioner::position_all(&events, state).await?;
-        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -332,7 +329,6 @@ pub async fn run_jobs_pipeline(
         println!("✨ Starting clustering...");
         events.emit_unit("clustering_start")?;
         clusterer::cluster_all(&events, state).await?;
-        state.persist_current_session_document()?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -341,11 +337,19 @@ pub async fn run_jobs_pipeline(
     }
 
     if state.is_cancelled.load(Ordering::Relaxed) {
-        Ok("Cancelled".into())
-    } else {
-        events.emit_string("all_jobs_complete", id)?;
-        Ok("Success".into())
+        return Ok("Cancelled".into());
     }
+
+    let final_status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    if final_status == ProcessStatus::Clustered {
+        state.finalize_session(&id)?;
+    }
+
+    events.emit_string("all_jobs_complete", id)?;
+    Ok("Success".into())
 }
 
 #[command]
