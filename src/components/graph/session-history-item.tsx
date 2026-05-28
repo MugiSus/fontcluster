@@ -150,7 +150,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
       </div>
       <Show when={!isComplete()}>
         <div class='flex flex-col gap-1.5 pt-2'>
-          <div class='h-1 w-full overflow-hidden rounded-full bg-muted'>
+          <div class='duration-[2000ms] h-1 w-full animate-pulse overflow-hidden rounded-full bg-primary/25'>
             <div
               class='h-full rounded-full bg-primary transition-[width] duration-500'
               style={{ width: `${progressValue() * 100}%` }}
