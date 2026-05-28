@@ -11,6 +11,9 @@ pub enum AppError {
     #[error("Font error: {0}")]
     Font(String),
 
+    #[error("Missing glyph for character '{0}'")]
+    MissingGlyph(char),
+
     #[error("Image error: {0}")]
     Image(String),
 

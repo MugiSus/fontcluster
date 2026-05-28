@@ -111,7 +111,10 @@ export interface ComputedData {
   clustering?: ClusteringData | null;
 }
 
+export type FontSource = 'system' | 'google_fonts';
+
 export interface FontMetadata {
+  source: FontSource;
   safe_name: string;
   font_name: string;
   family_name: string;

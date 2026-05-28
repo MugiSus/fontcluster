@@ -180,6 +180,8 @@ pub struct ClusteringData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontMetadata {
+    #[serde(default)]
+    pub source: FontSource,
     pub safe_name: String,
     pub font_name: String,
     pub family_name: String,
@@ -213,6 +215,14 @@ pub struct FontMetadata {
     pub weights: Vec<String>,
     pub path: Option<PathBuf>,
     pub font_index: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum FontSource {
+    #[default]
+    System,
+    GoogleFonts,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

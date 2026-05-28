@@ -1,5 +1,5 @@
 use crate::commands::progress::progress_events;
-use crate::config::ProgressStage;
+use crate::config::{FontSource, ProgressStage};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use fontdb::{FaceInfo, Source};
@@ -310,6 +310,11 @@ impl Discoverer {
                                     tw,
                                 );
                                 let font_meta = crate::config::FontMetadata {
+                                    source: if is_google_fonts {
+                                        FontSource::GoogleFonts
+                                    } else {
+                                        FontSource::System
+                                    },
                                     safe_name,
                                     font_name: meta.display_name.clone(),
                                     family_name: family_name.clone(),

@@ -1,4 +1,5 @@
-use crate::config::{FontMetadata, RenderConfig};
+use crate::config::{FontMetadata, FontSource, RenderConfig};
+use crate::core::google_fonts_downloader::download_google_font_subset_temp;
 use crate::core::{session::load_font_data, AppState};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
@@ -6,6 +7,7 @@ use serde::Deserialize;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{command, State};
@@ -90,6 +92,21 @@ pub async fn render_font_preview(
     _state: State<'_, AppState>,
     payload: RenderFontPreviewPayload,
 ) -> Result<String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| AppError::Io(format!("Failed to resolve app cache dir: {e}")))?
+        .join("font-previews");
+
+    tokio::task::spawn_blocking(move || render_font_preview_blocking(cache_dir, payload))
+        .await
+        .map_err(|e| AppError::Processing(e.to_string()))?
+}
+
+fn render_font_preview_blocking(
+    cache_dir: PathBuf,
+    payload: RenderFontPreviewPayload,
+) -> Result<String> {
     let text = if payload.text.is_empty() {
         " ".to_string()
     } else {
@@ -120,21 +137,27 @@ pub async fn render_font_preview(
     text.hash(&mut hasher);
     let cache_key = hasher.finish();
 
-    let cache_dir = app
-        .path()
-        .app_cache_dir()
-        .map_err(|e| AppError::Io(format!("Failed to resolve app cache dir: {e}")))?
-        .join("font-previews");
     prune_old_font_preview_cache(&cache_dir);
     let output_path = cache_dir.join(format!("{}_{cache_key:016x}.png", payload.font.safe_name));
 
     if !output_path.exists() {
         let renderer = FontRenderer::new(Arc::new(RenderConfig {
-            text,
+            text: text.clone(),
             font_size,
-            output_dir: cache_dir,
+            output_dir: cache_dir.clone(),
         }));
-        renderer.render_to_path(&font_path, payload.font.font_index, &output_path)?;
+        match renderer.render_to_path(&font_path, payload.font.font_index, &output_path) {
+            Ok(()) => {}
+            Err(AppError::MissingGlyph(_)) if payload.font.source == FontSource::GoogleFonts => {
+                let font = download_google_font_subset_temp(
+                    &payload.font.family_name,
+                    payload.font.weight,
+                    &text,
+                )?;
+                renderer.render_to_path(font.path(), 0, &output_path)?;
+            }
+            Err(error) => return Err(error),
+        }
     }
 
     Ok(output_path.to_string_lossy().into_owned())

@@ -75,10 +75,7 @@ impl FontRenderer {
         for ch in self.config.text.chars() {
             let gid = font.charmap().map(ch);
             if gid == 0 && ch != '\0' && ch != '\u{FFFD}' {
-                return Err(AppError::Font(format!(
-                    "Font fallback detected for character '{}' (missing in cmap)",
-                    ch
-                )));
+                return Err(AppError::MissingGlyph(ch));
             }
         }
 
