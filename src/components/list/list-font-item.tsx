@@ -66,7 +66,7 @@ export function ListFontItem(props: ListFontItemProps) {
       type='button'
       variant='ghost'
       class={cn(
-        'group relative flex h-20 w-full flex-col items-start justify-start gap-2 rounded-none px-4 pb-3.5 pt-2.5 shadow-none hover:bg-muted',
+        'group relative flex h-20 w-full min-w-0 flex-col items-start justify-center gap-2 overflow-hidden rounded-none p-0 shadow-none hover:bg-muted',
         props.class,
       )}
       onClick={props.onClick}
@@ -74,7 +74,7 @@ export function ListFontItem(props: ListFontItemProps) {
       onMouseLeave={props.onMouseLeave}
       aria-label={`Apply ${meta().font_name} ${weightLabel()} to plugins`}
     >
-      <div class='flex items-center gap-2 font-semibold'>
+      <div class='flex items-center gap-2 px-4 font-semibold'>
         <div
           class={`h-3.5 w-1 rounded-full ${getClusterBackgroundColor(clusterId())}`}
         />
@@ -85,15 +85,17 @@ export function ListFontItem(props: ListFontItemProps) {
           {meta().font_name}
         </div>
       </div>
-      <img
-        class={cn(
-          'block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0',
-          props.previewText && !previewPath() && 'opacity-25',
-        )}
-        src={sampleSrc()}
-        alt={`Font preview for ${meta().font_name}`}
-        decoding='async'
-      />
+      <div class='w-full min-w-0 overflow-x-auto overflow-y-hidden px-4'>
+        <img
+          class={cn(
+            'block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0',
+            props.previewText && !previewPath() && 'opacity-25',
+          )}
+          src={sampleSrc()}
+          alt={`Font preview for ${meta().font_name}`}
+          decoding='async'
+        />
+      </div>
       <ArrowRightIcon
         class={cn(
           'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground opacity-0',

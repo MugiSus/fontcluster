@@ -84,7 +84,7 @@ export function ListContent() {
   );
 
   return (
-    <div class='flex h-full flex-1 flex-col overflow-hidden'>
+    <div class='flex h-full flex-1 flex-col'>
       <ListPreviewTextField
         value={appState.ui.listPreviewText}
         placeholder={appState.session.config.preview_text || 'A'}
@@ -107,7 +107,7 @@ export function ListContent() {
       <Show when={selectedItem()} fallback={<NoResultsFound />}>
         <div
           ref={nearestItemsScrollElement}
-          class='min-h-0 w-full flex-1 overflow-scroll'
+          class='min-h-0 w-full flex-1 overflow-y-scroll'
         >
           <ul
             class='relative w-full'

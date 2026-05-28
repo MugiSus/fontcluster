@@ -73,7 +73,7 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
         value={inputValue()}
         placeholder={props.placeholder}
         onInput={(event) => handleValueChange(event.currentTarget.value)}
-        class='h-12 rounded-none border-0 border-b bg-background pl-11 pr-4 text-left text-sm shadow-none hover:bg-background focus:bg-background focus:outline-none'
+        class='h-12 rounded-none border-0 border-b bg-background pl-12 pr-0 text-left text-sm shadow-none hover:bg-background focus:bg-background focus:outline-none'
         spellcheck='false'
       />
     </TextField>
