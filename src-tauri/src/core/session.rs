@@ -105,7 +105,7 @@ impl AppState {
 
     pub fn resolve_session_dir(id: &str) -> Result<PathBuf> {
         let processing = Self::get_session_processing_dir(id)?;
-        if processing.exists() {
+        if has_session_config(&processing) {
             return Ok(processing);
         }
         let current = Self::get_session_current_dir(id)?;
@@ -120,9 +120,12 @@ impl AppState {
             .lock()
             .map_err(|_| crate::error::AppError::Processing("Session view lock poisoned".into()))?;
 
-        let document_path = Self::get_session_document_path(id)?;
         let processing = Self::get_session_processing_dir(id)?;
+        if has_session_config(&processing) {
+            return Ok(processing);
+        }
 
+        let document_path = Self::get_session_document_path(id)?;
         if document_path.exists() {
             if processing.exists() {
                 remove_dir_all_best_effort(&processing);
@@ -152,10 +155,6 @@ impl AppState {
             return Ok(current);
         }
 
-        if processing.exists() {
-            return Ok(processing);
-        }
-
         Err(crate::error::AppError::Processing(format!(
             "Session {} not found",
             id
@@ -177,8 +176,7 @@ impl AppState {
                 if !path.is_dir() {
                     continue;
                 }
-                let document_path = Self::get_session_document_path(file_name)?;
-                if document_path.exists() {
+                if !has_session_config(&path) {
                     remove_dir_all_best_effort(&path);
                 }
             }
@@ -308,7 +306,13 @@ impl AppState {
         let processing_dir = Self::get_session_processing_dir(id)?;
         let document_path = Self::get_session_document_path(id)?;
 
-        if document_path.exists() {
+        if !has_session_config(&processing_dir) {
+            if !document_path.exists() {
+                return Err(crate::error::AppError::Processing(format!(
+                    "Session {} not found",
+                    id
+                )));
+            }
             if processing_dir.exists() {
                 remove_dir_all_best_effort(&processing_dir);
             }
@@ -324,18 +328,6 @@ impl AppState {
                 ))
             })?;
             extract_document_to_dir(&document_path, &processing_dir)?;
-            fs::remove_file(&document_path).map_err(|e| {
-                crate::error::AppError::Io(format!(
-                    "Failed to remove session document {}: {}",
-                    document_path.display(),
-                    e
-                ))
-            })?;
-        } else if !processing_dir.exists() {
-            return Err(crate::error::AppError::Processing(format!(
-                "Session {} not found",
-                id
-            )));
         }
 
         let session = read_session_config_from_dir(&processing_dir)?;
@@ -422,6 +414,10 @@ impl AppState {
         }
         write_session_config_atomic(session, &processing_dir)
     }
+}
+
+fn has_session_config(dir: &Path) -> bool {
+    dir.join(SESSION_CONFIG_FILE).exists()
 }
 
 fn remove_dir_all_best_effort(path: &Path) {

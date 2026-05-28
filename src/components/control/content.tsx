@@ -203,30 +203,19 @@ export function ControlContent() {
             title='analyze'
             disabled={isRunCooldown()}
             onStepRun={() => handleRun('rendered')}
-          >
-            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              RepVit-M1.0
-            </div>
-          </ControlPropertySection>
+          />
 
           <ControlPropertySection
             title='position'
             disabled={isRunCooldown()}
             onStepRun={() => handleRun('vectorized')}
-          >
-            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              PCA
-            </div>
-          </ControlPropertySection>
+          />
 
           <ControlPropertySection
-            title='clustering'
+            title='clusterize'
             disabled={isRunCooldown()}
             onStepRun={() => handleRun('positioned')}
           >
-            <div class='flex h-8 items-center px-2 text-xs font-medium text-muted-foreground'>
-              Agglomerative Hierarchical Clustering
-            </div>
             <TextProperty label='method' class='mr-1 gap-0.5'>
               <Select
                 name='clustering-method'

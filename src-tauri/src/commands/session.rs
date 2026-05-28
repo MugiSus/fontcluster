@@ -102,12 +102,13 @@ fn collect_stored_sessions() -> Result<Vec<StoredSession>> {
                 continue;
             }
             if let Ok(session) = read_session_config_from_dir(&path) {
-                sessions
-                    .entry(session.session_id.clone())
-                    .or_insert(StoredSession {
+                sessions.insert(
+                    session.session_id.clone(),
+                    StoredSession {
                         session,
                         location: StoredSessionLocation::Processing(path),
-                    });
+                    },
+                );
             }
         }
     }
