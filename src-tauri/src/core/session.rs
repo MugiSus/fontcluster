@@ -20,7 +20,7 @@ use zip::write::SimpleFileOptions;
 use super::plugin_bridge::PluginConnection;
 
 pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
-const MIN_SUPPORTED_SESSION_VERSION: &str = "0.14.0";
+const MIN_SUPPORTED_SESSION_VERSION: &str = "0.15.0";
 const SESSION_CONFIG_FILE: &str = "config.json";
 
 static SESSION_VIEW_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
