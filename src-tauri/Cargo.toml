@@ -27,7 +27,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 debug = 1
 
 [profile.release]
-lto = true
+lto = "thin"
 codegen-units = 1
 opt-level = 3
 panic = "abort"
