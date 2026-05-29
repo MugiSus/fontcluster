@@ -5,8 +5,10 @@ use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
 use ndarray::{s, Array4};
+#[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
+use ort::ep;
 use ort::{
-    ep, inputs,
+    inputs,
     session::{
         builder::{GraphOptimizationLevel, SessionBuilder},
         Session,

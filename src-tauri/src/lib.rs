@@ -7,8 +7,10 @@ pub mod rendering;
 use crate::commands::font::FontPreviewCacheState;
 use crate::core::AppState;
 use std::sync::Arc;
+#[cfg(target_os = "macos")]
+use tauri::menu::AboutMetadata;
 use tauri::{
-    menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Emitter,
 };
 
