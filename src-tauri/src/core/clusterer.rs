@@ -20,9 +20,8 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             .map_err(|_| AppError::Processing("Lock poisoned".into()))?;
         guard
             .as_ref()
-            .and_then(|s| s.algorithm.as_ref())
-            .and_then(|a| a.clustering.clone())
-            .unwrap_or_default()
+            .map(|s| s.algorithm.clustering.clone())
+            .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
     let session_dir_for_first = session_dir.clone();

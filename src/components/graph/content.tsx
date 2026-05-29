@@ -6,7 +6,6 @@ import {
   createSignal,
   onCleanup,
 } from 'solid-js';
-import { type FontWeight } from '../../types/font';
 import { WeightSelector } from '../weight-selector';
 import { ImageVisibilityToggle } from './image-visibility-toggle';
 import { CircleSlash2Icon } from 'lucide-solid';
@@ -31,7 +30,7 @@ export function GraphContent() {
   let mouseSelectionAnimationFrame: number | undefined;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
   const sessionWeights = () =>
-    (appState.session.config?.weights as FontWeight[]) || [];
+    appState.session.config.algorithm.rendering.weights;
 
   createEffect(() => {
     const weights = sessionWeights();

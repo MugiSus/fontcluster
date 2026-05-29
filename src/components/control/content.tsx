@@ -80,43 +80,44 @@ export function ControlContent() {
         : undefined;
 
     const formdata = new FormData(form);
-    const text = formdata.get('preview-text') as string;
-
     const selectedWeightsString = formdata.get('weights') as string;
     const selectedWeightsArray = (
       selectedWeightsString ? selectedWeightsString.split(',').map(Number) : []
     ) as FontWeight[];
+    const selectedWeights =
+      selectedWeightsArray.length > 0
+        ? selectedWeightsArray
+        : ([400] as FontWeight[]);
 
-    const algorithm: AlgorithmConfig = {
-      rendering: {
-        font_set: (formdata.get('rendering-font-set') ??
-          appState.session.config?.algorithm?.rendering?.font_set ??
-          'google_fonts_popular300') as FontSet,
-        font_size: Number(formdata.get('rendering-font-size')) || 224,
-      },
-      clustering: {
-        method: (formdata.get('clustering-method') ??
-          appState.session.config?.algorithm?.clustering?.method ??
-          'average') as ClusteringMethod,
-        preprocessing_dimensions: Number(
-          formdata.get('clustering-preprocessing-dimensions') || 128,
-        ),
-        distance_threshold: Number(
-          formdata.get('clustering-distance-threshold') || 0.5,
-        ),
-        target_cluster_count: Number(
-          formdata.get('clustering-target-cluster-count') || 0,
-        ),
-      },
+    const clustering = {
+      method: (formdata.get('clustering-method') ??
+        appState.session.config.algorithm.clustering
+          .method) as ClusteringMethod,
+      preprocessing_dimensions: Number(
+        formdata.get('clustering-preprocessing-dimensions') || 128,
+      ),
+      distance_threshold: Number(
+        formdata.get('clustering-distance-threshold') || 0.5,
+      ),
+      target_cluster_count: Number(
+        formdata.get('clustering-target-cluster-count') || 0,
+      ),
     };
 
-    await runProcessingJobs(
-      text || 'A',
-      selectedWeightsArray.length > 0 ? selectedWeightsArray : [400],
-      algorithm,
-      sessionId,
-      targetStatus,
-    );
+    const rendering = {
+      text: (formdata.get('rendering-text') as string) || 'A',
+      weights: selectedWeights,
+      font_set: (formdata.get('rendering-font-set') ??
+        appState.session.config.algorithm.rendering.font_set) as FontSet,
+      font_size: Number(formdata.get('rendering-font-size')) || 224,
+    };
+
+    const algorithm: Partial<AlgorithmConfig> =
+      targetStatus && targetStatus !== 'empty'
+        ? { clustering }
+        : { rendering, clustering };
+
+    await runProcessingJobs(algorithm, sessionId, targetStatus);
   };
 
   return (
@@ -125,7 +126,7 @@ export function ControlContent() {
         <div class='flex flex-col gap-2 border-b p-4'>
           <TextField class='relative grid w-full items-center gap-1'>
             <TextFieldLabel
-              for='preview-text'
+              for='rendering-text'
               class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
             >
               <TypeIcon class='mb-0.5 size-3.5' />
@@ -133,9 +134,9 @@ export function ControlContent() {
             </TextFieldLabel>
             <TextFieldInput
               type='text'
-              name='preview-text'
-              id='preview-text'
-              value={appState.session.config.preview_text || 'A'}
+              name='rendering-text'
+              id='rendering-text'
+              value={appState.session.config.algorithm.rendering.text || 'A'}
               placeholder='A'
               spellcheck='false'
               class='h-9 text-[15px]'
@@ -148,7 +149,9 @@ export function ControlContent() {
             >
               <WeightSelector
                 weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-                defaultValue={appState.session.config.weights as FontWeight[]}
+                defaultValue={
+                  appState.session.config.algorithm.rendering.weights
+                }
                 isCompact
               />
             </Show>
@@ -168,8 +171,7 @@ export function ControlContent() {
                 optionTextValue={(fontSet) => FONT_SET_LABELS[fontSet]}
                 disallowEmptySelection
                 defaultValue={
-                  appState.session.config?.algorithm?.rendering?.font_set ??
-                  'google_fonts_popular300'
+                  appState.session.config.algorithm.rendering.font_set
                 }
                 itemComponent={(props) => (
                   <>
@@ -195,7 +197,7 @@ export function ControlContent() {
               label='font size'
               name='rendering-font-size'
               defaultValue={
-                appState.session.config?.algorithm?.rendering?.font_size ?? 224
+                appState.session.config.algorithm.rendering.font_size
               }
               step={1}
               minValue={1}
@@ -237,8 +239,7 @@ export function ControlContent() {
                 optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
                 disallowEmptySelection
                 defaultValue={
-                  appState.session.config?.algorithm?.clustering?.method ??
-                  'average'
+                  appState.session.config.algorithm.clustering.method
                 }
                 itemComponent={(props) => (
                   <SelectItem item={props.item}>
@@ -261,8 +262,8 @@ export function ControlContent() {
               label='PCA dimensions'
               name='clustering-preprocessing-dimensions'
               defaultValue={
-                appState.session.config?.algorithm?.clustering
-                  ?.preprocessing_dimensions ?? 64
+                appState.session.config.algorithm.clustering
+                  .preprocessing_dimensions
               }
               step={1}
               minValue={1}
@@ -272,8 +273,7 @@ export function ControlContent() {
               label='distance threshold'
               name='clustering-distance-threshold'
               defaultValue={
-                appState.session.config?.algorithm?.clustering
-                  ?.distance_threshold ?? 0.4
+                appState.session.config.algorithm.clustering.distance_threshold
               }
               step={0.01}
               minValue={0}
@@ -282,8 +282,8 @@ export function ControlContent() {
               label='target clusters'
               name='clustering-target-cluster-count'
               defaultValue={
-                appState.session.config?.algorithm?.clustering
-                  ?.target_cluster_count ?? 0
+                appState.session.config.algorithm.clustering
+                  .target_cluster_count
               }
               step={1}
               minValue={0}

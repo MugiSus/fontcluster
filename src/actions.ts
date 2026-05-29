@@ -150,18 +150,19 @@ export const setCurrentSessionId = (id: string) =>
   setAppState('session', 'id', id);
 
 export const runProcessingJobs = async (
-  text: string,
-  weights: FontWeight[],
-  algorithm: AlgorithmConfig,
+  algorithm: Partial<AlgorithmConfig>,
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  toast.info(`Job started: '${text}'`);
+  toast.info(
+    `Job started: '${
+      algorithm.rendering?.text ??
+      appState.session.config.algorithm.rendering.text
+    }'`,
+  );
 
   try {
     const result = await invoke<string>('run_jobs', {
-      text,
-      weights,
       algorithm,
       sessionId,
       overrideStatus,

@@ -23,12 +23,10 @@ struct StoredSession {
 
 #[command]
 pub async fn create_new_session(
-    text: String,
-    weights: Vec<i32>,
-    algorithm: Option<AlgorithmConfig>,
+    algorithm: AlgorithmConfig,
     state: State<'_, AppState>,
 ) -> Result<String> {
-    state.initialize_session(text, weights, algorithm)
+    state.initialize_session(algorithm)
 }
 
 #[command]

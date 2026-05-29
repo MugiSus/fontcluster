@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-pub const PREVIEW_TEXT: &str = "font";
+pub const DEFAULT_RENDERING_TEXT: &str = "A";
 pub const DEFAULT_FONT_SIZE: f32 = 224.0;
 pub const GLYPH_PADDING: f32 = 4.0;
 
@@ -12,25 +12,23 @@ pub struct SessionConfig {
     pub app_version: String,
     pub modified_app_version: String,
     pub session_id: String,
-    pub preview_text: String,
     pub created_at: DateTime<Utc>,
     pub modified_at: DateTime<Utc>,
-    pub weights: Vec<i32>,
     pub discovered_fonts: HashMap<i32, Vec<String>>,
-    pub algorithm: Option<AlgorithmConfig>,
+    pub algorithm: AlgorithmConfig,
     pub status: ProcessingStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(default)]
 pub struct AlgorithmConfig {
-    pub rendering: Option<RenderingConfig>,
-    pub clustering: Option<ClusteringConfig>,
+    pub rendering: RenderingConfig,
+    pub clustering: ClusteringConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct RenderingConfig {
+    pub text: String,
+    pub weights: Vec<i32>,
     pub font_set: FontSet,
     pub font_size: f32,
 }
@@ -38,6 +36,8 @@ pub struct RenderingConfig {
 impl Default for RenderingConfig {
     fn default() -> Self {
         Self {
+            text: DEFAULT_RENDERING_TEXT.to_string(),
+            weights: vec![400],
             font_set: FontSet::default(),
             font_size: DEFAULT_FONT_SIZE,
         }
@@ -64,7 +64,6 @@ impl Default for FontSet {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
 pub struct ClusteringConfig {
     pub method: ClusteringMethod,
     pub preprocessing_dimensions: usize,
@@ -108,7 +107,6 @@ pub enum ProcessStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(default)]
 pub struct ProcessingStatus {
     pub process_status: ProcessStatus,
     pub clusters_amount: usize,
@@ -117,7 +115,6 @@ pub struct ProcessingStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
-#[serde(default)]
 pub struct ProcessingProgress {
     pub rendering: ProgressSection,
     pub analysis: ProgressSection,
@@ -126,7 +123,6 @@ pub struct ProcessingProgress {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(default)]
 pub struct ProgressSection {
     pub numerator: usize,
     pub denominator: usize,
@@ -169,36 +165,24 @@ pub struct ClusteringData {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FontMetadata {
-    #[serde(default)]
     pub source: FontSource,
     pub safe_name: String,
     pub font_name: String,
     pub family_name: String,
     pub family_names: HashMap<String, String>,
     pub preferred_family_names: HashMap<String, String>,
-    #[serde(default)]
     pub style_name: String,
-    #[serde(default)]
     pub style_names: HashMap<String, String>,
-    #[serde(default)]
     pub preferred_style_names: HashMap<String, String>,
     pub publishers: HashMap<String, String>,
     pub designers: HashMap<String, String>,
-    #[serde(default)]
     pub copyright: Option<String>,
-    #[serde(default)]
     pub trademark: Option<String>,
-    #[serde(default)]
     pub version: Option<String>,
-    #[serde(default)]
     pub postscript_name: Option<String>,
-    #[serde(default)]
     pub description: Option<String>,
-    #[serde(default)]
     pub vendor_url: Option<String>,
-    #[serde(default)]
     pub designer_url: Option<String>,
-    #[serde(default)]
     pub sample_text: Option<String>,
     pub weight: i32,
     pub weights: Vec<String>,

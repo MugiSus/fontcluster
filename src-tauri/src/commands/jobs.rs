@@ -1,7 +1,7 @@
-use crate::config::{AlgorithmConfig, FontSet, ProcessStatus};
+use crate::config::{AlgorithmConfig, ClusteringConfig, FontSet, ProcessStatus, RenderingConfig};
 use crate::core::{
-    clusterer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner, RunningJob,
-    Analyzer, SampleRenderer, StdoutEventSink,
+    clusterer, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner,
+    RunningJob, SampleRenderer, StdoutEventSink,
 };
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -19,26 +19,26 @@ const MAX_RUNNING_JOBS: usize = 4;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunJobsRequest {
-    pub text: String,
-    pub weights: Vec<i32>,
-    pub algorithm: Option<AlgorithmConfig>,
+    pub algorithm: AlgorithmConfigPatch,
     pub session_id: Option<String>,
     pub override_status: Option<ProcessStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AlgorithmConfigPatch {
+    pub rendering: Option<RenderingConfig>,
+    pub clustering: Option<ClusteringConfig>,
 }
 
 #[command]
 pub async fn run_jobs(
     app: AppHandle,
-    text: String,
-    weights: Vec<i32>,
-    algorithm: Option<AlgorithmConfig>,
+    algorithm: AlgorithmConfigPatch,
     session_id: Option<String>,
     override_status: Option<ProcessStatus>,
     state: State<'_, AppState>,
 ) -> Result<String> {
     let request = RunJobsRequest {
-        text,
-        weights,
         algorithm,
         session_id,
         override_status,
@@ -212,15 +212,21 @@ pub async fn run_jobs_pipeline(
     // Initialize or load session
     let id = if let Some(sid) = request.session_id {
         state.load_session_for_processing(&sid)?;
-        state.update_session_config(
-            request.text,
-            request.weights,
-            request.algorithm,
-            request.override_status,
-        )?;
+        state.update_session_config(request.algorithm, request.override_status)?;
         sid
     } else {
-        state.initialize_session(request.text, request.weights, request.algorithm)?
+        let rendering = request
+            .algorithm
+            .rendering
+            .ok_or_else(|| AppError::Processing("Missing rendering config".into()))?;
+        let clustering = request
+            .algorithm
+            .clustering
+            .ok_or_else(|| AppError::Processing("Missing clustering config".into()))?;
+        state.initialize_session(AlgorithmConfig {
+            rendering,
+            clustering,
+        })?
     };
     events.emit_string("session_started", id.clone())?;
 
@@ -238,12 +244,7 @@ pub async fn run_jobs_pipeline(
 
         let font_set = {
             let guard = state.current_session.lock().unwrap();
-            guard
-                .as_ref()
-                .and_then(|session| session.algorithm.as_ref())
-                .and_then(|algorithm| algorithm.rendering.as_ref())
-                .map(|rendering| rendering.font_set.clone())
-                .unwrap_or_default()
+            guard.as_ref().unwrap().algorithm.rendering.font_set.clone()
         };
         let disc = Discoverer::new();
         let google_fonts_dir = if matches!(font_set, FontSet::SystemFonts) {

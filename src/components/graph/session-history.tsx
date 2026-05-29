@@ -18,9 +18,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { appState, DEFAULT_SESSION_CONFIG } from '@/store';
+import { appState } from '@/store';
 import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
-import { type FontWeight, type SessionConfig } from '@/types/font';
+import { type SessionConfig } from '@/types/font';
 import { SessionHistoryItem } from './session-history-item';
 
 interface SessionHistoryProps {
@@ -218,15 +218,7 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const continueSessionProcessing = (session: SessionConfig) => {
-    const algorithm = session.algorithm ?? DEFAULT_SESSION_CONFIG.algorithm;
-    if (!algorithm) return;
-
-    void runProcessingJobs(
-      session.preview_text || 'A',
-      session.weights as FontWeight[],
-      algorithm,
-      session.session_id,
-    );
+    void runProcessingJobs(session.algorithm, session.session_id);
   };
 
   const stopCurrentRun = async (sessionId: string) => {
@@ -351,7 +343,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                   fallback={
                     <PendingDeleteItem
                       sessionId={session.session_id}
-                      sampleText={session.preview_text}
+                      sampleText={session.algorithm.rendering.text || 'A'}
                     />
                   }
                 >

@@ -62,7 +62,6 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   app_version: '0.5.0',
   modified_app_version: '0.5.0',
   session_id: '',
-  preview_text: 'A',
   created_at: new Date().toISOString(),
   modified_at: new Date().toISOString(),
   status: {
@@ -76,10 +75,14 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
       position: { numerator: 0, denominator: 1 },
     },
   },
-  weights: [400],
   discovered_fonts: {},
   algorithm: {
-    rendering: { font_set: 'google_fonts_popular300', font_size: 224 },
+    rendering: {
+      text: 'A',
+      weights: [400],
+      font_set: 'google_fonts_popular300',
+      font_size: 224,
+    },
     clustering: {
       method: 'average',
       preprocessing_dimensions: 8,

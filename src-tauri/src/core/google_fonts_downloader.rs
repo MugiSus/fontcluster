@@ -232,26 +232,21 @@ impl GoogleFontsDownloader {
         state: &AppState,
         output_dir: PathBuf,
     ) -> Result<Vec<PathBuf>> {
-        let (font_set, preview_text, target_weights) = {
+        let (font_set, text, target_weights) = {
             let guard = state.current_session.lock().unwrap();
             let session = guard
                 .as_ref()
                 .ok_or_else(|| AppError::Processing("No active session".into()))?;
-            let font_set = session
-                .algorithm
-                .as_ref()
-                .and_then(|a| a.rendering.as_ref())
-                .map(|rendering| rendering.font_set.clone())
-                .unwrap_or_default();
+            let rendering = &session.algorithm.rendering;
 
             (
-                font_set,
-                session.preview_text.clone(),
-                session.weights.clone(),
+                rendering.font_set.clone(),
+                rendering.text.clone(),
+                rendering.weights.clone(),
             )
         };
         tokio::task::spawn_blocking(move || {
-            download_fonts_impl(&font_set, &preview_text, &output_dir, &target_weights)
+            download_fonts_impl(&font_set, &text, &output_dir, &target_weights)
         })
         .await
         .map_err(|e| AppError::Processing(e.to_string()))?

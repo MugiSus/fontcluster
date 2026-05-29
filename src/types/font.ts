@@ -42,13 +42,15 @@ export type FontSet =
   | 'google_fonts_all';
 
 export interface RenderingOptions {
+  text: string;
+  weights: FontWeight[];
   font_set: FontSet;
   font_size: number;
 }
 
 export interface AlgorithmConfig {
-  rendering: RenderingOptions | null;
-  clustering: ClusteringOptions | null;
+  rendering: RenderingOptions;
+  clustering: ClusteringOptions;
 }
 
 export type ProcessStatus =
@@ -67,15 +69,13 @@ export interface ProcessingStatus {
 
 export interface SessionConfig {
   session_id: string;
-  preview_text: string;
   created_at: string;
   modified_at: string;
   app_version: string;
   modified_app_version: string;
   status: ProcessingStatus;
-  weights: number[];
   discovered_fonts: Record<number, string[]>;
-  algorithm?: AlgorithmConfig;
+  algorithm: AlgorithmConfig;
 }
 
 export interface SessionProgressSection {

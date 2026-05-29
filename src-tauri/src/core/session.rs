@@ -1,3 +1,4 @@
+use crate::commands::jobs::AlgorithmConfigPatch;
 use crate::config::{
     AlgorithmConfig, ComputedData, FontData, FontMetadata, ProcessStatus, ProcessingProgress,
     ProcessingStatus, ProgressSection, ProgressStage, SessionConfig,
@@ -237,21 +238,14 @@ impl AppState {
         Ok(())
     }
 
-    pub fn initialize_session(
-        &self,
-        text: String,
-        weights: Vec<i32>,
-        algorithm: Option<AlgorithmConfig>,
-    ) -> Result<String> {
+    pub fn initialize_session(&self, algorithm: AlgorithmConfig) -> Result<String> {
         let id = Uuid::now_v7().to_string();
         let session = SessionConfig {
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             modified_app_version: env!("CARGO_PKG_VERSION").to_string(),
             session_id: id.clone(),
-            preview_text: text,
             created_at: chrono::Utc::now(),
             modified_at: chrono::Utc::now(),
-            weights,
             discovered_fonts: HashMap::new(),
             algorithm,
             status: ProcessingStatus::default(),
@@ -354,16 +348,22 @@ impl AppState {
 
     pub fn update_session_config(
         &self,
-        text: String,
-        weights: Vec<i32>,
-        algorithm: Option<AlgorithmConfig>,
+        algorithm: AlgorithmConfigPatch,
         status: Option<ProcessStatus>,
     ) -> Result<()> {
         self.update_session(|session| {
-            session.preview_text = text;
-            session.weights = weights;
-            if let Some(alg) = algorithm {
-                session.algorithm = Some(alg);
+            let update_clustering_only = matches!(
+                status,
+                Some(ProcessStatus::Rendered | ProcessStatus::Analyzed | ProcessStatus::Positioned)
+            );
+
+            if !update_clustering_only {
+                if let Some(rendering) = algorithm.rendering {
+                    session.algorithm.rendering = rendering;
+                }
+            }
+            if let Some(clustering) = algorithm.clustering {
+                session.algorithm.clustering = clustering;
             }
             if let Some(s) = status {
                 session.status.process_status = s;

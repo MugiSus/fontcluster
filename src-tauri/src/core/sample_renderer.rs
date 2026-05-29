@@ -1,5 +1,6 @@
 use crate::commands::progress::progress_events;
-use crate::config::{ProgressStage, RenderConfig, DEFAULT_FONT_SIZE};
+use crate::config::ProgressStage;
+use crate::config::RenderConfig;
 use crate::core::{AppState, EventSink, FontRenderSource};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
@@ -23,17 +24,12 @@ impl SampleRenderer {
         let (discovered_fonts, session_id, text, font_size) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            let font_size = s
-                .algorithm
-                .as_ref()
-                .and_then(|a| a.rendering.as_ref())
-                .map(|rendering| rendering.font_size)
-                .unwrap_or(DEFAULT_FONT_SIZE);
+            let rendering = &s.algorithm.rendering;
             (
                 s.discovered_fonts.clone(),
                 s.session_id.clone(),
-                s.preview_text.clone(),
-                font_size,
+                rendering.text.clone(),
+                rendering.font_size,
             )
         };
         let session_dir = AppState::get_session_processing_dir(&session_id)?;

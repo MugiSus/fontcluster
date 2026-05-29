@@ -204,20 +204,15 @@ impl Discoverer {
         state: &AppState,
         google_fonts_dir: Option<PathBuf>,
     ) -> Result<DiscoveryResult> {
-        let (preview_text, target_weights, session_id, font_set) = {
+        let (text, target_weights, session_id, font_set) = {
             let guard = state.current_session.lock().unwrap();
             let s = guard.as_ref().unwrap();
-            let font_set = s
-                .algorithm
-                .as_ref()
-                .and_then(|a| a.rendering.as_ref())
-                .map(|rendering| rendering.font_set.clone())
-                .unwrap_or_default();
+            let rendering = &s.algorithm.rendering;
             (
-                s.preview_text.clone(),
-                s.weights.clone(),
+                rendering.text.clone(),
+                rendering.weights.clone(),
                 s.session_id.clone(),
-                font_set,
+                rendering.font_set.clone(),
             )
         };
         let session_dir = AppState::get_session_processing_dir(&session_id)?;
@@ -241,7 +236,7 @@ impl Discoverer {
         let font_faces: Vec<FaceInfo> = db.faces().cloned().collect();
         println!("🔍 Found {} font faces", font_faces.len());
 
-        let preview_text = preview_text.clone();
+        let text = text.clone();
         let target_weights = target_weights.clone();
         let session_dir = session_dir.clone();
         let is_cancelled = state.is_cancelled.clone();
@@ -257,8 +252,7 @@ impl Discoverer {
                 }
 
                 if let Ok((data, path)) = Self::source_bytes_and_path(&face.source) {
-                    if let Ok(meta) =
-                        Self::analyze_font_data(&data, face.index, &preview_text, path, &face)
+                    if let Ok(meta) = Self::analyze_font_data(&data, face.index, &text, path, &face)
                     {
                         all_metas.push(meta);
                     }

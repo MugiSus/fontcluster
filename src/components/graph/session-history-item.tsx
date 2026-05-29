@@ -47,7 +47,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   };
 
   return (
-    <article class='relative rounded-sm p-3 text-xs transition-colors hover:bg-muted/60'>
+    <article class='relative rounded-sm p-2 text-xs transition-colors hover:bg-muted/60'>
       <div class='flex items-start justify-between gap-2'>
         <div class='flex min-w-0 flex-col gap-1'>
           <div class='flex min-w-0 items-center gap-2'>
@@ -76,11 +76,11 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             </time>
           </div>
           <p class='truncate text-sm font-medium leading-5'>
-            {session().preview_text || 'A'}
+            {session().algorithm.rendering.text || 'A'}
           </p>
           <Show when={isComplete()}>
             <p class='truncate text-muted-foreground'>
-              {session().weights.length} weights {' · '}
+              {session().algorithm.rendering.weights.length} weights {' · '}
               {session().status.samples_amount} samples {' · '}
               {session().status.clusters_amount} clusters
             </p>
@@ -98,7 +98,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               >
                 <SquareIcon class='size-3' />
               </TooltipTrigger>
-              <TooltipContent>Stop run</TooltipContent>
+              <TooltipContent>Stop</TooltipContent>
             </Tooltip>
           </Show>
 
@@ -114,7 +114,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               >
                 <RotateCcwIcon class='size-3.5' />
               </TooltipTrigger>
-              <TooltipContent>Restore session</TooltipContent>
+              <TooltipContent>Restore</TooltipContent>
             </Tooltip>
           </Show>
 
@@ -144,7 +144,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             >
               <Trash2Icon class='size-3.5' />
             </TooltipTrigger>
-            <TooltipContent>Delete session</TooltipContent>
+            <TooltipContent>Delete</TooltipContent>
           </Tooltip>
         </div>
       </div>
