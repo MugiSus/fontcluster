@@ -1,4 +1,4 @@
-use crate::config::{RenderConfig, GLYPH_PADDING};
+use crate::config::RenderConfig;
 use crate::error::{AppError, Result};
 use image::ImageEncoder;
 use std::fs::{self, File};
@@ -151,15 +151,14 @@ impl FontRenderer {
             ));
         }
 
-        let padding = GLYPH_PADDING.ceil() as i32;
-        let width = (max_x - min_x + padding * 2).max(1) as u32;
-        let height = (max_y - min_y + padding * 2).max(1) as u32;
+        let width = (max_x - min_x).max(1) as u32;
+        let height = (max_y - min_y).max(1) as u32;
         let mut la8_pixels = vec![0u8; (width * height * 2) as usize];
 
         for rendered_glyph in rendered {
             let image = rendered_glyph.image;
-            let dst_x = rendered_glyph.x - min_x + padding;
-            let dst_y = rendered_glyph.y - min_y + padding;
+            let dst_x = rendered_glyph.x - min_x;
+            let dst_y = rendered_glyph.y - min_y;
             for row in 0..image.placement.height as i32 {
                 for col in 0..image.placement.width as i32 {
                     let x = dst_x + col;

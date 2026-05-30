@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 pub const DEFAULT_RENDERING_TEXT: &str = "A";
 pub const DEFAULT_FONT_SIZE: f32 = 224.0;
-pub const GLYPH_PADDING: f32 = 4.0;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionConfig {
