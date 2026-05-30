@@ -77,8 +77,8 @@ walkdir = "2"
 openblas-src = { version = "0.10.16", default-features = false, features = ["cblas", "rustls", "system"] }
 petal-decomposition = { version = "0.9", features = ["openblas-system"] }
 
-[target.'cfg(not(target_os = "linux"))'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 petal-decomposition = "0.9"
 
-# [target.'cfg(target_os = "windows")'.dependencies]
-# intel-mkl-src = { version = "0.8", features = ["mkl-static-lp64-iomp"] }
+[target.'cfg(target_os = "windows")'.dependencies]
+petal-decomposition = { version = "0.9", features = ["intel-mkl-static"] }
