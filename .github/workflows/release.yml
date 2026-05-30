@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_draft:
+        description: 'Release as draft'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   publish-tauri:
@@ -109,6 +115,6 @@ jobs:
           releaseName: 'FontCluster ${{ github.ref_name }}'
           includeUpdaterJson: true
           releaseBody: 'See the assets to download the latest version.'
-          releaseDraft: false
+          releaseDraft: ${{ inputs.release_draft || false }}
           prerelease: false
           args: ${{ matrix.args }}
