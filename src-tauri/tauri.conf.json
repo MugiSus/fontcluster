@@ -30,7 +30,7 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": [ "**" ]
+        "scope": [ "$CACHE/FontCluster/**/*", "$APPCACHE/**/*" ]
       }
     }
   },
