@@ -1,4 +1,4 @@
-import { LassoSelectIcon, XIcon } from 'lucide-solid';
+import { LassoSelectIcon, Undo2Icon } from 'lucide-solid';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
@@ -18,7 +18,7 @@ export function LassoClearButton(props: LassoClearButtonProps) {
           onClick={() => props.onClear()}
         >
           <LassoSelectIcon class='size-4 transition-opacity group-hover:opacity-0 group-focus-visible:opacity-0' />
-          <XIcon class='absolute size-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100' />
+          <Undo2Icon class='absolute size-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100' />
         </TooltipTrigger>
         <TooltipContent>Clear lasso</TooltipContent>
       </Tooltip>
