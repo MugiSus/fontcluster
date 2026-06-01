@@ -4,7 +4,7 @@ import { TextField, TextFieldInput } from '../ui/text-field';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { appState } from '../../store';
-import { clearLassoResult, setSelectedFontKey } from '../../actions';
+import { setSelectedFontKey } from '../../actions';
 import { useFilteredFontMetadataKeys } from '../../hooks/use-filtered-font-metadata-keys';
 
 export function GraphSearchField() {
@@ -22,13 +22,9 @@ export function GraphSearchField() {
   const handleClear = () => {
     setInputValue('');
     onQueryChange('');
-    clearLassoResult();
   };
 
-  const isFiltered = createMemo(
-    () =>
-      appState.ui.searchQuery.length > 0 || appState.ui.lassoResult !== null,
-  );
+  const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
   const filteredCount = createMemo(() => appState.fonts.filteredKeys.size);
 
   return (

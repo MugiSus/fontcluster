@@ -8,12 +8,17 @@ import {
 import { polygonContains } from 'd3-polygon';
 import { WeightSelector } from '../weight-selector';
 import { ImageVisibilityToggle } from './image-visibility-toggle';
+import { LassoClearButton } from './lasso-clear-button';
 import { CircleSlash2Icon } from 'lucide-solid';
 import { GraphPoint } from './point';
 import { ZoomControls } from './zoom-controls';
 import { useElementSize } from '../../hooks/use-element-size';
 import { appState } from '../../store';
-import { processLassoSelection, setActiveGraphWeights } from '../../actions';
+import {
+  clearLassoResult,
+  processLassoSelection,
+  setActiveGraphWeights,
+} from '../../actions';
 import { type GraphCoordinate } from './types';
 import { getSelectableFontPointsInBounds } from './font-point-index';
 import { useGraphPoints } from './use-graph-points';
@@ -183,6 +188,9 @@ export function GraphContent() {
           class='pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-3 *:pointer-events-auto'
           onMouseDown={(event) => event.stopPropagation()}
         >
+          <Show when={appState.ui.lassoResult}>
+            <LassoClearButton onClear={clearLassoResult} />
+          </Show>
           <Show
             when={
               sessionWeights().length > 1 ? sessionWeights().join(',') : false
@@ -330,11 +338,11 @@ export function GraphContent() {
               d={`M ${lassoPoints()
                 .map((point) => `${point.x} ${point.y}`)
                 .join(' L ')}`}
-              fill='hsl(var(--foreground) / 0.08)'
               stroke='currentColor'
-              stroke-width={1.5 * viewport.zoomFactor()}
+              stroke-width={1 * viewport.zoomFactor()}
               stroke-dasharray={`${6 * viewport.zoomFactor()} ${5 * viewport.zoomFactor()}`}
-              class='pointer-events-none text-foreground'
+              fill-rule='evenodd'
+              class='pointer-events-none fill-foreground/10 stroke-foreground'
             />
           </Show>
         </svg>
