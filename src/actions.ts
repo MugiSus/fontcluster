@@ -167,12 +167,12 @@ export const processLassoSelection = async (safeNames: string[]) => {
     });
     setAppState('ui', 'lassoResult', result);
 
-    if (
-      !appState.ui.selectedFontKey ||
-      !result.safeNames.includes(appState.ui.selectedFontKey)
-    ) {
-      setSelectedFontKey(result.safeNames[0] ?? null);
-    }
+    const selectedFontKey = appState.ui.selectedFontKey;
+    setSelectedFontKey(
+      selectedFontKey && result.safeNames.includes(selectedFontKey)
+        ? selectedFontKey
+        : (result.safeNames[0] ?? null),
+    );
   } catch (error) {
     console.error('Failed to process lasso selection:', error);
     toast.error(`Lasso failed: ${error}`);
