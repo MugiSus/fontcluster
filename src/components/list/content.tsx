@@ -44,7 +44,7 @@ export function ListContent() {
   createEffect(() => {
     const selectedKey = appState.ui.selectedFontKey;
     const nextSelectedItem = selectedKey
-      ? appState.fonts.data[selectedKey] || null
+      ? appState.fonts.displayData[selectedKey] || null
       : null;
     const filteredKeys = appState.fonts.filteredKeys;
 

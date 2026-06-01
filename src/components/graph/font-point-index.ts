@@ -1,9 +1,9 @@
 import { createMemo, createRoot } from 'solid-js';
-import { quadtree, type Quadtree } from 'd3-quadtree';
+import { quadtree, type Quadtree, type QuadtreeLeaf } from 'd3-quadtree';
 import { appState } from '../../store';
 import { type FontItem } from '../../types/font';
 import { GRAPH_SIZE } from './constants';
-import { type GraphPointData } from './types';
+import { type GraphPointData, type GraphVisibleBounds } from './types';
 
 export const MAX_NEAREST_FONT_ITEMS = 120;
 
@@ -112,7 +112,7 @@ function findNearestFontItems(
 }
 
 export const fontPoints = createRoot(() => {
-  const memo = createMemo(() => createFontPoints(appState.fonts.data));
+  const memo = createMemo(() => createFontPoints(appState.fonts.displayData));
   return memo;
 });
 
@@ -135,4 +135,38 @@ export function getNearestSelectableFontItems(selectedKey: string): FontItem[] {
   if (!selectedPoint) return [];
 
   return findNearestFontItems(selectableFontPointTree(), selectedPoint);
+}
+
+export function getSelectableFontPointsInBounds(
+  bounds: GraphVisibleBounds,
+): GraphPointData[] {
+  const points: GraphPointData[] = [];
+  selectableFontPointTree().visit((node, x0, y0, x1, y1) => {
+    if (
+      x0 > bounds.maxX ||
+      x1 < bounds.minX ||
+      y0 > bounds.maxY ||
+      y1 < bounds.minY
+    ) {
+      return true;
+    }
+
+    if (node.length) return false;
+
+    let leaf: QuadtreeLeaf<GraphPointData> | undefined = node;
+    while (leaf) {
+      const point = leaf.data;
+      if (
+        point.x >= bounds.minX &&
+        point.x <= bounds.maxX &&
+        point.y >= bounds.minY &&
+        point.y <= bounds.maxY
+      ) {
+        points.push(point);
+      }
+      leaf = leaf.next;
+    }
+    return false;
+  });
+  return points;
 }

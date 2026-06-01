@@ -103,6 +103,11 @@ export interface ComputedData {
   clustering?: ClusteringData | null;
 }
 
+export interface LassoProcessResult {
+  safeNames: string[];
+  positioningBySafeName: Record<string, PositioningData>;
+}
+
 export type FontSource = 'system' | 'google_fonts';
 
 export interface FontMetadata {

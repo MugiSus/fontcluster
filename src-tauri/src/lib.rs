@@ -132,6 +132,7 @@ pub fn run() {
             crate::commands::delete_session,
             crate::commands::run_jobs,
             crate::commands::stop_jobs,
+            crate::commands::lasso_selected_process,
             crate::commands::get_font_items,
             crate::commands::get_system_fonts,
             crate::commands::render_font_preview,

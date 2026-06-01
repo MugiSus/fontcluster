@@ -4,6 +4,8 @@ import Fuse from 'fuse.js';
 import {
   type FontItem,
   type FontWeight,
+  type FontItemRecord,
+  type LassoProcessResult,
   type SessionConfig,
 } from './types/font';
 
@@ -15,12 +17,15 @@ export interface AppState {
   };
   fonts: {
     data: Record<string, FontItem>;
+    readonly displayData: Record<string, FontItem>;
     readonly filteredKeys: Set<string>;
   };
   ui: {
     selectedFontKey: string | null;
     hoveredFontKey: string | null;
     sentFontItemKey: string | null;
+    lassoResult: LassoProcessResult | null;
+    lassoProcessing: boolean;
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
@@ -101,6 +106,9 @@ export const [appState, setAppState] = createStore<AppState>({
   },
   fonts: {
     data: {},
+    get displayData(): FontItemRecord {
+      return displayFontItemRecordMemo();
+    },
     get filteredKeys(): Set<string> {
       return filteredKeysMemo();
     },
@@ -109,9 +117,11 @@ export const [appState, setAppState] = createStore<AppState>({
     selectedFontKey: null,
     hoveredFontKey: null,
     sentFontItemKey: null,
+    lassoResult: null,
+    lassoProcessing: false,
     get selectedFont(): FontItem | null {
       const key = this.selectedFontKey;
-      return key ? appState.fonts.data[key] || null : null;
+      return key ? appState.fonts.displayData[key] || null : null;
     },
     get selectedFontFamily(): string | null {
       return this.selectedFont?.meta.family_name || null;
@@ -122,9 +132,33 @@ export const [appState, setAppState] = createStore<AppState>({
   },
 });
 
+export const displayFontItemRecordMemo = createRoot(() => {
+  const memo = createMemo(() => {
+    const result = appState.ui.lassoResult;
+    if (!result) return appState.fonts.data;
+
+    const displayData: FontItemRecord = {};
+    for (const safeName of result.safeNames) {
+      const item = appState.fonts.data[safeName];
+      const positioning = result.positioningBySafeName[safeName];
+      if (!item || !positioning) continue;
+
+      displayData[safeName] = {
+        meta: item.meta,
+        computed: {
+          ...item.computed,
+          positioning,
+        },
+      };
+    }
+    return displayData;
+  });
+  return memo;
+});
+
 export const fuse = createRoot(() => {
   const memo = createMemo(() => {
-    const fonts = Object.values(appState.fonts.data);
+    const fonts = Object.values(appState.fonts.displayData);
     return new Fuse(fonts, FUSE_OPTIONS);
   });
   return memo;
@@ -133,7 +167,7 @@ export const fuse = createRoot(() => {
 export const filteredKeysMemo = createRoot(() => {
   const memo = createMemo(() => {
     const q = appState.ui.searchQuery;
-    const data = appState.fonts.data;
+    const data = appState.fonts.displayData;
     const activeWeights = new Set(appState.ui.activeGraphWeights);
     const keys = Object.keys(data);
     if (keys.length === 0) return new Set<string>();
