@@ -40,23 +40,7 @@ impl Positioner {
                 }
             }
 
-            if vectors.is_empty() {
-                return Err(AppError::Processing("No vectors to position".into()));
-            }
-
-            let n_samples = vectors.len();
-            let n_features = vectors[0].len();
-            let data = Array2::from_shape_vec(
-                (n_samples, n_features),
-                vectors.into_iter().flatten().collect(),
-            )
-            .map_err(|e| AppError::Processing(e.to_string()))?;
-
-            let embedding = if n_samples < 2 || n_features < 2 {
-                Array2::zeros((n_samples, POSITIONING_DIMENSIONS))
-            } else {
-                pca_embedding(data, POSITIONING_DIMENSIONS)?
-            };
+            let embedding = position_vectors(vectors)?;
 
             progress_events::reset_progress(&events, &state_clone, ProgressStage::Position);
             progress_events::set_progress_denominator(
@@ -93,6 +77,32 @@ impl Positioner {
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Positioned)?;
         Ok(())
     }
+}
+
+pub fn position_vectors(vectors: Vec<Vec<f32>>) -> Result<Array2<f32>> {
+    if vectors.is_empty() {
+        return Err(AppError::Processing("No vectors to position".into()));
+    }
+
+    let n_samples = vectors.len();
+    let n_features = vectors[0].len();
+    if vectors.iter().any(|vector| vector.len() != n_features) {
+        return Err(AppError::Processing(
+            "Cannot position vectors with inconsistent dimensions".into(),
+        ));
+    }
+
+    let data = Array2::from_shape_vec(
+        (n_samples, n_features),
+        vectors.into_iter().flatten().collect(),
+    )
+    .map_err(|e| AppError::Processing(e.to_string()))?;
+
+    if n_samples < 2 || n_features < 2 {
+        return Ok(Array2::zeros((n_samples, POSITIONING_DIMENSIONS)));
+    }
+
+    pca_embedding(data, POSITIONING_DIMENSIONS)
 }
 
 fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {

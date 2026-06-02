@@ -15,7 +15,7 @@ const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 const DropdownMenu: Component<DropdownMenuPrimitive.DropdownMenuRootProps> = (
   props,
 ) => {
-  return <DropdownMenuPrimitive.Root gutter={3} {...props} />;
+  return <DropdownMenuPrimitive.Root gutter={4} {...props} />;
 };
 
 type DropdownMenuContentProps<T extends ValidComponent = 'div'> =

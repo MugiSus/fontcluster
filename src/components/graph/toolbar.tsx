@@ -5,7 +5,6 @@ import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
 import { cn } from '@/lib/utils';
 import { ThemeModeToggle } from '../theme-mode-toggle';
-import { GraphSearchField } from './search-field';
 import { SessionHistory } from './session-history';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -30,7 +29,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b px-1.5'>
+    <div class='pointer-events-none absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-center gap-1 px-1'>
       <Show
         when={
           !props.panelState.control ||
@@ -40,7 +39,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
       >
         <div
           class={cn(
-            'z-10 flex items-center gap-0.5',
+            'pointer-events-auto z-10 flex items-center gap-0 rounded-full border',
             props.isLeftInset && 'pl-[72px]',
           )}
           data-tauri-drag-region
@@ -49,7 +48,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-8 rounded-full bg-background px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('control')}
             >
               Control
@@ -59,7 +58,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-8 rounded-full bg-background px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('list')}
             >
               List
@@ -69,7 +68,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-8 rounded-full bg-background px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('chat')}
             >
               Chat
@@ -78,15 +77,14 @@ export function GraphToolbar(props: GraphToolbarProps) {
         </div>
       </Show>
 
-      <div class='flex grow items-center justify-center' data-tauri-drag-region>
-        <div class='w-full max-w-lg'>
-          <GraphSearchField />
-        </div>
-      </div>
+      <div class='grow' />
 
-      <div class='flex items-center justify-end gap-0' data-tauri-drag-region>
+      <div
+        class='pointer-events-auto flex items-center justify-end gap-0 rounded-full border'
+        data-tauri-drag-region
+      >
         <Tooltip>
-          <TooltipTrigger as='div'>
+          <TooltipTrigger as='div' class='rounded-full'>
             <Button
               variant='ghost'
               size='icon'
@@ -100,7 +98,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger as='div'>
+          <TooltipTrigger as='div' class='rounded-full'>
             <Button
               variant='ghost'
               size='icon'
@@ -115,14 +113,14 @@ export function GraphToolbar(props: GraphToolbarProps) {
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger as='div'>
+          <TooltipTrigger as='div' class='rounded-full'>
             <SessionHistory class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
           </TooltipTrigger>
           <TooltipContent>Session history</TooltipContent>
         </Tooltip>
 
         <Tooltip>
-          <TooltipTrigger as='div'>
+          <TooltipTrigger as='div' class='rounded-full'>
             <ThemeModeToggle class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
           </TooltipTrigger>
           <TooltipContent>Theme</TooltipContent>

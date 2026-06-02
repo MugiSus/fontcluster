@@ -4,30 +4,44 @@ import {
   createEffect,
   createSelector,
   createSignal,
-  onCleanup,
 } from 'solid-js';
+import { polygonContains } from 'd3-polygon';
 import { WeightSelector } from '../weight-selector';
 import { ImageVisibilityToggle } from './image-visibility-toggle';
+import { LassoClearButton } from './lasso-clear-button';
 import { CircleSlash2Icon } from 'lucide-solid';
 import { GraphPoint } from './point';
 import { ZoomControls } from './zoom-controls';
 import { useElementSize } from '../../hooks/use-element-size';
 import { appState } from '../../store';
-import { setActiveGraphWeights } from '../../actions';
-import { type GraphCoordinate } from './types';
+import {
+  clearLassoResult,
+  processLassoSelection,
+  setActiveGraphWeights,
+} from '../../actions';
+import { type GraphCoordinate, type GraphToolMode } from './types';
+import {
+  getSelectableFontPoints,
+  getSelectableFontPointsInBounds,
+} from './font-point-index';
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
 
-export function GraphContent() {
+const LASSO_DRAG_THRESHOLD_PX = 3;
+
+interface GraphContentProps {
+  toolMode: GraphToolMode;
+}
+
+export function GraphContent(props: GraphContentProps) {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
-  const [mouseSelectionPoint, setMouseSelectionPoint] =
-    createSignal<GraphCoordinate | null>(null);
+  const [lassoPoints, setLassoPoints] = createSignal<GraphCoordinate[]>([]);
 
   let svgElement: SVGSVGElement | undefined;
-  let pendingMouseSelectionPoint: GraphCoordinate | null = null;
-  let mouseSelectionAnimationFrame: number | undefined;
+  let lassoStartPoint: { x: number; y: number } | null = null;
+  let lassoStarted = false;
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
   const sessionWeights = () =>
     appState.session.config.algorithm.rendering.weights;
@@ -59,59 +73,127 @@ export function GraphContent() {
   const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
   const isHovered = createSelector(() => appState.ui.hoveredFontKey);
 
-  const queueMouseSelectionPoint = (point: GraphCoordinate | null) => {
-    pendingMouseSelectionPoint = point;
-    if (mouseSelectionAnimationFrame) return;
+  const appendLassoPoint = (event: MouseEvent) => {
+    const point = viewport.getGraphPointFromEvent(event);
+    if (!point) return;
 
-    mouseSelectionAnimationFrame = window.requestAnimationFrame(() => {
-      setMouseSelectionPoint(pendingMouseSelectionPoint);
-      mouseSelectionAnimationFrame = undefined;
+    setLassoPoints((points) => {
+      const previous = points[points.length - 1];
+      if (previous && previous.x === point.x && previous.y === point.y) {
+        return points;
+      }
+      return [...points, point];
     });
   };
 
-  const updateMouseSelectionPoint = (event: MouseEvent) => {
-    queueMouseSelectionPoint(viewport.getGraphPointFromEvent(event));
+  const getLassoScreenDistance = (event: MouseEvent) => {
+    if (!lassoStartPoint) return 0;
+    return Math.hypot(
+      event.clientX - lassoStartPoint.x,
+      event.clientY - lassoStartPoint.y,
+    );
   };
 
-  const hideMouseSelectionPoint = () => {
-    queueMouseSelectionPoint(null);
-  };
+  const processLasso = () => {
+    const points = lassoPoints();
+    if (points.length < 3) return;
 
-  onCleanup(() => {
-    if (mouseSelectionAnimationFrame) {
-      window.cancelAnimationFrame(mouseSelectionAnimationFrame);
+    const bounds = points.reduce(
+      (acc, point) => ({
+        minX: Math.min(acc.minX, point.x),
+        maxX: Math.max(acc.maxX, point.x),
+        minY: Math.min(acc.minY, point.y),
+        maxY: Math.max(acc.maxY, point.y),
+      }),
+      {
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity,
+      },
+    );
+    const polygon = points.map(
+      (point) => [point.x, point.y] as [number, number],
+    );
+    const selectedPoints = getSelectableFontPointsInBounds(bounds).filter(
+      (point) => polygonContains(polygon, [point.x, point.y]),
+    );
+    if (selectedPoints.length === 0) return;
+
+    const safeNames =
+      props.toolMode === 'lasso-exclude'
+        ? getSelectableFontPoints()
+            .filter((point) => !polygonContains(polygon, [point.x, point.y]))
+            .map((point) => point.key)
+        : selectedPoints.map((point) => point.key);
+
+    if (safeNames.length > 0) {
+      void processLassoSelection(safeNames);
     }
-  });
+  };
+
+  const clearLasso = () => {
+    lassoStartPoint = null;
+    lassoStarted = false;
+    setLassoPoints([]);
+  };
 
   const handleMouseMove = (event: MouseEvent) => {
     if (event.buttons & 2) {
-      hideMouseSelectionPoint();
+      clearLasso();
       viewport.dragPan(event);
       return;
     }
     if (event.buttons & 1) {
-      updateMouseSelectionPoint(event);
-      selection.selectFromMouseEvent(event);
+      if (props.toolMode === 'select') {
+        selection.selectFromMouseEvent(event);
+        return;
+      }
+      if (getLassoScreenDistance(event) > LASSO_DRAG_THRESHOLD_PX) {
+        lassoStarted = true;
+      }
+      appendLassoPoint(event);
       return;
     }
-    hideMouseSelectionPoint();
   };
 
   const handleMouseDown = (event: MouseEvent) => {
     if (event.buttons & 2) {
-      hideMouseSelectionPoint();
+      clearLasso();
       viewport.startPanDrag(event);
       return;
     }
     if (event.buttons & 1) {
-      updateMouseSelectionPoint(event);
-      selection.selectFromMouseEvent(event);
+      if (props.toolMode === 'select') {
+        selection.selectFromMouseEvent(event);
+        return;
+      }
+      lassoStartPoint = { x: event.clientX, y: event.clientY };
+      lassoStarted = false;
+      setLassoPoints([]);
+      appendLassoPoint(event);
       return;
     }
   };
 
-  const handleMouseUp = () => {
-    hideMouseSelectionPoint();
+  const handleMouseUp = (event: MouseEvent) => {
+    if (event.button === 2) {
+      clearLasso();
+      viewport.endPanDrag();
+      return;
+    }
+    if (props.toolMode === 'select') {
+      clearLasso();
+      viewport.endPanDrag();
+      return;
+    }
+    if (lassoStarted) {
+      appendLassoPoint(event);
+      processLasso();
+    } else if (getLassoScreenDistance(event) <= LASSO_DRAG_THRESHOLD_PX) {
+      selection.selectFromMouseEvent(event);
+    }
+    clearLasso();
     viewport.endPanDrag();
   };
 
@@ -121,7 +203,7 @@ export function GraphContent() {
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
-      onMouseLeave={hideMouseSelectionPoint}
+      onMouseLeave={clearLasso}
       onWheel={viewport.handleWheel}
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -136,37 +218,42 @@ export function GraphContent() {
         }
       >
         <div
-          class='pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-3 *:pointer-events-auto'
+          class='pointer-events-none absolute bottom-3 right-3 z-10 flex items-end gap-3 *:pointer-events-auto'
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <Show
-            when={
-              sessionWeights().length > 1 ? sessionWeights().join(',') : false
-            }
-            keyed
-          >
-            <WeightSelector
-              weights={sessionWeights()}
-              defaultValue={sessionWeights()}
-              onChange={setActiveGraphWeights}
-              isVertical
-            />
+          <Show when={appState.ui.lassoResult}>
+            <LassoClearButton onClear={clearLassoResult} />
           </Show>
-          <ImageVisibilityToggle
-            showImages={showImages()}
-            showFontNames={showFontNames()}
-            onToggleImages={() => setShowImages(!showImages())}
-            onToggleFontNames={() => setShowFontNames(!showFontNames())}
-          />
-          <ZoomControls
-            onZoomIn={viewport.handleZoomIn}
-            onZoomOut={viewport.handleZoomOut}
-            onReset={viewport.handleReset}
-          />
+          <div class='flex flex-col gap-3'>
+            <Show
+              when={
+                sessionWeights().length > 1 ? sessionWeights().join(',') : false
+              }
+              keyed
+            >
+              <WeightSelector
+                weights={sessionWeights()}
+                defaultValue={sessionWeights()}
+                onChange={setActiveGraphWeights}
+                isVertical
+              />
+            </Show>
+            <ImageVisibilityToggle
+              showImages={showImages()}
+              showFontNames={showFontNames()}
+              onToggleImages={() => setShowImages(!showImages())}
+              onToggleFontNames={() => setShowFontNames(!showFontNames())}
+            />
+            <ZoomControls
+              onZoomIn={viewport.handleZoomIn}
+              onZoomOut={viewport.handleZoomOut}
+              onReset={viewport.handleReset}
+            />
+          </div>
         </div>
 
         {/* <div class='pointer-events-none absolute bottom-3 left-3 z-10'>
-          <Show when={appState.fonts.data[appState.ui.selectedFontKey || '']}>
+          <Show when={appState.fonts.displayData[appState.ui.selectedFontKey || '']}>
             {(fontData) => (
               <div class='text-sm *:pointer-events-auto'>
                 <p class='font-semibold'>{fontData().meta.font_name}</p>
@@ -281,31 +368,17 @@ export function GraphContent() {
             )}
           </For>
 
-          <Show when={mouseSelectionPoint()}>
-            {(point) => (
-              <g
-                transform={`translate(${point().x}, ${point().y}) scale(${viewport.zoomFactor()})`}
-              >
-                <circle
-                  cx={0}
-                  cy={0}
-                  r={40}
-                  fill='transparent'
-                  stroke='currentColor'
-                  stroke-width={1.5}
-                  stroke-dasharray='3 3'
-                  stroke-dashoffset={0}
-                >
-                  <animate
-                    attributeName='stroke-dashoffset'
-                    from='0'
-                    to='6'
-                    dur='2000ms'
-                    repeatCount='indefinite'
-                  />
-                </circle>
-              </g>
-            )}
+          <Show when={lassoPoints().length > 1}>
+            <path
+              d={`M ${lassoPoints()
+                .map((point) => `${point.x} ${point.y}`)
+                .join(' L ')}`}
+              stroke='currentColor'
+              stroke-width={1 * viewport.zoomFactor()}
+              stroke-dasharray={`${6 * viewport.zoomFactor()} ${5 * viewport.zoomFactor()}`}
+              fill-rule='evenodd'
+              class='pointer-events-none fill-foreground/10 stroke-foreground'
+            />
           </Show>
         </svg>
       </Show>

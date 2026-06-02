@@ -8,6 +8,7 @@ import { appState, setAppState } from './store';
 import {
   type FontItemRecord,
   type FontWeight,
+  type LassoProcessResult,
   type SessionConfig,
   type AlgorithmConfig,
   type ProcessStatus,
@@ -146,14 +147,49 @@ export const setListPreviewText = (text: string) =>
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
-export const setCurrentSessionId = (id: string) =>
+export const clearLassoResult = () => {
+  setAppState('ui', 'lassoResult', null);
+  setAppState('ui', 'lassoProcessing', false);
+};
+
+export const setCurrentSessionId = (id: string) => {
+  clearLassoResult();
   setAppState('session', 'id', id);
+};
+
+export const processLassoSelection = async (safeNames: string[]) => {
+  if (safeNames.length === 0 || appState.ui.lassoProcessing) return;
+
+  const sessionId = appState.session.id;
+  setAppState('ui', 'lassoProcessing', true);
+  try {
+    const result = await invoke<LassoProcessResult>('lasso_selected_process', {
+      safeNames,
+    });
+    if (appState.session.id !== sessionId) return;
+
+    setAppState('ui', 'lassoResult', result);
+
+    const selectedFontKey = appState.ui.selectedFontKey;
+    setSelectedFontKey(
+      selectedFontKey && result.safeNames.includes(selectedFontKey)
+        ? selectedFontKey
+        : (result.safeNames[0] ?? null),
+    );
+  } catch (error) {
+    console.error('Failed to process lasso selection:', error);
+    toast.error(`Lasso failed: ${error}`);
+  } finally {
+    setAppState('ui', 'lassoProcessing', false);
+  }
+};
 
 export const runProcessingJobs = async (
   algorithm: Partial<AlgorithmConfig>,
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
+  clearLassoResult();
   toast.info(
     `Job started: '${
       algorithm.rendering?.text ??
