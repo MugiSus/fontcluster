@@ -36,7 +36,7 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
 
   return (
     <div
-      class='pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col gap-2'
+      class='pointer-events-none absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col gap-2'
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div class='pointer-events-none flex w-full max-w-sm flex-col items-center gap-2 *:pointer-events-auto *:shadow-sm'>
