@@ -19,7 +19,7 @@ export function LassoClearButton(props: LassoClearButtonProps) {
           <XIcon class='size-4' />
           <LassoSelectIcon class='size-4' />
         </TooltipTrigger>
-        <TooltipContent>Clear lasso</TooltipContent>
+        <TooltipContent>Clear lasso selection</TooltipContent>
       </Tooltip>
     </div>
   );
