@@ -1,0 +1,19 @@
+name: 'trigger release'
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  dispatch-release:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch release build on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f release_tag="$RELEASE_TAG" -f release_draft=true
