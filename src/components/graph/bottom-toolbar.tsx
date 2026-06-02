@@ -1,7 +1,7 @@
 import {
   CircleMinusIcon,
   LassoSelectIcon,
-  MousePointerClickIcon,
+  MousePointer2Icon,
   SearchIcon,
 } from 'lucide-solid';
 import { appState } from '../../store';
@@ -28,7 +28,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           aria-label='Select'
           onClick={() => props.onToolModeChange('select')}
         >
-          <MousePointerClickIcon class='size-4' />
+          <MousePointer2Icon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Select</TooltipContent>
       </Tooltip>
@@ -40,12 +40,12 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           size='icon'
           class='size-8 rounded-md shadow-none'
           aria-pressed={props.toolMode === 'lasso-select'}
-          aria-label='Filter'
+          aria-label='Lasso'
           onClick={() => props.onToolModeChange('lasso-select')}
         >
           <LassoSelectIcon class='size-4' />
         </TooltipTrigger>
-        <TooltipContent>Filter</TooltipContent>
+        <TooltipContent>Lasso</TooltipContent>
       </Tooltip>
 
       <Tooltip placement='top'>
