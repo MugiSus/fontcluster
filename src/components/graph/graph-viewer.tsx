@@ -21,6 +21,7 @@ import { type GraphCoordinate, type GraphToolMode } from './types';
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
+import { cn } from '../../lib/utils';
 
 const LASSO_DRAG_THRESHOLD_PX = 4;
 
@@ -233,7 +234,7 @@ export function GraphViewer(props: GraphViewerProps) {
               props.toolMode === 'lasso-select'
                 ? "url('/cursors/lasso-select.svg') 14 12, crosshair"
                 : props.toolMode === 'lasso-exclude'
-                  ? "url('/cursors/lasso-select-minus.svg') 14 12, crosshair"
+                  ? "url('/cursors/lasso-select-x.svg') 14 12, crosshair"
                   : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
           }}
           viewBox={`${viewport.viewBox().x} ${viewport.viewBox().y} ${viewport.viewBox().width} ${viewport.viewBox().height}`}
@@ -339,7 +340,12 @@ export function GraphViewer(props: GraphViewerProps) {
               stroke-width={1 * viewport.zoomFactor()}
               stroke-dasharray={`${6 * viewport.zoomFactor()} ${5 * viewport.zoomFactor()}`}
               fill-rule='evenodd'
-              class='pointer-events-none fill-foreground/5 stroke-foreground'
+              class={cn(
+                'pointer-events-none',
+                props.toolMode === 'lasso-exclude'
+                  ? 'fill-destructive/5 stroke-destructive'
+                  : 'fill-foreground/5 stroke-foreground',
+              )}
             />
           </Show>
         </svg>
