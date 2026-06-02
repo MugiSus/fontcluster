@@ -35,11 +35,11 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
   };
 
   return (
-    <div class='pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col gap-2'>
-      <div
-        class='pointer-events-none flex w-full max-w-sm flex-col items-center gap-2 *:pointer-events-auto *:shadow-sm'
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+    <div
+      class='pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 flex-col gap-2'
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <div class='pointer-events-none flex w-full max-w-sm flex-col items-center gap-2 *:pointer-events-auto *:shadow-sm'>
         <Show when={props.hasLassoResult}>
           <LassoClearButton onClear={props.onClearLasso} />
         </Show>
@@ -60,24 +60,19 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
           </div>
         </Show>
       </div>
-      <div
-        class='rounded-lg shadow-sm'
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <GraphBottomToolbar
-          toolMode={props.toolMode}
-          isSerachVisible={isSearchVisible()}
-          showImages={props.showImages}
-          showFontNames={props.showFontNames}
-          onToolModeChange={props.onToolModeChange}
-          onToggleImages={props.onToggleImages}
-          onToggleFontNames={props.onToggleFontNames}
-          onToggleSearch={toggleSearch}
-          onZoomIn={props.zoomControls?.zoomIn}
-          onZoomOut={props.zoomControls?.zoomOut}
-          onResetZoom={props.zoomControls?.resetView}
-        />
-      </div>
+      <GraphBottomToolbar
+        toolMode={props.toolMode}
+        isSerachVisible={isSearchVisible()}
+        showImages={props.showImages}
+        showFontNames={props.showFontNames}
+        onToolModeChange={props.onToolModeChange}
+        onToggleImages={props.onToggleImages}
+        onToggleFontNames={props.onToggleFontNames}
+        onToggleSearch={toggleSearch}
+        onZoomIn={props.zoomControls?.zoomIn}
+        onZoomOut={props.zoomControls?.zoomOut}
+        onResetZoom={props.zoomControls?.resetView}
+      />
     </div>
   );
 }
