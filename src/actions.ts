@@ -256,32 +256,11 @@ export function initAppEvents() {
 
   let disposed = false;
   const unlisteners: Array<() => void> = [];
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.defaultPrevented) return;
-
-    const target = event.target;
-    if (
-      target instanceof HTMLElement &&
-      (target.matches('input, textarea') || target.isContentEditable)
-    ) {
-      return;
-    }
-
-    const key = event.key.toLowerCase();
-    const isModified = event.metaKey || event.ctrlKey;
-    const isUndo = isModified && key === 'z' && !event.shiftKey;
-    const isRedo =
-      (isModified && key === 'z' && event.shiftKey) ||
-      (event.ctrlKey && !event.metaKey && key === 'y' && !event.shiftKey);
-
-    if (isUndo) {
-      event.preventDefault();
-      selectionHistory.undo();
-    } else if (isRedo) {
-      event.preventDefault();
-      selectionHistory.redo();
-    }
-  };
+  const isEditableElement = (element: Element | null) =>
+    element instanceof HTMLElement &&
+    (element.matches('input, textarea') ||
+      element.isContentEditable ||
+      Boolean(element.closest('[contenteditable="true"]')));
 
   const registerListener = <T>(
     event: string,
@@ -296,11 +275,8 @@ export function initAppEvents() {
     });
   };
 
-  document.addEventListener('keydown', handleKeyDown, true);
-
   appEventsCleanup = () => {
     disposed = true;
-    document.removeEventListener('keydown', handleKeyDown, true);
     for (const unlisten of unlisteners) unlisten();
     unlisteners.length = 0;
     appEventsCleanup = null;
@@ -342,6 +318,16 @@ export function initAppEvents() {
 
   registerListener('check-update-requested', () => {
     checkForAppUpdates({ isManual: true });
+  });
+
+  registerListener('undo-history-requested', () => {
+    if (isEditableElement(document.activeElement)) return;
+    selectionHistory.undo();
+  });
+
+  registerListener('redo-history-requested', () => {
+    if (isEditableElement(document.activeElement)) return;
+    selectionHistory.redo();
   });
 
   // Check for updates automatically on startup

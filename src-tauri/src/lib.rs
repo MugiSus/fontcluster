@@ -30,15 +30,26 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         true,
         None::<&str>,
     )?;
+    let undo_history = MenuItem::with_id(
+        app,
+        "undo_history",
+        "Undo History",
+        true,
+        Some("CmdOrCtrl+Z"),
+    )?;
+    let redo_history = MenuItem::with_id(
+        app,
+        "redo_history",
+        "Redo History",
+        true,
+        Some("CmdOrCtrl+Shift+Z"),
+    )?;
 
     let edit_menu = Submenu::with_items(
         app,
         "Edit",
         true,
         &[
-            &PredefinedMenuItem::undo(app, None)?,
-            &PredefinedMenuItem::redo(app, None)?,
-            &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,
             &PredefinedMenuItem::paste(app, None)?,
@@ -68,7 +79,8 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
                 &PredefinedMenuItem::quit(app, None)?,
             ],
         )?;
-        Menu::with_items(app, &[&app_menu, &edit_menu])
+        let file_menu = Submenu::with_items(app, "File", true, &[&undo_history, &redo_history])?;
+        Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu])
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -78,6 +90,9 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             "File",
             true,
             &[
+                &undo_history,
+                &redo_history,
+                &PredefinedMenuItem::separator(app)?,
                 &restore,
                 &refresh,
                 &check_update,
@@ -96,6 +111,10 @@ fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
         let _ = app.emit("refresh-requested", ());
     } else if event.id().as_ref() == "check_update" {
         let _ = app.emit("check-update-requested", ());
+    } else if event.id().as_ref() == "undo_history" {
+        let _ = app.emit("undo-history-requested", ());
+    } else if event.id().as_ref() == "redo_history" {
+        let _ = app.emit("redo-history-requested", ());
     }
 }
 
