@@ -1,5 +1,5 @@
 import { emit } from '@tauri-apps/api/event';
-import { CopyIcon, SparklesIcon } from 'lucide-solid';
+import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { appState } from '@/store';
 import { ThemeModeToggle } from '../theme-mode-toggle';
@@ -24,6 +24,36 @@ export function GraphUtilityControls() {
       class='pointer-events-auto absolute right-1 top-1 z-10 flex items-center justify-end gap-0 rounded-full border'
       data-tauri-drag-region
     >
+      <Tooltip>
+        <TooltipTrigger as='div' class='rounded-full'>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={() => {}}
+            class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+          >
+            <Undo2Icon class='size-4' />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Undo</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger as='div' class='rounded-full'>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={() => {}}
+            class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+          >
+            <Redo2Icon class='size-4' />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Redo</TooltipContent>
+      </Tooltip>
+
+      <div class='pointer-events-none mx-1 h-4 border-l' />
+
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <Button
