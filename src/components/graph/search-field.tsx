@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
-import { FunnelIcon, SearchIcon, XIcon } from 'lucide-solid';
+import { SearchIcon, XIcon } from 'lucide-solid';
 import { TextField, TextFieldInput } from '../ui/text-field';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -36,7 +36,6 @@ export function GraphSearchField(props: GraphSearchFieldProps) {
   };
 
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
-  const filteredCount = createMemo(() => appState.fonts.filteredKeys.size);
 
   return (
     <TextField class='w-full'>
@@ -44,7 +43,7 @@ export function GraphSearchField(props: GraphSearchFieldProps) {
         <Show
           when={isFiltered()}
           fallback={
-            <SearchIcon class='absolute left-2 top-2 size-4 text-muted-foreground' />
+            <SearchIcon class='absolute left-2.5 top-2.5 size-4 text-muted-foreground' />
           }
         >
           <Tooltip>
@@ -52,7 +51,7 @@ export function GraphSearchField(props: GraphSearchFieldProps) {
               as={Button<'button'>}
               variant='ghost'
               size='icon'
-              class='absolute left-1 top-1 size-6 rounded-full text-muted-foreground'
+              class='absolute left-1.5 top-1.5 size-6 rounded-full text-muted-foreground'
               onClick={handleClear}
             >
               <XIcon class='size-3.5' />
@@ -66,17 +65,11 @@ export function GraphSearchField(props: GraphSearchFieldProps) {
           }}
           type='text'
           placeholder='Search'
-          class='h-8 border bg-background px-12 text-center text-sm shadow-none hover:bg-background focus:bg-background focus:placeholder:text-transparent focus-visible:bg-background focus-visible:placeholder:text-transparent'
+          class='h-9 border bg-background pl-8 text-left text-sm shadow-sm hover:bg-background focus:bg-background focus:placeholder:text-transparent focus-visible:bg-background focus-visible:placeholder:text-transparent'
           value={inputValue()}
           onInput={(e) => handleQueryChange(e.currentTarget.value)}
           spellcheck='false'
         />
-        <div class='absolute right-3.5 top-2 flex items-center gap-1 text-xs text-muted-foreground'>
-          <Show when={isFiltered()}>
-            <FunnelIcon class='size-3' />
-          </Show>
-          {filteredCount()}
-        </div>
       </div>
     </TextField>
   );

@@ -23,13 +23,11 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
   return (
     <>
       <Show when={isSearchVisible()}>
-        <div class='pointer-events-none absolute inset-x-0 bottom-16 z-20 flex justify-center px-4'>
-          <div
-            class='pointer-events-auto w-full max-w-sm'
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <GraphSearchField focusRequest={searchFocusRequest()} />
-          </div>
+        <div
+          class='pointer-events-auto absolute bottom-16 left-1/2 z-20 mx-auto flex w-full max-w-xs -translate-x-1/2 justify-center'
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <GraphSearchField focusRequest={searchFocusRequest()} />
         </div>
       </Show>
       <div
