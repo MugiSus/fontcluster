@@ -19,15 +19,22 @@ import {
   processLassoSelection,
   setActiveGraphWeights,
 } from '../../actions';
-import { type GraphCoordinate } from './types';
-import { getSelectableFontPointsInBounds } from './font-point-index';
+import { type GraphCoordinate, type GraphToolMode } from './types';
+import {
+  getSelectableFontPoints,
+  getSelectableFontPointsInBounds,
+} from './font-point-index';
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
 
 const LASSO_DRAG_THRESHOLD_PX = 3;
 
-export function GraphContent() {
+interface GraphContentProps {
+  toolMode: GraphToolMode;
+}
+
+export function GraphContent(props: GraphContentProps) {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [lassoPoints, setLassoPoints] = createSignal<GraphCoordinate[]>([]);
@@ -108,9 +115,17 @@ export function GraphContent() {
     const polygon = points.map(
       (point) => [point.x, point.y] as [number, number],
     );
-    const safeNames = getSelectableFontPointsInBounds(bounds)
-      .filter((point) => polygonContains(polygon, [point.x, point.y]))
-      .map((point) => point.key);
+    const selectedPoints = getSelectableFontPointsInBounds(bounds).filter(
+      (point) => polygonContains(polygon, [point.x, point.y]),
+    );
+    if (selectedPoints.length === 0) return;
+
+    const safeNames =
+      props.toolMode === 'lasso-exclude'
+        ? getSelectableFontPoints()
+            .filter((point) => !polygonContains(polygon, [point.x, point.y]))
+            .map((point) => point.key)
+        : selectedPoints.map((point) => point.key);
 
     if (safeNames.length > 0) {
       void processLassoSelection(safeNames);
@@ -130,6 +145,10 @@ export function GraphContent() {
       return;
     }
     if (event.buttons & 1) {
+      if (props.toolMode === 'select') {
+        selection.selectFromMouseEvent(event);
+        return;
+      }
       if (getLassoScreenDistance(event) > LASSO_DRAG_THRESHOLD_PX) {
         lassoStarted = true;
       }
@@ -145,6 +164,10 @@ export function GraphContent() {
       return;
     }
     if (event.buttons & 1) {
+      if (props.toolMode === 'select') {
+        selection.selectFromMouseEvent(event);
+        return;
+      }
       lassoStartPoint = { x: event.clientX, y: event.clientY };
       lassoStarted = false;
       setLassoPoints([]);
@@ -154,6 +177,16 @@ export function GraphContent() {
   };
 
   const handleMouseUp = (event: MouseEvent) => {
+    if (event.button === 2) {
+      clearLasso();
+      viewport.endPanDrag();
+      return;
+    }
+    if (props.toolMode === 'select') {
+      clearLasso();
+      viewport.endPanDrag();
+      return;
+    }
     if (lassoStarted) {
       appendLassoPoint(event);
       processLasso();
@@ -185,36 +218,38 @@ export function GraphContent() {
         }
       >
         <div
-          class='pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-3 *:pointer-events-auto'
+          class='pointer-events-none absolute bottom-3 right-3 z-10 flex items-end gap-3 *:pointer-events-auto'
           onMouseDown={(event) => event.stopPropagation()}
         >
           <Show when={appState.ui.lassoResult}>
             <LassoClearButton onClear={clearLassoResult} />
           </Show>
-          <Show
-            when={
-              sessionWeights().length > 1 ? sessionWeights().join(',') : false
-            }
-            keyed
-          >
-            <WeightSelector
-              weights={sessionWeights()}
-              defaultValue={sessionWeights()}
-              onChange={setActiveGraphWeights}
-              isVertical
+          <div class='flex flex-col gap-3'>
+            <Show
+              when={
+                sessionWeights().length > 1 ? sessionWeights().join(',') : false
+              }
+              keyed
+            >
+              <WeightSelector
+                weights={sessionWeights()}
+                defaultValue={sessionWeights()}
+                onChange={setActiveGraphWeights}
+                isVertical
+              />
+            </Show>
+            <ImageVisibilityToggle
+              showImages={showImages()}
+              showFontNames={showFontNames()}
+              onToggleImages={() => setShowImages(!showImages())}
+              onToggleFontNames={() => setShowFontNames(!showFontNames())}
             />
-          </Show>
-          <ImageVisibilityToggle
-            showImages={showImages()}
-            showFontNames={showFontNames()}
-            onToggleImages={() => setShowImages(!showImages())}
-            onToggleFontNames={() => setShowFontNames(!showFontNames())}
-          />
-          <ZoomControls
-            onZoomIn={viewport.handleZoomIn}
-            onZoomOut={viewport.handleZoomOut}
-            onReset={viewport.handleReset}
-          />
+            <ZoomControls
+              onZoomIn={viewport.handleZoomIn}
+              onZoomOut={viewport.handleZoomOut}
+              onReset={viewport.handleReset}
+            />
+          </div>
         </div>
 
         {/* <div class='pointer-events-none absolute bottom-3 left-3 z-10'>

@@ -74,18 +74,20 @@ function createFontPoints(data: Record<string, FontItem>): GraphPointData[] {
   return points;
 }
 
-function createSelectableFontPointTree(
+function getSelectableFontPointData(
   points: GraphPointData[],
   filteredKeys: Set<string>,
-): Quadtree<GraphPointData> {
-  const selectablePoints = points.filter((point) =>
-    filteredKeys.has(point.key),
-  );
+): GraphPointData[] {
+  return points.filter((point) => filteredKeys.has(point.key));
+}
 
+function createSelectableFontPointTree(
+  points: GraphPointData[],
+): Quadtree<GraphPointData> {
   return quadtree<GraphPointData>()
     .x((point) => point.x)
     .y((point) => point.y)
-    .addAll(selectablePoints);
+    .addAll(points);
 }
 
 function findNearestFontItems(
@@ -123,9 +125,16 @@ export const fontPointByKey = createRoot(() => {
   return memo;
 });
 
+export const selectableFontPoints = createRoot(() => {
+  const memo = createMemo(() =>
+    getSelectableFontPointData(fontPoints(), appState.fonts.filteredKeys),
+  );
+  return memo;
+});
+
 export const selectableFontPointTree = createRoot(() => {
   const memo = createMemo(() =>
-    createSelectableFontPointTree(fontPoints(), appState.fonts.filteredKeys),
+    createSelectableFontPointTree(selectableFontPoints()),
   );
   return memo;
 });
@@ -135,6 +144,10 @@ export function getNearestSelectableFontItems(selectedKey: string): FontItem[] {
   if (!selectedPoint) return [];
 
   return findNearestFontItems(selectableFontPointTree(), selectedPoint);
+}
+
+export function getSelectableFontPoints(): GraphPointData[] {
+  return selectableFontPoints();
 }
 
 export function getSelectableFontPointsInBounds(
