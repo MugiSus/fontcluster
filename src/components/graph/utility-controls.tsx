@@ -16,7 +16,7 @@ export function GraphUtilityControls() {
   };
 
   const handleManualUpdateCheck = () => {
-    checkForAppUpdates(true);
+    checkForAppUpdates({ isManual: true });
   };
 
   return (

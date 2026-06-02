@@ -2,9 +2,13 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'solid-sonner';
 
-export async function checkForAppUpdates(isManual = false) {
+interface CheckForUpdatesOptions {
+  isManual?: boolean;
+}
+
+export async function checkForAppUpdates(options?: CheckForUpdatesOptions) {
   try {
-    if (isManual)
+    if (options?.isManual)
       toast.info('Checking for updates...', {
         duration: 3000,
       });
@@ -32,7 +36,7 @@ export async function checkForAppUpdates(isManual = false) {
       return true;
     }
 
-    if (isManual)
+    if (options?.isManual)
       toast.info("You're using the latest version. All set!", {
         duration: 3000,
       });
@@ -41,7 +45,7 @@ export async function checkForAppUpdates(isManual = false) {
   } catch (error) {
     console.error('Failed to check for updates:', error);
 
-    if (isManual) {
+    if (options?.isManual) {
       toast.error('Failed to check for updates', {
         description: error instanceof Error ? error.message : String(error),
       });

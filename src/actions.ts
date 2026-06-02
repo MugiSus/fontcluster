@@ -287,7 +287,7 @@ export function initAppEvents() {
   });
 
   registerListener('check-update-requested', () => {
-    checkForAppUpdates(true);
+    checkForAppUpdates({ isManual: true });
   });
 
   // Check for updates automatically on startup
