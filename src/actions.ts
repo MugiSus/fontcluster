@@ -160,11 +160,14 @@ export const setCurrentSessionId = (id: string) => {
 export const processLassoSelection = async (safeNames: string[]) => {
   if (safeNames.length === 0 || appState.ui.lassoProcessing) return;
 
+  const sessionId = appState.session.id;
   setAppState('ui', 'lassoProcessing', true);
   try {
     const result = await invoke<LassoProcessResult>('lasso_selected_process', {
       safeNames,
     });
+    if (appState.session.id !== sessionId) return;
+
     setAppState('ui', 'lassoResult', result);
 
     const selectedFontKey = appState.ui.selectedFontKey;
