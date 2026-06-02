@@ -5,6 +5,7 @@ import {
   createRoot,
   createSignal,
 } from 'solid-js';
+import { unwrap } from 'solid-js/store';
 import { createUndoHistory } from '@solid-primitives/history';
 import { debounce } from '@solid-primitives/scheduled';
 import { appState, setAppState } from './store';
@@ -19,7 +20,9 @@ type SelectionHistorySnapshot = {
 
 const getSnapshot = (): SelectionHistorySnapshot => ({
   selectedFontKey: appState.ui.selectedFontKey,
-  lassoResult: appState.ui.lassoResult,
+  lassoResult: appState.ui.lassoResult
+    ? structuredClone(unwrap(appState.ui.lassoResult))
+    : null,
 });
 
 const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
@@ -30,24 +33,43 @@ const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
   });
 };
 
-export const selectionHistory = createRoot(() => {
-  const [isTracking, setIsTracking] = createSignal(true);
-  const [resetVersion, setResetVersion] = createSignal(0);
-  const resumeDebounced = debounce(
-    () => setIsTracking(true),
-    SELECTION_HISTORY_DEBOUNCE,
+const snapshotsEqual = (
+  left: SelectionHistorySnapshot,
+  right: SelectionHistorySnapshot,
+) => {
+  if (left.selectedFontKey !== right.selectedFontKey) return false;
+  if (left.lassoResult === right.lassoResult) return true;
+  if (!left.lassoResult || !right.lassoResult) return false;
+  if (
+    left.lassoResult.safeNames.length !== right.lassoResult.safeNames.length
+  ) {
+    return false;
+  }
+  return left.lassoResult.safeNames.every(
+    (safeName, index) => safeName === right.lassoResult?.safeNames[index],
   );
+};
+
+export const selectionHistory = createRoot(() => {
+  const [snapshot, setSnapshot] = createSignal(getSnapshot(), {
+    equals: snapshotsEqual,
+  });
+  const [resetVersion, setResetVersion] = createSignal(0);
+  const commit = () => {
+    setSnapshot(getSnapshot());
+  };
+  const commitDebounced = debounce(commit, SELECTION_HISTORY_DEBOUNCE);
 
   const history = createMemo(() => {
     resetVersion();
 
     return createUndoHistory(() => {
-      if (!isTracking()) return;
-      const snapshot = getSnapshot();
+      const currentSnapshot = snapshot();
 
       return () => {
-        resumeDebounced.clear();
-        restoreSnapshot(snapshot);
+        commitDebounced.clear();
+        setSnapshot(currentSnapshot);
+        restoreSnapshot(currentSnapshot);
       };
     });
   });
@@ -61,24 +83,21 @@ export const selectionHistory = createRoot(() => {
   return {
     canUndo: () => history().canUndo(),
     canRedo: () => history().canRedo(),
-    pause: () => {
-      resumeDebounced.clear();
-      setIsTracking(false);
-    },
-    resumeDebounced,
+    commit,
+    commitDebounced,
     reset: () => {
-      resumeDebounced.clear();
-      setIsTracking(true);
+      commitDebounced.clear();
+      setSnapshot(getSnapshot());
       setResetVersion((version) => version + 1);
     },
     undo: () => {
-      resumeDebounced.clear();
-      setIsTracking(true);
+      commitDebounced.clear();
+      commit();
       history().canUndo();
       history().undo();
     },
     redo: () => {
-      resumeDebounced.clear();
+      commitDebounced.clear();
       history().redo();
     },
   };

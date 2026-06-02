@@ -140,9 +140,8 @@ const notifyJobComplete = (sessionId: string) => {
 };
 
 export const setSelectedFontKey = (key: string | null) => {
-  selectionHistory.pause();
   setAppState('ui', 'selectedFontKey', key);
-  selectionHistory.resumeDebounced();
+  selectionHistory.commitDebounced();
 };
 
 export const setHoveredFontKey = (key: string | null) =>
@@ -162,10 +161,10 @@ export const clearLassoResult = () => {
     setAppState('ui', 'lassoResult', null);
     setAppState('ui', 'lassoProcessing', false);
   });
+  selectionHistory.commit();
 };
 
 export const setCurrentSessionId = (id: string) => {
-  selectionHistory.pause();
   batch(() => {
     setAppState('ui', 'lassoResult', null);
     setAppState('ui', 'lassoProcessing', false);
@@ -194,9 +193,10 @@ export const processLassoSelection = async (safeNames: string[]) => {
         'selectedFontKey',
         selectedFontKey && result.safeNames.includes(selectedFontKey)
           ? selectedFontKey
-          : (result.safeNames[0] ?? null),
+          : null,
       );
     });
+    selectionHistory.commit();
   } catch (error) {
     console.error('Failed to process lasso selection:', error);
     toast.error(`Lasso failed: ${error}`);
@@ -210,7 +210,6 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  selectionHistory.pause();
   batch(() => {
     setAppState('ui', 'lassoResult', null);
     setAppState('ui', 'lassoProcessing', false);
