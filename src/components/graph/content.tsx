@@ -274,6 +274,14 @@ export function GraphContent(props: GraphContentProps) {
             setSvgRef(el);
           }}
           class='size-full select-none'
+          style={{
+            cursor:
+              props.toolMode === 'lasso-select'
+                ? "url('/cursors/lasso-select.svg') 14 12, crosshair"
+                : props.toolMode === 'lasso-exclude'
+                  ? "url('/cursors/lasso-select-minus.svg') 14 12, crosshair"
+                  : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
+          }}
           viewBox={`${viewport.viewBox().x} ${viewport.viewBox().y} ${viewport.viewBox().width} ${viewport.viewBox().height}`}
           xmlns='http://www.w3.org/2000/svg'
           text-rendering='optimizeSpeed'
