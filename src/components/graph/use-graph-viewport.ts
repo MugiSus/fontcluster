@@ -1,4 +1,5 @@
 import { type Accessor, createMemo, createSignal, onCleanup } from 'solid-js';
+import { debounce } from '@solid-primitives/scheduled';
 import {
   GRAPH_PADDING,
   GRAPH_SIZE,
@@ -81,7 +82,6 @@ export function useGraphViewport(
 
   let latestViewBox = initialViewBox;
   let viewBoxAnimationFrame: number | undefined;
-  let interactionTimer: number | undefined;
 
   const getCurrentViewBox = () => latestViewBox;
 
@@ -95,23 +95,20 @@ export function useGraphViewport(
     });
   };
 
+  const finishInteraction = debounce(() => {
+    setIsInteracting(false);
+  }, 250);
+
   const startInteractionTimer = () => {
     setIsInteracting(true);
-    if (interactionTimer) window.clearTimeout(interactionTimer);
-
-    interactionTimer = window.setTimeout(() => {
-      setIsInteracting(false);
-      interactionTimer = undefined;
-    }, 250);
+    finishInteraction();
   };
 
   onCleanup(() => {
     if (viewBoxAnimationFrame) {
       window.cancelAnimationFrame(viewBoxAnimationFrame);
     }
-    if (interactionTimer) {
-      window.clearTimeout(interactionTimer);
-    }
+    finishInteraction.clear();
   });
 
   const zoomFactor = createMemo(() => {

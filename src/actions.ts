@@ -1,4 +1,14 @@
-import { createResource, untrack, createRoot, createEffect } from 'solid-js';
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createResource,
+  createRoot,
+  createSignal,
+  untrack,
+} from 'solid-js';
+import { createUndoHistory } from '@solid-primitives/history';
+import { debounce } from '@solid-primitives/scheduled';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -121,6 +131,92 @@ export const {
 
 // Actions
 
+const SELECTION_HISTORY_DEBOUNCE = 250;
+
+type SelectionHistorySnapshot = {
+  selectedFontKey: string | null;
+  lassoResult: LassoProcessResult | null;
+};
+
+const getSelectionHistorySnapshot = (): SelectionHistorySnapshot => {
+  return {
+    selectedFontKey: appState.ui.selectedFontKey,
+    lassoResult: appState.ui.lassoResult,
+  };
+};
+
+const selectionHistorySnapshotsEqual = (
+  left: SelectionHistorySnapshot,
+  right: SelectionHistorySnapshot,
+) =>
+  left.selectedFontKey === right.selectedFontKey &&
+  left.lassoResult === right.lassoResult;
+
+const restoreSelectionHistorySnapshot = (
+  snapshot: SelectionHistorySnapshot,
+) => {
+  batch(() => {
+    setAppState('ui', 'selectedFontKey', snapshot.selectedFontKey);
+    setAppState('ui', 'lassoResult', snapshot.lassoResult);
+    setAppState('ui', 'lassoProcessing', false);
+  });
+};
+
+const selectionHistory = createRoot(() => {
+  const [snapshot, setSnapshot] = createSignal(getSelectionHistorySnapshot(), {
+    equals: selectionHistorySnapshotsEqual,
+  });
+  const [resetVersion, setResetVersion] = createSignal(0);
+
+  const commitSelectionHistory = () => {
+    setSnapshot(getSelectionHistorySnapshot());
+  };
+
+  const commitSelectionHistoryDebounced = debounce(
+    commitSelectionHistory,
+    SELECTION_HISTORY_DEBOUNCE,
+  );
+
+  const history = createMemo(() => {
+    resetVersion();
+
+    return createUndoHistory(() => {
+      const currentSnapshot = snapshot();
+
+      return () => {
+        commitSelectionHistoryDebounced.clear();
+        setSnapshot(currentSnapshot);
+        restoreSelectionHistorySnapshot(currentSnapshot);
+      };
+    });
+  });
+
+  createEffect(() => {
+    const currentHistory = history();
+    currentHistory.canUndo();
+    currentHistory.canRedo();
+  });
+
+  return {
+    commit: commitSelectionHistory,
+    commitDebounced: commitSelectionHistoryDebounced,
+    reset: () => {
+      commitSelectionHistoryDebounced.clear();
+      setSnapshot(getSelectionHistorySnapshot());
+      setResetVersion((version) => version + 1);
+    },
+    undo: () => {
+      commitSelectionHistoryDebounced.clear();
+      commitSelectionHistory();
+      history().undo();
+    },
+    redo: () => {
+      commitSelectionHistoryDebounced.clear();
+      history().redo();
+    },
+  };
+});
+
 const notifyJobComplete = (sessionId: string) => {
   toast.success('Job completed successfully!', {
     id: `job-complete-${sessionId}`,
@@ -132,8 +228,10 @@ const notifyJobComplete = (sessionId: string) => {
   });
 };
 
-export const setSelectedFontKey = (key: string | null) =>
+export const setSelectedFontKey = (key: string | null) => {
   setAppState('ui', 'selectedFontKey', key);
+  selectionHistory.commitDebounced();
+};
 
 export const setHoveredFontKey = (key: string | null) =>
   setAppState('ui', 'hoveredFontKey', key);
@@ -150,11 +248,14 @@ export const setActiveGraphWeights = (weights: FontWeight[]) =>
 export const clearLassoResult = () => {
   setAppState('ui', 'lassoResult', null);
   setAppState('ui', 'lassoProcessing', false);
+  selectionHistory.commit();
 };
 
 export const setCurrentSessionId = (id: string) => {
-  clearLassoResult();
+  setAppState('ui', 'lassoResult', null);
+  setAppState('ui', 'lassoProcessing', false);
   setAppState('session', 'id', id);
+  selectionHistory.reset();
 };
 
 export const processLassoSelection = async (safeNames: string[]) => {
@@ -171,11 +272,14 @@ export const processLassoSelection = async (safeNames: string[]) => {
     setAppState('ui', 'lassoResult', result);
 
     const selectedFontKey = appState.ui.selectedFontKey;
-    setSelectedFontKey(
+    setAppState(
+      'ui',
+      'selectedFontKey',
       selectedFontKey && result.safeNames.includes(selectedFontKey)
         ? selectedFontKey
         : (result.safeNames[0] ?? null),
     );
+    selectionHistory.commit();
   } catch (error) {
     console.error('Failed to process lasso selection:', error);
     toast.error(`Lasso failed: ${error}`);
@@ -189,7 +293,9 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  clearLassoResult();
+  setAppState('ui', 'lassoResult', null);
+  setAppState('ui', 'lassoProcessing', false);
+  selectionHistory.reset();
   toast.info(
     `Job started: '${
       algorithm.rendering?.text ??
@@ -231,6 +337,32 @@ export function initAppEvents() {
 
   let disposed = false;
   const unlisteners: Array<() => void> = [];
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return;
+
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.matches('input, textarea') || target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    const isModified = event.metaKey || event.ctrlKey;
+    const isUndo = isModified && key === 'z' && !event.shiftKey;
+    const isRedo =
+      (isModified && key === 'z' && event.shiftKey) ||
+      (event.ctrlKey && !event.metaKey && key === 'y' && !event.shiftKey);
+
+    if (isUndo) {
+      event.preventDefault();
+      selectionHistory.undo();
+    } else if (isRedo) {
+      event.preventDefault();
+      selectionHistory.redo();
+    }
+  };
 
   const registerListener = <T>(
     event: string,
@@ -245,8 +377,11 @@ export function initAppEvents() {
     });
   };
 
+  document.addEventListener('keydown', handleKeyDown, true);
+
   appEventsCleanup = () => {
     disposed = true;
+    document.removeEventListener('keydown', handleKeyDown, true);
     for (const unlisten of unlisteners) unlisten();
     unlisteners.length = 0;
     appEventsCleanup = null;
