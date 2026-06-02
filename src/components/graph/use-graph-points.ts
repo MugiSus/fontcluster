@@ -6,6 +6,7 @@ import {
   createSignal,
 } from 'solid-js';
 import { appState } from '../../store';
+import { type FontWeight } from '../../types/font';
 import { fontPoints, selectableFontPointTree } from './font-point-index';
 import {
   collectVisibleImageKeys,
@@ -19,6 +20,7 @@ interface UseGraphPointsProps {
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
   isMoving: Accessor<boolean>;
+  activeGraphWeights: Accessor<FontWeight[]>;
 }
 
 export function useGraphPoints(props: UseGraphPointsProps) {
@@ -44,7 +46,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     partitionVisiblePoints(
       fontPoints(),
       appState.fonts.filteredKeys,
-      appState.ui.activeGraphWeights,
+      props.activeGraphWeights(),
       visibleBounds(),
     ),
   );
