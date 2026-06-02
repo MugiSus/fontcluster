@@ -1,6 +1,5 @@
 import { Show, createEffect, createSignal } from 'solid-js';
-import { WeightSelector } from '../weight-selector';
-import { ImageVisibilityToggle } from './image-visibility-toggle';
+import { GraphBottomControls } from './bottom-controls';
 import { LassoClearButton } from './lasso-clear-button';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
 import { ZoomControls } from './zoom-controls';
@@ -8,11 +7,8 @@ import { appState } from '../../store';
 import { clearLassoResult, setActiveGraphWeights } from '../../actions';
 import { type GraphToolMode } from './types';
 
-interface GraphContentProps {
-  toolMode: GraphToolMode;
-}
-
-export function GraphContent(props: GraphContentProps) {
+export function GraphContent() {
+  const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [viewportZoomControls, setViewportZoomControls] =
@@ -31,7 +27,7 @@ export function GraphContent(props: GraphContentProps) {
   return (
     <div class='relative size-full bg-background'>
       <GraphViewer
-        toolMode={props.toolMode}
+        toolMode={toolMode()}
         showImages={showImages()}
         showFontNames={showFontNames()}
         activeGraphWeights={activeGraphWeights()}
@@ -44,37 +40,27 @@ export function GraphContent(props: GraphContentProps) {
         <Show when={appState.ui.lassoResult}>
           <LassoClearButton onClear={clearLassoResult} />
         </Show>
-        <div class='flex flex-col gap-3'>
-          <Show
-            when={
-              sessionWeights().length > 1 ? sessionWeights().join(',') : false
-            }
-            keyed
-          >
-            <WeightSelector
-              weights={sessionWeights()}
-              defaultValue={sessionWeights()}
-              onChange={setActiveGraphWeights}
-              isVertical
+        <Show when={viewportZoomControls()}>
+          {(controls) => (
+            <ZoomControls
+              onZoomIn={controls().zoomIn}
+              onZoomOut={controls().zoomOut}
+              onReset={controls().resetView}
             />
-          </Show>
-          <ImageVisibilityToggle
-            showImages={showImages()}
-            showFontNames={showFontNames()}
-            onToggleImages={() => setShowImages((shown) => !shown)}
-            onToggleFontNames={() => setShowFontNames((shown) => !shown)}
-          />
-          <Show when={viewportZoomControls()}>
-            {(controls) => (
-              <ZoomControls
-                onZoomIn={controls().zoomIn}
-                onZoomOut={controls().zoomOut}
-                onReset={controls().resetView}
-              />
-            )}
-          </Show>
-        </div>
+          )}
+        </Show>
       </div>
+      <GraphBottomControls
+        toolMode={toolMode()}
+        showImages={showImages()}
+        showFontNames={showFontNames()}
+        weights={sessionWeights()}
+        activeWeights={activeGraphWeights()}
+        onToolModeChange={setToolMode}
+        onToggleImages={() => setShowImages((shown) => !shown)}
+        onToggleFontNames={() => setShowFontNames((shown) => !shown)}
+        onWeightsChange={setActiveGraphWeights}
+      />
     </div>
   );
 }
