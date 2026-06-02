@@ -1,5 +1,6 @@
+import { createSelector, createSignal } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
-import { setSelectedFontKey } from '../../actions';
+import { setSelectedFontKey as setCommittedSelectedFontKey } from '../../actions';
 import { appState } from '../../store';
 import { type GraphCoordinate, type GraphPointData } from './types';
 
@@ -13,16 +14,26 @@ interface UseGraphSelectionProps {
   ) => GraphPointData | undefined;
 }
 
-export interface GraphSelectionController {
-  selectFromMouseEvent: (event: MouseEvent) => void;
-}
+export function useGraphSelection(props: UseGraphSelectionProps) {
+  const [draggingSelectedFontKey, setDraggingSelectedFontKey] = createSignal<
+    string | null
+  >(null);
 
-export function useGraphSelection(
-  props: UseGraphSelectionProps,
-): GraphSelectionController {
-  const selectFromMouseEvent = (event: MouseEvent) => {
+  const selectedFontKey = () =>
+    draggingSelectedFontKey() ?? appState.ui.selectedFontKey;
+
+  const selectedFontFamily = () => {
+    const key = selectedFontKey();
+    return key
+      ? appState.fonts.displayData[key]?.meta.family_name || null
+      : null;
+  };
+  const isSelectedFontKey = createSelector(selectedFontKey);
+  const isSelectedFamily = createSelector(selectedFontFamily);
+
+  const getFontKeyFromMouseEvent = (event: MouseEvent) => {
     const point = props.getGraphPointFromEvent(event);
-    if (!point) return;
+    if (!point) return null;
 
     const nearest = props.findSelectablePoint(
       point.x,
@@ -31,14 +42,18 @@ export function useGraphSelection(
     );
 
     if (!nearest) {
-      return;
+      return null;
     }
 
     const item = appState.fonts.displayData[nearest.key];
-    if (!item) return;
+    if (!item) return null;
 
-    setSelectedFontKey(nearest.key);
-    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    return nearest.key;
+  };
+
+  const setSelectedFontKey = (key: string | null, event?: MouseEvent) => {
+    setCommittedSelectedFontKey(key);
+    if (event && (event.shiftKey || event.ctrlKey || event.metaKey)) {
       emit('copy_family_name', {
         toast: false,
         isFontName: event.ctrlKey || event.metaKey,
@@ -46,5 +61,26 @@ export function useGraphSelection(
     }
   };
 
-  return { selectFromMouseEvent };
+  const trackDraggingSelection = (event: MouseEvent) => {
+    const key = getFontKeyFromMouseEvent(event);
+    if (key) setDraggingSelectedFontKey(key);
+  };
+
+  const clearDraggingSelection = () => {
+    setDraggingSelectedFontKey(null);
+  };
+
+  const selectFromMouseEvent = (event: MouseEvent) => {
+    const key = draggingSelectedFontKey() ?? getFontKeyFromMouseEvent(event);
+    if (key) setSelectedFontKey(key, event);
+    clearDraggingSelection();
+  };
+
+  return {
+    isSelectedFontKey,
+    isSelectedFamily,
+    trackDraggingSelection,
+    clearDraggingSelection,
+    selectFromMouseEvent,
+  };
 }

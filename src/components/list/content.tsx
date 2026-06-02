@@ -20,7 +20,7 @@ import { getNearestSelectableFontItems } from '../graph/font-point-index';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
-const LIST_UPDATE_DEBOUNCE = 400;
+const LIST_UPDATE_DEBOUNCE = 0;
 const LIST_PREVIEW_SCROLL_DEBOUNCE = 400;
 const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;

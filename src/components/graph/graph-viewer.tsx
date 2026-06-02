@@ -77,8 +77,6 @@ export function GraphViewer(props: GraphViewerProps) {
     props.onViewportZoomControlsChange?.(null);
   });
 
-  const isSelected = createSelector(() => appState.ui.selectedFontKey);
-  const isFamilySelected = createSelector(() => appState.ui.selectedFontFamily);
   const isHovered = createSelector(() => appState.ui.hoveredFontKey);
 
   const appendLassoPoint = (event: MouseEvent) => {
@@ -149,12 +147,13 @@ export function GraphViewer(props: GraphViewerProps) {
   const handleMouseMove = (event: MouseEvent) => {
     if (event.buttons & 2) {
       clearLasso();
+      selection.clearDraggingSelection();
       viewport.dragPan(event);
       return;
     }
     if (event.buttons & 1) {
       if (props.toolMode === 'select') {
-        selection.selectFromMouseEvent(event);
+        selection.trackDraggingSelection(event);
         return;
       }
       if (getLassoScreenDistance(event) > LASSO_DRAG_THRESHOLD_PX) {
@@ -167,12 +166,13 @@ export function GraphViewer(props: GraphViewerProps) {
   const handleMouseDown = (event: MouseEvent) => {
     if (event.buttons & 2) {
       clearLasso();
+      selection.clearDraggingSelection();
       viewport.startPanDrag(event);
       return;
     }
     if (event.buttons & 1) {
       if (props.toolMode === 'select') {
-        selection.selectFromMouseEvent(event);
+        selection.trackDraggingSelection(event);
         return;
       }
       lassoStartPoint = { x: event.clientX, y: event.clientY };
@@ -189,6 +189,9 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (props.toolMode === 'select') {
+      if (event.button === 0) {
+        selection.selectFromMouseEvent(event);
+      }
       clearLasso();
       viewport.endPanDrag();
       return;
@@ -209,7 +212,10 @@ export function GraphViewer(props: GraphViewerProps) {
       onMouseMove={handleMouseMove}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
-      onMouseLeave={clearLasso}
+      onMouseLeave={() => {
+        clearLasso();
+        selection.clearDraggingSelection();
+      }}
       onWheel={viewport.handleWheel}
       onContextMenu={(event) => event.preventDefault()}
     >
@@ -284,9 +290,9 @@ export function GraphViewer(props: GraphViewerProps) {
                   safeName={point.item.meta.safe_name}
                   x={point.x}
                   y={point.y}
-                  isSelected={isSelected(point.key)}
+                  isSelected={selection.isSelectedFontKey(point.key)}
                   isHovered={isHovered(point.key)}
-                  isFamilySelected={isFamilySelected(
+                  isFamilySelected={selection.isSelectedFamily(
                     point.item.meta.family_name,
                   )}
                   sessionDirectory={appState.session.directory}
@@ -312,9 +318,11 @@ export function GraphViewer(props: GraphViewerProps) {
                 safeName={point.item.meta.safe_name}
                 x={point.x}
                 y={point.y}
-                isSelected={isSelected(point.key)}
+                isSelected={selection.isSelectedFontKey(point.key)}
                 isHovered={isHovered(point.key)}
-                isFamilySelected={isFamilySelected(point.item.meta.family_name)}
+                isFamilySelected={selection.isSelectedFamily(
+                  point.item.meta.family_name,
+                )}
                 sessionDirectory={appState.session.directory}
                 zoomFactor={viewport.zoomFactor()}
                 shouldShowImage={
