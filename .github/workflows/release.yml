@@ -11,7 +11,7 @@ on:
         description: 'Release as draft'
         required: false
         type: boolean
-        default: true
+        default: false
 
 jobs:
   publish-tauri:
@@ -121,6 +121,6 @@ jobs:
           releaseName: 'FontCluster ${{ inputs.release_tag }}'
           includeUpdaterJson: true
           releaseBody: 'See the assets to download the latest version.'
-          releaseDraft: ${{ inputs.release_draft || false }}
+          releaseDraft: ${{ inputs.release_draft }}
           prerelease: false
           args: ${{ matrix.args }}
