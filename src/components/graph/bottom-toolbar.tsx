@@ -63,7 +63,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         <TooltipContent>Exclude</TooltipContent>
       </Tooltip>
 
-      <div class='h-8 border-l' />
+      <div class='h-6 border-l' />
 
       <Tooltip placement='top'>
         <TooltipTrigger
