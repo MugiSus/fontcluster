@@ -59,6 +59,8 @@ export const selectionHistory = createRoot(() => {
   });
 
   return {
+    canUndo: () => history().canUndo(),
+    canRedo: () => history().canRedo(),
     pause: () => {
       resumeDebounced.clear();
       setIsTracking(false);

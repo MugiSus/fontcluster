@@ -1,6 +1,7 @@
 import { emit } from '@tauri-apps/api/event';
 import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
+import { selectionHistory } from '@/selection-history';
 import { appState } from '@/store';
 import { ThemeModeToggle } from '../theme-mode-toggle';
 import { Button } from '../ui/button';
@@ -29,7 +30,8 @@ export function GraphUtilityControls() {
           <Button
             variant='ghost'
             size='icon'
-            onClick={() => {}}
+            onClick={selectionHistory.undo}
+            disabled={!selectionHistory.canUndo()}
             class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
           >
             <Undo2Icon class='size-4' />
@@ -43,7 +45,8 @@ export function GraphUtilityControls() {
           <Button
             variant='ghost'
             size='icon'
-            onClick={() => {}}
+            onClick={selectionHistory.redo}
+            disabled={!selectionHistory.canRedo()}
             class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
           >
             <Redo2Icon class='size-4' />
