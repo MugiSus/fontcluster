@@ -30,7 +30,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-stretch gap-1 border-b px-1.5'>
+    <div class='pointer-events-none absolute inset-x-0 top-0 z-10 flex h-10 shrink-0 items-center gap-1 px-1'>
       <Show
         when={
           !props.panelState.control ||
@@ -40,16 +40,15 @@ export function GraphToolbar(props: GraphToolbarProps) {
       >
         <div
           class={cn(
-            'z-10 flex items-center gap-0.5',
+            'pointer-events-auto z-10 flex items-center gap-0.5 rounded-full border',
             props.isLeftInset && 'pl-[72px]',
           )}
-          data-tauri-drag-region
         >
           <Show when={!props.panelState.control}>
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-8 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('control')}
             >
               Control
@@ -59,7 +58,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-8 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('list')}
             >
               List
@@ -69,7 +68,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <Button
               variant='ghost'
               size='sm'
-              class='h-7 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+              class='h-8 gap-0.5 rounded-full bg-background px-2.5 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
               onClick={() => props.onReopenPanel('chat')}
             >
               Chat
@@ -78,13 +77,13 @@ export function GraphToolbar(props: GraphToolbarProps) {
         </div>
       </Show>
 
-      <div class='flex grow items-center justify-center' data-tauri-drag-region>
+      <div class='flex grow items-center justify-center'>
         <div class='w-full max-w-lg'>
           <GraphSearchField />
         </div>
       </div>
 
-      <div class='flex items-center justify-end gap-0' data-tauri-drag-region>
+      <div class='pointer-events-auto flex items-center justify-end gap-0 rounded-full border'>
         <Tooltip>
           <TooltipTrigger as='div'>
             <Button
