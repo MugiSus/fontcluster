@@ -1,10 +1,17 @@
-import { createResource, untrack, createRoot, createEffect } from 'solid-js';
+import {
+  batch,
+  createEffect,
+  createResource,
+  createRoot,
+  untrack,
+} from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
 import { appState, setAppState } from './store';
+import { selectionHistory } from './selection-history';
 import {
   type FontItemRecord,
   type FontWeight,
@@ -132,8 +139,10 @@ const notifyJobComplete = (sessionId: string) => {
   });
 };
 
-export const setSelectedFontKey = (key: string | null) =>
+export const setSelectedFontKey = (key: string | null) => {
   setAppState('ui', 'selectedFontKey', key);
+  selectionHistory.commitDebounced();
+};
 
 export const setHoveredFontKey = (key: string | null) =>
   setAppState('ui', 'hoveredFontKey', key);
@@ -148,13 +157,20 @@ export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
 export const clearLassoResult = () => {
-  setAppState('ui', 'lassoResult', null);
-  setAppState('ui', 'lassoProcessing', false);
+  batch(() => {
+    setAppState('ui', 'lassoResult', null);
+    setAppState('ui', 'lassoProcessing', false);
+  });
+  selectionHistory.commit();
 };
 
 export const setCurrentSessionId = (id: string) => {
-  clearLassoResult();
-  setAppState('session', 'id', id);
+  batch(() => {
+    setAppState('ui', 'lassoResult', null);
+    setAppState('ui', 'lassoProcessing', false);
+    setAppState('session', 'id', id);
+  });
+  selectionHistory.reset();
 };
 
 export const processLassoSelection = async (safeNames: string[]) => {
@@ -168,14 +184,19 @@ export const processLassoSelection = async (safeNames: string[]) => {
     });
     if (appState.session.id !== sessionId) return;
 
-    setAppState('ui', 'lassoResult', result);
+    batch(() => {
+      setAppState('ui', 'lassoResult', result);
 
-    const selectedFontKey = appState.ui.selectedFontKey;
-    setSelectedFontKey(
-      selectedFontKey && result.safeNames.includes(selectedFontKey)
-        ? selectedFontKey
-        : (result.safeNames[0] ?? null),
-    );
+      const selectedFontKey = appState.ui.selectedFontKey;
+      setAppState(
+        'ui',
+        'selectedFontKey',
+        selectedFontKey && result.safeNames.includes(selectedFontKey)
+          ? selectedFontKey
+          : null,
+      );
+    });
+    selectionHistory.commit();
   } catch (error) {
     console.error('Failed to process lasso selection:', error);
     toast.error(`Lasso failed: ${error}`);
@@ -189,7 +210,11 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  clearLassoResult();
+  batch(() => {
+    setAppState('ui', 'lassoResult', null);
+    setAppState('ui', 'lassoProcessing', false);
+  });
+  selectionHistory.reset();
   toast.info(
     `Job started: '${
       algorithm.rendering?.text ??
@@ -231,6 +256,32 @@ export function initAppEvents() {
 
   let disposed = false;
   const unlisteners: Array<() => void> = [];
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return;
+
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      (target.matches('input, textarea') || target.isContentEditable)
+    ) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    const isModified = event.metaKey || event.ctrlKey;
+    const isUndo = isModified && key === 'z' && !event.shiftKey;
+    const isRedo =
+      (isModified && key === 'z' && event.shiftKey) ||
+      (event.ctrlKey && !event.metaKey && key === 'y' && !event.shiftKey);
+
+    if (isUndo) {
+      event.preventDefault();
+      selectionHistory.undo();
+    } else if (isRedo) {
+      event.preventDefault();
+      selectionHistory.redo();
+    }
+  };
 
   const registerListener = <T>(
     event: string,
@@ -245,8 +296,11 @@ export function initAppEvents() {
     });
   };
 
+  document.addEventListener('keydown', handleKeyDown, true);
+
   appEventsCleanup = () => {
     disposed = true;
+    document.removeEventListener('keydown', handleKeyDown, true);
     for (const unlisten of unlisteners) unlisten();
     unlisteners.length = 0;
     appEventsCleanup = null;

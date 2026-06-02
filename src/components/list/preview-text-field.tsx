@@ -1,4 +1,5 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
+import { debounce } from '@solid-primitives/scheduled';
 import { SwatchBookIcon, XIcon } from 'lucide-solid';
 import { TextField, TextFieldInput } from '@/components/ui/text-field';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,9 @@ const LIST_PREVIEW_TEXT_DEBOUNCE = 500;
 export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
   const [inputValue, setInputValue] = createSignal('');
   let onValueChange: (value: string) => void = () => {};
-  let debounceTimer: number | undefined;
+  const updateValue = debounce((value: string) => {
+    onValueChange(value);
+  }, LIST_PREVIEW_TEXT_DEBOUNCE);
 
   createEffect(() => {
     onValueChange = props.onValueChange;
@@ -28,24 +31,22 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
 
   const handleValueChange = (value: string) => {
     setInputValue(value);
-    if (debounceTimer) window.clearTimeout(debounceTimer);
     if (value === '') {
+      updateValue.clear();
       onValueChange('');
       return;
     }
-    debounceTimer = window.setTimeout(() => {
-      onValueChange(value);
-    }, LIST_PREVIEW_TEXT_DEBOUNCE);
+    updateValue(value);
   };
 
   const handleClear = () => {
     setInputValue('');
-    if (debounceTimer) window.clearTimeout(debounceTimer);
+    updateValue.clear();
     onValueChange('');
   };
 
   onCleanup(() => {
-    if (debounceTimer) window.clearTimeout(debounceTimer);
+    updateValue.clear();
   });
 
   return (

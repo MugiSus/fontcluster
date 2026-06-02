@@ -1,4 +1,5 @@
 import { createSignal, onCleanup, Show } from 'solid-js';
+import { debounce } from '@solid-primitives/scheduled';
 import { Button } from '../ui/button';
 import {
   Select,
@@ -48,10 +49,12 @@ const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
 
 export function ControlContent() {
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
-  let runCooldownTimer: ReturnType<typeof setTimeout> | undefined;
+  const clearRunCooldown = debounce(() => {
+    setIsRunCooldown(false);
+  }, 2000);
 
   onCleanup(() => {
-    if (runCooldownTimer) clearTimeout(runCooldownTimer);
+    clearRunCooldown.clear();
   });
 
   const handleSubmit = (e: Event) => {
@@ -63,11 +66,7 @@ export function ControlContent() {
     if (isRunCooldown()) return;
 
     setIsRunCooldown(true);
-    if (runCooldownTimer) clearTimeout(runCooldownTimer);
-    runCooldownTimer = setTimeout(() => {
-      setIsRunCooldown(false);
-      runCooldownTimer = undefined;
-    }, 2000);
+    clearRunCooldown();
 
     const form = document.querySelector('form');
     if (!form) return;

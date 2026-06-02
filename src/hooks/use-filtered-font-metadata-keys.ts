@@ -1,4 +1,5 @@
 import { createEffect, on } from 'solid-js';
+import { debounce } from '@solid-primitives/scheduled';
 import { appState, setAppState } from '../store';
 
 interface useFilteredFontMetadataKeysProps {
@@ -8,17 +9,17 @@ interface useFilteredFontMetadataKeysProps {
 export function useFilteredFontMetadataKeys(
   props: useFilteredFontMetadataKeysProps,
 ) {
-  let debounceTimer: number | undefined;
+  const updateSearchQuery = debounce((value: string) => {
+    setAppState('ui', 'searchQuery', value);
+  }, 500);
 
   const onQueryChange = (value: string) => {
-    if (debounceTimer) clearTimeout(debounceTimer);
     if (value === '') {
+      updateSearchQuery.clear();
       setAppState('ui', 'searchQuery', '');
       return;
     }
-    debounceTimer = window.setTimeout(() => {
-      setAppState('ui', 'searchQuery', value);
-    }, 500);
+    updateSearchQuery(value);
   };
 
   // Handle side effects (scroll into view and callback)

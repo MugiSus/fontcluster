@@ -26,6 +26,8 @@
     "@fontsource-variable/geist": "^5.2.8",
     "@fontsource/noto-sans": "^5.2.10",
     "@kobalte/core": "^0.13.10",
+    "@solid-primitives/history": "^0.2.3",
+    "@solid-primitives/scheduled": "^1.5.3",
     "@tanstack/solid-virtual": "^3.13.18",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-opener": "^2.5.3",

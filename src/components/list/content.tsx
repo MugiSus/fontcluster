@@ -3,9 +3,9 @@ import {
   For,
   createSelector,
   createSignal,
-  onCleanup,
   Show,
 } from 'solid-js';
+import { debounce } from '@solid-primitives/scheduled';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
@@ -31,7 +31,6 @@ export function ListContent() {
   const [canRenderListPreviews, setCanRenderListPreviews] = createSignal(true);
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
   let nearestItemsScrollElement: HTMLDivElement | undefined;
-  let listPreviewScrollTimer: number | undefined;
   const virtualizer = createVirtualizer({
     get count() {
       return nearestItems().length;
@@ -41,21 +40,13 @@ export function ListContent() {
     overscan: 2,
   });
 
-  createEffect(() => {
-    const selectedKey = appState.ui.selectedFontKey;
-    const nextSelectedItem = selectedKey
-      ? appState.fonts.displayData[selectedKey] || null
-      : null;
-    const filteredKeys = appState.fonts.filteredKeys;
-
-    if (!selectedKey) {
-      setSelectedItem(null);
-      setNearestItems([]);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      if (!nextSelectedItem || filteredKeys.size === 0) {
+  const updateSelectedItem = debounce(
+    (
+      selectedKey: string,
+      nextSelectedItem: FontItem | null,
+      filteredKeysSize: number,
+    ) => {
+      if (!nextSelectedItem || filteredKeysSize === 0) {
         setSelectedItem(nextSelectedItem);
         setNearestItems([]);
         return;
@@ -65,22 +56,34 @@ export function ListContent() {
       setSelectedItem(nextSelectedItem);
       setNearestItems(items);
       nearestItemsScrollElement?.scrollTo({ top: 0 });
-    }, LIST_UPDATE_DEBOUNCE);
+    },
+    LIST_UPDATE_DEBOUNCE,
+  );
+  const enableListPreviews = debounce(() => {
+    setCanRenderListPreviews(true);
+  }, LIST_PREVIEW_SCROLL_DEBOUNCE);
 
-    onCleanup(() => window.clearTimeout(timeoutId));
+  createEffect(() => {
+    const selectedKey = appState.ui.selectedFontKey;
+    const nextSelectedItem = selectedKey
+      ? appState.fonts.displayData[selectedKey] || null
+      : null;
+    const filteredKeys = appState.fonts.filteredKeys;
+
+    if (!selectedKey) {
+      updateSelectedItem.clear();
+      setSelectedItem(null);
+      setNearestItems([]);
+      return;
+    }
+
+    updateSelectedItem(selectedKey, nextSelectedItem, filteredKeys.size);
   });
 
   const handleNearestItemsScroll = () => {
     setCanRenderListPreviews(false);
-    if (listPreviewScrollTimer) window.clearTimeout(listPreviewScrollTimer);
-    listPreviewScrollTimer = window.setTimeout(() => {
-      setCanRenderListPreviews(true);
-    }, LIST_PREVIEW_SCROLL_DEBOUNCE);
+    enableListPreviews();
   };
-
-  onCleanup(() => {
-    if (listPreviewScrollTimer) window.clearTimeout(listPreviewScrollTimer);
-  });
 
   const sendFontItem = (item: FontItem) => {
     const key = item.meta.safe_name;
