@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: 'Release tag to publish'
+        required: true
+        type: string
       release_draft:
         description: 'Release as draft'
         required: false
@@ -13,7 +17,21 @@ on:
         default: true
 
 jobs:
+  dispatch-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch release build on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f release_tag="$RELEASE_TAG" -f release_draft=true
+
   publish-tauri:
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     strategy:
@@ -40,6 +58,8 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_tag }}
 
       - name: install pnpm
         uses: pnpm/action-setup@v6
@@ -113,9 +133,9 @@ jobs:
         with:
           owner: MugiSus
           repo: fontcluster-releases
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ inputs.release_tag }}
           releaseCommitish: main
-          releaseName: 'FontCluster ${{ github.ref_name }}'
+          releaseName: 'FontCluster ${{ inputs.release_tag }}'
           includeUpdaterJson: true
           releaseBody: 'See the assets to download the latest version.'
           releaseDraft: ${{ inputs.release_draft || false }}
