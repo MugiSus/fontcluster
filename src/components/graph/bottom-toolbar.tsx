@@ -3,8 +3,11 @@ import {
   FunnelIcon,
   ImageIcon,
   LassoSelectIcon,
+  MaximizeIcon,
   MousePointer2Icon,
   TypeIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
 } from 'lucide-solid';
 import { appState } from '../../store';
 import { Button } from '../ui/button';
@@ -22,6 +25,9 @@ interface GraphBottomToolbarProps {
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleSearch: () => void;
+  onZoomIn?: (() => void) | undefined;
+  onZoomOut?: (() => void) | undefined;
+  onResetZoom?: (() => void) | undefined;
 }
 
 export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
@@ -132,6 +138,55 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         </TooltipTrigger>
         <TooltipContent>Show Images</TooltipContent>
       </Tooltip>
+
+      <div class='h-6 border-l' />
+
+      <div class='flex gap-0'>
+        <Tooltip placement='top'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-7 rounded-md shadow-none'
+            aria-label='Zoom In'
+            disabled={!props.onZoomIn}
+            onClick={() => props.onZoomIn?.()}
+          >
+            <ZoomInIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Zoom In</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='top'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-7 rounded-md shadow-none'
+            aria-label='Reset View'
+            disabled={!props.onResetZoom}
+            onClick={() => props.onResetZoom?.()}
+          >
+            <MaximizeIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Reset View</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='top'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-7 rounded-md shadow-none'
+            aria-label='Zoom Out'
+            disabled={!props.onZoomOut}
+            onClick={() => props.onZoomOut?.()}
+          >
+            <ZoomOutIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Zoom Out</TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }

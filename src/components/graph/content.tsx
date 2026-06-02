@@ -1,8 +1,6 @@
-import { Show, createEffect, createSignal } from 'solid-js';
+import { createEffect, createSignal } from 'solid-js';
 import { GraphBottomControls } from './bottom-controls';
-import { LassoClearButton } from './lasso-clear-button';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
-import { ZoomControls } from './zoom-controls';
 import { appState } from '../../store';
 import { clearLassoResult, setActiveGraphWeights } from '../../actions';
 import { type GraphToolMode } from './types';
@@ -33,33 +31,19 @@ export function GraphContent() {
         activeGraphWeights={activeGraphWeights()}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
-      <div
-        class='pointer-events-none absolute bottom-3 right-3 z-10 flex items-end gap-3 *:pointer-events-auto'
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <Show when={appState.ui.lassoResult}>
-          <LassoClearButton onClear={clearLassoResult} />
-        </Show>
-        <Show when={viewportZoomControls()}>
-          {(controls) => (
-            <ZoomControls
-              onZoomIn={controls().zoomIn}
-              onZoomOut={controls().zoomOut}
-              onReset={controls().resetView}
-            />
-          )}
-        </Show>
-      </div>
       <GraphBottomControls
         toolMode={toolMode()}
         showImages={showImages()}
         showFontNames={showFontNames()}
         weights={sessionWeights()}
         activeWeights={activeGraphWeights()}
+        zoomControls={viewportZoomControls()}
+        hasLassoResult={!!appState.ui.lassoResult}
         onToolModeChange={setToolMode}
         onToggleImages={() => setShowImages((shown) => !shown)}
         onToggleFontNames={() => setShowFontNames((shown) => !shown)}
         onWeightsChange={setActiveGraphWeights}
+        onClearLasso={clearLassoResult}
       />
     </div>
   );
