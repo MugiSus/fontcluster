@@ -13,10 +13,12 @@ export function LassoClearButton(props: LassoClearButtonProps) {
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
-          class='group relative flex h-8 rounded-none pl-2 pr-2.5'
+          size='sm'
+          class='group relative flex h-7 rounded-none pl-2 pr-2.5'
           onClick={() => props.onClear()}
         >
           <XIcon class='size-4' />
+          Clear Lasso
           <LassoSelectIcon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Clear lasso selection</TooltipContent>

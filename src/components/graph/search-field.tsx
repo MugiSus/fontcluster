@@ -38,7 +38,7 @@ export function GraphSearchField(props: GraphSearchFieldProps) {
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
   return (
-    <TextField class='w-full'>
+    <TextField class='w-full rounded-md'>
       <div class='relative font-medium'>
         <Show
           when={isFiltered()}
@@ -64,8 +64,8 @@ export function GraphSearchField(props: GraphSearchFieldProps) {
             inputElement = element;
           }}
           type='text'
-          placeholder='Search'
-          class='h-9 border bg-background pl-8 text-left text-sm shadow-sm hover:bg-background focus:bg-background focus:placeholder:text-transparent focus-visible:bg-background focus-visible:placeholder:text-transparent'
+          placeholder='Font name, Designer, Foundry, etc...'
+          class='h-9 border bg-background pl-8 text-left text-sm placeholder:text-xs hover:bg-background focus:bg-background focus-visible:bg-background'
           value={inputValue()}
           onInput={(e) => handleQueryChange(e.currentTarget.value)}
           spellcheck='false'

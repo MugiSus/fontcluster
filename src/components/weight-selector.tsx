@@ -12,6 +12,7 @@ interface WeightSelectorProps {
   onChange?: (weights: FontWeight[]) => void;
   isVertical?: boolean;
   isCompact?: boolean;
+  showUnavailableWeights?: boolean;
 }
 
 export function WeightSelector(props: WeightSelectorProps) {
@@ -23,6 +24,10 @@ export function WeightSelector(props: WeightSelectorProps) {
   const [selectedWeights, setSelectedWeights] = createSignal(
     computeSelectedFromDefaults(),
   );
+  const displayedWeights = () =>
+    props.showUnavailableWeights
+      ? (Object.keys(WEIGHT_LABELS).map(Number) as FontWeight[])
+      : props.weights;
 
   createEffect(() => {
     setSelectedWeights(computeSelectedFromDefaults());
@@ -54,7 +59,7 @@ export function WeightSelector(props: WeightSelectorProps) {
           <WeightIcon class='size-3 text-muted-foreground' />
         </div>
       </Show>
-      <For each={props.weights.toSorted()}>
+      <For each={displayedWeights().toSorted()}>
         {(weight) => {
           const isSelected = () => selectedWeights().includes(weight);
           const isSelectable = () => props.weights.includes(weight);
@@ -66,7 +71,7 @@ export function WeightSelector(props: WeightSelectorProps) {
                 type='button'
                 variant={isSelected() ? 'default' : 'ghost'}
                 size='sm'
-                class='relative size-8 grow rounded-none px-2 shadow-none'
+                class='relative size-8 grow rounded-none px-2 shadow-none disabled:opacity-25'
                 style={{ 'font-weight': weight }}
                 onClick={() => handleWeightToggle(weight)}
                 data-checked={isSelected()}
