@@ -145,13 +145,6 @@ const getSelectionHistorySnapshot = (): SelectionHistorySnapshot => {
   };
 };
 
-const selectionHistorySnapshotsEqual = (
-  left: SelectionHistorySnapshot,
-  right: SelectionHistorySnapshot,
-) =>
-  left.selectedFontKey === right.selectedFontKey &&
-  left.lassoResult === right.lassoResult;
-
 const restoreSelectionHistorySnapshot = (
   snapshot: SelectionHistorySnapshot,
 ) => {
@@ -163,17 +156,11 @@ const restoreSelectionHistorySnapshot = (
 };
 
 const selectionHistory = createRoot(() => {
-  const [snapshot, setSnapshot] = createSignal(getSelectionHistorySnapshot(), {
-    equals: selectionHistorySnapshotsEqual,
-  });
+  const [isTracking, setIsTracking] = createSignal(true);
   const [resetVersion, setResetVersion] = createSignal(0);
 
-  const commitSelectionHistory = () => {
-    setSnapshot(getSelectionHistorySnapshot());
-  };
-
-  const commitSelectionHistoryDebounced = debounce(
-    commitSelectionHistory,
+  const resumeTrackingDebounced = debounce(
+    () => setIsTracking(true),
     SELECTION_HISTORY_DEBOUNCE,
   );
 
@@ -181,11 +168,11 @@ const selectionHistory = createRoot(() => {
     resetVersion();
 
     return createUndoHistory(() => {
-      const currentSnapshot = snapshot();
+      if (!isTracking()) return;
+      const currentSnapshot = getSelectionHistorySnapshot();
 
       return () => {
-        commitSelectionHistoryDebounced.clear();
-        setSnapshot(currentSnapshot);
+        resumeTrackingDebounced.clear();
         restoreSelectionHistorySnapshot(currentSnapshot);
       };
     });
@@ -198,20 +185,24 @@ const selectionHistory = createRoot(() => {
   });
 
   return {
-    commit: commitSelectionHistory,
-    commitDebounced: commitSelectionHistoryDebounced,
+    pause: () => {
+      resumeTrackingDebounced.clear();
+      setIsTracking(false);
+    },
+    resumeDebounced: resumeTrackingDebounced,
     reset: () => {
-      commitSelectionHistoryDebounced.clear();
-      setSnapshot(getSelectionHistorySnapshot());
+      resumeTrackingDebounced.clear();
+      setIsTracking(true);
       setResetVersion((version) => version + 1);
     },
     undo: () => {
-      commitSelectionHistoryDebounced.clear();
-      commitSelectionHistory();
+      resumeTrackingDebounced.clear();
+      setIsTracking(true);
+      history().canUndo();
       history().undo();
     },
     redo: () => {
-      commitSelectionHistoryDebounced.clear();
+      resumeTrackingDebounced.clear();
       history().redo();
     },
   };
@@ -229,8 +220,9 @@ const notifyJobComplete = (sessionId: string) => {
 };
 
 export const setSelectedFontKey = (key: string | null) => {
+  selectionHistory.pause();
   setAppState('ui', 'selectedFontKey', key);
-  selectionHistory.commitDebounced();
+  selectionHistory.resumeDebounced();
 };
 
 export const setHoveredFontKey = (key: string | null) =>
@@ -246,15 +238,19 @@ export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
 export const clearLassoResult = () => {
-  setAppState('ui', 'lassoResult', null);
-  setAppState('ui', 'lassoProcessing', false);
-  selectionHistory.commit();
+  batch(() => {
+    setAppState('ui', 'lassoResult', null);
+    setAppState('ui', 'lassoProcessing', false);
+  });
 };
 
 export const setCurrentSessionId = (id: string) => {
-  setAppState('ui', 'lassoResult', null);
-  setAppState('ui', 'lassoProcessing', false);
-  setAppState('session', 'id', id);
+  selectionHistory.pause();
+  batch(() => {
+    setAppState('ui', 'lassoResult', null);
+    setAppState('ui', 'lassoProcessing', false);
+    setAppState('session', 'id', id);
+  });
   selectionHistory.reset();
 };
 
@@ -269,17 +265,18 @@ export const processLassoSelection = async (safeNames: string[]) => {
     });
     if (appState.session.id !== sessionId) return;
 
-    setAppState('ui', 'lassoResult', result);
+    batch(() => {
+      setAppState('ui', 'lassoResult', result);
 
-    const selectedFontKey = appState.ui.selectedFontKey;
-    setAppState(
-      'ui',
-      'selectedFontKey',
-      selectedFontKey && result.safeNames.includes(selectedFontKey)
-        ? selectedFontKey
-        : (result.safeNames[0] ?? null),
-    );
-    selectionHistory.commit();
+      const selectedFontKey = appState.ui.selectedFontKey;
+      setAppState(
+        'ui',
+        'selectedFontKey',
+        selectedFontKey && result.safeNames.includes(selectedFontKey)
+          ? selectedFontKey
+          : (result.safeNames[0] ?? null),
+      );
+    });
   } catch (error) {
     console.error('Failed to process lasso selection:', error);
     toast.error(`Lasso failed: ${error}`);
@@ -293,8 +290,11 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  setAppState('ui', 'lassoResult', null);
-  setAppState('ui', 'lassoProcessing', false);
+  selectionHistory.pause();
+  batch(() => {
+    setAppState('ui', 'lassoResult', null);
+    setAppState('ui', 'lassoProcessing', false);
+  });
   selectionHistory.reset();
   toast.info(
     `Job started: '${
