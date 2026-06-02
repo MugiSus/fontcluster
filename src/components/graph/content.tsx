@@ -61,8 +61,8 @@ export function GraphContent(props: GraphContentProps) {
           <ImageVisibilityToggle
             showImages={showImages()}
             showFontNames={showFontNames()}
-            onToggleImages={() => setShowImages(!showImages())}
-            onToggleFontNames={() => setShowFontNames(!showFontNames())}
+            onToggleImages={() => setShowImages((shown) => !shown)}
+            onToggleFontNames={() => setShowFontNames((shown) => !shown)}
           />
           <Show when={viewportZoomControls()}>
             {(controls) => (
