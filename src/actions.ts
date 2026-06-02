@@ -1,20 +1,17 @@
 import {
   batch,
   createEffect,
-  createMemo,
   createResource,
   createRoot,
-  createSignal,
   untrack,
 } from 'solid-js';
-import { createUndoHistory } from '@solid-primitives/history';
-import { debounce } from '@solid-primitives/scheduled';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
 import { appState, setAppState } from './store';
+import { selectionHistory } from './selection-history';
 import {
   type FontItemRecord,
   type FontWeight,
@@ -130,83 +127,6 @@ export const {
 });
 
 // Actions
-
-const SELECTION_HISTORY_DEBOUNCE = 250;
-
-type SelectionHistorySnapshot = {
-  selectedFontKey: string | null;
-  lassoResult: LassoProcessResult | null;
-};
-
-const getSelectionHistorySnapshot = (): SelectionHistorySnapshot => {
-  return {
-    selectedFontKey: appState.ui.selectedFontKey,
-    lassoResult: appState.ui.lassoResult,
-  };
-};
-
-const restoreSelectionHistorySnapshot = (
-  snapshot: SelectionHistorySnapshot,
-) => {
-  batch(() => {
-    setAppState('ui', 'selectedFontKey', snapshot.selectedFontKey);
-    setAppState('ui', 'lassoResult', snapshot.lassoResult);
-    setAppState('ui', 'lassoProcessing', false);
-  });
-};
-
-const selectionHistory = createRoot(() => {
-  const [isTracking, setIsTracking] = createSignal(true);
-  const [resetVersion, setResetVersion] = createSignal(0);
-
-  const resumeTrackingDebounced = debounce(
-    () => setIsTracking(true),
-    SELECTION_HISTORY_DEBOUNCE,
-  );
-
-  const history = createMemo(() => {
-    resetVersion();
-
-    return createUndoHistory(() => {
-      if (!isTracking()) return;
-      const currentSnapshot = getSelectionHistorySnapshot();
-
-      return () => {
-        resumeTrackingDebounced.clear();
-        restoreSelectionHistorySnapshot(currentSnapshot);
-      };
-    });
-  });
-
-  createEffect(() => {
-    const currentHistory = history();
-    currentHistory.canUndo();
-    currentHistory.canRedo();
-  });
-
-  return {
-    pause: () => {
-      resumeTrackingDebounced.clear();
-      setIsTracking(false);
-    },
-    resumeDebounced: resumeTrackingDebounced,
-    reset: () => {
-      resumeTrackingDebounced.clear();
-      setIsTracking(true);
-      setResetVersion((version) => version + 1);
-    },
-    undo: () => {
-      resumeTrackingDebounced.clear();
-      setIsTracking(true);
-      history().canUndo();
-      history().undo();
-    },
-    redo: () => {
-      resumeTrackingDebounced.clear();
-      history().redo();
-    },
-  };
-});
 
 const notifyJobComplete = (sessionId: string) => {
   toast.success('Job completed successfully!', {
