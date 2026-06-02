@@ -22,7 +22,7 @@ import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
 
-const LASSO_DRAG_THRESHOLD_PX = 3;
+const LASSO_DRAG_THRESHOLD_PX = 4;
 
 export interface ViewportZoomControls {
   zoomIn: () => void;
