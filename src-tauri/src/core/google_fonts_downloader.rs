@@ -272,24 +272,36 @@ fn download_fonts_impl(
         FontSet::GoogleFontsAll => None,
     };
 
-    let target_fonts = match limit {
-        Some(limit) => all_fonts.into_iter().take(limit).collect::<Vec<_>>(),
-        None => all_fonts,
-    };
-    let total_fonts_before_subset_filter = target_fonts.len();
     let subset_requirements = text_subset_requirements(target_text);
     println!(
         "🔍 Google Fonts subset requirements: {:?}",
         subset_requirements
     );
-    let target_fonts = target_fonts
+    let total_fonts_before_subset_filter = all_fonts.len();
+    let target_fonts = all_fonts
         .into_iter()
         .filter(|font| font_matches_subset_requirements(&font.subsets, &subset_requirements))
         .collect::<Vec<_>>();
+    let total_fonts_after_subset_filter = target_fonts.len();
+    let target_fonts = target_fonts
+        .into_iter()
+        .filter(|font| {
+            target_weights
+                .iter()
+                .any(|&weight| google_font_api_weight(weight, &font.variants).is_some())
+        })
+        .collect::<Vec<_>>();
+    let total_fonts_after_weight_filter = target_fonts.len();
+    let target_fonts = match limit {
+        Some(limit) => target_fonts.into_iter().take(limit).collect::<Vec<_>>(),
+        None => target_fonts,
+    };
 
     println!(
-        "🔍 Google Fonts subset prefilter: {} -> {} families",
+        "🔍 Google Fonts candidate prefilter: {} -> {} subset matches -> {} weight matches, selected {}",
         total_fonts_before_subset_filter,
+        total_fonts_after_subset_filter,
+        total_fonts_after_weight_filter,
         target_fonts.len()
     );
 

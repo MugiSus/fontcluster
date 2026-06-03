@@ -104,7 +104,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         >
           <FunnelIcon class='size-4' />
         </TooltipTrigger>
-        <TooltipContent>Search</TooltipContent>
+        <TooltipContent>Filter</TooltipContent>
       </Tooltip>
 
       <div class='h-6 border-l' />

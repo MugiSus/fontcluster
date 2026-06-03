@@ -3,6 +3,8 @@ import {
   createEffect,
   createResource,
   createRoot,
+  onCleanup,
+  onMount,
   untrack,
 } from 'solid-js';
 import { reconcile } from 'solid-js/store';
@@ -249,103 +251,72 @@ export const stopJobs = async (sessionId?: string) => {
 
 // --- Initialization ---
 
-let appEventsCleanup: (() => void) | null = null;
-
-export function initAppEvents() {
-  if (appEventsCleanup) return appEventsCleanup;
-
-  let disposed = false;
-  const unlisteners: Array<() => void> = [];
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.defaultPrevented) return;
-
-    const target = event.target;
-    if (
-      target instanceof HTMLElement &&
-      (target.matches('input, textarea') || target.isContentEditable)
-    ) {
-      return;
+const loadLatestSessionId = async () => {
+  try {
+    const latestSessionId = await invoke<string | null>(
+      'get_latest_session_id',
+    );
+    if (latestSessionId) {
+      console.log('Setting latest session ID on startup:', latestSessionId);
+      untrack(() => {
+        setCurrentSessionId(latestSessionId);
+      });
     }
+  } catch (error) {
+    console.error('Failed to get latest session ID:', error);
+  }
+};
 
-    const key = event.key.toLowerCase();
-    const isModified = event.metaKey || event.ctrlKey;
-    const isUndo = isModified && key === 'z' && !event.shiftKey;
-    const isRedo =
-      (isModified && key === 'z' && event.shiftKey) ||
-      (event.ctrlKey && !event.metaKey && key === 'y' && !event.shiftKey);
+export function useAppEvents() {
+  onMount(() => {
+    const listenWithCleanup = <T>(
+      event: string,
+      handler: (event: { payload: T }) => void,
+    ) => {
+      const unlistenPromise = listen(event, handler);
 
-    if (isUndo) {
-      event.preventDefault();
-      selectionHistory.undo();
-    } else if (isRedo) {
-      event.preventDefault();
-      selectionHistory.redo();
-    }
-  };
-
-  const registerListener = <T>(
-    event: string,
-    handler: (event: { payload: T }) => void,
-  ) => {
-    void listen(event, handler).then((cleanup) => {
-      if (disposed) {
+      onCleanup(async () => {
+        const cleanup = await unlistenPromise;
         cleanup();
-        return;
-      }
-      unlisteners.push(cleanup);
+      });
+    };
+
+    // Load latest session ID on startup
+    loadLatestSessionId();
+
+    listenWithCleanup<string>('clustering_complete', (event) => {
+      console.log('Clustering completed for session:', event.payload);
     });
-  };
 
-  document.addEventListener('keydown', handleKeyDown, true);
+    listenWithCleanup<string>('positioning_complete', (event) => {
+      console.log('Positioning completed for session:', event.payload);
+    });
 
-  appEventsCleanup = () => {
-    disposed = true;
-    document.removeEventListener('keydown', handleKeyDown, true);
-    for (const unlisten of unlisteners) unlisten();
-    unlisteners.length = 0;
-    appEventsCleanup = null;
-  };
-
-  // Load latest session ID on startup
-  void (async () => {
-    try {
-      const latestSessionId = await invoke<string | null>(
-        'get_latest_session_id',
+    listenWithCleanup<string>('all_jobs_complete', (event) => {
+      console.log(
+        'All jobs completed successfully for session:',
+        event.payload,
       );
-      if (latestSessionId) {
-        console.log('Setting latest session ID on startup:', latestSessionId);
-        untrack(() => {
-          setCurrentSessionId(latestSessionId);
-        });
-      }
-    } catch (error) {
-      console.error('Failed to get latest session ID:', error);
-    }
-  })();
+      notifyJobComplete(event.payload);
+    });
 
-  registerListener<string>('clustering_complete', (event) => {
-    console.log('Clustering completed for session:', event.payload);
+    listenWithCleanup('refresh-requested', () => {
+      window.location.reload();
+    });
+
+    listenWithCleanup('check-update-requested', () => {
+      checkForAppUpdates({ isManual: true });
+    });
+
+    listenWithCleanup('undo-history-requested', () => {
+      selectionHistory.undo();
+    });
+
+    listenWithCleanup('redo-history-requested', () => {
+      selectionHistory.redo();
+    });
+
+    // Check for updates automatically on startup
+    checkForAppUpdates();
   });
-
-  registerListener<string>('positioning_complete', (event) => {
-    console.log('Positioning completed for session:', event.payload);
-  });
-
-  registerListener<string>('all_jobs_complete', (event) => {
-    console.log('All jobs completed successfully for session:', event.payload);
-    notifyJobComplete(event.payload);
-  });
-
-  registerListener('refresh-requested', () => {
-    window.location.reload();
-  });
-
-  registerListener('check-update-requested', () => {
-    checkForAppUpdates({ isManual: true });
-  });
-
-  // Check for updates automatically on startup
-  checkForAppUpdates();
-
-  return appEventsCleanup;
 }

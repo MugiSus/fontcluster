@@ -17,6 +17,22 @@ operational risks, and open questions that could affect the task. If any of
 these materially change the implementation choice, list them and ask the user
 before proceeding.
 
+### Existing libraries first
+
+Before writing control flow, lifecycle management, event handling, parsing,
+data transformation, caching, history, graph, geometry, or async coordination
+logic, actively look for an existing project dependency, framework API, platform
+API, or standard library feature that already owns that behavior.
+
+Prefer existing libraries and packages over bespoke implementations. Treat
+self-written mechanisms as the last resort, and only use them after confirming
+that no suitable existing API fits the responsibility and constraints.
+
+Do not recreate lifecycle, listener cleanup, debounce/throttle, history,
+collection, parsing, or async coordination primitives when Solid, Tauri, the
+Rust/TypeScript standard libraries, or installed packages already provide the
+needed behavior.
+
 ### Single Source of Truth
 
 Every piece of application state must have exactly one authoritative owner.
