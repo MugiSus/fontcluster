@@ -162,11 +162,11 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseMove = (event: MouseEvent) => {
-    if (event.buttons & 4) {
+    if (event.buttons === 4) {
       viewport.dragPan(event);
       return;
     }
-    if (event.buttons & 1) {
+    if (event.buttons === 1) {
       if (props.toolMode === 'drag') {
         viewport.dragPan(event);
         return;
@@ -220,7 +220,7 @@ export function GraphViewer(props: GraphViewerProps) {
       setZoomBounds(null);
       return;
     }
-    if (event.buttons & 1) {
+    if (event.button === 0) {
       if (props.toolMode === 'drag') {
         selection.clearDraggingSelection();
         viewport.startPanDrag(event);
