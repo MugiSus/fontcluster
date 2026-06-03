@@ -39,38 +39,87 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   );
 
   return (
-    <div class='pointer-events-auto flex items-center gap-1 rounded-lg border bg-background p-1 shadow-sm'>
-      <Tooltip placement='top'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'select' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'select'}
-          aria-label='Select'
-          onClick={() => props.onToolModeChange('select')}
-        >
-          <MousePointer2Icon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Select</TooltipContent>
-      </Tooltip>
+    <div class='pointer-events-auto flex flex-col items-center gap-1 rounded-lg border bg-background p-1 shadow-sm'>
+      <div class='flex flex-col gap-0'>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-label='Zoom In'
+            disabled={!props.onZoomIn}
+            onClick={() => props.onZoomIn?.()}
+          >
+            <ZoomInIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Zoom In</TooltipContent>
+        </Tooltip>
 
-      <Tooltip placement='top'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'lasso-select' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'lasso-select'}
-          aria-label='Lasso'
-          onClick={() => props.onToolModeChange('lasso-select')}
-        >
-          <LassoSelectIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Lasso</TooltipContent>
-      </Tooltip>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-label='Reset View'
+            disabled={!props.onResetZoom}
+            onClick={() => props.onResetZoom?.()}
+          >
+            <MaximizeIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Reset View</TooltipContent>
+        </Tooltip>
 
-      <Tooltip placement='top'>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-label='Zoom Out'
+            disabled={!props.onZoomOut}
+            onClick={() => props.onZoomOut?.()}
+          >
+            <ZoomOutIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Zoom Out</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <div class='w-6 border-t' />
+
+      <Tooltip placement='left'>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant={props.toolMode === 'select' ? 'default' : 'ghost'}
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-pressed={props.toolMode === 'select'}
+            aria-label='Select'
+            onClick={() => props.onToolModeChange('select')}
+          >
+            <MousePointer2Icon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Select</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant={props.toolMode === 'lasso-select' ? 'default' : 'ghost'}
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-pressed={props.toolMode === 'lasso-select'}
+            aria-label='Lasso'
+            onClick={() => props.onToolModeChange('lasso-select')}
+          >
+            <LassoSelectIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Lasso</TooltipContent>
+        </Tooltip>
+
         <TooltipTrigger
           as={Button<'button'>}
           variant={props.toolMode === 'lasso-exclude' ? 'default' : 'ghost'}
@@ -85,9 +134,41 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         <TooltipContent>Exclude</TooltipContent>
       </Tooltip>
 
-      <div class='h-6 border-l' />
+      <div class='w-6 border-t' />
 
-      <Tooltip placement='top'>
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.showImages ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.showImages}
+          aria-label='Show Images'
+          onClick={() => props.onToggleImages()}
+        >
+          <ImageIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Show Images</TooltipContent>
+      </Tooltip>
+
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.showFontNames ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.showFontNames}
+          aria-label='Show Font Names'
+          onClick={() => props.onToggleFontNames()}
+        >
+          <TypeIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Show Font Names</TooltipContent>
+      </Tooltip>
+
+      <div class='w-6 border-t' />
+
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant={isSearchActive() ? 'default' : 'ghost'}
@@ -106,87 +187,6 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         </TooltipTrigger>
         <TooltipContent>Filter</TooltipContent>
       </Tooltip>
-
-      <div class='h-6 border-l' />
-
-      <Tooltip placement='top'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.showFontNames ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.showFontNames}
-          aria-label='Show Font Names'
-          onClick={() => props.onToggleFontNames()}
-        >
-          <TypeIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Show Font Names</TooltipContent>
-      </Tooltip>
-
-      <Tooltip placement='top'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.showImages ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.showImages}
-          aria-label='Show Images'
-          onClick={() => props.onToggleImages()}
-        >
-          <ImageIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Show Images</TooltipContent>
-      </Tooltip>
-
-      <div class='h-6 border-l' />
-
-      <div class='flex gap-0'>
-        <Tooltip placement='top'>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant='ghost'
-            size='icon'
-            class='size-7 rounded-md shadow-none'
-            aria-label='Zoom In'
-            disabled={!props.onZoomIn}
-            onClick={() => props.onZoomIn?.()}
-          >
-            <ZoomInIcon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>Zoom In</TooltipContent>
-        </Tooltip>
-
-        <Tooltip placement='top'>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant='ghost'
-            size='icon'
-            class='size-7 rounded-md shadow-none'
-            aria-label='Reset View'
-            disabled={!props.onResetZoom}
-            onClick={() => props.onResetZoom?.()}
-          >
-            <MaximizeIcon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>Reset View</TooltipContent>
-        </Tooltip>
-
-        <Tooltip placement='top'>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant='ghost'
-            size='icon'
-            class='size-7 rounded-md shadow-none'
-            aria-label='Zoom Out'
-            disabled={!props.onZoomOut}
-            onClick={() => props.onZoomOut?.()}
-          >
-            <ZoomOutIcon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>Zoom Out</TooltipContent>
-        </Tooltip>
-      </div>
     </div>
   );
 }

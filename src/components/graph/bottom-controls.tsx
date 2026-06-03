@@ -36,26 +36,28 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
 
   return (
     <div
-      class='pointer-events-none absolute bottom-2 left-2 z-20 flex flex-col items-start gap-1.5 *:pointer-events-auto'
+      class='pointer-events-none absolute bottom-2 right-2 z-20 flex items-end gap-1.5 *:pointer-events-auto'
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <Show when={props.hasLassoResult}>
-        <LassoClearButton onClear={props.onClearLasso} />
-      </Show>
-      <Show when={isSearchVisible()}>
-        <GraphSearchField focusRequest={searchFocusRequest()} />
-        <Show
-          when={props.weights.length > 1 ? props.weights.join(',') : false}
-          keyed
-        >
-          <WeightSelector
-            weights={props.weights}
-            defaultValue={props.activeWeights}
-            onChange={props.onWeightsChange}
-            showUnavailableWeights
-          />
+      <div class='flex flex-col items-end gap-1.5'>
+        <Show when={props.hasLassoResult}>
+          <LassoClearButton onClear={props.onClearLasso} />
         </Show>
-      </Show>
+        <Show when={isSearchVisible()}>
+          <GraphSearchField focusRequest={searchFocusRequest()} />
+          <Show
+            when={props.weights.length > 1 ? props.weights.join(',') : false}
+            keyed
+          >
+            <WeightSelector
+              weights={props.weights}
+              defaultValue={props.activeWeights}
+              onChange={props.onWeightsChange}
+              showUnavailableWeights
+            />
+          </Show>
+        </Show>
+      </div>
       <GraphBottomToolbar
         toolMode={props.toolMode}
         isSerachVisible={isSearchVisible()}
