@@ -162,7 +162,7 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseMove = (event: MouseEvent) => {
-    if (event.buttons & 2) {
+    if (event.buttons & 4) {
       viewport.dragPan(event);
       return;
     }
@@ -207,18 +207,17 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseDown = (event: MouseEvent) => {
-    if (event.buttons & 2) {
-      if (props.toolMode === 'zoom') {
-        selection.clearDraggingSelection();
-        zoomStartPoint = viewport.getGraphPointFromEvent(event);
-        zoomStartScreenPoint = { x: event.clientX, y: event.clientY };
-        zoomStarted = false;
-        setZoomBounds(null);
-        viewport.startPanDrag(event);
-        return;
-      }
+    if (event.button === 1) {
       selection.clearDraggingSelection();
       viewport.startPanDrag(event);
+      return;
+    }
+    if (event.button === 2 && props.toolMode === 'zoom') {
+      selection.clearDraggingSelection();
+      zoomStartPoint = viewport.getGraphPointFromEvent(event);
+      zoomStartScreenPoint = { x: event.clientX, y: event.clientY };
+      zoomStarted = false;
+      setZoomBounds(null);
       return;
     }
     if (event.buttons & 1) {
@@ -247,6 +246,10 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseUp = (event: MouseEvent) => {
+    if (event.button === 1) {
+      viewport.endPanDrag();
+      return;
+    }
     if (props.toolMode === 'zoom' && event.button === 2) {
       if (
         zoomStartPoint &&
@@ -259,11 +262,9 @@ export function GraphViewer(props: GraphViewerProps) {
         viewport.handleZoomOut(zoomStartPoint);
       }
       clearZoom();
-      viewport.endPanDrag();
       return;
     }
     if (event.button === 2) {
-      viewport.endPanDrag();
       return;
     }
     if (props.toolMode === 'drag') {
@@ -312,6 +313,9 @@ export function GraphViewer(props: GraphViewerProps) {
       }}
       onWheel={viewport.handleWheel}
       onContextMenu={(event) => event.preventDefault()}
+      onAuxClick={(event) => {
+        if (event.button === 1) event.preventDefault();
+      }}
     >
       <Show
         when={graph.allPoints().length > 0}
