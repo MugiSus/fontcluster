@@ -1,7 +1,7 @@
-import { Show, onCleanup, onMount } from 'solid-js';
+import { Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { ClipboardListener } from './components/clipboard-listener';
-import { initAppEvents } from './actions';
+import { useAppEvents } from './actions';
 import { Toaster } from './components/ui/sonner';
 import { ChatPanel } from './components/chat';
 import { ControlPanel } from './components/control';
@@ -17,15 +17,7 @@ function App() {
     list: true,
     chat: false,
   });
-  let cleanupAppEvents: (() => void) | undefined;
-
-  onMount(() => {
-    cleanupAppEvents = initAppEvents();
-  });
-
-  onCleanup(() => {
-    cleanupAppEvents?.();
-  });
+  useAppEvents();
 
   const closePanel = (panel: CollapsiblePanelKey) => {
     setPanelState(panel, false);
