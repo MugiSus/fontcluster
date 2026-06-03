@@ -17,13 +17,17 @@ import {
   getSelectableFontPointsInBounds,
 } from './font-point-index';
 import { GraphPoint } from './point';
-import { type GraphCoordinate, type GraphToolMode } from './types';
+import {
+  type GraphCoordinate,
+  type GraphToolMode,
+  type GraphVisibleBounds,
+} from './types';
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
 import { cn } from '../../lib/utils';
 
-const LASSO_DRAG_THRESHOLD_PX = 4;
+const POINTER_DRAG_THRESHOLD_PX = 4;
 
 export interface ViewportZoomControls {
   zoomIn: () => void;
@@ -43,9 +47,15 @@ interface GraphViewerProps {
 
 export function GraphViewer(props: GraphViewerProps) {
   const [lassoPoints, setLassoPoints] = createSignal<GraphCoordinate[]>([]);
+  const [zoomBounds, setZoomBounds] = createSignal<GraphVisibleBounds | null>(
+    null,
+  );
   let svgElement: SVGSVGElement | undefined;
   let lassoStartPoint: { x: number; y: number } | null = null;
   let lassoStarted = false;
+  let zoomStartPoint: GraphCoordinate | null = null;
+  let zoomStartScreenPoint: { x: number; y: number } | null = null;
+  let zoomStarted = false;
 
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
   const viewport = useGraphViewport({
@@ -144,25 +154,52 @@ export function GraphViewer(props: GraphViewerProps) {
     setLassoPoints([]);
   };
 
+  const clearZoom = () => {
+    zoomStartPoint = null;
+    zoomStartScreenPoint = null;
+    zoomStarted = false;
+    setZoomBounds(null);
+  };
+
   const handleMouseMove = (event: MouseEvent) => {
     if (event.buttons & 2) {
-      clearLasso();
-      selection.clearDraggingSelection();
       viewport.dragPan(event);
       return;
     }
     if (event.buttons & 1) {
       if (props.toolMode === 'drag') {
-        clearLasso();
-        selection.clearDraggingSelection();
         viewport.dragPan(event);
+        return;
+      }
+      if (props.toolMode === 'zoom') {
+        if (
+          zoomStartScreenPoint &&
+          Math.hypot(
+            event.clientX - zoomStartScreenPoint.x,
+            event.clientY - zoomStartScreenPoint.y,
+          ) > POINTER_DRAG_THRESHOLD_PX
+        ) {
+          zoomStarted = true;
+        }
+        if (!zoomStarted) return;
+        if (!zoomStartPoint) return;
+
+        const point = viewport.getGraphPointFromEvent(event);
+        if (!point) return;
+
+        setZoomBounds({
+          minX: Math.min(zoomStartPoint.x, point.x),
+          maxX: Math.max(zoomStartPoint.x, point.x),
+          minY: Math.min(zoomStartPoint.y, point.y),
+          maxY: Math.max(zoomStartPoint.y, point.y),
+        });
         return;
       }
       if (props.toolMode === 'select') {
         selection.trackDraggingSelection(event);
         return;
       }
-      if (getLassoScreenDistance(event) > LASSO_DRAG_THRESHOLD_PX) {
+      if (getLassoScreenDistance(event) > POINTER_DRAG_THRESHOLD_PX) {
         lassoStarted = true;
       }
       appendLassoPoint(event);
@@ -171,16 +208,31 @@ export function GraphViewer(props: GraphViewerProps) {
 
   const handleMouseDown = (event: MouseEvent) => {
     if (event.buttons & 2) {
-      clearLasso();
+      if (props.toolMode === 'zoom') {
+        selection.clearDraggingSelection();
+        zoomStartPoint = viewport.getGraphPointFromEvent(event);
+        zoomStartScreenPoint = { x: event.clientX, y: event.clientY };
+        zoomStarted = false;
+        setZoomBounds(null);
+        viewport.startPanDrag(event);
+        return;
+      }
       selection.clearDraggingSelection();
       viewport.startPanDrag(event);
       return;
     }
     if (event.buttons & 1) {
       if (props.toolMode === 'drag') {
-        clearLasso();
         selection.clearDraggingSelection();
         viewport.startPanDrag(event);
+        return;
+      }
+      if (props.toolMode === 'zoom') {
+        selection.clearDraggingSelection();
+        zoomStartPoint = viewport.getGraphPointFromEvent(event);
+        zoomStartScreenPoint = { x: event.clientX, y: event.clientY };
+        zoomStarted = false;
+        setZoomBounds(null);
         return;
       }
       if (props.toolMode === 'select') {
@@ -195,13 +247,37 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseUp = (event: MouseEvent) => {
+    if (props.toolMode === 'zoom' && event.button === 2) {
+      if (
+        zoomStartPoint &&
+        zoomStartScreenPoint &&
+        Math.hypot(
+          event.clientX - zoomStartScreenPoint.x,
+          event.clientY - zoomStartScreenPoint.y,
+        ) <= POINTER_DRAG_THRESHOLD_PX
+      ) {
+        viewport.handleZoomOut(zoomStartPoint);
+      }
+      clearZoom();
+      viewport.endPanDrag();
+      return;
+    }
     if (event.button === 2) {
-      clearLasso();
       viewport.endPanDrag();
       return;
     }
     if (props.toolMode === 'drag') {
-      clearLasso();
+      viewport.endPanDrag();
+      return;
+    }
+    if (props.toolMode === 'zoom') {
+      const bounds = zoomBounds();
+      if (zoomStarted && bounds) {
+        viewport.zoomToBounds(bounds);
+      } else if (event.button === 0 && zoomStartPoint) {
+        viewport.handleZoomIn(zoomStartPoint);
+      }
+      clearZoom();
       viewport.endPanDrag();
       return;
     }
@@ -209,14 +285,13 @@ export function GraphViewer(props: GraphViewerProps) {
       if (event.button === 0) {
         selection.selectFromMouseEvent(event);
       }
-      clearLasso();
       viewport.endPanDrag();
       return;
     }
     if (lassoStarted) {
       appendLassoPoint(event);
       processLasso();
-    } else if (getLassoScreenDistance(event) <= LASSO_DRAG_THRESHOLD_PX) {
+    } else if (getLassoScreenDistance(event) <= POINTER_DRAG_THRESHOLD_PX) {
       selection.selectFromMouseEvent(event);
     }
     clearLasso();
@@ -231,6 +306,7 @@ export function GraphViewer(props: GraphViewerProps) {
       onMouseUp={handleMouseUp}
       onMouseLeave={() => {
         clearLasso();
+        clearZoom();
         selection.clearDraggingSelection();
         viewport.endPanDrag();
       }}
@@ -263,7 +339,9 @@ export function GraphViewer(props: GraphViewerProps) {
                     ? viewport.isDragging()
                       ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
                       : "url('/cursors/hand.svg') 12 12, grab"
-                    : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
+                    : props.toolMode === 'zoom'
+                      ? "url('/cursors/zoom-in.svg') 11 11, zoom-in"
+                      : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
           }}
           viewBox={`${viewport.viewBox().x} ${viewport.viewBox().y} ${viewport.viewBox().width} ${viewport.viewBox().height}`}
           xmlns='http://www.w3.org/2000/svg'
@@ -377,6 +455,21 @@ export function GraphViewer(props: GraphViewerProps) {
                   : 'fill-foreground/5 stroke-foreground',
               )}
             />
+          </Show>
+
+          <Show when={zoomBounds()}>
+            {(bounds) => (
+              <rect
+                x={bounds().minX}
+                y={bounds().minY}
+                width={bounds().maxX - bounds().minX}
+                height={bounds().maxY - bounds().minY}
+                stroke='currentColor'
+                stroke-width={1 * viewport.zoomFactor()}
+                stroke-dasharray={`${6 * viewport.zoomFactor()} ${5 * viewport.zoomFactor()}`}
+                class='pointer-events-none fill-foreground/5 stroke-foreground'
+              />
+            )}
           </Show>
         </svg>
       </Show>

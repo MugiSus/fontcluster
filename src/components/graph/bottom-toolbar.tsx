@@ -5,10 +5,11 @@ import {
   ImageIcon,
   LassoSelectIcon,
   MaximizeIcon,
+  MinusIcon,
   MousePointer2Icon,
+  PlusIcon,
   TypeIcon,
   ZoomInIcon,
-  ZoomOutIcon,
 } from 'lucide-solid';
 import { appState } from '../../store';
 import { Button } from '../ui/button';
@@ -52,7 +53,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             disabled={!props.onZoomIn}
             onClick={() => props.onZoomIn?.()}
           >
-            <ZoomInIcon class='size-4' />
+            <PlusIcon class='size-4' />
           </TooltipTrigger>
           <TooltipContent>Zoom In</TooltipContent>
         </Tooltip>
@@ -82,7 +83,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             disabled={!props.onZoomOut}
             onClick={() => props.onZoomOut?.()}
           >
-            <ZoomOutIcon class='size-4' />
+            <MinusIcon class='size-4' />
           </TooltipTrigger>
           <TooltipContent>Zoom Out</TooltipContent>
         </Tooltip>
@@ -148,6 +149,21 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           <HandIcon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Drag</TooltipContent>
+      </Tooltip>
+
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.toolMode === 'zoom' ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.toolMode === 'zoom'}
+          aria-label='Zoom'
+          onClick={() => props.onToolModeChange('zoom')}
+        >
+          <ZoomInIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Zoom</TooltipContent>
       </Tooltip>
 
       <div class='w-6 border-t' />

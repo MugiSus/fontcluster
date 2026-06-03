@@ -7,10 +7,15 @@ import {
   PINCH_ZOOM_DELTA_BASE,
   ZOOM_FACTOR_RATIO,
 } from './constants';
-import { type GraphCoordinate, type GraphViewBox } from './types';
+import {
+  type GraphCoordinate,
+  type GraphViewBox,
+  type GraphVisibleBounds,
+} from './types';
 import {
   getGraphCoordinateFromClientPoint,
   getPannedViewBox,
+  getViewBoxFittingBounds,
   getViewBoxCenter,
   getViewBoxDeltaFromScreenDelta,
   getZoomedViewBox,
@@ -28,11 +33,12 @@ export interface GraphViewportController {
   isMoving: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
   dragPan: (event: MouseEvent) => void;
+  zoomToBounds: (bounds: GraphVisibleBounds) => void;
   startPanDrag: (event: MouseEvent) => void;
   endPanDrag: () => void;
   handleWheel: (event: WheelEvent) => void;
-  handleZoomIn: () => void;
-  handleZoomOut: () => void;
+  handleZoomIn: (focus?: GraphCoordinate) => void;
+  handleZoomOut: (focus?: GraphCoordinate) => void;
   handleReset: () => void;
 }
 
@@ -113,8 +119,16 @@ export function useGraphViewport(
   });
 
   const zoomFactor = createMemo(() => {
-    const minSide = Math.min(props.svgSize().width, props.svgSize().height);
-    return viewBox().width / (minSide || initialViewBox.width);
+    const currentViewBox = viewBox();
+    const currentSize = props.svgSize();
+    if (currentSize.width <= 0 || currentSize.height <= 0) {
+      return currentViewBox.width / initialViewBox.width;
+    }
+
+    return Math.max(
+      currentViewBox.width / currentSize.width,
+      currentViewBox.height / currentSize.height,
+    );
   });
 
   const isMoving = createMemo(() => isDragging() || isInteracting());
@@ -124,7 +138,6 @@ export function useGraphViewport(
       clientX: event.clientX,
       clientY: event.clientY,
       element: props.getSvgElement(),
-      viewBox: getCurrentViewBox(),
     });
 
   const panBy = ({
@@ -162,7 +175,6 @@ export function useGraphViewport(
       deltaX,
       deltaY,
       element: props.getSvgElement(),
-      viewBox: getCurrentViewBox(),
     });
     if (!delta) return;
 
@@ -207,6 +219,22 @@ export function useGraphViewport(
     setLastMousePos({ x: event.clientX, y: event.clientY });
   };
 
+  const zoomToBounds = (bounds: GraphVisibleBounds) => {
+    const currentViewBox = getCurrentViewBox();
+    const rect = props.getSvgElement()?.getBoundingClientRect();
+    const nextViewBox = getViewBoxFittingBounds({
+      bounds,
+      aspectRatio:
+        rect && rect.height > 0
+          ? rect.width / rect.height
+          : currentViewBox.width / currentViewBox.height,
+    });
+    if (!nextViewBox) return;
+
+    startInteractionTimer();
+    queueViewBoxUpdate(nextViewBox);
+  };
+
   const startPanDrag = (event: MouseEvent) => {
     event.preventDefault();
     setIsDragging(true);
@@ -241,8 +269,8 @@ export function useGraphViewport(
     panByScreenDelta({ deltaX, deltaY });
   };
 
-  const handleZoomIn = () => {
-    const center = getViewBoxCenter(getCurrentViewBox());
+  const handleZoomIn = (focus?: GraphCoordinate) => {
+    const center = focus ?? getViewBoxCenter(getCurrentViewBox());
     zoomInto({
       focusX: center.x,
       focusY: center.y,
@@ -250,8 +278,8 @@ export function useGraphViewport(
     });
   };
 
-  const handleZoomOut = () => {
-    const center = getViewBoxCenter(getCurrentViewBox());
+  const handleZoomOut = (focus?: GraphCoordinate) => {
+    const center = focus ?? getViewBoxCenter(getCurrentViewBox());
     zoomInto({
       focusX: center.x,
       focusY: center.y,
@@ -271,6 +299,7 @@ export function useGraphViewport(
     isMoving,
     getGraphPointFromEvent,
     dragPan,
+    zoomToBounds,
     startPanDrag,
     endPanDrag,
     handleWheel,

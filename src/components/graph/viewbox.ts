@@ -1,5 +1,9 @@
 import { MAX_VIEWBOX_SIZE, MIN_VIEWBOX_SIZE } from './constants';
-import { type GraphCoordinate, type GraphViewBox } from './types';
+import {
+  type GraphCoordinate,
+  type GraphViewBox,
+  type GraphVisibleBounds,
+} from './types';
 
 export function getViewBoxCenter(viewBox: GraphViewBox): GraphCoordinate {
   return {
@@ -53,30 +57,62 @@ export function getZoomedViewBox({
   };
 }
 
+export function getViewBoxFittingBounds({
+  bounds,
+  aspectRatio,
+}: {
+  bounds: GraphVisibleBounds;
+  aspectRatio: number;
+}): GraphViewBox | null {
+  const boundsWidth = bounds.maxX - bounds.minX;
+  const boundsHeight = bounds.maxY - bounds.minY;
+  if (boundsWidth <= 0 || boundsHeight <= 0) return null;
+
+  const centerX = bounds.minX + boundsWidth / 2;
+  const centerY = bounds.minY + boundsHeight / 2;
+  const viewBoxAspectRatio =
+    Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
+
+  let width = boundsWidth;
+  let height = boundsHeight;
+  if (width / height > viewBoxAspectRatio) {
+    height = width / viewBoxAspectRatio;
+  } else {
+    width = height * viewBoxAspectRatio;
+  }
+
+  width = Math.min(Math.max(width, MIN_VIEWBOX_SIZE), MAX_VIEWBOX_SIZE);
+  height = width / viewBoxAspectRatio;
+
+  return {
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height,
+  };
+}
+
 export function getGraphCoordinateFromClientPoint({
   clientX,
   clientY,
   element,
-  viewBox,
 }: {
   clientX: number;
   clientY: number;
   element: SVGSVGElement | undefined;
-  viewBox: GraphViewBox;
 }): GraphCoordinate | null {
   if (!element) return null;
 
-  const rect = element.getBoundingClientRect();
-  const minSide = Math.min(rect.width, rect.height);
-  if (minSide <= 0) return null;
+  const screenMatrix = element.getScreenCTM();
+  if (!screenMatrix) return null;
 
-  const localX =
-    clientX - rect.left - Math.max(rect.width - rect.height, 0) / 2;
-  const localY = clientY - rect.top - Math.max(rect.height - rect.width, 0) / 2;
+  const point = new DOMPoint(clientX, clientY).matrixTransform(
+    screenMatrix.inverse(),
+  );
 
   return {
-    x: viewBox.x + (localX / minSide) * viewBox.width,
-    y: viewBox.y + (localY / minSide) * viewBox.height,
+    x: point.x,
+    y: point.y,
   };
 }
 
@@ -84,21 +120,21 @@ export function getViewBoxDeltaFromScreenDelta({
   deltaX,
   deltaY,
   element,
-  viewBox,
 }: {
   deltaX: number;
   deltaY: number;
   element: SVGSVGElement | undefined;
-  viewBox: GraphViewBox;
 }): GraphCoordinate | null {
   if (!element) return null;
 
-  const rect = element.getBoundingClientRect();
-  const minSide = Math.min(rect.width, rect.height);
-  if (minSide <= 0) return null;
+  const screenMatrix = element.getScreenCTM();
+  if (!screenMatrix) return null;
 
+  const screenToGraph = screenMatrix.inverse();
+  const start = new DOMPoint(0, 0).matrixTransform(screenToGraph);
+  const end = new DOMPoint(deltaX, deltaY).matrixTransform(screenToGraph);
   return {
-    x: deltaX * (viewBox.width / minSide),
-    y: deltaY * (viewBox.height / minSide),
+    x: end.x - start.x,
+    y: end.y - start.y,
   };
 }

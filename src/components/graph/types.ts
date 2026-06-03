@@ -16,7 +16,8 @@ export type GraphToolMode =
   | 'select'
   | 'lasso-select'
   | 'lasso-exclude'
-  | 'drag';
+  | 'drag'
+  | 'zoom';
 
 export interface GraphVisibleBounds {
   minX: number;
