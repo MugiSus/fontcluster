@@ -152,6 +152,12 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (event.buttons & 1) {
+      if (props.toolMode === 'pan') {
+        clearLasso();
+        selection.clearDraggingSelection();
+        viewport.dragPan(event);
+        return;
+      }
       if (props.toolMode === 'select') {
         selection.trackDraggingSelection(event);
         return;
@@ -171,6 +177,12 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (event.buttons & 1) {
+      if (props.toolMode === 'pan') {
+        clearLasso();
+        selection.clearDraggingSelection();
+        viewport.startPanDrag(event);
+        return;
+      }
       if (props.toolMode === 'select') {
         selection.trackDraggingSelection(event);
         return;
@@ -184,6 +196,11 @@ export function GraphViewer(props: GraphViewerProps) {
 
   const handleMouseUp = (event: MouseEvent) => {
     if (event.button === 2) {
+      clearLasso();
+      viewport.endPanDrag();
+      return;
+    }
+    if (props.toolMode === 'pan') {
       clearLasso();
       viewport.endPanDrag();
       return;
@@ -215,6 +232,7 @@ export function GraphViewer(props: GraphViewerProps) {
       onMouseLeave={() => {
         clearLasso();
         selection.clearDraggingSelection();
+        viewport.endPanDrag();
       }}
       onWheel={viewport.handleWheel}
       onContextMenu={(event) => event.preventDefault()}
@@ -241,7 +259,11 @@ export function GraphViewer(props: GraphViewerProps) {
                 ? "url('/cursors/lasso-select.svg') 14 12, crosshair"
                 : props.toolMode === 'lasso-exclude'
                   ? "url('/cursors/lasso-select-x.svg') 14 12, crosshair"
-                  : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
+                  : props.toolMode === 'pan'
+                    ? viewport.isDragging()
+                      ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
+                      : "url('/cursors/hand.svg') 12 12, grab"
+                    : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
           }}
           viewBox={`${viewport.viewBox().x} ${viewport.viewBox().y} ${viewport.viewBox().width} ${viewport.viewBox().height}`}
           xmlns='http://www.w3.org/2000/svg'

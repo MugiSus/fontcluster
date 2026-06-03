@@ -24,6 +24,7 @@ interface UseGraphViewportProps {
 export interface GraphViewportController {
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
+  isDragging: Accessor<boolean>;
   isMoving: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
   dragPan: (event: MouseEvent) => void;
@@ -266,6 +267,7 @@ export function useGraphViewport(
   return {
     viewBox,
     zoomFactor,
+    isDragging,
     isMoving,
     getGraphPointFromEvent,
     dragPan,

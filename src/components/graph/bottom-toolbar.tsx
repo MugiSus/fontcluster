@@ -1,6 +1,7 @@
 import {
   CircleMinusIcon,
   FunnelIcon,
+  HandIcon,
   ImageIcon,
   LassoSelectIcon,
   MaximizeIcon,
@@ -90,36 +91,36 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       <div class='w-6 border-t' />
 
       <Tooltip placement='left'>
-        <Tooltip placement='left'>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant={props.toolMode === 'select' ? 'default' : 'ghost'}
-            size='icon'
-            class='size-8 rounded-md shadow-none'
-            aria-pressed={props.toolMode === 'select'}
-            aria-label='Select'
-            onClick={() => props.onToolModeChange('select')}
-          >
-            <MousePointer2Icon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>Select</TooltipContent>
-        </Tooltip>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.toolMode === 'select' ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.toolMode === 'select'}
+          aria-label='Select'
+          onClick={() => props.onToolModeChange('select')}
+        >
+          <MousePointer2Icon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Select</TooltipContent>
+      </Tooltip>
 
-        <Tooltip placement='left'>
-          <TooltipTrigger
-            as={Button<'button'>}
-            variant={props.toolMode === 'lasso-select' ? 'default' : 'ghost'}
-            size='icon'
-            class='size-8 rounded-md shadow-none'
-            aria-pressed={props.toolMode === 'lasso-select'}
-            aria-label='Lasso'
-            onClick={() => props.onToolModeChange('lasso-select')}
-          >
-            <LassoSelectIcon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>Lasso</TooltipContent>
-        </Tooltip>
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.toolMode === 'lasso-select' ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.toolMode === 'lasso-select'}
+          aria-label='Lasso'
+          onClick={() => props.onToolModeChange('lasso-select')}
+        >
+          <LassoSelectIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Lasso</TooltipContent>
+      </Tooltip>
 
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant={props.toolMode === 'lasso-exclude' ? 'default' : 'ghost'}
@@ -132,6 +133,21 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           <CircleMinusIcon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Exclude</TooltipContent>
+      </Tooltip>
+
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.toolMode === 'pan' ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.toolMode === 'pan'}
+          aria-label='Pan'
+          onClick={() => props.onToolModeChange('pan')}
+        >
+          <HandIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Pan</TooltipContent>
       </Tooltip>
 
       <div class='w-6 border-t' />
