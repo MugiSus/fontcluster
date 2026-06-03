@@ -152,7 +152,7 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (event.buttons & 1) {
-      if (props.toolMode === 'pan') {
+      if (props.toolMode === 'drag') {
         clearLasso();
         selection.clearDraggingSelection();
         viewport.dragPan(event);
@@ -177,7 +177,7 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (event.buttons & 1) {
-      if (props.toolMode === 'pan') {
+      if (props.toolMode === 'drag') {
         clearLasso();
         selection.clearDraggingSelection();
         viewport.startPanDrag(event);
@@ -200,7 +200,7 @@ export function GraphViewer(props: GraphViewerProps) {
       viewport.endPanDrag();
       return;
     }
-    if (props.toolMode === 'pan') {
+    if (props.toolMode === 'drag') {
       clearLasso();
       viewport.endPanDrag();
       return;
@@ -259,7 +259,7 @@ export function GraphViewer(props: GraphViewerProps) {
                 ? "url('/cursors/lasso-select.svg') 14 12, crosshair"
                 : props.toolMode === 'lasso-exclude'
                   ? "url('/cursors/lasso-select-x.svg') 14 12, crosshair"
-                  : props.toolMode === 'pan'
+                  : props.toolMode === 'drag'
                     ? viewport.isDragging()
                       ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
                       : "url('/cursors/hand.svg') 12 12, grab"

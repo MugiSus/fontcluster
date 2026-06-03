@@ -12,7 +12,11 @@ export interface GraphCoordinate {
   y: number;
 }
 
-export type GraphToolMode = 'select' | 'lasso-select' | 'lasso-exclude' | 'pan';
+export type GraphToolMode =
+  | 'select'
+  | 'lasso-select'
+  | 'lasso-exclude'
+  | 'drag';
 
 export interface GraphVisibleBounds {
   minX: number;

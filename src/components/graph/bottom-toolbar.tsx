@@ -138,16 +138,16 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
-          variant={props.toolMode === 'pan' ? 'default' : 'ghost'}
+          variant={props.toolMode === 'drag' ? 'default' : 'ghost'}
           size='icon'
           class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'pan'}
-          aria-label='Pan'
-          onClick={() => props.onToolModeChange('pan')}
+          aria-pressed={props.toolMode === 'drag'}
+          aria-label='Drag'
+          onClick={() => props.onToolModeChange('drag')}
         >
           <HandIcon class='size-4' />
         </TooltipTrigger>
-        <TooltipContent>Pan</TooltipContent>
+        <TooltipContent>Drag</TooltipContent>
       </Tooltip>
 
       <div class='w-6 border-t' />
