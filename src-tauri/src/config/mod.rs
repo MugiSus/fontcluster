@@ -147,6 +147,8 @@ pub enum ProgressStage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComputedData {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub rendered_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub positioning: Option<PositioningData>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clustering: Option<ClusteringData>,

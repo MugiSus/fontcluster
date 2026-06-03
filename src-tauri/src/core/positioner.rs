@@ -54,6 +54,7 @@ impl Positioner {
                 let meta = load_font_metadata(&session_dir, id)?;
                 let mut computed =
                     load_computed_data(&session_dir, id).unwrap_or_else(|_| ComputedData {
+                        rendered_text: None,
                         positioning: None,
                         clustering: None,
                     });

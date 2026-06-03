@@ -99,6 +99,7 @@ export interface ClusteringData {
 }
 
 export interface ComputedData {
+  rendered_text?: string | null;
   positioning?: PositioningData | null;
   clustering?: ClusteringData | null;
 }

@@ -1,6 +1,6 @@
 use crate::commands::progress::progress_events;
-use crate::config::ProgressStage;
-use crate::config::RenderConfig;
+use crate::config::{ComputedData, ProgressStage, RenderConfig};
+use crate::core::session::{load_computed_data, save_computed_data};
 use crate::core::{AppState, EventSink, FontRenderSource};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
@@ -92,6 +92,16 @@ impl SampleRenderer {
                             render_source.font_index,
                             &safe_name,
                         )?;
+                        let mut computed =
+                            load_computed_data(&render_config.output_dir, &safe_name).unwrap_or(
+                                ComputedData {
+                                    rendered_text: None,
+                                    positioning: None,
+                                    clustering: None,
+                                },
+                            );
+                        computed.rendered_text = Some(render_config.text.clone());
+                        save_computed_data(&render_config.output_dir, &safe_name, &computed)?;
                         Ok(())
                     })();
 

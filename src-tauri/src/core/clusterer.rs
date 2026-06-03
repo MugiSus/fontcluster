@@ -95,6 +95,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             let meta = load_font_metadata(&session_dir_for_second, id)?;
             let mut computed =
                 load_computed_data(&session_dir_for_second, id).unwrap_or(ComputedData {
+                    rendered_text: None,
                     positioning: None,
                     clustering: None,
                 });
