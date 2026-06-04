@@ -334,15 +334,14 @@ export function GraphViewer(props: GraphViewerProps) {
           }}
           class='size-full select-none'
           style={{
-            cursor:
-              props.toolMode === 'lasso-select'
+            cursor: viewport.isDragging()
+              ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
+              : props.toolMode === 'lasso-select'
                 ? "url('/cursors/lasso-select.svg') 14 12, crosshair"
                 : props.toolMode === 'lasso-exclude'
                   ? "url('/cursors/lasso-select-x.svg') 14 12, crosshair"
                   : props.toolMode === 'drag'
-                    ? viewport.isDragging()
-                      ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
-                      : "url('/cursors/hand.svg') 12 12, grab"
+                    ? "url('/cursors/hand.svg') 12 12, grab"
                     : props.toolMode === 'zoom'
                       ? "url('/cursors/zoom-in.svg') 11 11, zoom-in"
                       : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
