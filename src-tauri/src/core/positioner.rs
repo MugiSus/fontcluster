@@ -3,13 +3,108 @@ use crate::config::{ComputedData, PositioningData, ProgressStage};
 use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
-use ndarray::Array2;
-use petal_decomposition::PcaBuilder;
+use ndarray::{Array2, ArrayView1};
+use serde::Deserialize;
 use std::fs;
 
 const POSITIONING_DIMENSIONS: usize = 2;
+const PROJECTOR_JSON: &str =
+    include_str!("../../models/repvit_m1.dist_in1k/repvit_preference_projector.json");
+const PROJECTOR_KIND: &str = "linear_pairwise_preference_projector";
+const PROJECTOR_EMBEDDING_MODEL: &str = "repvit-m1.0";
+const MIN_PROJECTOR_STD: f32 = 1e-6;
 
 pub struct Positioner;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PreferenceProjector {
+    version: u32,
+    kind: String,
+    embedding_model: String,
+    input_dim: usize,
+    axes: Vec<String>,
+    input_mean: Vec<f32>,
+    input_std: Vec<f32>,
+    weights: Vec<Vec<f32>>,
+    output_mean: Vec<f32>,
+    output_std: Vec<f32>,
+}
+
+impl PreferenceProjector {
+    fn validate(&self) -> Result<()> {
+        if self.version != 1 {
+            return Err(AppError::Processing(format!(
+                "Unsupported preference projector version: {}",
+                self.version
+            )));
+        }
+        if self.kind != PROJECTOR_KIND {
+            return Err(AppError::Processing(format!(
+                "Unsupported preference projector kind: {}",
+                self.kind
+            )));
+        }
+        if self.embedding_model != PROJECTOR_EMBEDDING_MODEL {
+            return Err(AppError::Processing(format!(
+                "Preference projector expects {}, got {}",
+                PROJECTOR_EMBEDDING_MODEL, self.embedding_model
+            )));
+        }
+        if self.axes.len() != POSITIONING_DIMENSIONS
+            || self.axes[0] != "contrast"
+            || self.axes[1] != "decorativeness"
+        {
+            return Err(AppError::Processing(format!(
+                "Preference projector axes must be [contrast, decorativeness], got {:?}",
+                self.axes
+            )));
+        }
+        if self.input_mean.len() != self.input_dim
+            || self.input_std.len() != self.input_dim
+            || self.weights.len() != POSITIONING_DIMENSIONS
+            || self
+                .weights
+                .iter()
+                .any(|weights| weights.len() != self.input_dim)
+            || self.output_mean.len() != POSITIONING_DIMENSIONS
+            || self.output_std.len() != POSITIONING_DIMENSIONS
+        {
+            return Err(AppError::Processing(
+                "Preference projector parameter dimensions are invalid".into(),
+            ));
+        }
+        Ok(())
+    }
+
+    fn project(&self, vector: &[f32]) -> Result<[f32; POSITIONING_DIMENSIONS]> {
+        if vector.len() != self.input_dim {
+            return Err(AppError::Processing(format!(
+                "Preference projector expects {} features, got {}",
+                self.input_dim,
+                vector.len()
+            )));
+        }
+
+        let standardized = vector
+            .iter()
+            .enumerate()
+            .map(|(index, value)| {
+                (value - self.input_mean[index]) / self.input_std[index].max(MIN_PROJECTOR_STD)
+            })
+            .collect::<Vec<_>>();
+        let standardized = ArrayView1::from(&standardized);
+        let mut output = [0.0; POSITIONING_DIMENSIONS];
+
+        for (axis, value) in output.iter_mut().enumerate() {
+            let weights = ArrayView1::from(&self.weights[axis]);
+            let raw = weights.dot(&standardized);
+            *value = (raw - self.output_mean[axis]) / self.output_std[axis].max(MIN_PROJECTOR_STD);
+        }
+
+        Ok(output)
+    }
+}
 
 impl Positioner {
     pub async fn position_all(events: &impl EventSink, state: &AppState) -> Result<()> {
@@ -93,36 +188,22 @@ pub fn position_vectors(vectors: Vec<Vec<f32>>) -> Result<Array2<f32>> {
         ));
     }
 
-    let data = Array2::from_shape_vec(
-        (n_samples, n_features),
-        vectors.into_iter().flatten().collect(),
-    )
-    .map_err(|e| AppError::Processing(e.to_string()))?;
-
-    if n_samples < 2 || n_features < 2 {
-        return Ok(Array2::zeros((n_samples, POSITIONING_DIMENSIONS)));
+    let projector: PreferenceProjector = serde_json::from_str(PROJECTOR_JSON)
+        .map_err(|e| AppError::Processing(format!("Failed to load preference projector: {e}")))?;
+    projector.validate()?;
+    if n_features != projector.input_dim {
+        return Err(AppError::Processing(format!(
+            "Preference projector expects {} features, got {}",
+            projector.input_dim, n_features
+        )));
     }
 
-    pca_embedding(data, POSITIONING_DIMENSIONS)
-}
-
-fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
-    let (n_samples, n_features) = data.dim();
-    if n_samples < 2 {
-        return Err(AppError::Processing(
-            "PCA requires at least two feature vectors".into(),
-        ));
-    }
-    if n_features < 2 {
-        return Err(AppError::Processing(
-            "PCA requires at least two features".into(),
-        ));
+    let mut embedding = Array2::zeros((n_samples, POSITIONING_DIMENSIONS));
+    for (index, vector) in vectors.iter().enumerate() {
+        let position = projector.project(vector)?;
+        embedding[[index, 0]] = position[0];
+        embedding[[index, 1]] = position[1];
     }
 
-    let dimensions = dimensions.clamp(1, n_samples.min(n_features));
-
-    PcaBuilder::new(dimensions)
-        .build()
-        .fit_transform(&data)
-        .map_err(|e| AppError::Processing(e.to_string()))
+    Ok(embedding)
 }

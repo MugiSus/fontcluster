@@ -91,7 +91,7 @@ export interface SessionProgress {
 }
 
 export interface PositioningData {
-  position: number[]; // [x, y] 2D coordinates from PCA
+  position: number[]; // [x, y] 2D coordinates from the preference projector
 }
 
 export interface ClusteringData {
