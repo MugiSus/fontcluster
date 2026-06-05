@@ -67,7 +67,7 @@ function createFontPoints(data: Record<string, FontItem>): GraphPointData[] {
       key: item.meta.safe_name,
       item,
       x: ((position.x - minX) / rangeX) * GRAPH_SIZE,
-      y: ((position.y - minY) / rangeY) * GRAPH_SIZE,
+      y: ((maxY - position.y) / rangeY) * GRAPH_SIZE,
     });
   }
 
