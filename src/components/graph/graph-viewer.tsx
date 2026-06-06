@@ -13,6 +13,7 @@ import { processLassoSelection } from '../../actions';
 import { useElementSize } from '../../hooks/use-element-size';
 import { type FontWeight } from '../../types/font';
 import {
+  graphOrigin,
   getSelectableFontPoints,
   getSelectableFontPointsInBounds,
 } from './font-point-index';
@@ -351,33 +352,19 @@ export function GraphViewer(props: GraphViewerProps) {
           text-rendering='optimizeSpeed'
         >
           <g>
-            <path
-              d='M 490 490 L 510 510 M 510 490 L 490 510'
-              fill='none'
+            <line
+              x1={viewport.viewBox().x - viewport.viewBox().width}
+              y1={graphOrigin().y}
+              x2={viewport.viewBox().x + viewport.viewBox().width * 2}
+              y2={graphOrigin().y}
               stroke-width={viewport.zoomFactor()}
               class='pointer-events-none stroke-border'
             />
-            <circle
-              cx='500'
-              cy='500'
-              r='200'
-              fill='none'
-              stroke-width={viewport.zoomFactor()}
-              class='pointer-events-none stroke-border'
-            />
-            <circle
-              cx='500'
-              cy='500'
-              r='400'
-              fill='none'
-              stroke-width={viewport.zoomFactor()}
-              class='pointer-events-none stroke-border'
-            />
-            <circle
-              cx='500'
-              cy='500'
-              r='600'
-              fill='none'
+            <line
+              x1={graphOrigin().x}
+              y1={viewport.viewBox().y - viewport.viewBox().height}
+              x2={graphOrigin().x}
+              y2={viewport.viewBox().y + viewport.viewBox().height * 2}
               stroke-width={viewport.zoomFactor()}
               class='pointer-events-none stroke-border'
             />

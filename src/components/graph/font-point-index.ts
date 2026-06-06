@@ -3,7 +3,11 @@ import { quadtree, type Quadtree, type QuadtreeLeaf } from 'd3-quadtree';
 import { appState } from '../../store';
 import { type FontItem } from '../../types/font';
 import { GRAPH_SIZE } from './constants';
-import { type GraphPointData, type GraphVisibleBounds } from './types';
+import {
+  type GraphCoordinate,
+  type GraphPointData,
+  type GraphVisibleBounds,
+} from './types';
 
 export const MAX_NEAREST_FONT_ITEMS = 120;
 
@@ -115,6 +119,21 @@ function findNearestFontItems(
 
 export const fontPoints = createRoot(() => {
   const memo = createMemo(() => createFontPoints(appState.fonts.displayData));
+  return memo;
+});
+
+export const graphOrigin = createRoot(() => {
+  const memo = createMemo<GraphCoordinate>(() => {
+    const fontItems = Object.values(appState.fonts.displayData);
+    const { minX, maxX, minY, maxY } = getVectorBounds(fontItems);
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+
+    return {
+      x: ((0 - minX) / rangeX) * GRAPH_SIZE,
+      y: ((maxY - 0) / rangeY) * GRAPH_SIZE,
+    };
+  });
   return memo;
 });
 
