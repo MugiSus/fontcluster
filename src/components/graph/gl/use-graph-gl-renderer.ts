@@ -10,7 +10,6 @@ import {
   BufferGeometry,
   Color,
   ColorManagement,
-  DoubleSide,
   Float32BufferAttribute,
   Group,
   LinearFilter,
@@ -48,6 +47,8 @@ ColorManagement.enabled = false;
 const BACKDROP_COLOR = 0x000000;
 const POINT_SIZE_ACTIVE = 4.5;
 const POINT_SIZE_DIMMED = 3;
+// Bloom/glow toggle — flip to re-enable the glow post-process.
+const ENABLE_BLOOM = false;
 const BLOOM_STRENGTH = 0.9;
 const BLOOM_RADIUS = 0.5;
 // Keep the threshold above the dark backdrop so only bright point cores bloom;
@@ -112,7 +113,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       BLOOM_THRESHOLD,
     );
     composer.addPass(renderPass);
-    composer.addPass(bloomPass);
+    if (ENABLE_BLOOM) composer.addPass(bloomPass);
 
     // --- point cloud -----------------------------------------------------
     const pointGeometry = new BufferGeometry();
@@ -160,8 +161,35 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     interface ImageEntry {
       mesh: Mesh;
       material: ShaderMaterial;
+      aspect?: number | undefined;
     }
     const imageEntries = new Map<string, ImageEntry>();
+    let lastImageZoom = 1;
+
+    const getTextureAspect = (texture: Texture): number | undefined => {
+      const image = texture.image as
+        | { width?: number; height?: number }
+        | undefined;
+      if (image?.width && image.height) return image.width / image.height;
+      return undefined;
+    };
+
+    // Fit the image inside the IMAGE_WIDTH_PX x IMAGE_HEIGHT_PX box without
+    // distorting its aspect ratio (the SVG `xMidYMid meet` behaviour).
+    const applyImageScale = (entry: ImageEntry, zoom: number) => {
+      let width = IMAGE_WIDTH_PX;
+      let height = IMAGE_HEIGHT_PX;
+      const aspect = entry.aspect;
+      if (aspect && Number.isFinite(aspect) && aspect > 0) {
+        const boxAspect = IMAGE_WIDTH_PX / IMAGE_HEIGHT_PX;
+        if (aspect > boxAspect) {
+          height = IMAGE_WIDTH_PX / aspect;
+        } else {
+          width = IMAGE_HEIGHT_PX * aspect;
+        }
+      }
+      entry.mesh.scale.set(width * zoom, height * zoom, 1);
+    };
 
     // --- shared point lookup (rebuilt with the geometry) -----------------
     let pointByKey = new Map<string, GraphPointData>();
@@ -222,7 +250,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       for (let index = 0; index < count; index += 1) {
         const point = points[index]!;
         positions[index * 3] = point.x;
-        positions[index * 3 + 1] = point.y;
+        // Graph space is y-down; negate so the world is y-up for a standard camera.
+        positions[index * 3 + 1] = -point.y;
         positions[index * 3 + 2] = 0;
         const [r, g, b] = colorForCluster(
           palette,
@@ -299,7 +328,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           palette,
           point.item.computed?.clustering?.k,
         );
-        positions.push(point.x, point.y, 1);
+        positions.push(point.x, -point.y, 1);
         colors.push(r, g, b);
         radii.push(radius);
       }
@@ -361,9 +390,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             transparent: true,
             depthTest: false,
             depthWrite: false,
-            // The quad uses a negative Y scale to counter the flipped camera,
-            // which reverses winding — render both sides so it isn't culled.
-            side: DoubleSide,
             blending: NormalBlending,
           });
           const mesh = new Mesh(imagePlane, material);
@@ -377,7 +403,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           const cached = textureCache.get(safeName);
           if (cached) {
             material.uniforms['uMap']!.value = cached;
+            entry.aspect = getTextureAspect(cached);
           } else {
+            const loadingEntry = entry;
             const url = convertFileSrc(
               `${directory}/samples/${safeName}/sample.png`,
             );
@@ -387,6 +415,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
               texture.generateMipmaps = false;
               textureCache.set(safeName, texture);
               material.uniforms['uMap']!.value = texture;
+              loadingEntry.aspect = getTextureAspect(texture);
+              applyImageScale(loadingEntry, lastImageZoom);
               scheduleRender();
             });
           }
@@ -400,15 +430,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         const active = isActivePoint(point, filtered, activeWeights);
         entry.material.uniforms['uOpacity']!.value =
           active || key === selected ? 1 : DIMMED_OPACITY;
-        entry.mesh.position.set(point.x, point.y, 2);
-        // Negative Y scale counters the y-down (flipped) camera projection.
-        entry.mesh.scale.set(
-          IMAGE_WIDTH_PX * zoom,
-          -(IMAGE_HEIGHT_PX * zoom),
-          1,
-        );
+        entry.mesh.position.set(point.x, -point.y, 2);
+        applyImageScale(entry, zoom);
       }
 
+      lastImageZoom = zoom;
       scheduleRender();
     });
 
@@ -450,9 +476,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       camera.left = centerX - visibleWidth / 2;
       camera.right = centerX + visibleWidth / 2;
-      // y grows downward in graph space, so the smaller y is the top edge.
-      camera.top = centerY - visibleHeight / 2;
-      camera.bottom = centerY + visibleHeight / 2;
+      // World Y is the negated graph Y, so the camera is a standard y-up ortho.
+      camera.top = -centerY + visibleHeight / 2;
+      camera.bottom = -centerY - visibleHeight / 2;
       camera.updateProjectionMatrix();
       scheduleRender();
     });
