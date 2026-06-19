@@ -6,15 +6,22 @@ import { useGraphGlRenderer } from './use-graph-gl-renderer';
 interface GraphGlLayerProps {
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
+  zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
+  selectedKey: Accessor<string | null>;
+  hoveredKey: Accessor<string | null>;
+  selectedFamily: Accessor<string | null>;
+  imageKeys: Accessor<Set<string>>;
+  showImages: Accessor<boolean>;
+  sessionDirectory: Accessor<string>;
 }
 
 /**
- * GPU-rendered point cloud for the graph. Sits behind the SVG overlay, which
- * keeps owning interaction, coordinate transforms and the rich per-point
- * decorations (images, labels, selection rings).
+ * GPU-rendered graph: points + glow, selection/hover/family rings and the
+ * cluster-tinted sample images. Sits behind the SVG, which now only owns
+ * interaction, coordinate transforms and the lasso / zoom / axis overlays.
  */
 export function GraphGlLayer(props: GraphGlLayerProps) {
   let canvas: HTMLCanvasElement | undefined;
@@ -23,9 +30,16 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     getCanvas: () => canvas,
     size: () => props.size(),
     viewBox: () => props.viewBox(),
+    zoomFactor: () => props.zoomFactor(),
     points: () => props.points(),
     filteredKeys: () => props.filteredKeys(),
     activeWeights: () => props.activeWeights(),
+    selectedKey: () => props.selectedKey(),
+    hoveredKey: () => props.hoveredKey(),
+    selectedFamily: () => props.selectedFamily(),
+    imageKeys: () => props.imageKeys(),
+    showImages: () => props.showImages(),
+    sessionDirectory: () => props.sessionDirectory(),
   });
 
   return (

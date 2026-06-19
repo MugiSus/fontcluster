@@ -77,6 +77,8 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
   };
 
   return {
+    selectedKey: selectedFontKey,
+    selectedFamilyName: selectedFontFamily,
     isSelectedFontKey,
     isSelectedFamily,
     trackDraggingSelection,
