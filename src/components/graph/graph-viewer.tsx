@@ -1,6 +1,7 @@
 import {
   For,
   Show,
+  createMemo,
   createSelector,
   createSignal,
   onCleanup,
@@ -13,13 +14,16 @@ import { processLassoSelection } from '../../actions';
 import { useElementSize } from '../../hooks/use-element-size';
 import { type FontWeight } from '../../types/font';
 import {
+  fontPoints,
   graphOrigin,
   getSelectableFontPoints,
   getSelectableFontPointsInBounds,
 } from './font-point-index';
+import { GraphGlLayer } from './gl/graph-gl-layer';
 import { GraphPoint } from './point';
 import {
   type GraphCoordinate,
+  type GraphPointData,
   type GraphToolMode,
   type GraphVisibleBounds,
 } from './types';
@@ -89,6 +93,47 @@ export function GraphViewer(props: GraphViewerProps) {
   });
 
   const isHovered = createSelector(() => appState.ui.hoveredFontKey);
+
+  // The GL layer draws the full point field; the SVG only needs to render the
+  // visible points that carry a decoration (selection ring, family highlight,
+  // sample image or font name). Everything else is handled on the GPU.
+  interface DecoratedPoint {
+    point: GraphPointData;
+    shouldShowImage: boolean;
+    shouldShowFontName: boolean;
+  }
+
+  const decoratedPoints = createMemo(() => {
+    const visible = graph.visiblePoints();
+    const isMoving = viewport.isMoving();
+    const enabled: DecoratedPoint[] = [];
+    const disabled: DecoratedPoint[] = [];
+
+    const consider = (point: GraphPointData, isDisabled: boolean) => {
+      const imageVisible = !isMoving && graph.isImageVisible(point.key);
+      const shouldShowImage = props.showImages && imageVisible;
+      const shouldShowFontName =
+        !isDisabled && props.showFontNames && imageVisible;
+      const isDecorated =
+        selection.isSelectedFontKey(point.key) ||
+        isHovered(point.key) ||
+        selection.isSelectedFamily(point.item.meta.family_name) ||
+        shouldShowImage ||
+        shouldShowFontName;
+      if (!isDecorated) return;
+
+      (isDisabled ? disabled : enabled).push({
+        point,
+        shouldShowImage,
+        shouldShowFontName,
+      });
+    };
+
+    visible.visibleFilteredPoints.forEach((point) => consider(point, false));
+    visible.visibleUnfilteredPoints.forEach((point) => consider(point, true));
+
+    return { enabled, disabled };
+  });
 
   const appendLassoPoint = (event: MouseEvent) => {
     const point = viewport.getGraphPointFromEvent(event);
@@ -328,12 +373,19 @@ export function GraphViewer(props: GraphViewerProps) {
           </div>
         }
       >
+        <GraphGlLayer
+          size={svgSize}
+          viewBox={viewport.viewBox}
+          points={fontPoints}
+          filteredKeys={() => appState.fonts.filteredKeys}
+          activeWeights={() => props.activeGraphWeights}
+        />
         <svg
           ref={(el) => {
             svgElement = el;
             setSvgRef(el);
           }}
-          class='size-full select-none'
+          class='relative z-10 size-full select-none'
           style={{
             cursor: viewport.isDragging()
               ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
@@ -371,27 +423,23 @@ export function GraphViewer(props: GraphViewerProps) {
           </g>
 
           <g opacity={0.35}>
-            <For each={graph.visiblePoints().visibleUnfilteredPoints}>
-              {(point) => (
+            <For each={decoratedPoints().disabled}>
+              {(decorated) => (
                 <GraphPoint
-                  fontName={point.item.meta.font_name}
-                  weight={point.item.meta.weight}
-                  clusterId={point.item.computed?.clustering?.k}
-                  safeName={point.item.meta.safe_name}
-                  x={point.x}
-                  y={point.y}
-                  isSelected={selection.isSelectedFontKey(point.key)}
-                  isHovered={isHovered(point.key)}
+                  fontName={decorated.point.item.meta.font_name}
+                  weight={decorated.point.item.meta.weight}
+                  clusterId={decorated.point.item.computed?.clustering?.k}
+                  safeName={decorated.point.item.meta.safe_name}
+                  x={decorated.point.x}
+                  y={decorated.point.y}
+                  isSelected={selection.isSelectedFontKey(decorated.point.key)}
+                  isHovered={isHovered(decorated.point.key)}
                   isFamilySelected={selection.isSelectedFamily(
-                    point.item.meta.family_name,
+                    decorated.point.item.meta.family_name,
                   )}
                   sessionDirectory={appState.session.directory}
                   zoomFactor={viewport.zoomFactor()}
-                  shouldShowImage={
-                    props.showImages &&
-                    !viewport.isMoving() &&
-                    graph.isImageVisible(point.key)
-                  }
+                  shouldShowImage={decorated.shouldShowImage}
                   shouldShowFontName={false}
                   isDisabled
                 />
@@ -399,32 +447,24 @@ export function GraphViewer(props: GraphViewerProps) {
             </For>
           </g>
 
-          <For each={graph.visiblePoints().visibleFilteredPoints}>
-            {(point) => (
+          <For each={decoratedPoints().enabled}>
+            {(decorated) => (
               <GraphPoint
-                fontName={point.item.meta.font_name}
-                weight={point.item.meta.weight}
-                clusterId={point.item.computed?.clustering?.k}
-                safeName={point.item.meta.safe_name}
-                x={point.x}
-                y={point.y}
-                isSelected={selection.isSelectedFontKey(point.key)}
-                isHovered={isHovered(point.key)}
+                fontName={decorated.point.item.meta.font_name}
+                weight={decorated.point.item.meta.weight}
+                clusterId={decorated.point.item.computed?.clustering?.k}
+                safeName={decorated.point.item.meta.safe_name}
+                x={decorated.point.x}
+                y={decorated.point.y}
+                isSelected={selection.isSelectedFontKey(decorated.point.key)}
+                isHovered={isHovered(decorated.point.key)}
                 isFamilySelected={selection.isSelectedFamily(
-                  point.item.meta.family_name,
+                  decorated.point.item.meta.family_name,
                 )}
                 sessionDirectory={appState.session.directory}
                 zoomFactor={viewport.zoomFactor()}
-                shouldShowImage={
-                  props.showImages &&
-                  !viewport.isMoving() &&
-                  graph.isImageVisible(point.key)
-                }
-                shouldShowFontName={
-                  props.showFontNames &&
-                  !viewport.isMoving() &&
-                  graph.isImageVisible(point.key)
-                }
+                shouldShowImage={decorated.shouldShowImage}
+                shouldShowFontName={decorated.shouldShowFontName}
               />
             )}
           </For>

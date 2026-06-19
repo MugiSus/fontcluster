@@ -42,7 +42,8 @@
     "solid-js": "^1.9.3",
     "solid-sonner": "^0.2.8",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
@@ -52,6 +53,7 @@
     "@types/d3-polygon": "^3.0.2",
     "@types/d3-quadtree": "^3.0.6",
     "@types/node": "^24.0.8",
+    "@types/three": "^0.184.1",
     "@typescript-eslint/eslint-plugin": "^8.35.0",
     "@typescript-eslint/parser": "^8.35.0",
     "autoprefixer": "^10.4.21",
