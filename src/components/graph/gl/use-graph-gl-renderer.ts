@@ -47,8 +47,8 @@ ColorManagement.enabled = false;
 const BACKDROP_COLOR = 0x000000;
 const POINT_SIZE_ACTIVE = 4.5;
 const POINT_SIZE_DIMMED = 3;
-// Bloom/glow toggle — flip to re-enable the glow post-process.
-const ENABLE_BLOOM = false;
+// Bloom/glow toggle — applies to points and rings only (images stay crisp).
+const ENABLE_BLOOM = true;
 const BLOOM_STRENGTH = 0.9;
 const BLOOM_RADIUS = 0.5;
 // Keep the threshold above the dark backdrop so only bright point cores bloom;
@@ -100,7 +100,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     renderer.setClearColor(new Color(BACKDROP_COLOR), 1);
 
+    // `scene` holds the bloomed content (points + rings); `overlayScene` holds
+    // the sample images, drawn crisply on top of the post-processed result.
     const scene = new Scene();
+    const overlayScene = new Scene();
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
     camera.position.z = 10;
 
@@ -154,7 +157,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- sample images ---------------------------------------------------
     const imageGroup = new Group();
     imageGroup.renderOrder = 2;
-    scene.add(imageGroup);
+    overlayScene.add(imageGroup);
     const imagePlane = new PlaneGeometry(1, 1);
     const textureLoader = new TextureLoader();
     const textureCache = new Map<string, Texture>();
@@ -221,11 +224,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       rafId = undefined;
       if (animating) {
         ringMaterial.uniforms['uTime']!.value = performance.now() / 1000;
-        composer.render();
-        rafId = window.requestAnimationFrame(renderFrame);
-        return;
       }
+      // Bloomed content first, then the crisp (un-bloomed) images on top.
       composer.render();
+      renderer.setRenderTarget(null);
+      renderer.autoClear = false;
+      renderer.render(overlayScene, camera);
+      renderer.autoClear = true;
+      if (animating) rafId = window.requestAnimationFrame(renderFrame);
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
