@@ -1,20 +1,35 @@
-import { type Accessor, createEffect, onCleanup, onMount } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createSignal,
+  onCleanup,
+  onMount,
+} from 'solid-js';
 import {
   AdditiveBlending,
   BufferGeometry,
   Color,
   ColorManagement,
+  DoubleSide,
   Float32BufferAttribute,
+  Group,
+  LinearFilter,
+  Mesh,
+  NormalBlending,
   OrthographicCamera,
+  PlaneGeometry,
   Points,
   Scene,
   ShaderMaterial,
+  type Texture,
+  TextureLoader,
   Vector2,
   WebGLRenderer,
 } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { type FontWeight } from '../../../types/font';
 import { type GraphPointData, type GraphViewBox } from '../types';
 import {
@@ -22,33 +37,55 @@ import {
   readClusterColorPalette,
   type ClusterColorPalette,
 } from './cluster-colors-gl';
+import { imageFragmentShader, imageVertexShader } from './image-shaders';
 import { pointFragmentShader, pointVertexShader } from './point-shaders';
+import { ringFragmentShader, ringVertexShader } from './ring-shaders';
 
 // Colors come straight from the CSS variables as sRGB, so disable three's
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the SVG layer.
 ColorManagement.enabled = false;
 
-const BACKDROP_COLOR = 0x0a0a0c;
+const BACKDROP_COLOR = 0x000000;
 const POINT_SIZE_ACTIVE = 4.5;
 const POINT_SIZE_DIMMED = 3;
 const BLOOM_STRENGTH = 0.9;
 const BLOOM_RADIUS = 0.5;
-const BLOOM_THRESHOLD = 0;
+// Keep the threshold above the dark backdrop so only bright point cores bloom;
+// a threshold of 0 makes the whole frame haze over.
+const BLOOM_THRESHOLD = 0.2;
 const MAX_PIXEL_RATIO = 2;
+
+// Ring radii in CSS pixels, matching the SVG circle radii.
+const RING_RADIUS_SELECTED = 44;
+const RING_RADIUS_HOVERED = 22;
+const RING_RADIUS_FAMILY = 26;
+
+// Sample image footprint in CSS pixels, matching the SVG masked rect.
+const IMAGE_WIDTH_PX = 128;
+const IMAGE_HEIGHT_PX = 26;
+const DIMMED_OPACITY = 0.35;
 
 interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
+  zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
+  selectedKey: Accessor<string | null>;
+  hoveredKey: Accessor<string | null>;
+  selectedFamily: Accessor<string | null>;
+  imageKeys: Accessor<Set<string>>;
+  showImages: Accessor<boolean>;
+  sessionDirectory: Accessor<string>;
 }
 
 /**
- * Drives a Three.js point cloud that renders the graph nodes on the GPU with a
- * bloom/glow pass. It is a pure renderer of derived state: it reads viewport,
- * point and selection-adjacent signals but never mutates application state.
+ * Drives the entire graph render on the GPU: a glowing point cloud, the
+ * selection/hover/family rings and the cluster-tinted sample images, all
+ * post-processed with bloom. It is a pure renderer of derived state — it reads
+ * viewport / point / selection signals but never mutates application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
   onMount(() => {
@@ -77,8 +114,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     composer.addPass(renderPass);
     composer.addPass(bloomPass);
 
-    const geometry = new BufferGeometry();
-    const material = new ShaderMaterial({
+    // --- point cloud -----------------------------------------------------
+    const pointGeometry = new BufferGeometry();
+    const pointMaterial = new ShaderMaterial({
       uniforms: {
         uPixelRatio: { value: 1 },
         uSizeActive: { value: POINT_SIZE_ACTIVE },
@@ -91,60 +129,95 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       depthWrite: false,
       blending: AdditiveBlending,
     });
-    const pointCloud = new Points(geometry, material);
+    const pointCloud = new Points(pointGeometry, pointMaterial);
     pointCloud.frustumCulled = false;
+    pointCloud.renderOrder = 0;
     scene.add(pointCloud);
 
-    // --- on-demand render scheduling -------------------------------------
-    let rafId: number | undefined;
-    let needsRender = false;
-    const renderFrame = () => {
-      rafId = undefined;
-      if (!needsRender) return;
-      needsRender = false;
-      composer.render();
-    };
-    const scheduleRender = () => {
-      needsRender = true;
-      if (rafId !== undefined) return;
-      rafId = window.requestAnimationFrame(renderFrame);
-    };
+    // --- highlight rings -------------------------------------------------
+    const ringGeometry = new BufferGeometry();
+    const ringMaterial = new ShaderMaterial({
+      uniforms: { uPixelRatio: { value: 1 }, uTime: { value: 0 } },
+      vertexShader: ringVertexShader,
+      fragmentShader: ringFragmentShader,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      blending: AdditiveBlending,
+    });
+    const ringCloud = new Points(ringGeometry, ringMaterial);
+    ringCloud.frustumCulled = false;
+    ringCloud.renderOrder = 1;
+    scene.add(ringCloud);
 
-    // --- color palette (theme aware) -------------------------------------
+    // --- sample images ---------------------------------------------------
+    const imageGroup = new Group();
+    imageGroup.renderOrder = 2;
+    scene.add(imageGroup);
+    const imagePlane = new PlaneGeometry(1, 1);
+    const textureLoader = new TextureLoader();
+    const textureCache = new Map<string, Texture>();
+    interface ImageEntry {
+      mesh: Mesh;
+      material: ShaderMaterial;
+    }
+    const imageEntries = new Map<string, ImageEntry>();
+
+    // --- shared point lookup (rebuilt with the geometry) -----------------
+    let pointByKey = new Map<string, GraphPointData>();
+
+    // --- color palette (theme aware via a version signal) ----------------
     let palette: ClusterColorPalette = readClusterColorPalette();
-    const repaintColors = () => {
-      const attribute = geometry.getAttribute('aColor');
-      if (!attribute) return;
-      const colors = attribute.array as Float32Array;
-      const points = props.points();
-      for (let index = 0; index < points.length; index += 1) {
-        const [r, g, b] = colorForCluster(
-          palette,
-          points[index]!.item.computed?.clustering?.k,
-        );
-        colors[index * 3] = r;
-        colors[index * 3 + 1] = g;
-        colors[index * 3 + 2] = b;
-      }
-      attribute.needsUpdate = true;
-      scheduleRender();
-    };
+    const [colorVersion, setColorVersion] = createSignal(0);
     const themeObserver = new MutationObserver(() => {
       palette = readClusterColorPalette();
-      repaintColors();
+      setColorVersion((version) => version + 1);
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'style'],
     });
 
-    // --- geometry (rebuilt only when the point set changes) ---------------
+    const isActivePoint = (
+      point: GraphPointData,
+      filtered: Set<string>,
+      activeWeights: Set<FontWeight>,
+    ) =>
+      filtered.has(point.key) &&
+      activeWeights.has(point.item.meta.weight as FontWeight);
+
+    // --- render scheduling (continuous while rings animate) --------------
+    let rafId: number | undefined;
+    let animating = false;
+    const renderFrame = () => {
+      rafId = undefined;
+      if (animating) {
+        ringMaterial.uniforms['uTime']!.value = performance.now() / 1000;
+        composer.render();
+        rafId = window.requestAnimationFrame(renderFrame);
+        return;
+      }
+      composer.render();
+    };
+    const scheduleRender = () => {
+      if (rafId !== undefined) return;
+      rafId = window.requestAnimationFrame(renderFrame);
+    };
+    const setAnimating = (value: boolean) => {
+      if (value === animating) return;
+      animating = value;
+      if (value) scheduleRender();
+    };
+
+    // --- point geometry (rebuilt when the point set / theme changes) -----
     createEffect(() => {
       const points = props.points();
+      colorVersion();
       const count = points.length;
       const positions = new Float32Array(count * 3);
       const colors = new Float32Array(count * 3);
       const states = new Float32Array(count);
+      const lookup = new Map<string, GraphPointData>();
 
       for (let index = 0; index < count; index += 1) {
         const point = points[index]!;
@@ -158,35 +231,184 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         colors[index * 3] = r;
         colors[index * 3 + 1] = g;
         colors[index * 3 + 2] = b;
+        lookup.set(point.key, point);
       }
 
-      geometry.setAttribute(
+      pointByKey = lookup;
+      pointGeometry.setAttribute(
         'position',
         new Float32BufferAttribute(positions, 3),
       );
-      geometry.setAttribute('aColor', new Float32BufferAttribute(colors, 3));
-      geometry.setAttribute('aState', new Float32BufferAttribute(states, 1));
-      geometry.setDrawRange(0, count);
+      pointGeometry.setAttribute(
+        'aColor',
+        new Float32BufferAttribute(colors, 3),
+      );
+      pointGeometry.setAttribute(
+        'aState',
+        new Float32BufferAttribute(states, 1),
+      );
+      pointGeometry.setDrawRange(0, count);
       scheduleRender();
     });
 
-    // --- per-point active/dimmed state (filter + active weights) ----------
+    // --- point active/dimmed state (filter + active weights) -------------
     createEffect(() => {
       const points = props.points();
       const filtered = props.filteredKeys();
       const activeWeights = new Set(props.activeWeights());
-      const attribute = geometry.getAttribute('aState');
+      const attribute = pointGeometry.getAttribute('aState');
       if (!attribute || attribute.count !== points.length) return;
 
       const states = attribute.array as Float32Array;
       for (let index = 0; index < points.length; index += 1) {
-        const point = points[index]!;
-        const isActive =
-          filtered.has(point.key) &&
-          activeWeights.has(point.item.meta.weight as FontWeight);
-        states[index] = isActive ? 0 : 1;
+        states[index] = isActivePoint(points[index]!, filtered, activeWeights)
+          ? 0
+          : 1;
       }
       attribute.needsUpdate = true;
+      scheduleRender();
+    });
+
+    // --- highlight rings (selection / hover / family) --------------------
+    createEffect(() => {
+      const points = props.points();
+      const selected = props.selectedKey();
+      const hovered = props.hoveredKey();
+      const family = props.selectedFamily();
+      colorVersion();
+
+      // Dedupe per key, keeping the strongest affordance (selected wins).
+      const radiusByKey = new Map<string, number>();
+      if (family) {
+        for (const point of points) {
+          if (point.item.meta.family_name === family) {
+            radiusByKey.set(point.key, RING_RADIUS_FAMILY);
+          }
+        }
+      }
+      if (hovered) radiusByKey.set(hovered, RING_RADIUS_HOVERED);
+      if (selected) radiusByKey.set(selected, RING_RADIUS_SELECTED);
+
+      const positions: number[] = [];
+      const colors: number[] = [];
+      const radii: number[] = [];
+      for (const [key, radius] of radiusByKey) {
+        const point = pointByKey.get(key);
+        if (!point) continue;
+        const [r, g, b] = colorForCluster(
+          palette,
+          point.item.computed?.clustering?.k,
+        );
+        positions.push(point.x, point.y, 1);
+        colors.push(r, g, b);
+        radii.push(radius);
+      }
+
+      ringGeometry.setAttribute(
+        'position',
+        new Float32BufferAttribute(positions, 3),
+      );
+      ringGeometry.setAttribute(
+        'aColor',
+        new Float32BufferAttribute(colors, 3),
+      );
+      ringGeometry.setAttribute(
+        'aRadiusPx',
+        new Float32BufferAttribute(radii, 1),
+      );
+      ringGeometry.setDrawRange(0, radii.length);
+      setAnimating(radii.length > 0);
+      scheduleRender();
+    });
+
+    // --- sample images (cluster-tinted, masked quads) --------------------
+    createEffect(() => {
+      const imageKeys = props.imageKeys();
+      const selected = props.selectedKey();
+      const showImages = props.showImages();
+      const directory = props.sessionDirectory();
+      const zoom = props.zoomFactor();
+      const filtered = props.filteredKeys();
+      const activeWeights = new Set(props.activeWeights());
+      colorVersion();
+
+      // The selected font always shows its image; otherwise honour the toggle.
+      const desired = new Set<string>();
+      if (showImages) for (const key of imageKeys) desired.add(key);
+      if (selected) desired.add(selected);
+
+      for (const [key, entry] of imageEntries) {
+        if (desired.has(key)) continue;
+        imageGroup.remove(entry.mesh);
+        entry.material.dispose();
+        imageEntries.delete(key);
+      }
+
+      for (const key of desired) {
+        const point = pointByKey.get(key);
+        if (!point || !directory || !point.item.meta.safe_name) continue;
+
+        let entry = imageEntries.get(key);
+        if (!entry) {
+          const material = new ShaderMaterial({
+            uniforms: {
+              uMap: { value: null },
+              uColor: { value: new Color() },
+              uOpacity: { value: 1 },
+            },
+            vertexShader: imageVertexShader,
+            fragmentShader: imageFragmentShader,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false,
+            // The quad uses a negative Y scale to counter the flipped camera,
+            // which reverses winding — render both sides so it isn't culled.
+            side: DoubleSide,
+            blending: NormalBlending,
+          });
+          const mesh = new Mesh(imagePlane, material);
+          mesh.frustumCulled = false;
+          mesh.renderOrder = 2;
+          imageGroup.add(mesh);
+          entry = { mesh, material };
+          imageEntries.set(key, entry);
+
+          const safeName = point.item.meta.safe_name;
+          const cached = textureCache.get(safeName);
+          if (cached) {
+            material.uniforms['uMap']!.value = cached;
+          } else {
+            const url = convertFileSrc(
+              `${directory}/samples/${safeName}/sample.png`,
+            );
+            textureLoader.load(url, (texture) => {
+              texture.minFilter = LinearFilter;
+              texture.magFilter = LinearFilter;
+              texture.generateMipmaps = false;
+              textureCache.set(safeName, texture);
+              material.uniforms['uMap']!.value = texture;
+              scheduleRender();
+            });
+          }
+        }
+
+        const [r, g, b] = colorForCluster(
+          palette,
+          point.item.computed?.clustering?.k,
+        );
+        (entry.material.uniforms['uColor']!.value as Color).setRGB(r, g, b);
+        const active = isActivePoint(point, filtered, activeWeights);
+        entry.material.uniforms['uOpacity']!.value =
+          active || key === selected ? 1 : DIMMED_OPACITY;
+        entry.mesh.position.set(point.x, point.y, 2);
+        // Negative Y scale counters the y-down (flipped) camera projection.
+        entry.mesh.scale.set(
+          IMAGE_WIDTH_PX * zoom,
+          -(IMAGE_HEIGHT_PX * zoom),
+          1,
+        );
+      }
+
       scheduleRender();
     });
 
@@ -203,7 +425,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       composer.setPixelRatio(pixelRatio);
       composer.setSize(width, height);
       bloomPass.setSize(width, height);
-      material.uniforms['uPixelRatio']!.value = pixelRatio;
+      pointMaterial.uniforms['uPixelRatio']!.value = pixelRatio;
+      ringMaterial.uniforms['uPixelRatio']!.value = pixelRatio;
       scheduleRender();
     });
 
@@ -237,8 +460,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     onCleanup(() => {
       if (rafId !== undefined) window.cancelAnimationFrame(rafId);
       themeObserver.disconnect();
-      geometry.dispose();
-      material.dispose();
+      for (const entry of imageEntries.values()) entry.material.dispose();
+      imageEntries.clear();
+      for (const texture of textureCache.values()) texture.dispose();
+      textureCache.clear();
+      imagePlane.dispose();
+      pointGeometry.dispose();
+      pointMaterial.dispose();
+      ringGeometry.dispose();
+      ringMaterial.dispose();
       bloomPass.dispose();
       composer.dispose();
       renderer.dispose();

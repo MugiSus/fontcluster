@@ -23,7 +23,7 @@ export function GraphContent() {
   });
 
   return (
-    <div class='relative size-full bg-background'>
+    <div class='relative isolate size-full bg-background'>
       <GraphViewer
         toolMode={toolMode()}
         showImages={showImages()}

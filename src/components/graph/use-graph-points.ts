@@ -73,6 +73,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
   return {
     allPoints: fontPoints,
     visiblePoints,
+    visibleImageKeys,
     isImageVisible,
     findSelectablePoint,
   };
