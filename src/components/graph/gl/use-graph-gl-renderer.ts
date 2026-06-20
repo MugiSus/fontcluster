@@ -28,6 +28,9 @@ import {
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { type FontWeight } from '../../../types/font';
 import { type GraphPointData, type GraphViewBox } from '../types';
@@ -38,7 +41,6 @@ import {
 } from './cluster-colors-gl';
 import { imageFragmentShader, imageVertexShader } from './image-shaders';
 import { pointFragmentShader, pointVertexShader } from './point-shaders';
-import { ringFragmentShader, ringVertexShader } from './ring-shaders';
 
 // Colors come straight from the CSS variables as sRGB, so disable three's
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the SVG layer.
@@ -56,10 +58,12 @@ const BLOOM_RADIUS = 0.5;
 const BLOOM_THRESHOLD = 0.2;
 const MAX_PIXEL_RATIO = 2;
 
-// Ring radii in CSS pixels, matching the SVG circle radii.
-const RING_RADIUS_SELECTED = 44;
-const RING_RADIUS_HOVERED = 22;
-const RING_RADIUS_FAMILY = 26;
+// Ring radii in CSS pixels. The stroke width is constant regardless of radius.
+const RING_RADIUS_SELECTED = 30;
+const RING_RADIUS_HOVERED = 16;
+const RING_RADIUS_FAMILY = 20;
+const RING_LINE_WIDTH_PX = 1;
+const RING_SEGMENTS = 64;
 
 // Sample image footprint in CSS pixels, matching the SVG masked rect.
 const IMAGE_WIDTH_PX = 128;
@@ -138,21 +142,51 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     pointCloud.renderOrder = 0;
     scene.add(pointCloud);
 
-    // --- highlight rings -------------------------------------------------
-    const ringGeometry = new BufferGeometry();
-    const ringMaterial = new ShaderMaterial({
-      uniforms: { uPixelRatio: { value: 1 }, uTime: { value: 0 } },
-      vertexShader: ringVertexShader,
-      fragmentShader: ringFragmentShader,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      blending: AdditiveBlending,
-    });
-    const ringCloud = new Points(ringGeometry, ringMaterial);
-    ringCloud.frustumCulled = false;
-    ringCloud.renderOrder = 1;
-    scene.add(ringCloud);
+    // --- highlight rings (crisp Line2 circles, kept out of the bloom) -----
+    // A shared unit circle (radius 1); each ring scales it to its pixel radius.
+    // Line2 keeps a constant pixel stroke width independent of that scale.
+    const ringCircleGeometry = new LineGeometry();
+    {
+      const circlePositions: number[] = [];
+      for (let segment = 0; segment <= RING_SEGMENTS; segment += 1) {
+        const angle = (segment / RING_SEGMENTS) * Math.PI * 2;
+        circlePositions.push(Math.cos(angle), Math.sin(angle), 0);
+      }
+      ringCircleGeometry.setPositions(circlePositions);
+    }
+    const ringGroup = new Group();
+    ringGroup.renderOrder = 1;
+    overlayScene.add(ringGroup);
+    interface RingEntry {
+      line: Line2;
+      material: LineMaterial;
+      radiusPx: number;
+    }
+    const ringPool: RingEntry[] = [];
+    let activeRingCount = 0;
+    let lastRingZoom = 1;
+    let lastViewWidth = 1;
+    let lastViewHeight = 1;
+
+    const getRingEntry = (index: number): RingEntry => {
+      const existing = ringPool[index];
+      if (existing) return existing;
+      const material = new LineMaterial({
+        color: 0xffffff,
+        linewidth: RING_LINE_WIDTH_PX,
+        transparent: true,
+        opacity: 0.9,
+        depthTest: false,
+      });
+      material.resolution.set(lastViewWidth, lastViewHeight);
+      const line = new Line2(ringCircleGeometry, material);
+      line.frustumCulled = false;
+      line.visible = false;
+      ringGroup.add(line);
+      const entry: RingEntry = { line, material, radiusPx: 0 };
+      ringPool[index] = entry;
+      return entry;
+    };
 
     // --- sample images ---------------------------------------------------
     const imageGroup = new Group();
@@ -217,30 +251,20 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       filtered.has(point.key) &&
       activeWeights.has(point.item.meta.weight as FontWeight);
 
-    // --- render scheduling (continuous while rings animate) --------------
+    // --- render scheduling (on demand) -----------------------------------
     let rafId: number | undefined;
-    let animating = false;
     const renderFrame = () => {
       rafId = undefined;
-      if (animating) {
-        ringMaterial.uniforms['uTime']!.value = performance.now() / 1000;
-      }
-      // Bloomed content first, then the crisp (un-bloomed) images on top.
+      // Bloomed content first, then the crisp (un-bloomed) overlay on top.
       composer.render();
       renderer.setRenderTarget(null);
       renderer.autoClear = false;
       renderer.render(overlayScene, camera);
       renderer.autoClear = true;
-      if (animating) rafId = window.requestAnimationFrame(renderFrame);
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
       rafId = window.requestAnimationFrame(renderFrame);
-    };
-    const setAnimating = (value: boolean) => {
-      if (value === animating) return;
-      animating = value;
-      if (value) scheduleRender();
     };
 
     // --- point geometry (rebuilt when the point set / theme changes) -----
@@ -324,35 +348,41 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       if (hovered) radiusByKey.set(hovered, RING_RADIUS_HOVERED);
       if (selected) radiusByKey.set(selected, RING_RADIUS_SELECTED);
 
-      const positions: number[] = [];
-      const colors: number[] = [];
-      const radii: number[] = [];
-      for (const [key, radius] of radiusByKey) {
+      let index = 0;
+      for (const [key, radiusPx] of radiusByKey) {
         const point = pointByKey.get(key);
         if (!point) continue;
+        const entry = getRingEntry(index);
         const [r, g, b] = colorForCluster(
           palette,
           point.item.computed?.clustering?.k,
         );
-        positions.push(point.x, -point.y, 1);
-        colors.push(r, g, b);
-        radii.push(radius);
+        entry.material.color.setRGB(r, g, b);
+        entry.radiusPx = radiusPx;
+        entry.line.position.set(point.x, -point.y, 1);
+        entry.line.scale.set(
+          radiusPx * lastRingZoom,
+          radiusPx * lastRingZoom,
+          1,
+        );
+        entry.line.visible = true;
+        index += 1;
       }
+      for (let i = index; i < ringPool.length; i += 1) {
+        ringPool[i]!.line.visible = false;
+      }
+      activeRingCount = index;
+      scheduleRender();
+    });
 
-      ringGeometry.setAttribute(
-        'position',
-        new Float32BufferAttribute(positions, 3),
-      );
-      ringGeometry.setAttribute(
-        'aColor',
-        new Float32BufferAttribute(colors, 3),
-      );
-      ringGeometry.setAttribute(
-        'aRadiusPx',
-        new Float32BufferAttribute(radii, 1),
-      );
-      ringGeometry.setDrawRange(0, radii.length);
-      setAnimating(radii.length > 0);
+    // --- rescale rings to keep a constant pixel radius on zoom ------------
+    createEffect(() => {
+      const zoom = props.zoomFactor();
+      lastRingZoom = zoom;
+      for (let i = 0; i < activeRingCount; i += 1) {
+        const entry = ringPool[i]!;
+        entry.line.scale.set(entry.radiusPx * zoom, entry.radiusPx * zoom, 1);
+      }
       scheduleRender();
     });
 
@@ -458,7 +488,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       composer.setSize(width, height);
       bloomPass.setSize(width, height);
       pointMaterial.uniforms['uPixelRatio']!.value = pixelRatio;
-      ringMaterial.uniforms['uPixelRatio']!.value = pixelRatio;
+      // LineMaterial needs the viewport resolution to size its pixel stroke.
+      lastViewWidth = width;
+      lastViewHeight = height;
+      for (const entry of ringPool)
+        entry.material.resolution.set(width, height);
       scheduleRender();
     });
 
@@ -499,8 +533,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       imagePlane.dispose();
       pointGeometry.dispose();
       pointMaterial.dispose();
-      ringGeometry.dispose();
-      ringMaterial.dispose();
+      for (const entry of ringPool) entry.material.dispose();
+      ringCircleGeometry.dispose();
       bloomPass.dispose();
       composer.dispose();
       renderer.dispose();
