@@ -27,6 +27,8 @@ void main() {
 `;
 
 export const pointFragmentShader = /* glsl */ `
+uniform float uLightMode;
+
 varying vec3 vColor;
 varying float vAlpha;
 varying float vGlow;
@@ -39,8 +41,16 @@ void main() {
   float core = smoothstep(1.0, 0.05, dist);
   float halo = pow(1.0 - clamp(dist, 0.0, 1.0), 2.0);
   float intensity = clamp(core + halo * 0.6 * vGlow, 0.0, 1.0);
-  vec3 color = vColor * (0.55 + 0.85 * vGlow);
 
-  gl_FragColor = vec4(color, intensity * vAlpha);
+  if (uLightMode > 0.5) {
+    // Subtractive ink on a light background: MultiplyBlending darkens the
+    // white backdrop toward the cluster color, so overlaps build up density.
+    vec3 ink = mix(vec3(1.0), vColor, intensity * vAlpha);
+    gl_FragColor = vec4(ink, 1.0);
+  } else {
+    // Additive glow on a dark background.
+    vec3 color = vColor * (0.55 + 0.85 * vGlow);
+    gl_FragColor = vec4(color, intensity * vAlpha);
+  }
 }
 `;

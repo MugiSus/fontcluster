@@ -14,6 +14,7 @@ import {
   Group,
   LinearFilter,
   Mesh,
+  MultiplyBlending,
   NormalBlending,
   OrthographicCamera,
   PlaneGeometry,
@@ -36,6 +37,7 @@ import { type FontWeight } from '../../../types/font';
 import { type GraphPointData, type GraphViewBox } from '../types';
 import {
   colorForCluster,
+  readBackgroundColor,
   readClusterColorPalette,
   type ClusterColorPalette,
 } from './cluster-colors-gl';
@@ -129,6 +131,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         uPixelRatio: { value: 1 },
         uSizeActive: { value: POINT_SIZE_ACTIVE },
         uSizeDimmed: { value: POINT_SIZE_DIMMED },
+        uLightMode: { value: 0 },
       },
       vertexShader: pointVertexShader,
       fragmentShader: pointFragmentShader,
@@ -237,6 +240,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const themeObserver = new MutationObserver(() => {
       palette = readClusterColorPalette();
       setColorVersion((version) => version + 1);
+      applyTheme();
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,
@@ -266,6 +270,24 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       if (rafId !== undefined) return;
       rafId = window.requestAnimationFrame(renderFrame);
     };
+
+    // Match the renderer to the theme: dark = additive glow + bloom, light =
+    // subtractive ink (MultiplyBlending) with bloom off, on the panel's own bg.
+    const applyTheme = () => {
+      const background = readBackgroundColor();
+      renderer.setClearColor(
+        new Color(background.rgb[0], background.rgb[1], background.rgb[2]),
+        1,
+      );
+      pointMaterial.blending = background.isLight
+        ? MultiplyBlending
+        : AdditiveBlending;
+      pointMaterial.needsUpdate = true;
+      pointMaterial.uniforms['uLightMode']!.value = background.isLight ? 1 : 0;
+      bloomPass.enabled = ENABLE_BLOOM && !background.isLight;
+      scheduleRender();
+    };
+    applyTheme();
 
     // --- point geometry (rebuilt when the point set / theme changes) -----
     createEffect(() => {
