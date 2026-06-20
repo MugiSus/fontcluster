@@ -1,20 +1,24 @@
-// Resolves cluster colors as raw sRGB float triplets for the WebGL point cloud.
-// This mirrors getClusterTextColor() in lib/cluster-colors but returns numeric
-// RGB (read from the same `--cluster-*` CSS variables) so it stays in sync with
-// the theme and the SVG rendering. It is a pure read of derived presentation
-// data and owns no application state.
-
-const CLUSTER_VAR_COUNT = 8;
-// Tailwind `text-zinc-500`, used for unclustered / cluster id -1.
-const UNCLUSTERED_HEX = '#71717a';
+/**
+ * Color helpers for the WebGL graph layer.
+ *
+ * Cluster colors are read straight from the `--cluster-*` CSS variables (which
+ * are authored as hex) and parsed with {@link hexToRgb}. The theme background
+ * is HSL in CSS, so rather than parse HSL at runtime we keep the two background
+ * colors as hex constants that mirror `index.css`.
+ */
 
 export type RgbTriplet = [number, number, number];
 
-export interface ClusterColorPalette {
-  cluster: RgbTriplet[];
-  unclustered: RgbTriplet;
-}
+const CLUSTER_VAR_COUNT = 8;
+/** Tailwind `text-zinc-500`, used for unclustered points / cluster id -1. */
+const UNCLUSTERED_HEX = '#71717a';
 
+// Hex equivalents of the `--background` HSL values in index.css. Update these
+// alongside the theme: light `210 50% 99.4%`, dark `240 13% 7%`.
+const LIGHT_BACKGROUND_HEX = '#fdfefe';
+const DARK_BACKGROUND_HEX = '#0f0f14';
+
+/** Parses `#rgb` / `#rrggbb` to a 0..1 RGB triple (white on bad input). */
 function hexToRgb(hex: string): RgbTriplet {
   const value = hex.trim().replace(/^#/, '');
   const full =
@@ -33,6 +37,7 @@ function hexToRgb(hex: string): RgbTriplet {
   ];
 }
 
+/** Reads a CSS custom property off `:root`, with a fallback if it is empty. */
 function readCssVar(name: string, fallback: string): string {
   const value = getComputedStyle(document.documentElement)
     .getPropertyValue(name)
@@ -40,6 +45,14 @@ function readCssVar(name: string, fallback: string): string {
   return value || fallback;
 }
 
+export interface ClusterColorPalette {
+  /** Colors for cluster ids 0..7 (indexed modulo length). */
+  cluster: RgbTriplet[];
+  /** Color for unclustered points (cluster id undefined or -1). */
+  unclustered: RgbTriplet;
+}
+
+/** Reads the current theme's cluster palette from the `--cluster-*` variables. */
 export function readClusterColorPalette(): ClusterColorPalette {
   const cluster: RgbTriplet[] = [];
   for (let index = 1; index <= CLUSTER_VAR_COUNT; index += 1) {
@@ -48,6 +61,7 @@ export function readClusterColorPalette(): ClusterColorPalette {
   return { cluster, unclustered: hexToRgb(UNCLUSTERED_HEX) };
 }
 
+/** Picks the palette color for a cluster id (mirrors `getClusterTextColor`). */
 export function colorForCluster(
   palette: ClusterColorPalette,
   clusterId: number | undefined,
@@ -56,39 +70,23 @@ export function colorForCluster(
   return palette.cluster[clusterId % palette.cluster.length]!;
 }
 
-function hslToRgb(h: number, s: number, l: number): RgbTriplet {
-  if (s === 0) return [l, l, l];
-  const hue2rgb = (p: number, q: number, t: number) => {
-    let tt = t;
-    if (tt < 0) tt += 1;
-    if (tt > 1) tt -= 1;
-    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
-    if (tt < 1 / 2) return q;
-    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
-    return p;
-  };
-  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-  const p = 2 * l - q;
-  const hue = h / 360;
-  return [
-    hue2rgb(p, q, hue + 1 / 3),
-    hue2rgb(p, q, hue),
-    hue2rgb(p, q, hue - 1 / 3),
-  ];
-}
-
-export interface BackgroundInfo {
+export interface ThemeBackground {
+  /** The background color, matching the panel's CSS `--background`. */
   rgb: RgbTriplet;
+  /** True in light mode (drives the subtractive/additive render choice). */
   isLight: boolean;
 }
 
-// Reads the theme's `--background` (an HSL triple like "240 13% 7%") so the
-// renderer can match the panel background and pick a light/dark render mode.
-export function readBackgroundColor(): BackgroundInfo {
-  const raw = readCssVar('--background', '0 0% 100%');
-  const parts = raw.split(/\s+/).filter(Boolean);
-  const h = Number.parseFloat(parts[0] ?? '0') || 0;
-  const s = (Number.parseFloat(parts[1] ?? '0') || 0) / 100;
-  const l = (Number.parseFloat(parts[2] ?? '100') || 100) / 100;
-  return { rgb: hslToRgb(h, s, l), isLight: l > 0.5 };
+/**
+ * Reports the current theme background. Dark mode is read from the
+ * `data-kb-theme` attribute Kobalte sets on `:root` — the same hook index.css
+ * themes on — and the color comes from the hex constants above.
+ */
+export function readThemeBackground(): ThemeBackground {
+  const isDark =
+    document.documentElement.getAttribute('data-kb-theme') === 'dark';
+  return {
+    rgb: hexToRgb(isDark ? DARK_BACKGROUND_HEX : LIGHT_BACKGROUND_HEX),
+    isLight: !isDark,
+  };
 }
