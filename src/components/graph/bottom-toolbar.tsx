@@ -8,6 +8,7 @@ import {
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
+  SparklesIcon,
   TypeIcon,
   ZoomInIcon,
 } from 'lucide-solid';
@@ -23,9 +24,11 @@ interface GraphBottomToolbarProps {
   isSerachVisible: boolean;
   showImages: boolean;
   showFontNames: boolean;
+  showGlow: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
+  onToggleGlow: () => void;
   onToggleSearch: () => void;
   onZoomIn?: (() => void) | undefined;
   onZoomOut?: (() => void) | undefined;
@@ -196,6 +199,21 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           <TypeIcon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Show Font Names</TooltipContent>
+      </Tooltip>
+
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant={props.showGlow ? 'default' : 'ghost'}
+          size='icon'
+          class='size-8 rounded-md shadow-none'
+          aria-pressed={props.showGlow}
+          aria-label='Show Glow'
+          onClick={() => props.onToggleGlow()}
+        >
+          <SparklesIcon class='size-4' />
+        </TooltipTrigger>
+        <TooltipContent>Show Glow</TooltipContent>
       </Tooltip>
 
       <div class='w-6 border-t' />

@@ -47,6 +47,7 @@ export interface UseGraphGlRendererProps {
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
+  glow: Accessor<boolean>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -136,6 +137,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- effect: point colors (point set or theme changed) ---------------
     createEffect(() => {
       pointLayer.setColors(props.points(), isDark());
+      scheduleRender();
+    });
+
+    // --- effect: glow on/off ---------------------------------------------
+    createEffect(() => {
+      pointLayer.setGlow(props.glow());
       scheduleRender();
     });
 

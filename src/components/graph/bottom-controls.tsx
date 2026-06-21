@@ -11,6 +11,7 @@ interface GraphBottomControlsProps {
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
+  showGlow: boolean;
   weights: FontWeight[];
   activeWeights: FontWeight[];
   zoomControls: ViewportZoomControls | null;
@@ -18,6 +19,7 @@ interface GraphBottomControlsProps {
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
+  onToggleGlow: () => void;
   onWeightsChange: (weights: FontWeight[]) => void;
   onClearLasso: () => void;
 }
@@ -63,9 +65,11 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
         isSerachVisible={isSearchVisible()}
         showImages={props.showImages}
         showFontNames={props.showFontNames}
+        showGlow={props.showGlow}
         onToolModeChange={props.onToolModeChange}
         onToggleImages={props.onToggleImages}
         onToggleFontNames={props.onToggleFontNames}
+        onToggleGlow={props.onToggleGlow}
         onToggleSearch={toggleSearch}
         onZoomIn={props.zoomControls?.zoomIn}
         onZoomOut={props.zoomControls?.zoomOut}

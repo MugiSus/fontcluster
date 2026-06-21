@@ -8,7 +8,8 @@ import {
 
 /** Half-length of each axis line — large enough to always span the viewport. */
 const AXIS_EXTENT = 1_000_000;
-const AXIS_OPACITY = 0.7;
+// Full opacity so the line is exactly `--border`, not diluted by the background.
+const AXIS_OPACITY = 1;
 // Hex equivalents of the `--border` HSL values in index.css (light / dark).
 const BORDER_LIGHT = '#d6dee9';
 const BORDER_DARK = '#333338';

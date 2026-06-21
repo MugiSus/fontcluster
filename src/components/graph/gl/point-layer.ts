@@ -48,6 +48,8 @@ export interface PointLayer {
   ): void;
   /** Switches between additive (dark) and normal-blend (light) rendering. */
   setLightMode(isLight: boolean): void;
+  /** Toggles the halo glow (off = just the small core dots). */
+  setGlow(enabled: boolean): void;
   /** Keeps the sprite size constant in CSS pixels across device pixel ratios. */
   setPixelRatio(pixelRatio: number): void;
   /** Releases GPU resources. */
@@ -63,6 +65,7 @@ export function createPointLayer(): PointLayer {
       uSize: { value: SIZE },
       uCore: { value: CORE },
       uOpacity: { value: GLOW_OPACITY },
+      uGlowEnabled: { value: 1 },
     },
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
@@ -142,6 +145,10 @@ export function createPointLayer(): PointLayer {
       // transparently over the white background (no opaque disc).
       material.blending = isLight ? NormalBlending : AdditiveBlending;
       material.needsUpdate = true;
+    },
+
+    setGlow(enabled) {
+      material.uniforms['uGlowEnabled']!.value = enabled ? 1 : 0;
     },
 
     setPixelRatio(pixelRatio) {
