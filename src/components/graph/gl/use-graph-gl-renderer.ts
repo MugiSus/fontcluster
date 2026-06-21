@@ -10,12 +10,8 @@ import {
   ColorManagement,
   OrthographicCamera,
   Scene,
-  Vector2,
   WebGLRenderer,
 } from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { type FontWeight } from '../../../types/font';
 import { type GraphPointData, type GraphViewBox } from '../types';
 import {
@@ -32,14 +28,6 @@ import { createRingLayer, type RingSpec } from './ring-layer';
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the CSS theme.
 ColorManagement.enabled = false;
 
-// Bloom (glow) tuning.
-// - threshold sits above the dark backdrop so only bright point cores bloom.
-// - a small radius keeps the glow tight around points; a large radius smears it
-//   into a full-frame haze that visibly lifts the background color.
-const BLOOM_STRENGTH = 1.0;
-const BLOOM_RADIUS = 0.15;
-const BLOOM_THRESHOLD = 0.2;
-
 // Highlight ring radii in CSS pixels (stroke width is constant; see RingLayer).
 const RING_RADIUS_SELECTED = 30;
 const RING_RADIUS_HOVERED = 16;
@@ -47,7 +35,7 @@ const RING_RADIUS_FAMILY = 20;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.35;
-/** Cap the device pixel ratio so bloom stays affordable on HiDPI displays. */
+/** Cap the device pixel ratio so rendering stays affordable on HiDPI displays. */
 const MAX_PIXEL_RATIO = 2;
 
 export interface UseGraphGlRendererProps {
@@ -71,67 +59,50 @@ export interface UseGraphGlRendererProps {
  *
  * Responsibilities are split across three composable layers — see
  * {@link createPointLayer}, {@link createRingLayer} and {@link createImageLayer}.
- * This hook owns the renderer, the two scenes (bloomed points vs. crisp
- * overlay), the camera, the bloom composer and the on-demand render loop, and
- * wires Solid signals to the layers via fine-grained effects. It is a pure
- * renderer of derived state — it never mutates application state.
+ * Everything is drawn in a single scene rendered directly (no post-processing):
+ * the glow lives in the point sprite itself, so the background stays exactly the
+ * theme color. This hook owns the renderer, scene, camera and the on-demand
+ * render loop, and wires Solid signals to the layers via fine-grained effects.
+ * It is a pure renderer of derived state — it never mutates application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
   onMount(() => {
     const canvas = props.getCanvas();
     if (!canvas) return;
 
-    // --- core: renderer, scenes, camera, bloom composer ------------------
-    // `scene` is post-processed with bloom (points); `overlayScene` is drawn
-    // crisply on top afterwards (rings + images), so highlights stay sharp.
+    // --- core: renderer, scene, camera -----------------------------------
     const renderer = new WebGLRenderer({
       canvas,
       antialias: true,
       powerPreference: 'high-performance',
     });
-    const scene = new Scene();
-    const overlayScene = new Scene();
 
+    const scene = new Scene();
     // Orthographic, y-up: world Y is the negated graph Y (graph space is
     // y-down), so a standard camera maps it the right way up.
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
     camera.position.z = 10;
 
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(
-      new Vector2(1, 1),
-      BLOOM_STRENGTH,
-      BLOOM_RADIUS,
-      BLOOM_THRESHOLD,
-    );
-    composer.addPass(bloomPass);
-
     // --- on-demand render loop -------------------------------------------
-    // Nothing animates continuously, so we render a single frame whenever a
-    // reactive dependency or an async texture asks for one.
+    // Nothing animates continuously; render a single frame whenever a reactive
+    // dependency or an async texture asks for one.
     let rafId: number | undefined;
     const renderFrame = () => {
       rafId = undefined;
-      composer.render();
-      // Draw the crisp overlay over the post-processed result.
-      renderer.setRenderTarget(null);
-      renderer.autoClear = false;
-      renderer.render(overlayScene, camera);
-      renderer.autoClear = true;
+      renderer.render(scene, camera);
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
       rafId = window.requestAnimationFrame(renderFrame);
     };
 
-    // --- layers ----------------------------------------------------------
+    // --- layers (one scene; render order keeps images over rings over dots) -
     const pointLayer = createPointLayer();
     const ringLayer = createRingLayer();
     const imageLayer = createImageLayer(scheduleRender);
     scene.add(pointLayer.object);
-    overlayScene.add(ringLayer.object);
-    overlayScene.add(imageLayer.object);
+    scene.add(ringLayer.object);
+    scene.add(imageLayer.object);
 
     // --- shared derived state --------------------------------------------
     // Palette is refreshed on theme change; `pointByKey` lets the ring/image
@@ -144,10 +115,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const [colorVersion, setColorVersion] = createSignal(0);
 
     // --- theme: light vs. dark -------------------------------------------
-    // Dark: additive glow + bloom on the dark backdrop.
-    // Light: subtractive ink (the point layer multiplies) with bloom off.
-    // The clear color is resolved from the CSS theme so the canvas matches the
-    // surrounding panel exactly (no brighter/darker seam).
+    // The clear color is the theme background; the point layer flips between
+    // additive glow (dark) and normal-blended halos (light).
     const applyTheme = () => {
       const background = readThemeBackground();
       renderer.setClearColor(
@@ -155,7 +124,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         1,
       );
       pointLayer.setLightMode(background.isLight);
-      bloomPass.enabled = !background.isLight;
       scheduleRender();
     };
     const themeObserver = new MutationObserver(() => {
@@ -267,7 +235,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       scheduleRender();
     });
 
-    // --- effect: renderer / composer sizing ------------------------------
+    // --- effect: renderer sizing -----------------------------------------
     createEffect(() => {
       const { width, height } = props.size();
       if (width <= 0 || height <= 0) return;
@@ -277,9 +245,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       );
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
-      composer.setPixelRatio(pixelRatio);
-      composer.setSize(width, height);
-      bloomPass.setSize(width, height);
       pointLayer.setPixelRatio(pixelRatio);
       ringLayer.setResolution(width, height);
       scheduleRender();
@@ -319,8 +284,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       pointLayer.dispose();
       ringLayer.dispose();
       imageLayer.dispose();
-      bloomPass.dispose();
-      composer.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     });

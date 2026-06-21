@@ -15,8 +15,8 @@ const UNCLUSTERED_HEX = '#71717a';
 
 // Hex equivalents of the `--background` HSL values in index.css. Update these
 // alongside the theme: light `210 50% 99.4%`, dark `240 13% 7%`.
-const LIGHT_BACKGROUND_HEX = '#fdfefe';
-const DARK_BACKGROUND_HEX = '#0f0f14';
+const LIGHT_BACKGROUND_HEX = '#fdfdfe';
+const DARK_BACKGROUND_HEX = '#0e0f13';
 
 /** Parses `#rgb` / `#rrggbb` to a 0..1 RGB triple (white on bad input). */
 function hexToRgb(hex: string): RgbTriplet {
