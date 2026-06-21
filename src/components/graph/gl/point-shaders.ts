@@ -16,8 +16,9 @@ attribute vec3 aColor;
 attribute float aState; // 0 = active, 1 = dimmed (filtered out / inactive weight)
 
 uniform float uPixelRatio;
-uniform float uSize;   // blur diameter (CSS px)
-uniform float uCore;   // solid core diameter (CSS px)
+uniform float uSize;        // blur diameter (CSS px)
+uniform float uCore;        // solid core diameter (CSS px)
+uniform float uGlowEnabled; // 1 = full glow sprite, 0 = shrink to the core dot
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -31,10 +32,15 @@ void main() {
   float scale = dimmed ? 0.6 : 1.0;
   vAlpha = dimmed ? 0.2 : 1.0;
   vGlow = dimmed ? 0.5 : 1.0;
-  vCoreFrac = uCore / uSize; // scale cancels, so the core keeps its proportion
+
+  // Without the glow, shrink the sprite to just the core dot: the halo area is
+  // pure fill-rate cost (the fragment would zero it out anyway). The visible dot
+  // stays the same size because vCoreFrac scales with the sprite.
+  float spriteSize = uGlowEnabled > 0.5 ? uSize : uCore;
+  vCoreFrac = uCore / spriteSize;
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = uSize * scale * uPixelRatio;
+  gl_PointSize = spriteSize * scale * uPixelRatio;
 }
 `;
 
