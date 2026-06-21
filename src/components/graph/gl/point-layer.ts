@@ -2,7 +2,7 @@ import {
   AdditiveBlending,
   BufferGeometry,
   Float32BufferAttribute,
-  MultiplyBlending,
+  NormalBlending,
   Points,
   ShaderMaterial,
 } from 'three';
@@ -11,9 +11,10 @@ import { type GraphPointData } from '../types';
 import { colorForCluster, type ClusterColorPalette } from './cluster-colors-gl';
 import { pointFragmentShader, pointVertexShader } from './point-shaders';
 
-/** Diameter (CSS px) of an active point sprite; dimmed points are smaller. */
-const SIZE_ACTIVE = 4.5;
-const SIZE_DIMMED = 3;
+// Sprite diameter (CSS px) — this is the glow extent, not the data dot. The
+// solid core is a fraction of it (see point-shaders); dimmed points glow less.
+const SIZE_ACTIVE = 20;
+const SIZE_DIMMED = 13;
 
 /**
  * The point cloud: every graph node as one vertex in a single draw call.
@@ -24,7 +25,7 @@ const SIZE_DIMMED = 3;
  *   weight) points.
  *
  * The blend mode flips with the theme: additive glow on dark backgrounds,
- * subtractive ink (multiply) on light ones — see {@link PointLayer.setLightMode}.
+ * normal-blended colored halos on light ones — see {@link PointLayer.setLightMode}.
  */
 export interface PointLayer {
   /** The three.js object to add to the (bloomed) scene. */
@@ -36,7 +37,7 @@ export interface PointLayer {
     points: GraphPointData[],
     isActive: (point: GraphPointData) => boolean,
   ): void;
-  /** Switches between additive (dark) and multiply (light) rendering. */
+  /** Switches between additive (dark) and normal-blend (light) rendering. */
   setLightMode(isLight: boolean): void;
   /** Keeps the sprite size constant in CSS pixels across device pixel ratios. */
   setPixelRatio(pixelRatio: number): void;
@@ -52,7 +53,6 @@ export function createPointLayer(): PointLayer {
       uPixelRatio: { value: 1 },
       uSizeActive: { value: SIZE_ACTIVE },
       uSizeDimmed: { value: SIZE_DIMMED },
-      uLightMode: { value: 0 },
     },
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
@@ -112,9 +112,10 @@ export function createPointLayer(): PointLayer {
     },
 
     setLightMode(isLight) {
-      material.blending = isLight ? MultiplyBlending : AdditiveBlending;
+      // Dark: additive glow. Light: normal blend so the colored halo composites
+      // transparently over the white background (no opaque disc).
+      material.blending = isLight ? NormalBlending : AdditiveBlending;
       material.needsUpdate = true;
-      material.uniforms['uLightMode']!.value = isLight ? 1 : 0;
     },
 
     setPixelRatio(pixelRatio) {
