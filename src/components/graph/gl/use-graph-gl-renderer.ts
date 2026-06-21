@@ -73,12 +73,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- core: renderer, scene, camera -----------------------------------
     const renderer = new WebGLRenderer({
       canvas,
-      // No MSAA: it resolves the whole framebuffer every frame (cost scales with
-      // screen area × dpr², independent of point count) and was the main pan
-      // bottleneck. Points, rings and axes all anti-alias themselves in-shader,
-      // so MSAA buys nothing here.
+      // No MSAA: points, rings and axes anti-alias themselves in-shader, so it
+      // only adds full-framebuffer cost.
       antialias: false,
-      powerPreference: 'high-performance',
+      // Intentionally NOT 'high-performance': on macOS that can put WebGL on the
+      // discrete GPU while the window composites on the integrated one, forcing a
+      // full-framebuffer GPU-to-GPU copy every frame (scales with dpr×resolution
+      // — the main full-screen pan cost). 'default' keeps it on the compositor's
+      // GPU.
+      powerPreference: 'default',
     });
     // We author every color as raw sRGB hex (see cluster-colors-gl) and our own
     // shaders emit it directly. Built-in materials (LineMaterial) would re-encode

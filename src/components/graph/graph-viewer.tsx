@@ -201,6 +201,9 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseDown = (event: MouseEvent) => {
+    // Measure the SVG rect once per interaction so the per-move coordinate math
+    // stays reflow-free.
+    viewport.refreshViewportRect();
     if (event.button === 1) {
       selection.clearDraggingSelection();
       viewport.startPanDrag(event);

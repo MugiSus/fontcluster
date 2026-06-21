@@ -16,7 +16,7 @@ const SIZE = 128;
 /** Solid core (data dot) diameter (CSS px), independent of the blur radius. */
 const CORE = 3.5;
 /** Peak opacity at the glow center (it fades out from here). */
-const GLOW_OPACITY = 0.5;
+const GLOW_OPACITY = 0.1;
 
 /**
  * The point cloud: every graph node as one vertex in a single draw call.
