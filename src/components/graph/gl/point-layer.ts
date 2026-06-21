@@ -14,7 +14,7 @@ import { pointFragmentShader, pointVertexShader } from './point-shaders';
 /** Sprite diameter (CSS px) = the blur/glow extent. */
 const SIZE = 128;
 /** Solid core (data dot) diameter (CSS px), independent of the blur radius. */
-const CORE = 4;
+const CORE = 3.5;
 /** Peak opacity at the glow center (it fades out from here). */
 const GLOW_OPACITY = 0.5;
 
@@ -46,9 +46,9 @@ export interface PointLayer {
     points: GraphPointData[],
     isActive: (point: GraphPointData) => boolean,
   ): void;
-  /** Switches between additive (dark) and normal-blend (light) rendering. */
+  /** Sets the theme; blending is additive only in dark mode with glow on. */
   setLightMode(isLight: boolean): void;
-  /** Toggles the halo glow (off = just the small core dots). */
+  /** Toggles the halo glow (off = just the core dots, with normal blending). */
   setGlow(enabled: boolean): void;
   /** Keeps the sprite size constant in CSS pixels across device pixel ratios. */
   setPixelRatio(pixelRatio: number): void;
@@ -72,12 +72,23 @@ export function createPointLayer(): PointLayer {
     transparent: true,
     depthTest: false,
     depthWrite: false,
-    blending: AdditiveBlending,
+    blending: NormalBlending,
   });
 
   const points = new Points(geometry, material);
   points.frustumCulled = false;
   points.renderOrder = 0;
+
+  // Additive blending exists only for the dark-mode glow. In light mode, or
+  // whenever the glow is off (just the core dots), use normal blending so dots
+  // show their true, un-brightened color.
+  let darkMode = false;
+  let glowEnabled = true;
+  const updateBlending = () => {
+    material.blending =
+      darkMode && glowEnabled ? AdditiveBlending : NormalBlending;
+    material.needsUpdate = true;
+  };
 
   return {
     object: points,
@@ -141,14 +152,14 @@ export function createPointLayer(): PointLayer {
     },
 
     setLightMode(isLight) {
-      // Dark: additive glow. Light: normal blend so the colored halo composites
-      // transparently over the white background (no opaque disc).
-      material.blending = isLight ? NormalBlending : AdditiveBlending;
-      material.needsUpdate = true;
+      darkMode = !isLight;
+      updateBlending();
     },
 
     setGlow(enabled) {
+      glowEnabled = enabled;
       material.uniforms['uGlowEnabled']!.value = enabled ? 1 : 0;
+      updateBlending();
     },
 
     setPixelRatio(pixelRatio) {
