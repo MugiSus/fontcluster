@@ -1,29 +1,18 @@
+import { type Accessor, createEffect, onCleanup, onMount } from 'solid-js';
 import {
-  type Accessor,
-  createEffect,
-  createSignal,
-  onCleanup,
-  onMount,
-} from 'solid-js';
-import {
-  Color,
   ColorManagement,
   OrthographicCamera,
   Scene,
   WebGLRenderer,
 } from 'three';
+import { useColorMode } from '@kobalte/core';
 import { type FontWeight } from '../../../types/font';
 import {
   type GraphCoordinate,
   type GraphPointData,
   type GraphViewBox,
 } from '../types';
-import {
-  colorForCluster,
-  readClusterColorPalette,
-  readThemeBackground,
-  type ClusterColorPalette,
-} from './cluster-colors-gl';
+import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
@@ -34,9 +23,10 @@ import { createRingLayer, type RingSpec } from './ring-layer';
 ColorManagement.enabled = false;
 
 // Highlight ring radii in CSS pixels (stroke width is constant; see RingLayer).
-const RING_RADIUS_SELECTED = 30;
-const RING_RADIUS_HOVERED = 16;
-const RING_RADIUS_FAMILY = 20;
+// Matches the original SVG circle radii (selected 40 / hover 20 / family 24).
+const RING_RADIUS_SELECTED = 40;
+const RING_RADIUS_HOVERED = 20;
+const RING_RADIUS_FAMILY = 24;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.35;
@@ -72,6 +62,8 @@ export interface UseGraphGlRendererProps {
  * It is a pure renderer of derived state — it never mutates application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
+  const { colorMode } = useColorMode();
+
   onMount(() => {
     const canvas = props.getCanvas();
     if (!canvas) return;
@@ -113,45 +105,37 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     scene.add(imageLayer.object);
 
     // --- shared derived state --------------------------------------------
-    // Palette is refreshed on theme change; `pointByKey` lets the ring/image
-    // effects look up point positions without rescanning the array.
-    let palette: ClusterColorPalette = readClusterColorPalette();
-    let pointByKey = new Map<string, GraphPointData>();
+    // `pointByKey` lets the ring/image effects look up point positions without
+    // rescanning the array; it is cleared and repopulated in place. `isDark` is
+    // a reactive read of the color-mode hook used by every color-bearing effect.
+    const pointByKey = new Map<string, GraphPointData>();
+    const isDark = () => colorMode() === 'dark';
 
-    // A version signal lets effects re-run when the theme palette changes
-    // without threading the palette object through every dependency.
-    const [colorVersion, setColorVersion] = createSignal(0);
-
-    // --- theme: light vs. dark -------------------------------------------
+    // --- effect: theme (light vs. dark) ----------------------------------
     // The clear color is the theme background; the point layer flips between
     // additive glow (dark) and normal-blended halos (light).
-    const applyTheme = () => {
-      const background = readThemeBackground();
-      renderer.setClearColor(
-        new Color(background.rgb[0], background.rgb[1], background.rgb[2]),
-        1,
-      );
-      pointLayer.setLightMode(background.isLight);
-      axisLayer.setTheme(background.isLight);
+    createEffect(() => {
+      const dark = isDark();
+      renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
+      pointLayer.setLightMode(!dark);
+      axisLayer.setTheme(!dark);
       scheduleRender();
-    };
-    const themeObserver = new MutationObserver(() => {
-      palette = readClusterColorPalette();
-      setColorVersion((version) => version + 1);
-      applyTheme();
     });
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'data-kb-theme', 'style'],
-    });
-    applyTheme();
 
-    // --- effect: point geometry (point set or theme changed) -------------
+    // --- effect: point geometry (point set changed) ----------------------
+    // Positions only; this resets color/state, so the two effects below
+    // re-apply them. It deliberately does NOT depend on the theme.
     createEffect(() => {
       const points = props.points();
-      colorVersion();
-      pointByKey = new Map(points.map((point) => [point.key, point]));
-      pointLayer.setPoints(points, palette);
+      pointByKey.clear();
+      for (const point of points) pointByKey.set(point.key, point);
+      pointLayer.setPoints(points);
+      scheduleRender();
+    });
+
+    // --- effect: point colors (point set or theme changed) ---------------
+    createEffect(() => {
+      pointLayer.setColors(props.points(), isDark());
       scheduleRender();
     });
 
@@ -172,7 +156,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const selected = props.selectedKey();
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
-      colorVersion();
+      const dark = isDark();
 
       // Dedupe per key, keeping the strongest affordance (selected wins).
       const radiusByKey = new Map<string, number>();
@@ -193,7 +177,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         specs.push({
           x: point.x,
           y: -point.y,
-          color: colorForCluster(palette, point.item.computed?.clustering?.k),
+          color: getClusterColor({
+            k: point.item.computed?.clustering?.k,
+            isDark: dark,
+          }),
           radiusPx,
         });
       }
@@ -211,7 +198,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         props.filteredKeys(),
         new Set(props.activeWeights()),
       );
-      colorVersion();
+      const dark = isDark();
 
       // The selected font always shows its image; otherwise honour the toggle.
       const wanted = new Set<string>();
@@ -228,7 +215,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           safeName: point.item.meta.safe_name,
           x: point.x,
           y: -point.y,
-          color: colorForCluster(palette, point.item.computed?.clustering?.k),
+          color: getClusterColor({
+            k: point.item.computed?.clustering?.k,
+            isDark: dark,
+          }),
           opacity: active ? 1 : DIMMED_OPACITY,
         });
       }
@@ -296,7 +286,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     onCleanup(() => {
       if (rafId !== undefined) window.cancelAnimationFrame(rafId);
-      themeObserver.disconnect();
       axisLayer.dispose();
       pointLayer.dispose();
       ringLayer.dispose();

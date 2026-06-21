@@ -11,7 +11,6 @@ import {
   TextureLoader,
 } from 'three';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { type RgbTriplet } from './cluster-colors-gl';
 import { imageFragmentShader, imageVertexShader } from './image-shaders';
 
 /** The box (CSS px) a sample image is fit inside, matching the SVG masked rect. */
@@ -27,7 +26,7 @@ export interface ImageSpec {
   x: number;
   y: number;
   /** Cluster tint applied to the (luminance-masked) sample. */
-  color: RgbTriplet;
+  color: number;
   /** 1 for active points, lower for dimmed ones. */
   opacity: number;
 }
@@ -161,11 +160,7 @@ export function createImageLayer(requestRender: () => void): ImageLayer {
           entry = createEntry(spec, sessionDirectory);
           entries.set(spec.key, entry);
         }
-        (entry.material.uniforms['uColor']!.value as Color).setRGB(
-          spec.color[0],
-          spec.color[1],
-          spec.color[2],
-        );
+        (entry.material.uniforms['uColor']!.value as Color).set(spec.color);
         entry.material.uniforms['uOpacity']!.value = spec.opacity;
         entry.mesh.position.set(spec.x, spec.y, 2);
         applyFit(entry);

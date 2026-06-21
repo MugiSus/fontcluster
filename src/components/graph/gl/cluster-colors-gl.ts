@@ -1,92 +1,43 @@
 /**
  * Color helpers for the WebGL graph layer.
  *
- * Cluster colors are read straight from the `--cluster-*` CSS variables (which
- * are authored as hex) and parsed with {@link hexToRgb}. The theme background
- * is HSL in CSS, so rather than parse HSL at runtime we keep the two background
- * colors as hex constants that mirror `index.css`.
+ * Colors are 0xRRGGBB integers (mirroring index.css) — nothing is read from the
+ * DOM or CSS. Callers pass `isDark` (from the color-mode hook) to choose the
+ * theme. The returned number feeds three's `Color.set()` / `setClearColor()`
+ * directly; only the point buffer splits it into r/g/b floats. Keep these in
+ * sync with the `--cluster-*` / `--background` values in index.css.
  */
 
-export type RgbTriplet = [number, number, number];
+// Cluster colors for cluster ids 0..7 (indexed modulo length).
+const CLUSTER_LIGHT = [
+  0x1aba8c, 0xcbcb2e, 0xda532a, 0x465ae0, 0x985cd5, 0x85d11b, 0xe3941f,
+  0x4bace8,
+];
+const CLUSTER_DARK = [
+  0x16d59f, 0xf7f71c, 0xec663e, 0x5468f0, 0xa65fed, 0x8edb21, 0xd88810,
+  0x3db2fa,
+];
 
-const CLUSTER_VAR_COUNT = 8;
 /** Tailwind `text-zinc-500`, used for unclustered points / cluster id -1. */
-const UNCLUSTERED_HEX = '#71717a';
+const UNCLUSTERED = 0x71717a;
+// Hex equivalents of the `--background` HSL values in index.css.
+const BACKGROUND_LIGHT = 0xfdfdfe;
+const BACKGROUND_DARK = 0x0e0f13;
 
-// Hex equivalents of the `--background` HSL values in index.css. Update these
-// alongside the theme: light `210 50% 99.4%`, dark `240 13% 7%`.
-const LIGHT_BACKGROUND_HEX = '#fdfdfe';
-const DARK_BACKGROUND_HEX = '#0e0f13';
-
-/** Parses `#rgb` / `#rrggbb` to a 0..1 RGB triple (white on bad input). */
-function hexToRgb(hex: string): RgbTriplet {
-  const value = hex.trim().replace(/^#/, '');
-  const full =
-    value.length === 3
-      ? value
-          .split('')
-          .map((char) => char + char)
-          .join('')
-      : value;
-  const int = Number.parseInt(full, 16);
-  if (!Number.isFinite(int) || full.length !== 6) return [1, 1, 1];
-  return [
-    ((int >> 16) & 255) / 255,
-    ((int >> 8) & 255) / 255,
-    (int & 255) / 255,
-  ];
+/** Returns the 0xRRGGBB color for a cluster id in the given theme. */
+export function getClusterColor({
+  k,
+  isDark,
+}: {
+  k: number | undefined;
+  isDark?: boolean;
+}): number {
+  if (k === undefined || k === -1) return UNCLUSTERED;
+  const palette = isDark ? CLUSTER_DARK : CLUSTER_LIGHT;
+  return palette[k % palette.length]!;
 }
 
-/** Reads a CSS custom property off `:root`, with a fallback if it is empty. */
-function readCssVar(name: string, fallback: string): string {
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim();
-  return value || fallback;
-}
-
-export interface ClusterColorPalette {
-  /** Colors for cluster ids 0..7 (indexed modulo length). */
-  cluster: RgbTriplet[];
-  /** Color for unclustered points (cluster id undefined or -1). */
-  unclustered: RgbTriplet;
-}
-
-/** Reads the current theme's cluster palette from the `--cluster-*` variables. */
-export function readClusterColorPalette(): ClusterColorPalette {
-  const cluster: RgbTriplet[] = [];
-  for (let index = 1; index <= CLUSTER_VAR_COUNT; index += 1) {
-    cluster.push(hexToRgb(readCssVar(`--cluster-${index}`, '#ffffff')));
-  }
-  return { cluster, unclustered: hexToRgb(UNCLUSTERED_HEX) };
-}
-
-/** Picks the palette color for a cluster id (mirrors `getClusterTextColor`). */
-export function colorForCluster(
-  palette: ClusterColorPalette,
-  clusterId: number | undefined,
-): RgbTriplet {
-  if (clusterId === undefined || clusterId === -1) return palette.unclustered;
-  return palette.cluster[clusterId % palette.cluster.length]!;
-}
-
-export interface ThemeBackground {
-  /** The background color, matching the panel's CSS `--background`. */
-  rgb: RgbTriplet;
-  /** True in light mode (drives the subtractive/additive render choice). */
-  isLight: boolean;
-}
-
-/**
- * Reports the current theme background. Dark mode is read from the
- * `data-kb-theme` attribute Kobalte sets on `:root` — the same hook index.css
- * themes on — and the color comes from the hex constants above.
- */
-export function readThemeBackground(): ThemeBackground {
-  const isDark =
-    document.documentElement.getAttribute('data-kb-theme') === 'dark';
-  return {
-    rgb: hexToRgb(isDark ? DARK_BACKGROUND_HEX : LIGHT_BACKGROUND_HEX),
-    isLight: !isDark,
-  };
+/** Returns the 0xRRGGBB clear color (matching `--background`) for the theme. */
+export function getBackgroundColor({ isDark }: { isDark?: boolean }): number {
+  return isDark ? BACKGROUND_DARK : BACKGROUND_LIGHT;
 }
