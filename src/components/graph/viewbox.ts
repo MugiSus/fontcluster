@@ -92,49 +92,64 @@ export function getViewBoxFittingBounds({
   };
 }
 
+/** A cached client rect for the SVG; avoids per-event `getScreenCTM` reflows. */
+interface ViewportRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+// Pixels-per-graph-unit for the SVG default `preserveAspectRatio="xMidYMid meet"`
+// (fit the whole viewBox, centered, uniform scale).
+function getMeetScale(rect: ViewportRect, viewBox: GraphViewBox): number {
+  return Math.min(rect.width / viewBox.width, rect.height / viewBox.height);
+}
+
+/**
+ * Maps a client (screen) point to graph coordinates with pure math from a
+ * cached rect + viewBox — no `getScreenCTM`/`getBoundingClientRect`, so it never
+ * forces a layout reflow (the old approach thrashed layout during pan).
+ */
 export function getGraphCoordinateFromClientPoint({
   clientX,
   clientY,
-  element,
+  rect,
+  viewBox,
 }: {
   clientX: number;
   clientY: number;
-  element: SVGSVGElement | undefined;
+  rect: ViewportRect | null;
+  viewBox: GraphViewBox;
 }): GraphCoordinate | null {
-  if (!element) return null;
+  if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+  if (viewBox.width <= 0 || viewBox.height <= 0) return null;
 
-  const screenMatrix = element.getScreenCTM();
-  if (!screenMatrix) return null;
-
-  const point = new DOMPoint(clientX, clientY).matrixTransform(
-    screenMatrix.inverse(),
-  );
+  const scale = getMeetScale(rect, viewBox);
+  const offsetX = rect.left + (rect.width - viewBox.width * scale) / 2;
+  const offsetY = rect.top + (rect.height - viewBox.height * scale) / 2;
 
   return {
-    x: point.x,
-    y: point.y,
+    x: viewBox.x + (clientX - offsetX) / scale,
+    y: viewBox.y + (clientY - offsetY) / scale,
   };
 }
 
+/** Converts a screen-pixel delta to a graph-space delta (pure math, no reflow). */
 export function getViewBoxDeltaFromScreenDelta({
   deltaX,
   deltaY,
-  element,
+  rect,
+  viewBox,
 }: {
   deltaX: number;
   deltaY: number;
-  element: SVGSVGElement | undefined;
+  rect: ViewportRect | null;
+  viewBox: GraphViewBox;
 }): GraphCoordinate | null {
-  if (!element) return null;
+  if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+  if (viewBox.width <= 0 || viewBox.height <= 0) return null;
 
-  const screenMatrix = element.getScreenCTM();
-  if (!screenMatrix) return null;
-
-  const screenToGraph = screenMatrix.inverse();
-  const start = new DOMPoint(0, 0).matrixTransform(screenToGraph);
-  const end = new DOMPoint(deltaX, deltaY).matrixTransform(screenToGraph);
-  return {
-    x: end.x - start.x,
-    y: end.y - start.y,
-  };
+  const scale = getMeetScale(rect, viewBox);
+  return { x: deltaX / scale, y: deltaY / scale };
 }

@@ -32,6 +32,7 @@ export interface GraphViewportController {
   isDragging: Accessor<boolean>;
   isMoving: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
+  refreshViewportRect: () => void;
   dragPan: (event: MouseEvent) => void;
   zoomToBounds: (bounds: GraphVisibleBounds) => void;
   startPanDrag: (event: MouseEvent) => void;
@@ -133,12 +134,24 @@ export function useGraphViewport(
 
   const isMoving = createMemo(() => isDragging() || isInteracting());
 
-  const getGraphPointFromEvent = (event: MouseEvent) =>
-    getGraphCoordinateFromClientPoint({
+  // Cached SVG client rect. `getBoundingClientRect` forces a layout reflow, so
+  // we measure it only at interaction starts (and lazily) instead of on every
+  // mouse move — the coordinate math itself is then pure arithmetic.
+  let viewportRect: DOMRect | null = null;
+  const refreshViewportRect = () => {
+    const element = props.getSvgElement();
+    viewportRect = element ? element.getBoundingClientRect() : null;
+  };
+
+  const getGraphPointFromEvent = (event: MouseEvent) => {
+    if (!viewportRect) refreshViewportRect();
+    return getGraphCoordinateFromClientPoint({
       clientX: event.clientX,
       clientY: event.clientY,
-      element: props.getSvgElement(),
+      rect: viewportRect,
+      viewBox: getCurrentViewBox(),
     });
+  };
 
   const panBy = ({
     deltaX,
@@ -174,7 +187,8 @@ export function useGraphViewport(
     const delta = getViewBoxDeltaFromScreenDelta({
       deltaX,
       deltaY,
-      element: props.getSvgElement(),
+      rect: viewportRect,
+      viewBox: getCurrentViewBox(),
     });
     if (!delta) return;
 
@@ -237,6 +251,7 @@ export function useGraphViewport(
 
   const startPanDrag = (event: MouseEvent) => {
     event.preventDefault();
+    refreshViewportRect();
     setIsDragging(true);
     setLastMousePos({ x: event.clientX, y: event.clientY });
   };
@@ -248,6 +263,7 @@ export function useGraphViewport(
 
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
+    refreshViewportRect();
 
     const { deltaX, deltaY } = getNormalizedWheelDelta(
       event,
@@ -298,6 +314,7 @@ export function useGraphViewport(
     isDragging,
     isMoving,
     getGraphPointFromEvent,
+    refreshViewportRect,
     dragPan,
     zoomToBounds,
     startPanDrag,
