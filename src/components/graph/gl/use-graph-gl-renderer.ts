@@ -73,7 +73,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- core: renderer, scene, camera -----------------------------------
     const renderer = new WebGLRenderer({
       canvas,
-      antialias: true,
+      // No MSAA: it resolves the whole framebuffer every frame (cost scales with
+      // screen area × dpr², independent of point count) and was the main pan
+      // bottleneck. Points, rings and axes all anti-alias themselves in-shader,
+      // so MSAA buys nothing here.
+      antialias: false,
       powerPreference: 'high-performance',
     });
     // We author every color as raw sRGB hex (see cluster-colors-gl) and our own
