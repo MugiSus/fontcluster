@@ -20,6 +20,7 @@ interface GraphGlLayerProps {
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
+  glow: Accessor<boolean>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -45,6 +46,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     selectedFamily: () => props.selectedFamily(),
     imageKeys: () => props.imageKeys(),
     showImages: () => props.showImages(),
+    glow: () => props.glow(),
     sessionDirectory: () => props.sessionDirectory(),
   });
 

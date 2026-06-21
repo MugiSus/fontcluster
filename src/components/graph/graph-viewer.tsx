@@ -34,6 +34,7 @@ interface GraphViewerProps {
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
+  showGlow: boolean;
   activeGraphWeights: FontWeight[];
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
@@ -333,6 +334,7 @@ export function GraphViewer(props: GraphViewerProps) {
           selectedFamily={selection.selectedFamilyName}
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}
+          glow={() => props.showGlow}
           sessionDirectory={() => appState.session.directory}
         />
         <svg

@@ -9,6 +9,7 @@ export function GraphContent() {
   const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
+  const [showGlow, setShowGlow] = createSignal(true);
   const [viewportZoomControls, setViewportZoomControls] =
     createSignal<ViewportZoomControls | null>(null);
   const sessionWeights = () =>
@@ -28,6 +29,7 @@ export function GraphContent() {
         toolMode={toolMode()}
         showImages={showImages()}
         showFontNames={showFontNames()}
+        showGlow={showGlow()}
         activeGraphWeights={activeGraphWeights()}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
@@ -35,6 +37,7 @@ export function GraphContent() {
         toolMode={toolMode()}
         showImages={showImages()}
         showFontNames={showFontNames()}
+        showGlow={showGlow()}
         weights={sessionWeights()}
         activeWeights={activeGraphWeights()}
         zoomControls={viewportZoomControls()}
@@ -42,6 +45,7 @@ export function GraphContent() {
         onToolModeChange={setToolMode}
         onToggleImages={() => setShowImages((shown) => !shown)}
         onToggleFontNames={() => setShowFontNames((shown) => !shown)}
+        onToggleGlow={() => setShowGlow((shown) => !shown)}
         onWeightsChange={setActiveGraphWeights}
         onClearLasso={clearLassoResult}
       />

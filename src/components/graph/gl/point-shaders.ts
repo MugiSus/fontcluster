@@ -40,6 +40,7 @@ void main() {
 
 export const pointFragmentShader = /* glsl */ `
 uniform float uOpacity; // peak opacity at the core (the glow fades out from here)
+uniform float uGlowEnabled; // 1 = draw the halo glow, 0 = just the core dot
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -54,7 +55,7 @@ void main() {
   // Fixed-size solid core, plus a soft faint halo spanning the whole sprite.
   float core = smoothstep(vCoreFrac, vCoreFrac * 0.55, dist);
   float halo = pow(max(0.0, 1.0 - dist), 3.0);
-  float intensity = clamp(core + halo * 0.45 * vGlow, 0.0, 1.0);
+  float intensity = clamp(core + halo * 0.45 * vGlow * uGlowEnabled, 0.0, 1.0);
 
   // Straight alpha; the material's blend mode (additive on dark, normal on
   // light) decides how this composites over the background.
