@@ -12,9 +12,11 @@ import { getClusterColor } from './cluster-colors-gl';
 import { pointFragmentShader, pointVertexShader } from './point-shaders';
 
 /** Sprite diameter (CSS px) = the blur/glow extent. */
-const SIZE = 64;
+const SIZE = 128;
 /** Solid core (data dot) diameter (CSS px), independent of the blur radius. */
 const CORE = 4;
+/** Peak opacity at the glow center (it fades out from here). */
+const GLOW_OPACITY = 0.5;
 
 /**
  * The point cloud: every graph node as one vertex in a single draw call.
@@ -60,6 +62,7 @@ export function createPointLayer(): PointLayer {
       uPixelRatio: { value: 1 },
       uSize: { value: SIZE },
       uCore: { value: CORE },
+      uOpacity: { value: GLOW_OPACITY },
     },
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
