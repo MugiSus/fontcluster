@@ -1,11 +1,16 @@
 import { type Accessor } from 'solid-js';
 import { type FontWeight } from '../../../types/font';
-import { type GraphPointData, type GraphViewBox } from '../types';
+import {
+  type GraphCoordinate,
+  type GraphPointData,
+  type GraphViewBox,
+} from '../types';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
 
 interface GraphGlLayerProps {
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
+  origin: Accessor<GraphCoordinate>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   filteredKeys: Accessor<Set<string>>;
@@ -19,9 +24,9 @@ interface GraphGlLayerProps {
 }
 
 /**
- * GPU-rendered graph: points + glow, selection/hover/family rings and the
- * cluster-tinted sample images. Sits behind the SVG, which now only owns
- * interaction, coordinate transforms and the lasso / zoom / axis overlays.
+ * GPU-rendered graph: the origin axes, points + glow, selection/hover/family
+ * rings and the cluster-tinted sample images. Sits behind the SVG, which now
+ * only owns interaction, coordinate transforms and the lasso / zoom overlays.
  */
 export function GraphGlLayer(props: GraphGlLayerProps) {
   let canvas: HTMLCanvasElement | undefined;
@@ -30,6 +35,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     getCanvas: () => canvas,
     size: () => props.size(),
     viewBox: () => props.viewBox(),
+    origin: () => props.origin(),
     zoomFactor: () => props.zoomFactor(),
     points: () => props.points(),
     filteredKeys: () => props.filteredKeys(),

@@ -323,6 +323,7 @@ export function GraphViewer(props: GraphViewerProps) {
         <GraphGlLayer
           size={svgSize}
           viewBox={viewport.viewBox}
+          origin={graphOrigin}
           zoomFactor={viewport.zoomFactor}
           points={fontPoints}
           filteredKeys={() => appState.fonts.filteredKeys}
@@ -357,25 +358,6 @@ export function GraphViewer(props: GraphViewerProps) {
           xmlns='http://www.w3.org/2000/svg'
           text-rendering='optimizeSpeed'
         >
-          <g>
-            <line
-              x1={viewport.viewBox().x - viewport.viewBox().width}
-              y1={graphOrigin().y}
-              x2={viewport.viewBox().x + viewport.viewBox().width * 2}
-              y2={graphOrigin().y}
-              stroke-width={viewport.zoomFactor()}
-              class='pointer-events-none stroke-border'
-            />
-            <line
-              x1={graphOrigin().x}
-              y1={viewport.viewBox().y - viewport.viewBox().height}
-              x2={graphOrigin().x}
-              y2={viewport.viewBox().y + viewport.viewBox().height * 2}
-              stroke-width={viewport.zoomFactor()}
-              class='pointer-events-none stroke-border'
-            />
-          </g>
-
           <Show when={lassoPoints().length > 1}>
             <path
               d={`M ${lassoPoints()

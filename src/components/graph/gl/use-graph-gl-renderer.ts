@@ -13,13 +13,18 @@ import {
   WebGLRenderer,
 } from 'three';
 import { type FontWeight } from '../../../types/font';
-import { type GraphPointData, type GraphViewBox } from '../types';
+import {
+  type GraphCoordinate,
+  type GraphPointData,
+  type GraphViewBox,
+} from '../types';
 import {
   colorForCluster,
   readClusterColorPalette,
   readThemeBackground,
   type ClusterColorPalette,
 } from './cluster-colors-gl';
+import { createAxisLayer } from './axis-layer';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingSpec } from './ring-layer';
@@ -42,6 +47,7 @@ export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
+  origin: Accessor<GraphCoordinate>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   filteredKeys: Accessor<Set<string>>;
@@ -97,9 +103,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     };
 
     // --- layers (one scene; render order keeps images over rings over dots) -
+    const axisLayer = createAxisLayer();
     const pointLayer = createPointLayer();
     const ringLayer = createRingLayer();
     const imageLayer = createImageLayer(scheduleRender);
+    scene.add(axisLayer.object);
     scene.add(pointLayer.object);
     scene.add(ringLayer.object);
     scene.add(imageLayer.object);
@@ -124,6 +132,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         1,
       );
       pointLayer.setLightMode(background.isLight);
+      axisLayer.setTheme(background.isLight);
       scheduleRender();
     };
     const themeObserver = new MutationObserver(() => {
@@ -227,6 +236,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       scheduleRender();
     });
 
+    // --- effect: origin crosshair position -------------------------------
+    createEffect(() => {
+      const origin = props.origin();
+      axisLayer.setOrigin(origin.x, origin.y);
+      scheduleRender();
+    });
+
     // --- effect: zoom (keeps ring/image sizes constant in CSS pixels) ----
     createEffect(() => {
       const zoom = props.zoomFactor();
@@ -281,6 +297,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     onCleanup(() => {
       if (rafId !== undefined) window.cancelAnimationFrame(rafId);
       themeObserver.disconnect();
+      axisLayer.dispose();
       pointLayer.dispose();
       ringLayer.dispose();
       imageLayer.dispose();
