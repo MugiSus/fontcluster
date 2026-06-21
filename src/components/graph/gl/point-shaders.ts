@@ -53,12 +53,14 @@ void main() {
   if (dist > 1.0) discard;
 
   // Fixed-size solid core, plus a soft faint halo spanning the whole sprite.
-  float core = smoothstep(vCoreFrac, vCoreFrac * 0.55, dist);
+  // The core is full strength; uOpacity scales down only the halo glow, so a
+  // non-dimmed point keeps its true (opaque) color at the center.
+  float core = smoothstep(vCoreFrac, vCoreFrac * 0.8, dist);
   float halo = pow(max(0.0, 1.0 - dist), 3.0);
-  float intensity = clamp(core + halo * 0.45 * vGlow * uGlowEnabled, 0.0, 1.0);
+  float intensity = clamp(core + halo * uOpacity * vGlow * uGlowEnabled, 0.0, 1.0);
 
   // Straight alpha; the material's blend mode (additive on dark, normal on
   // light) decides how this composites over the background.
-  gl_FragColor = vec4(vColor, intensity * vAlpha * uOpacity);
+  gl_FragColor = vec4(vColor, intensity * vAlpha);
 }
 `;
