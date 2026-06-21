@@ -1,20 +1,19 @@
-import { Group, type Object3D } from 'three';
+import { Group, NormalBlending, type Object3D } from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { type RgbTriplet } from './cluster-colors-gl';
 
 /** Stroke width (CSS px) of every ring, constant regardless of radius. */
 const LINE_WIDTH_PX = 1;
 /** Number of segments approximating each circle. */
 const SEGMENTS = 64;
-const RING_OPACITY = 0.9;
+const RING_OPACITY = 1;
 
 /** One ring to draw: a circle of `radiusPx` (CSS px) centered at world (x, y). */
 export interface RingSpec {
   x: number;
   y: number;
-  color: RgbTriplet;
+  color: number;
   radiusPx: number;
 }
 
@@ -78,6 +77,9 @@ export function createRingLayer(): RingLayer {
       transparent: true,
       opacity: RING_OPACITY,
       depthTest: false,
+      // Explicit normal blend: the ring is a solid stroke, never additive, so
+      // its color stays the pure cluster color and isn't tinted by the glow.
+      blending: NormalBlending,
     });
     material.resolution.set(resolutionWidth, resolutionHeight);
     const line = new Line2(circleGeometry, material);
@@ -96,11 +98,7 @@ export function createRingLayer(): RingLayer {
       for (let index = 0; index < specs.length; index += 1) {
         const spec = specs[index]!;
         const entry = ensureEntry(index);
-        entry.material.color.setRGB(
-          spec.color[0],
-          spec.color[1],
-          spec.color[2],
-        );
+        entry.material.color.set(spec.color);
         entry.radiusPx = spec.radiusPx;
         entry.line.position.set(spec.x, spec.y, 1);
         entry.line.scale.set(spec.radiusPx * zoom, spec.radiusPx * zoom, 1);

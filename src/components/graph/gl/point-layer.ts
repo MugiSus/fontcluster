@@ -8,7 +8,7 @@ import {
 } from 'three';
 import { type FontWeight } from '../../../types/font';
 import { type GraphPointData } from '../types';
-import { colorForCluster, type ClusterColorPalette } from './cluster-colors-gl';
+import { getClusterColor } from './cluster-colors-gl';
 import { pointFragmentShader, pointVertexShader } from './point-shaders';
 
 /** Sprite diameter (CSS px) = the blur/glow extent. */
@@ -30,8 +30,15 @@ const CORE = 4;
 export interface PointLayer {
   /** The three.js object to add to the (bloomed) scene. */
   readonly object: Points;
-  /** Rebuilds position/color/state buffers for a new point set. */
-  setPoints(points: GraphPointData[], palette: ClusterColorPalette): void;
+  /**
+   * Rebuilds the position buffer for a new point set and allocates the color /
+   * state buffers (filled by {@link PointLayer.setColors} /
+   * {@link PointLayer.setActiveState}). Resets color and state to zero, so
+   * callers must re-apply both after calling this.
+   */
+  setPoints(points: GraphPointData[]): void;
+  /** Updates the per-point color in place; call on theme change. */
+  setColors(points: GraphPointData[], isDark: boolean): void;
   /** Updates only the active/dimmed flag per point (cheap, no realloc). */
   setActiveState(
     points: GraphPointData[],
@@ -69,34 +76,50 @@ export function createPointLayer(): PointLayer {
   return {
     object: points,
 
-    setPoints(pointData, palette) {
+    setPoints(pointData) {
       const count = pointData.length;
       const positions = new Float32Array(count * 3);
-      const colors = new Float32Array(count * 3);
-      const states = new Float32Array(count);
-
       for (let index = 0; index < count; index += 1) {
         const point = pointData[index]!;
         positions[index * 3] = point.x;
         // Graph space is y-down; negate so the world is y-up for the camera.
         positions[index * 3 + 1] = -point.y;
         positions[index * 3 + 2] = 0;
-        const [r, g, b] = colorForCluster(
-          palette,
-          point.item.computed?.clustering?.k,
-        );
-        colors[index * 3] = r;
-        colors[index * 3 + 1] = g;
-        colors[index * 3 + 2] = b;
       }
 
       geometry.setAttribute(
         'position',
         new Float32BufferAttribute(positions, 3),
       );
-      geometry.setAttribute('aColor', new Float32BufferAttribute(colors, 3));
-      geometry.setAttribute('aState', new Float32BufferAttribute(states, 1));
+      // Color and state are filled separately; allocate them empty so those
+      // updates can write in place without reallocating.
+      geometry.setAttribute(
+        'aColor',
+        new Float32BufferAttribute(new Float32Array(count * 3), 3),
+      );
+      geometry.setAttribute(
+        'aState',
+        new Float32BufferAttribute(new Float32Array(count), 1),
+      );
       geometry.setDrawRange(0, count);
+    },
+
+    setColors(pointData, isDark) {
+      const attribute = geometry.getAttribute('aColor');
+      // Guard against running before the matching geometry has been built.
+      if (!attribute || attribute.count !== pointData.length) return;
+
+      const colors = attribute.array as Float32Array;
+      for (let index = 0; index < pointData.length; index += 1) {
+        const hex = getClusterColor({
+          k: pointData[index]!.item.computed?.clustering?.k,
+          isDark,
+        });
+        colors[index * 3] = ((hex >> 16) & 0xff) / 255;
+        colors[index * 3 + 1] = ((hex >> 8) & 0xff) / 255;
+        colors[index * 3 + 2] = (hex & 0xff) / 255;
+      }
+      attribute.needsUpdate = true;
     },
 
     setActiveState(pointData, isActive) {
