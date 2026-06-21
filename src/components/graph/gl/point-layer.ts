@@ -11,10 +11,10 @@ import { type GraphPointData } from '../types';
 import { colorForCluster, type ClusterColorPalette } from './cluster-colors-gl';
 import { pointFragmentShader, pointVertexShader } from './point-shaders';
 
-// Sprite diameter (CSS px) — this is the glow extent, not the data dot. The
-// solid core is a fraction of it (see point-shaders); dimmed points glow less.
-const SIZE_ACTIVE = 20;
-const SIZE_DIMMED = 13;
+/** Sprite diameter (CSS px) = the blur/glow extent. */
+const SIZE = 64;
+/** Solid core (data dot) diameter (CSS px), independent of the blur radius. */
+const CORE = 4;
 
 /**
  * The point cloud: every graph node as one vertex in a single draw call.
@@ -51,8 +51,8 @@ export function createPointLayer(): PointLayer {
   const material = new ShaderMaterial({
     uniforms: {
       uPixelRatio: { value: 1 },
-      uSizeActive: { value: SIZE_ACTIVE },
-      uSizeDimmed: { value: SIZE_DIMMED },
+      uSize: { value: SIZE },
+      uCore: { value: CORE },
     },
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
