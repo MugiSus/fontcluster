@@ -1,6 +1,7 @@
 import { type Accessor, createEffect, onCleanup, onMount } from 'solid-js';
 import {
   ColorManagement,
+  LinearSRGBColorSpace,
   OrthographicCamera,
   Scene,
   WebGLRenderer,
@@ -75,6 +76,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       antialias: true,
       powerPreference: 'high-performance',
     });
+    // We author every color as raw sRGB hex (see cluster-colors-gl) and our own
+    // shaders emit it directly. Built-in materials (LineMaterial) would re-encode
+    // linear->sRGB on output and wash the colors out, so disable that output
+    // conversion: combined with ColorManagement off, the whole pipeline is a raw
+    // passthrough and lines match the points / background.
+    renderer.outputColorSpace = LinearSRGBColorSpace;
 
     const scene = new Scene();
     // Orthographic, y-up: world Y is the negated graph Y (graph space is
@@ -260,6 +267,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.setSize(width, height, false);
       pointLayer.setPixelRatio(pixelRatio);
       ringLayer.setResolution(width, height);
+      axisLayer.setResolution(width, height);
       scheduleRender();
     });
 
