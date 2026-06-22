@@ -108,11 +108,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const renderFrame = () => {
       rafId = undefined;
 
-      // The dark-mode glow is the only case whose additive overlaps band on an
-      // 8-bit screen, so only it pays for the bloom pipeline. Everything else
-      // renders straight to the screen in a single pass.
+      // The glow's overlapping halos band on an 8-bit screen (additively in dark
+      // mode, via 'over' in light mode), so whenever it is on we route it through
+      // the bloom pipeline. Glow off renders straight to the screen, one pass.
       const dark = isDark();
-      if (!(dark && props.glow())) {
+      if (!props.glow()) {
         pointLayer.setPass('combined');
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
@@ -127,9 +127,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
 
       // 2) Glow pass: halos only, into the low-res half-float buffer (cleared to
-      //    transparent black so the additive accumulation starts from zero).
-      //    Scale the sprite pixel size to the buffer's lower resolution so the
-      //    glow lands at the same on-screen size; hide the sharp-only layers.
+      //    transparent black so the accumulation starts from zero). Scale the
+      //    sprite pixel size to the buffer's lower resolution so the glow lands
+      //    at the same on-screen size; hide the sharp-only layers.
       pointLayer.setPass('halo');
       pointLayer.setPixelRatio(pixelRatio * compositor.glowScale);
       axisLayer.object.visible = false;
@@ -146,9 +146,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       ringLayer.object.visible = true;
       imageLayer.object.visible = true;
 
-      // 3) Add the upsampled glow over the sharp screen.
+      // 3) Composite the upsampled glow over the sharp screen — additive for the
+      //    dark glow (adds light), premultiplied 'over' for the light glow.
       renderer.setRenderTarget(null);
-      compositor.composite(renderer);
+      compositor.composite(renderer, dark);
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;

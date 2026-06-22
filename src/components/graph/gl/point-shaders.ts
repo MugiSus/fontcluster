@@ -64,6 +64,7 @@ export const pointFragmentShader = /* glsl */ `
 uniform float uOpacity; // peak opacity at the core (the glow fades out from here)
 uniform float uGlowEnabled; // 1 = draw the halo glow, 0 = just the core dot
 uniform float uPass;        // 0 = combined, 1 = core only, 2 = halo only
+uniform float uPremultiply; // 1 = output premultiplied alpha (light-mode glow)
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -81,8 +82,8 @@ void main() {
 
   float intensity;
   if (uPass > 1.5) {
-    // Halo only — accumulated additively in the half-float bloom buffer, so it
-    // is left unclamped (the buffer can hold values past 1.0 without banding).
+    // Halo only — accumulated in the half-float bloom buffer, so it is left
+    // unclamped (the buffer can hold values past 1.0 without banding).
     intensity = halo * uOpacity * vGlow;
   } else if (uPass > 0.5) {
     // Core only — the sharp data dot at full strength.
@@ -93,7 +94,11 @@ void main() {
     intensity = clamp(core + halo * uOpacity * vGlow * uGlowEnabled, 0.0, 1.0);
   }
 
-  // Straight alpha; the material's blend mode decides how this composites.
-  gl_FragColor = vec4(vColor, intensity * vAlpha);
+  float alpha = intensity * vAlpha;
+  // The light-mode glow composites with 'over' (premultiplied) so its many
+  // overlaps accumulate correctly in the float buffer; the dark-mode glow is
+  // additive and uses straight alpha. The material's blend mode is set to match.
+  vec3 rgb = uPremultiply > 0.5 ? vColor * alpha : vColor;
+  gl_FragColor = vec4(rgb, alpha);
 }
 `;
