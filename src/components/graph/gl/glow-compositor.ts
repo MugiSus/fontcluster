@@ -6,6 +6,7 @@ import {
   LinearSRGBColorSpace,
   Mesh,
   OneFactor,
+  OneMinusSrcAlphaFactor,
   OrthographicCamera,
   PlaneGeometry,
   Scene,
@@ -65,7 +66,9 @@ export function createGlowCompositor() {
     fragmentShader: blitFragmentShader,
     depthTest: false,
     depthWrite: false,
-    // Add the glow over whatever is already on the screen (the sharp pass).
+    // Composite the glow over the already-drawn sharp content. The exact factors
+    // are set per call in composite() — additive for the dark glow, premultiplied
+    // 'over' for the light one (matching how the halos were accumulated).
     blending: CustomBlending,
     blendEquation: AddEquation,
     blendSrc: OneFactor,
@@ -86,11 +89,14 @@ export function createGlowCompositor() {
   };
 
   /**
-   * Additively blits the glow buffer over the current render target (the
-   * screen), upsampling it to full resolution. Leaves autoClear as it found it
-   * so it does not wipe the sharp pass already drawn underneath.
+   * Blits the glow buffer over the current render target (the screen),
+   * upsampling it to full resolution. `additive` picks the blend used over the
+   * sharp content: dark glow adds light (src + dst); light glow composites with
+   * premultiplied 'over' (src + dst*(1 - srcAlpha)). Either way it leaves
+   * autoClear as it found it so the sharp pass underneath is not wiped.
    */
-  const composite = (renderer: WebGLRenderer) => {
+  const composite = (renderer: WebGLRenderer, additive: boolean) => {
+    material.blendDst = additive ? OneFactor : OneMinusSrcAlphaFactor;
     const previousAutoClear = renderer.autoClear;
     renderer.autoClear = false;
     renderer.render(scene, camera);

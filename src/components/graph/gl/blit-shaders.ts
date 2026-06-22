@@ -19,11 +19,13 @@ void main() {
 `;
 
 /**
- * Samples the half-float glow buffer and outputs it; the material's additive
- * blend adds it over the sharp content already on the screen.
+ * Samples the half-float glow buffer and outputs it verbatim (rgb + alpha); the
+ * material's blend composites it over the sharp content on the screen — additive
+ * for the dark glow (alpha ignored), premultiplied 'over' for the light glow
+ * (alpha is the coverage).
  *
  * The glow was accumulated in 16-bit float so the overlaps stay smooth; this
- * add is the single quantization down to the 8-bit screen.
+ * composite is the single quantization down to the 8-bit screen.
  */
 export const blitFragmentShader = /* glsl */ `
 uniform sampler2D uTexture;
@@ -31,6 +33,6 @@ uniform sampler2D uTexture;
 varying vec2 vUv;
 
 void main() {
-  gl_FragColor = vec4(texture2D(uTexture, vUv).rgb, 1.0);
+  gl_FragColor = texture2D(uTexture, vUv);
 }
 `;
