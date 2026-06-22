@@ -8,7 +8,10 @@
 //! - the worker side ([`run_jobs_worker`]/[`run_jobs_pipeline`]) actually runs
 //!   the discovery → render → analyse → position → cluster stages.
 
-use crate::config::{AlgorithmConfig, ClusteringConfig, FontSet, ProcessStatus, RenderingConfig};
+use crate::commands::progress::progress_events;
+use crate::config::{
+    AlgorithmConfig, ClusteringConfig, FontSet, ProcessStatus, ProgressStage, RenderingConfig,
+};
 use crate::core::{
     clusterer, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner,
     RunningJob, SampleRenderer, StdoutEventSink,
@@ -189,6 +192,22 @@ struct WorkerEventMessage {
     payload: Value,
 }
 
+/// Progress stages a run starting from `status` will (re)compute, in pipeline
+/// execution order (rendering → analysis → position → clustering).
+///
+/// Stages before the resume point are omitted so their already-complete
+/// progress bars stay full while the downstream ones are cleared.
+fn stages_to_reset(status: &ProcessStatus) -> &'static [ProgressStage] {
+    use ProgressStage::{Analysis, Clustering, Position, Rendering};
+    match status {
+        ProcessStatus::Empty => &[Rendering, Analysis, Position, Clustering],
+        ProcessStatus::Rendered => &[Analysis, Position, Clustering],
+        ProcessStatus::Analyzed => &[Position, Clustering],
+        ProcessStatus::Positioned => &[Clustering],
+        ProcessStatus::Clustered => &[],
+    }
+}
+
 /// True for the per-tick progress events, which are re-wrapped with the
 /// session id before being forwarded to the webview.
 fn is_progress_event(event: &str) -> bool {
@@ -257,6 +276,18 @@ pub async fn run_jobs_pipeline(
         })?
     };
     events.emit_string("session_started", id.clone())?;
+
+    // When resuming from a midpoint, clear the progress of the resume stage and
+    // every later stage so the UI stops showing stale results that are about to
+    // be recomputed. Earlier stages keep their progress because their outputs
+    // are reused as-is.
+    let resume_status = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().status.process_status.clone()
+    };
+    for &stage in stages_to_reset(&resume_status) {
+        progress_events::reset_progress(&events, state, stage);
+    }
 
     // Step 0: Render samples
     let status = {
