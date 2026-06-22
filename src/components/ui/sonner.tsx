@@ -8,6 +8,9 @@ const Toaster: Component<ToasterProps> = (props) => {
   return (
     <Sonner
       class='toaster group'
+      // Sonner sizes every toast with `width: var(--width)` (default 356px);
+      // widen all toasts by raising the variable on the toaster container.
+      style={{ '--width': '480px' }}
       toastOptions={{
         classes: {
           toast:
