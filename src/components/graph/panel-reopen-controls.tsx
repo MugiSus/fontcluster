@@ -20,7 +20,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
     >
       <div
         class={cn(
-          'pointer-events-auto absolute left-1 top-1 z-10 flex items-center gap-0 rounded-full border bg-background',
+          'pointer-events-auto absolute left-[3px] top-[3px] z-10 flex items-center gap-0 rounded-full border border-border/25 bg-background/75 backdrop-blur-md',
           props.isLeftInset && 'pl-[72px]',
         )}
         data-tauri-drag-region
@@ -29,7 +29,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
           <Button
             variant='ghost'
             size='sm'
-            class='h-8 rounded-full bg-background px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('control')}
           >
             Control
@@ -39,7 +39,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
           <Button
             variant='ghost'
             size='sm'
-            class='h-8 rounded-full bg-background px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('list')}
           >
             List
@@ -49,7 +49,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
           <Button
             variant='ghost'
             size='sm'
-            class='h-8 rounded-full bg-background px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('chat')}
           >
             Chat

@@ -22,7 +22,7 @@ export function GraphUtilityControls() {
 
   return (
     <div
-      class='pointer-events-auto absolute right-1 top-1 z-10 flex items-center justify-end gap-0 rounded-full border'
+      class='pointer-events-auto absolute right-[3px] top-[3px] z-10 flex items-center justify-end gap-0 rounded-full border border-border/25 bg-background/75 backdrop-blur-md'
       data-tauri-drag-region
     >
       <Tooltip>
@@ -32,7 +32,7 @@ export function GraphUtilityControls() {
             size='icon'
             onClick={selectionHistory.undo}
             disabled={!selectionHistory.canUndo()}
-            class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
           >
             <Undo2Icon class='size-4' />
           </Button>
@@ -47,7 +47,7 @@ export function GraphUtilityControls() {
             size='icon'
             onClick={selectionHistory.redo}
             disabled={!selectionHistory.canRedo()}
-            class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
           >
             <Redo2Icon class='size-4' />
           </Button>
@@ -63,7 +63,7 @@ export function GraphUtilityControls() {
             variant='ghost'
             size='icon'
             onClick={handleManualUpdateCheck}
-            class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
           >
             <SparklesIcon class='size-4' />
           </Button>
@@ -77,7 +77,7 @@ export function GraphUtilityControls() {
             variant='ghost'
             size='icon'
             onClick={copyCurrentSelectedFont}
-            class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             disabled={!appState.ui.selectedFontKey}
           >
             <CopyIcon class='size-4' />
@@ -88,14 +88,14 @@ export function GraphUtilityControls() {
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
-          <SessionHistory class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+          <SessionHistory class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
         <TooltipContent>Session history</TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
-          <ThemeModeToggle class='size-8 rounded-full bg-background text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+          <ThemeModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
         <TooltipContent>Theme</TooltipContent>
       </Tooltip>

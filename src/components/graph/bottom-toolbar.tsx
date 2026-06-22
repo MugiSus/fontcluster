@@ -44,7 +44,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   );
 
   return (
-    <div class='pointer-events-auto flex flex-col items-center gap-1 rounded-lg border bg-background p-1 shadow-sm'>
+    <div class='pointer-events-auto flex flex-col items-center gap-1 rounded-lg border border-border/25 bg-background/75 p-1 shadow-sm backdrop-blur-md'>
       <div class='flex flex-col gap-0'>
         <Tooltip placement='left'>
           <TooltipTrigger
