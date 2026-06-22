@@ -79,7 +79,6 @@ export function createPointLayer(): PointLayer {
       uOpacity: { value: GLOW_OPACITY },
       uGlowEnabled: { value: 1 },
       uPass: { value: 0 },
-      uPremultiply: { value: 0 },
     },
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
@@ -178,29 +177,22 @@ export function createPointLayer(): PointLayer {
 
     setPass(pass) {
       // Set blending directly (not via updateBlending) since this runs per
-      // frame; changing the blend mode/factors alone needs no shader recompile.
+      // frame; changing the blend factors alone needs no shader recompile.
       if (pass === 'core') {
         material.uniforms['uPass']!.value = 1;
-        material.uniforms['uPremultiply']!.value = 0;
         material.blending = NormalBlending;
       } else if (pass === 'halo') {
+        // The halo outputs premultiplied alpha (see shader), so src factor stays
+        // One and only the dst factor selects the operator: One = additive (dark
+        // glow), OneMinusSrcAlpha = 'over' = normal blending (light glow). Both
+        // accumulate into a transparent buffer.
         material.uniforms['uPass']!.value = 2;
-        if (darkMode) {
-          // Dark glow is additive light: straight alpha, src*a + dst.
-          material.uniforms['uPremultiply']!.value = 0;
-          material.blending = AdditiveBlending;
-        } else {
-          // Light glow composites with 'over'; accumulate it premultiplied so
-          // the buffer's overlaps stay associative (src + dst*(1 - srcAlpha)).
-          material.uniforms['uPremultiply']!.value = 1;
-          material.blending = CustomBlending;
-          material.blendEquation = AddEquation;
-          material.blendSrc = OneFactor;
-          material.blendDst = OneMinusSrcAlphaFactor;
-        }
+        material.blending = CustomBlending;
+        material.blendEquation = AddEquation;
+        material.blendSrc = OneFactor;
+        material.blendDst = darkMode ? OneFactor : OneMinusSrcAlphaFactor;
       } else {
         material.uniforms['uPass']!.value = 0;
-        material.uniforms['uPremultiply']!.value = 0;
         updateBlending();
       }
     },

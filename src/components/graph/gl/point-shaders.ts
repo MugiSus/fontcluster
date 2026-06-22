@@ -64,7 +64,6 @@ export const pointFragmentShader = /* glsl */ `
 uniform float uOpacity; // peak opacity at the core (the glow fades out from here)
 uniform float uGlowEnabled; // 1 = draw the halo glow, 0 = just the core dot
 uniform float uPass;        // 0 = combined, 1 = core only, 2 = halo only
-uniform float uPremultiply; // 1 = output premultiplied alpha (light-mode glow)
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -80,12 +79,20 @@ void main() {
   float core = smoothstep(vCoreFrac, vCoreFrac * 0.8, dist);
   float halo = pow(max(0.0, 1.0 - dist), 3.0);
 
-  float intensity;
+  // Halo only — the glow, accumulated into the half-float bloom buffer. Output is
+  // premultiplied (rgb already times alpha) so the SAME output works for both
+  // operators: the material's blend keeps src factor = One and only swaps the dst
+  // factor — One for the dark additive glow, OneMinusSrcAlpha for the light
+  // 'over' (= normal blending). Accumulating into a transparent buffer needs
+  // premultiplied alpha to avoid dark fringing.
   if (uPass > 1.5) {
-    // Halo only — accumulated in the half-float bloom buffer, so it is left
-    // unclamped (the buffer can hold values past 1.0 without banding).
-    intensity = halo * uOpacity * vGlow;
-  } else if (uPass > 0.5) {
+    float a = halo * uOpacity * vGlow * vAlpha;
+    gl_FragColor = vec4(vColor * a, a);
+    return;
+  }
+
+  float intensity;
+  if (uPass > 0.5) {
     // Core only — the sharp data dot at full strength.
     intensity = core;
   } else {
@@ -94,11 +101,7 @@ void main() {
     intensity = clamp(core + halo * uOpacity * vGlow * uGlowEnabled, 0.0, 1.0);
   }
 
-  float alpha = intensity * vAlpha;
-  // The light-mode glow composites with 'over' (premultiplied) so its many
-  // overlaps accumulate correctly in the float buffer; the dark-mode glow is
-  // additive and uses straight alpha. The material's blend mode is set to match.
-  vec3 rgb = uPremultiply > 0.5 ? vColor * alpha : vColor;
-  gl_FragColor = vec4(rgb, alpha);
+  // Straight alpha; the material's blend mode decides how this composites.
+  gl_FragColor = vec4(vColor, intensity * vAlpha);
 }
 `;

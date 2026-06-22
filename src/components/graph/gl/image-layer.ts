@@ -72,6 +72,10 @@ export function createImageLayer(requestRender: () => void): ImageLayer {
   const textureCache = new Map<string, Texture>();
   const entries = new Map<string, ImageEntry>();
   let zoom = 1;
+  // The session the pooled meshes / cached textures belong to. The same
+  // `safeName` maps to a different file in another session, so everything is
+  // dropped when this changes (see update) to avoid mixing old and new images.
+  let currentSession: string | null = null;
 
   const aspectOf = (texture: Texture): number | undefined => {
     const image = texture.image as
@@ -126,6 +130,12 @@ export function createImageLayer(requestRender: () => void): ImageLayer {
         `${sessionDirectory}/samples/${spec.safeName}/sample.png`,
       );
       textureLoader.load(url, (texture) => {
+        // Drop loads that resolve after a session switch — caching them would
+        // reintroduce the old session's image under this safeName.
+        if (sessionDirectory !== currentSession) {
+          texture.dispose();
+          return;
+        }
         texture.minFilter = LinearFilter;
         texture.magFilter = LinearFilter;
         texture.generateMipmaps = false;
@@ -143,6 +153,20 @@ export function createImageLayer(requestRender: () => void): ImageLayer {
     object: group,
 
     update(specs, sessionDirectory) {
+      // On a session switch, drop every pooled mesh and cached texture: the same
+      // safeName / font key refers to a different file now, so reusing them would
+      // mix the previous session's images with the new ones.
+      if (sessionDirectory !== currentSession) {
+        for (const entry of entries.values()) {
+          group.remove(entry.mesh);
+          entry.material.dispose();
+        }
+        entries.clear();
+        for (const texture of textureCache.values()) texture.dispose();
+        textureCache.clear();
+        currentSession = sessionDirectory;
+      }
+
       const wanted = new Set(specs.map((spec) => spec.key));
 
       // Remove meshes whose font is no longer shown (textures stay cached).

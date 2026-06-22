@@ -1,4 +1,10 @@
-import { type Accessor, createEffect, onCleanup, onMount } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  onCleanup,
+  onMount,
+  untrack,
+} from 'solid-js';
 import {
   ColorManagement,
   LinearSRGBColorSpace,
@@ -109,8 +115,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       rafId = undefined;
 
       // The glow's overlapping halos band on an 8-bit screen (additively in dark
-      // mode, via 'over' in light mode), so whenever it is on we route it through
-      // the bloom pipeline. Glow off renders straight to the screen, one pass.
+      // mode, multiplicatively in light mode), so whenever it is on we route it
+      // through the bloom pipeline. Glow off renders straight to the screen.
       const dark = isDark();
       if (!props.glow()) {
         pointLayer.setPass('combined');
@@ -126,8 +132,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
 
-      // 2) Glow pass: halos only, into the low-res half-float buffer (cleared to
-      //    transparent black so the accumulation starts from zero). Scale the
+      // 2) Glow pass: halos only, into the low-res half-float buffer. Cleared to
+      //    transparent black: the premultiplied halos accumulate from zero for
+      //    both operators (sum for dark additive, 'over' for light). Scale the
       //    sprite pixel size to the buffer's lower resolution so the glow lands
       //    at the same on-screen size; hide the sharp-only layers.
       pointLayer.setPass('halo');
@@ -186,25 +193,42 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
 
     // --- effect: point geometry (point set changed) ----------------------
-    // Positions only; this resets color/state, so the two effects below
-    // re-apply them. It deliberately does NOT depend on the theme.
+    // setPoints reallocates the color/state buffers to zero, so we re-apply both
+    // right here from the *same* points array — otherwise a rebuilt buffer can be
+    // left at the zero (black) default if the dedicated effects below don't run
+    // in this same flush (e.g. across a session switch). Theme / filter are read
+    // untracked so this effect still only re-runs on a point-set change; the
+    // effects below own those (and re-run when clustering / theme / filter move).
     createEffect(() => {
       const points = props.points();
       pointByKey.clear();
       for (const point of points) pointByKey.set(point.key, point);
       pointLayer.setPoints(points);
+      untrack(() => {
+        pointLayer.setColors(points, isDark());
+        pointLayer.setActiveState(
+          points,
+          makeActivePredicate(
+            props.filteredKeys(),
+            new Set(props.activeWeights()),
+          ),
+        );
+      });
       scheduleRender();
     });
 
-    // --- effect: point colors (point set or theme changed) ---------------
+    // --- effect: point colors (theme / clustering changed) ---------------
+    // The geometry effect already seeds colors on a point-set change; this keeps
+    // them current when the theme flips or clustering loads in later (setColors
+    // reads each point's clustering, so this re-runs when that arrives).
     createEffect(() => {
       pointLayer.setColors(props.points(), isDark());
       scheduleRender();
     });
 
     // --- effect: glow on/off ---------------------------------------------
-    // Glow on (in dark mode) is what enables the bloom pipeline in renderFrame:
-    // it is the only mode whose additive overlaps band on an 8-bit screen.
+    // Glow on is what enables the bloom pipeline in renderFrame (both themes —
+    // the overlapping halos band on an 8-bit screen either way).
     createEffect(() => {
       pointLayer.setGlow(props.glow());
       scheduleRender();

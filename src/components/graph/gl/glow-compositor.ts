@@ -26,15 +26,20 @@ const GLOW_SCALE = 0.5;
 
 /**
  * Bloom compositor: a low-resolution half-float buffer for the glow, plus the
- * pass that adds it back over the screen.
+ * pass that composites it back over the screen.
  *
- * The dark-mode glow uses additive blending — many translucent sprites stack on
- * the same pixels — which bands badly when accumulated straight onto an 8-bit
- * screen (the gradient is re-quantized on every blend and the errors compound).
- * So the orchestrator renders the glow *halos only* into {@link target}, a
- * 16-bit float ({@link HalfFloatType}) buffer where the accumulation stays
- * smooth, then calls {@link composite} to add that buffer over the already-drawn
- * sharp content. Only this one add hits the 8-bit screen, so no banding forms.
+ * The glow's many translucent halos stack on the same pixels — additively in
+ * dark mode, with normal 'over' blending in light mode — which bands badly when
+ * accumulated straight onto an 8-bit screen (the gradient is re-quantized on
+ * every blend and the errors compound). So the orchestrator renders the glow
+ * *halos only* into {@link target}, a 16-bit float ({@link HalfFloatType})
+ * buffer where the accumulation stays smooth, then calls {@link composite} to
+ * apply that buffer over the already-drawn sharp content. Only this one
+ * composite hits the 8-bit screen, so no banding forms.
+ *
+ * The halos are written premultiplied, so both the buffer accumulation and the
+ * final composite keep a src factor of One and select the operator with the dst
+ * factor alone (One = additive, OneMinusSrcAlpha = over).
  *
  * Keeping the buffer at {@link GLOW_SCALE} of the screen is what recovers the
  * 4K performance the full-resolution float path cost: the expensive overdraw
@@ -42,8 +47,8 @@ const GLOW_SCALE = 0.5;
  * axes are untouched at full resolution.
  */
 export function createGlowCompositor() {
-  // The glow accumulation buffer. Half-float so additive overlaps don't band;
-  // no depth/stencil (only the point halos draw into it, depth-test off).
+  // The glow accumulation buffer. Half-float so the overlaps don't band; no
+  // depth/stencil (only the point halos draw into it, depth-test off).
   const glowTarget = new WebGLRenderTarget(1, 1, {
     type: HalfFloatType,
     depthBuffer: false,
@@ -64,11 +69,14 @@ export function createGlowCompositor() {
     uniforms: { uTexture: { value: glowTarget.texture } },
     vertexShader: blitVertexShader,
     fragmentShader: blitFragmentShader,
+    // transparent so three honours the custom blend when drawing this quad.
+    transparent: true,
     depthTest: false,
     depthWrite: false,
-    // Composite the glow over the already-drawn sharp content. The exact factors
-    // are set per call in composite() — additive for the dark glow, premultiplied
-    // 'over' for the light one (matching how the halos were accumulated).
+    // Composite the glow over the already-drawn sharp content. composite() sets
+    // the factors per call (these defaults are the dark additive path, dst + src;
+    // the light path swaps the dst factor for 'over' = normal blending). Always
+    // CustomBlending so the exact equation is unambiguous and re-applied.
     blending: CustomBlending,
     blendEquation: AddEquation,
     blendSrc: OneFactor,
@@ -91,11 +99,16 @@ export function createGlowCompositor() {
   /**
    * Blits the glow buffer over the current render target (the screen),
    * upsampling it to full resolution. `additive` picks the blend used over the
-   * sharp content: dark glow adds light (src + dst); light glow composites with
-   * premultiplied 'over' (src + dst*(1 - srcAlpha)). Either way it leaves
-   * autoClear as it found it so the sharp pass underneath is not wiped.
+   * sharp content, matching how the halos were accumulated: dark glow adds light
+   * (dst + src), light glow multiplies a subtractive tint (dst * src). Either
+   * way it leaves autoClear as it found it so the sharp pass is not wiped.
    */
   const composite = (renderer: WebGLRenderer, additive: boolean) => {
+    // The buffer holds premultiplied glow, so src factor stays One and only the
+    // dst factor selects the operator: additive (dark) = dst + src; 'over' =
+    // normal blending (light) = src + dst*(1 - srcAlpha).
+    material.blendEquation = AddEquation;
+    material.blendSrc = OneFactor;
     material.blendDst = additive ? OneFactor : OneMinusSrcAlphaFactor;
     const previousAutoClear = renderer.autoClear;
     renderer.autoClear = false;
