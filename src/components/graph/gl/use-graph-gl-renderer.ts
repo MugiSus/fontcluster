@@ -127,16 +127,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const pixelRatio = window.devicePixelRatio;
 
-      // 1) Sharp pass: cores + rings + images + axes, full-res to the screen.
-      pointLayer.setPass('core');
-      renderer.setRenderTarget(null);
-      renderer.render(scene, camera);
-
-      // 2) Glow pass: halos only, into the low-res half-float buffer. Cleared to
+      // 1) Glow pass: halos only, into the low-res half-float buffer. Cleared to
       //    transparent black: the premultiplied halos accumulate from zero for
       //    both operators (sum for dark additive, 'over' for light). Scale the
       //    sprite pixel size to the buffer's lower resolution so the glow lands
-      //    at the same on-screen size; hide the sharp-only layers.
+      //    at the same on-screen size; hide the sharp-only layers. This pass is
+      //    rendered offscreen, so scene renderOrder cannot put other layers over
+      //    it yet.
       pointLayer.setPass('halo');
       pointLayer.setPixelRatio(pixelRatio * compositor.glowScale);
       axisLayer.object.visible = false;
@@ -153,10 +150,22 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       ringLayer.object.visible = true;
       imageLayer.object.visible = true;
 
-      // 3) Composite the upsampled glow over the sharp screen — additive for the
-      //    dark glow (adds light), premultiplied 'over' for the light glow.
+      // 2) Clear the screen to the theme background, then composite the upsampled
+      //    glow onto that empty background. Since the sharp scene has not drawn
+      //    yet, the glow becomes the bottom visual layer instead of sitting over
+      //    sample images.
       renderer.setRenderTarget(null);
+      renderer.clear();
       compositor.composite(renderer, dark);
+
+      // 3) Sharp pass: cores + rings + images + axes, full-res over the already
+      //    composited glow. Disable autoClear for this one render only; otherwise
+      //    three would wipe the glow/background before drawing the scene.
+      pointLayer.setPass('core');
+      const previousAutoClear = renderer.autoClear;
+      renderer.autoClear = false;
+      renderer.render(scene, camera);
+      renderer.autoClear = previousAutoClear;
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
