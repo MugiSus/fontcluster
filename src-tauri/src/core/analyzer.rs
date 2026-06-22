@@ -1,3 +1,12 @@
+//! Feature extraction stage: turns each rendered sample image into an
+//! embedding vector with an ONNX vision model.
+//!
+//! A single [`Analyzer`] owns one ONNX [`Session`] (RepViT) guarded by a
+//! mutex. Images are preprocessed in parallel with [`rayon`], run through the
+//! model in fixed-size batches, and the resulting embedding for each image is
+//! written next to it as `vector.bin`. On Apple silicon the CoreML execution
+//! provider is used; elsewhere the default CPU provider is used.
+
 use crate::commands::progress::progress_events;
 use crate::config::ProgressStage;
 use crate::core::{AppState, EventSink};
@@ -26,38 +35,56 @@ const DEFAULT_INPUT_SIZE: u32 = 224;
 const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
 const MODEL_BATCH_SIZE: usize = 8;
 const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
+/// ImageNet channel normalisation mean the model was trained with.
 const DEFAULT_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
+/// ImageNet channel normalisation standard deviation.
 const DEFAULT_STD: [f32; 3] = [0.229, 0.224, 0.225];
 
+/// Owns the loaded ONNX model and the preprocessing spec it expects.
 pub struct Analyzer {
+    /// The ONNX session. Behind a mutex because [`Session::run`] needs `&mut`
+    /// while [`Analyzer`] is shared across the batch loop.
     session: Mutex<Session>,
     spec: ModelSpec,
 }
 
+/// A preprocessed image tensor together with the path it was loaded from, so
+/// the resulting embedding can be written back beside it.
 struct PreparedImage {
     path: PathBuf,
     input: Array4<f32>,
 }
 
+/// Outcome of preprocessing one batch: the images that decoded successfully
+/// plus how many were dropped, so progress totals can be adjusted.
 struct BatchResult {
     prepared_images: Vec<PreparedImage>,
     failed_count: usize,
 }
 
 impl Analyzer {
+    /// Locates and loads the bundled ONNX model, returning a ready analyzer.
     pub fn new() -> Result<Self> {
         let model_dir = resolve_model_dir()?;
         let model_path = model_dir.join(MODEL_FILE_NAME);
-        let spec = default_model_spec();
-
-        let session = load_session(&model_path)?;
 
         Ok(Self {
-            session: Mutex::new(session),
-            spec,
+            session: Mutex::new(load_session(&model_path)?),
+            spec: ModelSpec {
+                input_size: DEFAULT_INPUT_SIZE,
+                mean: DEFAULT_MEAN,
+                std: DEFAULT_STD,
+            },
         })
     }
 
+    /// Embeds every sample image in the active session.
+    ///
+    /// Processes images in batches of [`MODEL_BATCH_SIZE`], reporting progress
+    /// through `events`/`state` and writing each embedding to `vector.bin`.
+    /// Images that fail to decode or infer are dropped from the denominator
+    /// rather than failing the whole run. Returns early (leaving status
+    /// unchanged) if the job is cancelled mid-way.
     pub async fn analyze_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
         let png_files = collect_sample_paths(session_dir).await?;
@@ -87,7 +114,12 @@ impl Analyzer {
             }
 
             let batch = prepare_batch(chunk, &self.spec);
-            decrease_progress_denominator(events, state, batch.failed_count);
+            progress_events::decrease_denominator(
+                events,
+                state,
+                ProgressStage::Analysis,
+                batch.failed_count as i32,
+            );
             if state.is_cancelled.load(Ordering::Relaxed) {
                 return Ok(());
             }
@@ -124,6 +156,8 @@ impl Analyzer {
         Ok(())
     }
 
+    /// Runs inference for one prepared batch and persists every embedding,
+    /// returning how many images were written.
     fn process_prepared_images(&self, prepared_images: Vec<PreparedImage>) -> Result<usize> {
         let prepared_count = prepared_images.len();
         let features = self.run_batch_inference(&prepared_images)?;
@@ -131,6 +165,8 @@ impl Analyzer {
         Ok(prepared_count)
     }
 
+    /// Packs the batch into a single tensor, runs the model, and returns the
+    /// embedding vector for each input.
     fn run_batch_inference(&self, prepared_images: &[PreparedImage]) -> Result<Vec<Vec<f32>>> {
         let tensor = tensor_from_inputs(prepared_images)?;
         let mut session = self
@@ -141,10 +177,11 @@ impl Analyzer {
             .run(inputs![tensor])
             .map_err(|err| AppError::Processing(err.to_string()))?;
 
-        select_embeddings_from_outputs(&outputs, prepared_images.len())
+        extract_embeddings(&outputs, prepared_images.len())
     }
 }
 
+/// Builds and commits an ONNX session for the model at `model_path`.
 fn load_session(model_path: &Path) -> Result<Session> {
     println!(
         "🚀 Analyzer: loading ONNX model from {}",
@@ -177,6 +214,10 @@ fn load_session(model_path: &Path) -> Result<Session> {
     Ok(session)
 }
 
+/// Registers the platform's preferred execution provider.
+///
+/// On Apple silicon this enables CoreML on the Neural Engine; on every other
+/// target the builder is returned unchanged so the default CPU provider runs.
 fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuilder> {
     #[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
     {
@@ -200,6 +241,8 @@ fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuild
     }
 }
 
+/// Collects the `sample.png` path of every font under the session's
+/// `samples/` directory, off the async runtime.
 async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
     let session_dir_display = session_dir.display().to_string();
     tokio::task::spawn_blocking(move || {
@@ -228,6 +271,8 @@ async fn collect_sample_paths(session_dir: PathBuf) -> Result<Vec<PathBuf>> {
     })
 }
 
+/// Preprocesses a chunk of images in parallel, logging and counting any that
+/// fail rather than aborting the batch.
 fn prepare_batch(paths: &[PathBuf], spec: &ModelSpec) -> BatchResult {
     let mut prepared_images = Vec::new();
     let mut failed_count = 0;
@@ -248,6 +293,12 @@ fn prepare_batch(paths: &[PathBuf], spec: &ModelSpec) -> BatchResult {
     }
 }
 
+/// Stacks per-image `[1, C, H, W]` tensors into one `[MODEL_BATCH_SIZE, …]`
+/// tensor.
+///
+/// All inputs must share the leading image's shape. The batch dimension is
+/// always [`MODEL_BATCH_SIZE`] (matching the dimension override applied when
+/// the session was built); a short final batch leaves the unused rows zeroed.
 fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> {
     let first_input = prepared_images
         .first()
@@ -282,6 +333,8 @@ fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> 
         .map_err(|err| AppError::Processing(err.to_string()))
 }
 
+/// Writes each embedding beside the image it came from, after checking the
+/// counts line up.
 fn write_feature_vectors(
     prepared_images: Vec<PreparedImage>,
     features: Vec<Vec<f32>>,
@@ -301,6 +354,8 @@ fn write_feature_vectors(
     Ok(())
 }
 
+/// Writes one embedding as raw little-endian `f32` bytes to `vector.bin`
+/// alongside the source image.
 fn write_feature_vector(path: PathBuf, feature: &[f32]) -> Result<()> {
     let mut bin_path = path;
     bin_path.set_file_name("vector.bin");
@@ -314,12 +369,7 @@ fn write_feature_vector(path: PathBuf, feature: &[f32]) -> Result<()> {
     Ok(())
 }
 
-fn decrease_progress_denominator(events: &impl EventSink, state: &AppState, count: usize) {
-    for _ in 0..count {
-        progress_events::decrease_denominator(events, state, ProgressStage::Analysis, 1);
-    }
-}
-
+/// Preprocesses `paths` in parallel, pairing each failure with its path.
 fn preprocess_images(
     paths: &[PathBuf],
     spec: &ModelSpec,
@@ -337,6 +387,8 @@ fn preprocess_images(
         .collect()
 }
 
+/// The preprocessing the model expects: square input size and per-channel
+/// normalisation parameters.
 #[derive(Debug, Clone)]
 struct ModelSpec {
     input_size: u32,
@@ -344,6 +396,11 @@ struct ModelSpec {
     std: [f32; 3],
 }
 
+/// Finds the directory containing the ONNX model.
+///
+/// Searches development paths, the bundled resources directory (via
+/// `FONTCLUSTER_RESOURCE_DIR` or relative to the executable), and accepts the
+/// first location holding a non-empty `model.onnx`.
 fn resolve_model_dir() -> Result<PathBuf> {
     let mut roots = vec![PathBuf::from("src-tauri/models"), PathBuf::from("models")];
 
@@ -383,14 +440,10 @@ fn resolve_model_dir() -> Result<PathBuf> {
     )))
 }
 
-fn default_model_spec() -> ModelSpec {
-    ModelSpec {
-        input_size: DEFAULT_INPUT_SIZE,
-        mean: DEFAULT_MEAN,
-        std: DEFAULT_STD,
-    }
-}
-
+/// Loads and preprocesses one image into the model's NCHW input tensor.
+///
+/// The image is resized to fit `spec.input_size`, alpha-composited onto black,
+/// centred in a square canvas, and normalised per channel.
 fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     let dyn_img = image::open(path)
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
@@ -419,6 +472,8 @@ fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     Ok(input)
 }
 
+/// Centres `source` on a black `target_size` square, returning it unchanged if
+/// it is already that size.
 fn center_in_square(source: &image::RgbImage, target_size: u32) -> image::RgbImage {
     if source.width() == target_size && source.height() == target_size {
         return source.clone();
@@ -436,6 +491,8 @@ fn center_in_square(source: &image::RgbImage, target_size: u32) -> image::RgbIma
     canvas
 }
 
+/// Flattens RGBA pixels to RGB by premultiplying each channel with alpha
+/// (i.e. compositing over black), in parallel.
 fn rgba_to_rgb_with_alpha(rgba: &image::RgbaImage) -> Vec<u8> {
     let mut rgb = vec![0u8; rgba.width() as usize * rgba.height() as usize * 3];
     rgb.par_chunks_exact_mut(3)
@@ -449,6 +506,10 @@ fn rgba_to_rgb_with_alpha(rgba: &image::RgbaImage) -> Vec<u8> {
     rgb
 }
 
+/// Fills an NCHW tensor from an RGB image, one channel plane per thread.
+///
+/// Pixel values are scaled to `[0, 1]` and, when both `mean` and `std` are
+/// supplied, standardised as `(value - mean) / std` per channel.
 fn fill_nchw_input(
     processed: &image::RgbImage,
     input: &mut Array4<f32>,
@@ -487,7 +548,13 @@ fn fill_nchw_input(
     Ok(())
 }
 
-fn select_embeddings_from_outputs(
+/// Pulls the embedding output out of the model's results.
+///
+/// Looks up the `embedding` output, validates that it is a 2-D
+/// `[batch, features]` tensor with at least `expected_count` rows, and returns
+/// the first `expected_count` rows as owned vectors (dropping the padding rows
+/// from any short final batch).
+fn extract_embeddings(
     outputs: &ort::session::SessionOutputs<'_>,
     expected_count: usize,
 ) -> Result<Vec<Vec<f32>>> {
@@ -500,14 +567,6 @@ fn select_embeddings_from_outputs(
             ))
         })?;
 
-    extract_feature_outputs(PREFERRED_EMBEDDING_OUTPUT_NAME, output, expected_count)
-}
-
-fn extract_feature_outputs(
-    name: &str,
-    output: &ort::value::DynValue,
-    expected_count: usize,
-) -> Result<Vec<Vec<f32>>> {
     let array = output
         .try_extract_array::<f32>()
         .map_err(|err| AppError::Processing(err.to_string()))?;
@@ -519,13 +578,13 @@ fn extract_feature_outputs(
     if shape.len() != 2 {
         return Err(AppError::Processing(format!(
             "Output '{}' must be 2D [batch, features], got {:?}",
-            name, shape
+            PREFERRED_EMBEDDING_OUTPUT_NAME, shape
         )));
     }
     if shape[0] < expected_count {
         return Err(AppError::Processing(format!(
             "Output '{}' batch size {} is smaller than expected {}",
-            name, shape[0], expected_count
+            PREFERRED_EMBEDDING_OUTPUT_NAME, shape[0], expected_count
         )));
     }
 

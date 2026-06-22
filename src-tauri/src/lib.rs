@@ -1,3 +1,16 @@
+//! FontCluster backend library crate.
+//!
+//! Exposes the Tauri application setup ([`run`]) plus the modules that make up
+//! the backend:
+//! - [`config`] — serialisable session data model;
+//! - [`core`] — the processing pipeline, session storage and shared state;
+//! - [`commands`] — Tauri command handlers invoked from the webview;
+//! - [`rendering`] — font rasterisation;
+//! - [`error`] — the shared [`error::AppError`] type.
+//!
+//! The same crate also powers the headless job worker process; see
+//! [`commands::run_jobs_worker`].
+
 pub mod commands;
 pub mod config;
 pub mod core;
@@ -14,6 +27,10 @@ use tauri::{
     AppHandle, Emitter,
 };
 
+/// Builds the native application menu.
+///
+/// The layout differs per platform: macOS gets the standard app menu with the
+/// session/update items, while other platforms fold them into the File menu.
 fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let restore = MenuItem::with_id(
         app,
@@ -104,6 +121,7 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     }
 }
 
+/// Translates menu clicks into events the webview listens for.
 fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
     if event.id().as_ref() == "restore_sessions" {
         let _ = app.emit("show_session_selection", ());
@@ -118,6 +136,11 @@ fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
     }
 }
 
+/// Builds and runs the Tauri application.
+///
+/// Performs startup housekeeping (pruning unsupported sessions, reconciling the
+/// session cache), starts the plugin bridge server, registers shared state and
+/// command handlers, then hands control to the Tauri runtime.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new();

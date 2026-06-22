@@ -1,3 +1,13 @@
+//! Domain core: the processing pipeline, session storage and shared state.
+//!
+//! The pipeline stages run in order — [`discoverer`] → [`sample_renderer`] →
+//! [`analyzer`] → [`positioner`] → [`clusterer`] — operating on the session
+//! state owned by [`session`]. Supporting modules cover event reporting
+//! ([`events`]), the plugin bridge ([`plugin_bridge`]), Google Fonts
+//! downloading ([`google_fonts_downloader`]) and example-session seeding
+//! ([`example`]). Each submodule's contents are re-exported at the crate's
+//! `core` path for convenience.
+
 pub mod analyzer;
 pub mod clusterer;
 pub mod discoverer;

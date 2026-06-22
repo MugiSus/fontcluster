@@ -1,3 +1,11 @@
+//! Minimal HTTP bridge for external design-tool plugins.
+//!
+//! A tiny hand-rolled HTTP server runs on a fixed localhost port so plugins
+//! (e.g. an Illustrator/Photoshop extension) can poll the currently selected
+//! font and session and register heartbeats. The protocol is deliberately
+//! small — three routes (`GET /data`, `POST /heartbeat`, CORS `OPTIONS`) — so
+//! it avoids pulling in a full web framework.
+
 use crate::config::{FontMetadata, SessionConfig};
 use crate::error::{AppError, Result};
 use chrono::{DateTime, Utc};
@@ -8,9 +16,12 @@ use std::thread;
 
 use super::session::AppState;
 
+/// Fixed localhost port the bridge listens on; plugins are configured to match.
 pub const PLUGIN_BRIDGE_PORT: u16 = 38653;
+/// A connection is considered active for this long after its last heartbeat.
 const PLUGIN_CONNECTION_TIMEOUT_SECONDS: i64 = 5;
 
+/// Body of `GET /data`: the current session, selected font, and change time.
 #[derive(Debug, Serialize)]
 struct PluginDataResponse {
     session: Option<SessionConfig>,
@@ -18,6 +29,7 @@ struct PluginDataResponse {
     modified_date: Option<DateTime<Utc>>,
 }
 
+/// A connected plugin as last reported by its heartbeat.
 #[derive(Debug, Clone, Serialize)]
 pub struct PluginConnection {
     pub plugin_id: String,
@@ -27,6 +39,7 @@ pub struct PluginConnection {
     pub last_seen: DateTime<Utc>,
 }
 
+/// Request body of `POST /heartbeat`.
 #[derive(Debug, Deserialize)]
 struct PluginHeartbeatRequest {
     plugin_id: String,
@@ -35,11 +48,13 @@ struct PluginHeartbeatRequest {
     document_name: Option<String>,
 }
 
+/// Response body of `POST /heartbeat`.
 #[derive(Debug, Serialize)]
 struct PluginHeartbeatResponse {
     ok: bool,
 }
 
+/// Spawns the bridge server on a background thread; failures are logged.
 pub fn start_plugin_bridge_server(state: AppState) {
     thread::spawn(move || {
         if let Err(error) = run_plugin_bridge_server(state) {
@@ -48,6 +63,7 @@ pub fn start_plugin_bridge_server(state: AppState) {
     });
 }
 
+/// Binds the listener and serves connections until the process exits.
 fn run_plugin_bridge_server(state: AppState) -> Result<()> {
     let listener = TcpListener::bind(("localhost", PLUGIN_BRIDGE_PORT)).map_err(|e| {
         AppError::Network(format!(
@@ -65,6 +81,8 @@ fn run_plugin_bridge_server(state: AppState) -> Result<()> {
     Ok(())
 }
 
+/// Reads one request and dispatches it to the matching route, replying with a
+/// 404 for anything unrecognised.
 fn handle_stream(mut stream: TcpStream, state: &AppState) {
     let mut buffer = [0_u8; 4096];
     let Ok(size) = stream.read(&mut buffer) else {
@@ -151,6 +169,8 @@ fn handle_stream(mut stream: TcpStream, state: &AppState) {
     write_response(&mut stream, 404, "Not Found", "text/plain", "Not found");
 }
 
+/// Returns the plugins seen within [`PLUGIN_CONNECTION_TIMEOUT_SECONDS`],
+/// pruning any that have timed out as a side effect.
 pub fn get_active_plugin_connections(state: &AppState) -> Result<Vec<PluginConnection>> {
     let now = Utc::now();
     let mut connections = state
@@ -167,6 +187,8 @@ pub fn get_active_plugin_connections(state: &AppState) -> Result<Vec<PluginConne
     Ok(connections.values().cloned().collect())
 }
 
+/// Writes a complete HTTP/1.1 response with permissive CORS headers and
+/// `Connection: close`. Write errors are ignored (the peer has gone away).
 fn write_response(
     stream: &mut TcpStream,
     status_code: u16,

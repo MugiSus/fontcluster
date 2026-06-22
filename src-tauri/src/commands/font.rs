@@ -1,3 +1,11 @@
+//! Commands backing the font browser and on-demand preview rendering.
+//!
+//! Besides listing a session's fonts and the installed system families, this
+//! renders a preview PNG for an arbitrary font on demand. Previews are cached
+//! on disk (LRU) keyed by a hash of every input that affects the output, and
+//! system fonts are resolved through a lazily-built index so repeated previews
+//! don't re-scan the font database.
+
 use crate::config::{FontMetadata, FontSource, RenderConfig};
 use crate::core::google_fonts_downloader::download_google_font_subset_temp;
 use crate::core::{session::load_font_data, AppState};
@@ -15,14 +23,20 @@ use std::sync::Mutex;
 use tauri::{command, State};
 use tauri::{AppHandle, Manager};
 
+/// Maximum on-disk size of the preview cache (500 MiB).
 const PREVIEW_CACHE_SIZE_LIMIT: u64 = 500 * 1024 * 1024;
 
+/// Tauri-managed state for preview rendering.
+///
+/// Both members are lazily initialised on first use and shared across preview
+/// requests: the LRU disk cache of rendered PNGs and the system-font index.
 #[derive(Default)]
 pub struct FontPreviewCacheState {
     cache: Mutex<Option<LruDiskCache>>,
     system_fonts: Mutex<Option<SystemFontResolver>>,
 }
 
+/// Arguments for [`render_font_preview`].
 #[derive(Debug, Deserialize)]
 pub struct RenderFontPreviewPayload {
     font: FontMetadata,
@@ -30,6 +44,8 @@ pub struct RenderFontPreviewPayload {
     font_size: f32,
 }
 
+/// One indexed system font face: where to find it plus the fields used to
+/// match it against a [`FontMetadata`].
 struct SystemFontFace {
     path: PathBuf,
     font_index: u32,
@@ -37,12 +53,17 @@ struct SystemFontFace {
     families: Vec<String>,
 }
 
+/// In-memory index of installed system fonts for fast resolution.
+///
+/// `by_postscript_name` gives an exact lookup; `faces` backs the fuzzy
+/// family-and-weight fallback when the PostScript name is unknown.
 struct SystemFontResolver {
     faces: Vec<SystemFontFace>,
     by_postscript_name: HashMap<String, (PathBuf, u32)>,
 }
 
 impl SystemFontResolver {
+    /// Builds the index by scanning the system font database once.
     fn new() -> Self {
         let mut db = fontdb::Database::new();
         db.load_system_fonts();
@@ -75,6 +96,8 @@ impl SystemFontResolver {
         }
     }
 
+    /// Resolves a font to a `(path, face index)`, matching on PostScript name
+    /// first and falling back to a family-name + nearby-weight search.
     fn resolve(&self, font: &FontMetadata) -> Result<(PathBuf, u32)> {
         if let Some((path, font_index)) = font
             .postscript_name
@@ -106,6 +129,8 @@ impl SystemFontResolver {
     }
 }
 
+/// Resolves a system font, building the [`SystemFontResolver`] index on first
+/// use and reusing it thereafter.
 fn resolve_system_font(
     preview_cache_state: &FontPreviewCacheState,
     font: &FontMetadata,
@@ -120,6 +145,7 @@ fn resolve_system_font(
     resolver.as_ref().unwrap().resolve(font)
 }
 
+/// Returns every font in a session as a JSON `safe_name -> FontData` map.
 #[command]
 #[allow(non_snake_case)]
 pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
@@ -142,6 +168,8 @@ pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> R
     Ok(serde_json::to_string(&map)?)
 }
 
+/// Returns the sorted, de-duplicated list of installed family names,
+/// excluding emoji and icon fonts.
 #[command]
 pub async fn get_system_fonts() -> Result<Vec<String>> {
     let mut db = fontdb::Database::new();
@@ -159,6 +187,10 @@ pub async fn get_system_fonts() -> Result<Vec<String>> {
     Ok(fonts)
 }
 
+/// Renders (or returns a cached) preview PNG and yields its file path.
+///
+/// The actual work runs on a blocking thread; see
+/// [`render_font_preview_blocking`].
 #[command]
 pub async fn render_font_preview(
     app: AppHandle,
@@ -180,6 +212,12 @@ pub async fn render_font_preview(
     .map_err(|e| AppError::Processing(e.to_string()))?
 }
 
+/// Renders a preview, short-circuiting on a cache hit.
+///
+/// A cache key is hashed from every input that can change the output (font
+/// identity, size, text, and the source file's size/mtime for system fonts).
+/// On a miss the font is rendered to a temp file and inserted into the LRU
+/// cache; either way the resulting cached file path is returned.
 fn render_font_preview_blocking(
     cache_dir: PathBuf,
     preview_cache_state: &FontPreviewCacheState,

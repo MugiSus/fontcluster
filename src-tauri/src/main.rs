@@ -1,8 +1,16 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+//! Executable entry point.
+//!
+//! The same binary serves two roles. When launched with the worker flag (see
+//! [`fontcluster_lib::commands::is_worker_run_jobs_arg`]) it runs the headless
+//! job pipeline and exits; otherwise it launches the full Tauri app via
+//! [`fontcluster_lib::run`].
+
 use mimalloc::MiMalloc;
 
+/// Use mimalloc as the global allocator for better multithreaded throughput.
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 

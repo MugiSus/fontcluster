@@ -1,3 +1,23 @@
+//! Application state and on-disk session storage.
+//!
+//! [`AppState`] is the single shared, cloneable handle to all mutable runtime
+//! state (the active session, running jobs, plugin bridge data). Everything
+//! inside it is `Arc<Mutex<…>>`, so cloning the struct shares the same state.
+//!
+//! # Storage layout
+//!
+//! A session lives in up to three places:
+//! - `Generated/<id>.fontclusterdoc` — the canonical persisted document, a zip
+//!   archive of the session directory. This is what survives across runs.
+//! - cache `Session/Processing/<id>` — the unpacked working directory used
+//!   while a job is running; packed back into the document on completion.
+//! - cache `Session/Current/<id>` — a transient unpacked view extracted from
+//!   the document for read-only viewing.
+//!
+//! [`AppState::resolve_session_dir`] picks the right one (processing → current
+//! → extract-on-demand), and the free functions at the bottom of the module
+//! own (de)serialising config, packing, and extracting these archives.
+
 use crate::commands::jobs::AlgorithmConfigPatch;
 use crate::config::{
     AlgorithmConfig, ComputedData, FontData, FontMetadata, ProcessStatus, ProcessingProgress,
@@ -19,33 +39,51 @@ use zip::write::SimpleFileOptions;
 
 use super::plugin_bridge::PluginConnection;
 
+/// File extension of a packed session document.
 pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
+/// Sessions written by an app version older than this are pruned on startup.
 const MIN_SUPPORTED_SESSION_VERSION: &str = "0.15.0";
+/// Name of the JSON config file inside a session directory/document.
 const SESSION_CONFIG_FILE: &str = "config.json";
 
 static SESSION_VIEW_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
+/// Process-wide lock serialising extraction of a document into a view, so two
+/// callers cannot race to populate the same `Current`/`Processing` directory.
 fn session_view_lock() -> &'static Mutex<()> {
     SESSION_VIEW_LOCK.get_or_init(|| Mutex::new(()))
 }
 
+/// A spawned worker process for one running job, plus its cancellation flag.
 #[derive(Clone)]
 pub struct RunningJob {
     pub child: Arc<Mutex<Child>>,
     pub is_cancelled: Arc<AtomicBool>,
 }
 
+/// Shared, cloneable handle to all mutable runtime state.
+///
+/// Cloning is cheap and shares the underlying state (every field is an `Arc`).
 #[derive(Clone)]
 pub struct AppState {
+    /// The session currently loaded in memory, if any.
     pub current_session: Arc<Mutex<Option<SessionConfig>>>,
+    /// Running job workers keyed by session id (or run id before the session
+    /// id is known).
     pub current_job_children: Arc<Mutex<HashMap<String, RunningJob>>>,
+    /// Cooperative cancellation flag for the in-process pipeline.
     pub is_cancelled: Arc<AtomicBool>,
+    /// Font most recently pushed to the plugin bridge.
     pub plugin_bridge_font: Arc<Mutex<Option<FontMetadata>>>,
+    /// Timestamp of the last [`plugin_bridge_font`](Self::plugin_bridge_font)
+    /// update, so plugins can detect changes.
     pub plugin_bridge_modified_date: Arc<Mutex<Option<DateTime<Utc>>>>,
+    /// Currently connected plugins, keyed by plugin id.
     pub plugin_connections: Arc<Mutex<HashMap<String, PluginConnection>>>,
 }
 
 impl AppState {
+    /// Creates an empty state with no active session or jobs.
     pub fn new() -> Self {
         Self {
             current_session: Arc::new(Mutex::new(None)),
@@ -57,42 +95,52 @@ impl AppState {
         }
     }
 
+    /// `<data-dir>/FontCluster` — root of all persistent data.
     pub fn get_base_dir() -> Result<PathBuf> {
         dirs::data_dir()
             .map(|d| d.join("FontCluster"))
             .ok_or_else(|| crate::error::AppError::Io("AppData not found".into()))
     }
 
+    /// Directory holding the packed `.fontclusterdoc` session documents.
     pub fn get_generated_dir() -> Result<PathBuf> {
         Ok(Self::get_base_dir()?.join("Generated"))
     }
 
+    /// Path of the packed document for session `id`.
     pub fn get_session_document_path(id: &str) -> Result<PathBuf> {
         Ok(Self::get_generated_dir()?.join(format!("{id}.{SESSION_DOCUMENT_EXTENSION}")))
     }
 
+    /// `<cache-dir>/FontCluster/Session` — root of the unpacked working/view
+    /// directories.
     pub fn get_session_cache_root() -> Result<PathBuf> {
         dirs::cache_dir()
             .map(|d| d.join("FontCluster").join("Session"))
             .ok_or_else(|| crate::error::AppError::Io("Cache dir not found".into()))
     }
 
+    /// Root of the per-session working directories used while jobs run.
     pub fn get_session_processing_root() -> Result<PathBuf> {
         Ok(Self::get_session_cache_root()?.join("Processing"))
     }
 
+    /// Working directory for session `id`.
     pub fn get_session_processing_dir(id: &str) -> Result<PathBuf> {
         Ok(Self::get_session_processing_root()?.join(id))
     }
 
+    /// Root of the per-session read-only view directories.
     pub fn get_session_current_root() -> Result<PathBuf> {
         Ok(Self::get_session_cache_root()?.join("Current"))
     }
 
+    /// Read-only view directory for session `id`.
     pub fn get_session_current_dir(id: &str) -> Result<PathBuf> {
         Ok(Self::get_session_current_root()?.join(id))
     }
 
+    /// Resolves the on-disk directory of the in-memory active session.
     pub fn get_session_dir(&self) -> Result<PathBuf> {
         let guard = self
             .current_session
@@ -104,6 +152,11 @@ impl AppState {
         Self::resolve_session_dir(&session.session_id)
     }
 
+    /// Finds a readable directory for session `id`.
+    ///
+    /// Prefers the live `Processing` directory, then an already-extracted
+    /// `Current` view, and finally extracts the document on demand via
+    /// [`ensure_session_view`](Self::ensure_session_view).
     pub fn resolve_session_dir(id: &str) -> Result<PathBuf> {
         let processing = Self::get_session_processing_dir(id)?;
         if has_session_config(&processing) {
@@ -116,6 +169,12 @@ impl AppState {
         Self::ensure_session_view(id)
     }
 
+    /// Ensures a read-only `Current` view exists for session `id`, extracting
+    /// it from the packed document if necessary.
+    ///
+    /// Serialised by [`session_view_lock`] so concurrent callers don't race to
+    /// extract the same archive. Errors if the session has neither a live
+    /// processing directory nor a stored document.
     pub fn ensure_session_view(id: &str) -> Result<PathBuf> {
         let _guard = session_view_lock()
             .lock()
@@ -155,6 +214,11 @@ impl AppState {
         )))
     }
 
+    /// Startup cleanup of the cache directories.
+    ///
+    /// Drops hidden/leftover entries and any processing directory without a
+    /// valid config, and clears the entire `Current` view root (views are
+    /// always re-extracted on demand).
     pub fn reconcile_session_storage() -> Result<()> {
         let processing_root = Self::get_session_processing_root()?;
         if processing_root.exists() {
@@ -183,6 +247,11 @@ impl AppState {
         Ok(())
     }
 
+    /// Removes sessions older than [`MIN_SUPPORTED_SESSION_VERSION`].
+    ///
+    /// Scans both stored documents and processing directories, deleting any
+    /// whose recorded app version is too old or whose config cannot be read,
+    /// along with stray non-session files under `Generated`.
     pub fn prune_unsupported_sessions() -> Result<()> {
         let min_version = Version::parse(MIN_SUPPORTED_SESSION_VERSION).map_err(|e| {
             crate::error::AppError::Processing(format!(
@@ -238,6 +307,8 @@ impl AppState {
         Ok(())
     }
 
+    /// Creates a brand-new session, writes its initial config, and makes it the
+    /// active session. Returns the new session id (a v7 UUID).
     pub fn initialize_session(&self, algorithm: AlgorithmConfig) -> Result<String> {
         let id = Uuid::now_v7().to_string();
         let session = SessionConfig {
@@ -277,6 +348,7 @@ impl AppState {
         Ok(id)
     }
 
+    /// Loads session `id` for viewing, extracting a read-only view if needed.
     pub fn load_session(&self, id: &str) -> Result<()> {
         let session_dir = Self::ensure_session_view(id)?;
         let session = read_session_config_from_dir(&session_dir)?;
@@ -285,6 +357,11 @@ impl AppState {
         Ok(())
     }
 
+    /// Loads session `id` into a writable processing directory.
+    ///
+    /// Unpacks the stored document into `Processing` if no working directory
+    /// exists yet, then makes it the active session. Used before re-running a
+    /// previously finalised session.
     pub fn load_session_for_processing(&self, id: &str) -> Result<()> {
         let _guard = session_view_lock()
             .lock()
@@ -323,6 +400,8 @@ impl AppState {
         Ok(())
     }
 
+    /// Packs the processing directory into its document and removes the
+    /// working copy. Called once a session reaches `Clustered`.
     pub fn finalize_session(&self, id: &str) -> Result<()> {
         let processing_dir = Self::get_session_processing_dir(id)?;
         if !processing_dir.exists() {
@@ -337,6 +416,7 @@ impl AppState {
         Ok(())
     }
 
+    /// Mutates the active session's [`ProcessingStatus`] and persists it.
     pub fn update_status<F>(&self, f: F) -> Result<()>
     where
         F: FnOnce(&mut ProcessingStatus),
@@ -346,6 +426,12 @@ impl AppState {
         })
     }
 
+    /// Applies a partial config update before (re-)running a session.
+    ///
+    /// When `status` indicates a re-run from an already-rendered stage
+    /// (`Rendered`/`Analyzed`/`Positioned`), the rendering config is left
+    /// untouched so existing samples stay valid and only clustering settings
+    /// are changed.
     pub fn update_session_config(
         &self,
         algorithm: AlgorithmConfigPatch,
@@ -371,6 +457,8 @@ impl AppState {
         })
     }
 
+    /// Mutates the active session in place, stamps the modified time/version,
+    /// and persists it. A no-op when there is no active session.
     pub fn update_session<F>(&self, f: F) -> Result<()>
     where
         F: FnOnce(&mut SessionConfig),
@@ -385,6 +473,11 @@ impl AppState {
         Ok(())
     }
 
+    /// Mutates one stage's [`ProgressSection`] and persists it.
+    ///
+    /// Unlike [`update_session`](Self::update_session) this does not bump the
+    /// modified time/version, since progress ticks are not user-meaningful
+    /// edits.
     pub fn update_progress<F>(&self, stage: ProgressStage, f: F) -> Result<()>
     where
         F: FnOnce(&mut ProgressSection),
@@ -397,6 +490,7 @@ impl AppState {
         Ok(())
     }
 
+    /// Atomically writes the session config into its processing directory.
     fn save_session(&self, session: &SessionConfig) -> Result<()> {
         let processing_dir = Self::get_session_processing_dir(&session.session_id)?;
         if !processing_dir.exists() {
@@ -409,10 +503,17 @@ impl AppState {
     }
 }
 
+/// True if `dir` looks like a session directory (contains a config file).
 fn has_session_config(dir: &Path) -> bool {
     dir.join(SESSION_CONFIG_FILE).exists()
 }
 
+/// Removes a file or directory tree, never failing the caller.
+///
+/// If a direct `remove_dir_all` fails (e.g. a busy handle on Windows) the
+/// directory is renamed to a hidden `.removing-*` sibling and retried; any
+/// remaining leftovers are cleaned up by [`reconcile_session_storage`] on the
+/// next startup. Problems are logged, not returned.
 fn remove_dir_all_best_effort(path: &Path) {
     let Ok(metadata) = fs::symlink_metadata(path) else {
         return;
@@ -457,6 +558,7 @@ fn remove_dir_all_best_effort(path: &Path) {
     }
 }
 
+/// Selects the mutable [`ProgressSection`] for a given pipeline stage.
 fn progress_section_mut(
     progress: &mut ProcessingProgress,
     stage: ProgressStage,
@@ -469,17 +571,21 @@ fn progress_section_mut(
     }
 }
 
+/// True if `path` has the `.fontclusterdoc` extension.
 pub fn is_session_document_path(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension == SESSION_DOCUMENT_EXTENSION)
 }
 
+/// Parses a session's version, preferring the last-modified version and
+/// falling back to the creating version (tolerating a leading `v`).
 fn parse_session_version(session: &SessionConfig) -> std::result::Result<Version, semver::Error> {
     Version::parse(session.modified_app_version.trim_start_matches('v'))
         .or_else(|_| Version::parse(session.app_version.trim_start_matches('v')))
 }
 
+/// Reads `config.json` out of a packed session document without unpacking it.
 pub fn read_session_config_from_document(path: &Path) -> Result<SessionConfig> {
     let file = fs::File::open(path).map_err(|e| {
         crate::error::AppError::Io(format!(
@@ -515,6 +621,7 @@ pub fn read_session_config_from_document(path: &Path) -> Result<SessionConfig> {
     Ok(serde_json::from_str(&content)?)
 }
 
+/// Reads `config.json` from an unpacked session directory.
 pub fn read_session_config_from_dir(dir: &Path) -> Result<SessionConfig> {
     let config_path = dir.join(SESSION_CONFIG_FILE);
     let content = fs::read_to_string(&config_path).map_err(|e| {
@@ -527,6 +634,8 @@ pub fn read_session_config_from_dir(dir: &Path) -> Result<SessionConfig> {
     Ok(serde_json::from_str(&content)?)
 }
 
+/// Writes `config.json` atomically via a temp file + rename, so a crash mid
+/// write can never leave a truncated config behind.
 fn write_session_config_atomic(session: &SessionConfig, dir: &Path) -> Result<()> {
     fs::create_dir_all(dir).map_err(|e| {
         crate::error::AppError::Io(format!(
@@ -560,6 +669,7 @@ fn write_session_config_atomic(session: &SessionConfig, dir: &Path) -> Result<()
     Ok(())
 }
 
+/// Unpacks every entry of a session document zip into `dir`.
 fn extract_document_to_dir(document_path: &Path, dir: &Path) -> Result<()> {
     let file = fs::File::open(document_path).map_err(|e| {
         crate::error::AppError::Io(format!(
@@ -608,6 +718,11 @@ fn extract_document_to_dir(document_path: &Path, dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Packs `dir` into a session document at `document_path`.
+///
+/// Entries are added in sorted order and stored uncompressed (the samples are
+/// already-compressed PNGs), and the archive is written to a temp file first
+/// then atomically persisted into place.
 fn pack_dir_to_document(dir: &Path, document_path: &Path) -> Result<()> {
     let parent = document_path
         .parent()
@@ -685,6 +800,7 @@ fn pack_dir_to_document(dir: &Path, document_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Writes a font's `meta.json` under `samples/<safe_name>/`.
 pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()> {
     let font_dir = session_dir.join("samples").join(&meta.safe_name);
     fs::create_dir_all(&font_dir).map_err(|e| {
@@ -705,6 +821,7 @@ pub fn save_font_metadata(session_dir: &Path, meta: &FontMetadata) -> Result<()>
     Ok(())
 }
 
+/// Reads a font's `meta.json`.
 pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMetadata> {
     let path = session_dir
         .join("samples")
@@ -721,6 +838,7 @@ pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMet
     )?)?)
 }
 
+/// Writes a font's `computed.json` (rendering/positioning/clustering results).
 pub fn save_computed_data(
     session_dir: &Path,
     safe_name: &str,
@@ -745,6 +863,7 @@ pub fn save_computed_data(
     Ok(())
 }
 
+/// Reads a font's `computed.json`.
 pub fn load_computed_data(session_dir: &Path, safe_name: &str) -> Result<ComputedData> {
     let path = session_dir
         .join("samples")
@@ -761,8 +880,42 @@ pub fn load_computed_data(session_dir: &Path, safe_name: &str) -> Result<Compute
     )?)?)
 }
 
+/// Loads a font's metadata together with any computed results (which may be
+/// absent if the font has not progressed that far).
 pub fn load_font_data(session_dir: &Path, safe_name: &str) -> Result<FontData> {
     let meta = load_font_metadata(session_dir, safe_name)?;
     let computed = load_computed_data(session_dir, safe_name).ok();
     Ok(FontData { meta, computed })
+}
+
+/// Loads every persisted embedding under the session's `samples/` directory.
+///
+/// Returns the raw feature vectors paired with their font ids (the sample
+/// directory names), ordered by id. Samples that have not been analysed yet
+/// (no `vector.bin`) are skipped, so the two returned vectors stay aligned by
+/// index. Shared by the clustering and positioning stages.
+pub fn load_sample_vectors(session_dir: &Path) -> Result<(Vec<Vec<f32>>, Vec<String>)> {
+    let mut entries: Vec<_> = fs::read_dir(session_dir.join("samples"))?
+        .filter_map(|entry| entry.ok())
+        .collect();
+    entries.sort_by_key(|entry| entry.path());
+
+    let mut vectors = Vec::new();
+    let mut ids = Vec::new();
+    for entry in entries {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let bin_path = path.join("vector.bin");
+        if !bin_path.exists() {
+            continue;
+        }
+        let bytes = fs::read(&bin_path)?;
+        let floats: Vec<f32> = bytemuck::cast_slice(&bytes).to_vec();
+        vectors.push(floats);
+        ids.push(path.file_name().unwrap().to_str().unwrap().to_string());
+    }
+
+    Ok((vectors, ids))
 }

@@ -1,3 +1,11 @@
+//! Rendering stage: rasterises one sample image per discovered font.
+//!
+//! For every `(family, weight)` pair the discovery stage kept, this opens the
+//! corresponding [`FontRenderSource`] and renders `sample.png` into the
+//! session directory. Rendering runs in parallel with [`rayon`]; a font that
+//! fails to render is dropped (its directory removed and the progress
+//! denominator decreased) rather than failing the whole stage.
+
 use crate::commands::progress::progress_events;
 use crate::config::{ComputedData, ProgressStage, RenderConfig};
 use crate::core::session::{load_computed_data, save_computed_data};
@@ -8,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+/// Stateless façade for the rendering stage.
 pub struct SampleRenderer {}
 
 impl SampleRenderer {
@@ -15,6 +24,11 @@ impl SampleRenderer {
         Self {}
     }
 
+    /// Renders a sample image for every discovered font in the active session.
+    ///
+    /// `render_sources` maps each font's `safe_name` to where its face can be
+    /// reopened (produced by the discovery stage). Advances the session status
+    /// to `Rendered` on success; returns early if cancelled.
     pub async fn render_all(
         &self,
         events: &impl EventSink,

@@ -1,3 +1,11 @@
+//! On-demand downloading of Google Fonts subsets via the CSS API.
+//!
+//! Given a target text and weights, this filters a bundled popularity list
+//! down to families that both cover the text (by Unicode subset) and offer the
+//! requested weights, then downloads a glyph subset for each via the
+//! `fonts.googleapis.com/css2` endpoint, decompressing WOFF2 to OpenType. Used
+//! both to populate a session's corpus and to render single previews.
+
 use crate::config::FontSet;
 use crate::core::AppState;
 use crate::error::{AppError, Result};
@@ -9,6 +17,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+/// Subset of a Google Fonts catalog entry that we actually use.
 #[derive(Debug, Deserialize)]
 struct GoogleFontMetadata {
     family: String,
@@ -19,6 +28,12 @@ struct GoogleFontMetadata {
     // last_modified: String,
 }
 
+/// Determines, per visible character of `target_text`, which Google Fonts
+/// subsets could supply it.
+///
+/// Returns one inner list per character (whitespace/control characters and
+/// the `menu` subset are ignored); a font satisfies the text only if it
+/// provides at least one subset from every inner list.
 fn text_subset_requirements(target_text: &str) -> Vec<Vec<&'static str>> {
     target_text
         .chars()
@@ -39,6 +54,8 @@ fn text_subset_requirements(target_text: &str) -> Vec<Vec<&'static str>> {
         .collect()
 }
 
+/// True if `font_subsets` covers every requirement from
+/// [`text_subset_requirements`].
 fn font_matches_subset_requirements(
     font_subsets: &[String],
     requirements: &[Vec<&'static str>],
@@ -55,6 +72,10 @@ fn font_matches_subset_requirements(
     })
 }
 
+/// Maps a requested numeric weight to the API weight string of the closest
+/// matching variant the font actually offers, or `None` if it has none.
+///
+/// Handles the named `regular`/`bold` variants as `400`/`700` respectively.
 fn google_font_api_weight(req_weight: i32, variants: &[String]) -> Option<String> {
     let candidates = if req_weight == 400 {
         vec!["regular".to_string(), "400".to_string()]
@@ -82,6 +103,7 @@ fn google_font_api_weight(req_weight: i32, variants: &[String]) -> Option<String
     }
 }
 
+/// Loads the bundled popularity-ordered Google Fonts catalog.
 fn load_google_fonts_metadata() -> Result<Vec<GoogleFontMetadata>> {
     let resource_path = resolve_google_fonts_popularity_path();
     let json_content = if resource_path.exists() {
@@ -108,6 +130,12 @@ fn load_google_fonts_metadata() -> Result<Vec<GoogleFontMetadata>> {
     })
 }
 
+/// Downloads a glyph subset for one `(family, weight)` covering `text`.
+///
+/// Requests CSS from the Google Fonts API, extracts the font URL, downloads
+/// it, and returns OpenType bytes (decompressing WOFF2 when needed). `weight`
+/// is the requested weight used only for error messages; `api_weight` is the
+/// value sent to the API.
 fn fetch_google_font_subset_bytes(
     client: &Client,
     family: &str,
@@ -192,6 +220,10 @@ fn fetch_google_font_subset_bytes(
     }
 }
 
+/// Downloads a single font subset into a temporary file.
+///
+/// Used by the preview command to render a Google Font that is not part of any
+/// session. The returned file is deleted when dropped.
 pub(crate) fn download_google_font_subset_temp(
     family: &str,
     weight: i32,
@@ -220,6 +252,7 @@ pub(crate) fn download_google_font_subset_temp(
     Ok(file)
 }
 
+/// Stateless façade for bulk Google Fonts downloads.
 pub struct GoogleFontsDownloader {}
 
 impl GoogleFontsDownloader {
@@ -227,6 +260,8 @@ impl GoogleFontsDownloader {
         Self {}
     }
 
+    /// Downloads every matching font for the active session into `output_dir`,
+    /// returning the paths written. A no-op for system-font sessions.
     pub async fn download_fonts_to_dir(
         &self,
         state: &AppState,
@@ -253,6 +288,11 @@ impl GoogleFontsDownloader {
     }
 }
 
+/// Filters the catalog and downloads each matching subset in parallel.
+///
+/// Candidates are narrowed by subset coverage and available weights, capped to
+/// the count implied by `font_set`, then every `(font, weight)` is fetched
+/// concurrently. Individual download failures are logged and skipped.
 fn download_fonts_impl(
     font_set: &FontSet,
     target_text: &str,
@@ -356,6 +396,8 @@ fn download_fonts_impl(
     Ok(paths)
 }
 
+/// Locates the bundled `google_fonts_popularity.json`, searching dev paths and
+/// the executable-relative resource directories, falling back to a dev path.
 fn resolve_google_fonts_popularity_path() -> PathBuf {
     let mut roots = vec![
         PathBuf::from("src-tauri/resources"),

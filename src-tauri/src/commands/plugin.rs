@@ -1,3 +1,9 @@
+//! Commands bridging the UI to connected design-tool plugins.
+//!
+//! These read and write the shared plugin-bridge state in [`AppState`]; the
+//! HTTP side that plugins actually talk to lives in
+//! [`crate::core::plugin_bridge`].
+
 use crate::config::FontMetadata;
 use crate::core::{get_active_plugin_connections, AppState, PluginConnection};
 use crate::error::{AppError, Result};
@@ -5,11 +11,13 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tauri::State;
 
+/// Response of [`get_connected_plugins`].
 #[derive(Debug, Serialize)]
 pub struct PluginConnectionsResponse {
     plugins: Vec<PluginConnection>,
 }
 
+/// Publishes a font for plugins to pick up, returning the change timestamp.
 #[tauri::command]
 pub fn send_font_to_plugin(state: State<AppState>, payload: FontMetadata) -> Result<DateTime<Utc>> {
     let modified_date = Utc::now();
@@ -27,6 +35,7 @@ pub fn send_font_to_plugin(state: State<AppState>, payload: FontMetadata) -> Res
     Ok(modified_date)
 }
 
+/// Returns the plugins currently considered connected.
 #[tauri::command]
 pub fn get_connected_plugins(state: State<AppState>) -> Result<PluginConnectionsResponse> {
     Ok(PluginConnectionsResponse {

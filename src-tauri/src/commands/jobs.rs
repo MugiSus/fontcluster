@@ -1,3 +1,13 @@
+//! Job orchestration: running the processing pipeline and reporting back.
+//!
+//! The pipeline runs in a **separate worker process** (the same executable
+//! re-invoked with [`WORKER_RUN_JOBS_ARG`]) so a crash in native model code
+//! can't take down the UI. This module has two sides:
+//! - the app side ([`run_jobs`]/[`stop_jobs`]) spawns the worker, reads the
+//!   JSON event lines it prints, and forwards them to the webview;
+//! - the worker side ([`run_jobs_worker`]/[`run_jobs_pipeline`]) actually runs
+//!   the discovery → render → analyse → position → cluster stages.
+
 use crate::config::{AlgorithmConfig, ClusteringConfig, FontSet, ProcessStatus, RenderingConfig};
 use crate::core::{
     clusterer, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner,
@@ -13,9 +23,13 @@ use std::sync::{Arc, Mutex};
 use tauri::{command, AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
+/// CLI flag that puts the executable into worker mode.
 const WORKER_RUN_JOBS_ARG: &str = "--fontcluster-worker-run-jobs";
+/// Upper bound on concurrently running job workers.
 const MAX_RUNNING_JOBS: usize = 4;
 
+/// Everything needed to start a pipeline run; serialised and passed to the
+/// worker process on its command line.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunJobsRequest {
@@ -24,12 +38,19 @@ pub struct RunJobsRequest {
     pub override_status: Option<ProcessStatus>,
 }
 
+/// Partial algorithm config: each half is `Some` only when it should be
+/// changed, so a re-run can update clustering without re-rendering.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmConfigPatch {
     pub rendering: Option<RenderingConfig>,
     pub clustering: Option<ClusteringConfig>,
 }
 
+/// Spawns a worker to run the pipeline and streams its events to the webview.
+///
+/// Rejects the call if too many jobs are already running, or if the target
+/// session already has a job in flight. Returns the worker's final result
+/// string (`"Success"`/`"Cancelled"`/…) once it exits.
 #[command]
 pub async fn run_jobs(
     app: AppHandle,
@@ -43,14 +64,7 @@ pub async fn run_jobs(
         session_id,
         override_status,
     };
-    run_jobs_in_worker(app, state.inner().clone(), request).await
-}
-
-async fn run_jobs_in_worker(
-    app: AppHandle,
-    state: AppState,
-    request: RunJobsRequest,
-) -> Result<String> {
+    let state = state.inner().clone();
     let run_id = Uuid::now_v7().to_string();
     {
         let running_jobs = state.current_job_children.lock().unwrap();
@@ -168,12 +182,15 @@ async fn run_jobs_in_worker(
     .map_err(|error| AppError::Processing(error.to_string()))?
 }
 
+/// One JSON line as printed by the worker's [`StdoutEventSink`].
 #[derive(Debug, Deserialize)]
 struct WorkerEventMessage {
     event: String,
     payload: Value,
 }
 
+/// True for the per-tick progress events, which are re-wrapped with the
+/// session id before being forwarded to the webview.
 fn is_progress_event(event: &str) -> bool {
     matches!(
         event,
@@ -185,10 +202,13 @@ fn is_progress_event(event: &str) -> bool {
     )
 }
 
+/// True if `arg` is the flag that selects worker mode (checked in `main`).
 pub fn is_worker_run_jobs_arg(arg: &str) -> bool {
     arg == WORKER_RUN_JOBS_ARG
 }
 
+/// Worker-process entry point: deserialises the request, runs the pipeline on
+/// a single-threaded Tokio runtime, and prints the final result event.
 pub fn run_jobs_worker(request_json: &str) -> Result<()> {
     let request = serde_json::from_str::<RunJobsRequest>(request_json)?;
     let state = AppState::new();
@@ -202,6 +222,14 @@ pub fn run_jobs_worker(request_json: &str) -> Result<()> {
     Ok(())
 }
 
+/// Runs the full processing pipeline for one request.
+///
+/// Initialises or resumes the session, then advances it through the rendering,
+/// analysis, positioning and clustering stages. Each stage is skipped if the
+/// session's [`ProcessStatus`] already covers it, so an interrupted session
+/// resumes where it left off. The session is packed into its document once it
+/// reaches `Clustered`. Returns `"Cancelled"` if cancellation is observed at
+/// any checkpoint, otherwise `"Success"`.
 pub async fn run_jobs_pipeline(
     events: impl EventSink,
     state: &AppState,
@@ -258,12 +286,14 @@ pub async fn run_jobs_pipeline(
             Some(temp_dir)
         };
 
-        let discovery = if let Some(google_fonts_dir) = google_fonts_dir.as_ref() {
-            disc.discover_fonts_from_google_fonts_dir(state, google_fonts_dir.path().to_path_buf())
-                .await?
-        } else {
-            disc.discover_fonts(state).await?
-        };
+        let discovery = disc
+            .discover_fonts(
+                state,
+                google_fonts_dir
+                    .as_ref()
+                    .map(|dir| dir.path().to_path_buf()),
+            )
+            .await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -353,6 +383,11 @@ pub async fn run_jobs_pipeline(
     Ok("Success".into())
 }
 
+/// Cancels running jobs and kills their worker processes.
+///
+/// Cancels the worker for `session_id` if given, otherwise every running
+/// worker. Each job's cancellation flag is set before the process is killed so
+/// it can report `"Cancelled"` cleanly, and `jobs_cancelled` is emitted.
 #[command]
 pub fn stop_jobs(
     app: AppHandle,

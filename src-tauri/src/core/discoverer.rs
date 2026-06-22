@@ -1,3 +1,12 @@
+//! Font discovery: turning a raw font corpus into grouped, weight-matched
+//! [`FontMetadata`](crate::config::FontMetadata) ready for rendering.
+//!
+//! Faces are loaded with [`fontdb`], their name tables parsed with [`swash`],
+//! grouped into families, and for each requested weight the closest available
+//! face is selected. The metadata is written to disk as it is discovered and a
+//! [`FontRenderSource`] is returned for each kept font so the renderer can
+//! later reopen exactly the right face.
+
 use crate::config::FontSource;
 use crate::core::AppState;
 use crate::error::{AppError, Result};
@@ -7,17 +16,24 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use swash::{FontRef, StringId};
 
+/// Where to reopen a discovered font face for rendering: a file path plus the
+/// face index within that (possibly multi-face) file.
 #[derive(Debug, Clone)]
 pub struct FontRenderSource {
     pub path: PathBuf,
     pub font_index: u32,
 }
 
+/// Output of a discovery run.
 pub struct DiscoveryResult {
+    /// Families that matched, grouped by requested weight.
     pub discovered_fonts: HashMap<i32, Vec<String>>,
+    /// How to reopen each kept font, keyed by `safe_name`.
     pub render_sources: HashMap<String, FontRenderSource>,
 }
 
+/// Raw, per-face metadata pulled straight from a font's name table before
+/// families are grouped and weights are matched.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ExtractedMeta {
     pub display_name: String,
@@ -41,6 +57,7 @@ pub struct ExtractedMeta {
     pub font_index: u32,
 }
 
+/// Stateless façade for the discovery routines.
 pub struct Discoverer {}
 
 impl Discoverer {
@@ -48,12 +65,20 @@ impl Discoverer {
         Self {}
     }
 
+    /// Recovers a Google Fonts family name from a downloaded file path.
+    ///
+    /// Files are saved as `Family_Name_Weight400.ttf` (see
+    /// [`crate::core::google_fonts_downloader`]); this reverses that encoding.
     fn google_font_family_from_path(path: &Path) -> Option<String> {
         let stem = path.file_stem()?.to_str()?;
         let family = stem.split_once("_Weight")?.0;
         Some(family.replace('_', " "))
     }
 
+    /// Reads a single localised name-table string, preferring English.
+    ///
+    /// Falls back from `en-US` to `en` to any language, and treats empty
+    /// strings as absent.
     fn localized_value(font: &FontRef<'_>, id: StringId) -> Option<String> {
         let strings = font.localized_strings();
         strings
@@ -64,6 +89,9 @@ impl Discoverer {
             .filter(|s| !s.is_empty())
     }
 
+    /// Collects every localised value for `id`, keyed by language tag.
+    ///
+    /// Entries with no declared language are stored under `"und"`.
     fn localized_map(font: &FontRef<'_>, id: StringId) -> HashMap<String, String> {
         let mut map = HashMap::new();
         for string in font.localized_strings() {
@@ -85,6 +113,10 @@ impl Discoverer {
         map
     }
 
+    /// Reads a face's bytes along with the on-disk path it came from.
+    ///
+    /// In-memory ([`Source::Binary`]) faces are rejected because the renderer
+    /// needs a path to reopen the face later.
     fn source_bytes_and_path(source: &Source) -> Result<(Vec<u8>, PathBuf)> {
         match source {
             Source::File(path) => Ok((fs::read(path)?, path.clone())),
@@ -95,6 +127,8 @@ impl Discoverer {
         }
     }
 
+    /// Picks the preferred entry from a localised map, preferring English
+    /// (including the Windows `1033` LCID key) and otherwise any value.
     fn preferred(map: &HashMap<String, String>) -> Option<&String> {
         map.get("en-US")
             .or_else(|| map.get("en"))
@@ -102,6 +136,8 @@ impl Discoverer {
             .or_else(|| map.values().next())
     }
 
+    /// Best family name to group a face under, preferring the typographic
+    /// (preferred) family and falling back to the display name.
     fn internal_family_name(meta: &ExtractedMeta) -> String {
         Self::preferred(&meta.preferred_family_names)
             .or_else(|| Self::preferred(&meta.family_names))
@@ -109,6 +145,7 @@ impl Discoverer {
             .clone()
     }
 
+    /// Best style name for a face, defaulting to `"Regular"` when none is set.
     fn internal_style_name(meta: &ExtractedMeta) -> String {
         Self::preferred(&meta.preferred_style_names)
             .or_else(|| Self::preferred(&meta.style_names))
@@ -116,6 +153,12 @@ impl Discoverer {
             .unwrap_or_else(|| "Regular".to_string())
     }
 
+    /// Parses one face and extracts its [`ExtractedMeta`].
+    ///
+    /// Returns an error (so the caller skips the face) when the font is
+    /// missing a glyph for any character in `target_text`, or when it is an
+    /// internal/system fallback font such as `LastResort` or a dot-prefixed
+    /// family.
     pub fn analyze_font_data(
         data: &[u8],
         index: u32,
@@ -186,20 +229,14 @@ impl Discoverer {
         })
     }
 
-    pub async fn discover_fonts(&self, state: &AppState) -> Result<DiscoveryResult> {
-        self.discover_fonts_with_google_fonts_dir(state, None).await
-    }
-
-    pub async fn discover_fonts_from_google_fonts_dir(
-        &self,
-        state: &AppState,
-        google_fonts_dir: PathBuf,
-    ) -> Result<DiscoveryResult> {
-        self.discover_fonts_with_google_fonts_dir(state, Some(google_fonts_dir))
-            .await
-    }
-
-    async fn discover_fonts_with_google_fonts_dir(
+    /// Discovers, groups and weight-matches fonts for the active session.
+    ///
+    /// Pass `google_fonts_dir` when the session uses a Google Fonts corpus
+    /// (the directory the fonts were downloaded into); pass `None` to discover
+    /// the system fonts. Metadata for each kept font is written to the session
+    /// directory as a side effect, and the session's `discovered_fonts` map is
+    /// updated before returning.
+    pub async fn discover_fonts(
         &self,
         state: &AppState,
         google_fonts_dir: Option<PathBuf>,
@@ -236,11 +273,10 @@ impl Discoverer {
         let font_faces: Vec<FaceInfo> = db.faces().cloned().collect();
         println!("🔍 Found {} font faces", font_faces.len());
 
-        let text = text.clone();
-        let target_weights = target_weights.clone();
-        let session_dir = session_dir.clone();
+        // Parsing every face is CPU-bound, so move the owned inputs onto a
+        // blocking thread. `is_cancelled` is the only value that must be
+        // re-derived here, since `state` itself is only borrowed.
         let is_cancelled = state.is_cancelled.clone();
-
         let discovered = tokio::task::spawn_blocking(move || -> Result<DiscoveryResult> {
             let mut all_metas = Vec::new();
             for face in font_faces {
@@ -293,6 +329,10 @@ impl Discoverer {
                         .collect();
 
                     for &tw in target_weights_ref {
+                        // Accept faces within ~50 units of the target weight,
+                        // closest wins. The window is biased away from the
+                        // 400 (regular) anchor so a light target leans lighter
+                        // and a bold target leans bolder on ties.
                         let best = family_metas
                             .iter()
                             .filter(|m| {

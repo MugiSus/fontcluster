@@ -1,3 +1,10 @@
+//! Session-management commands: creating, listing, inspecting and deleting
+//! sessions, plus enforcing the recent-history cap.
+//!
+//! Sessions live either as packed documents or as live processing
+//! directories; [`collect_stored_sessions`] unifies both views, de-duplicating
+//! by id so an in-progress session shadows its older packed copy.
+
 use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
 use crate::core::{
     is_session_document_path, read_session_config_from_dir, read_session_config_from_document,
@@ -9,18 +16,23 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::{command, State};
 
+/// How many recent sessions to keep; older ones are pruned on history fetch.
 const SESSION_HISTORY_LIMIT: usize = 20;
 
+/// Where a discovered stored session physically lives, so it can be deleted
+/// with the right filesystem call when pruned.
 enum StoredSessionLocation {
     Document(PathBuf),
     Processing(PathBuf),
 }
 
+/// A stored session's config paired with its on-disk location.
 struct StoredSession {
     session: SessionConfig,
     location: StoredSessionLocation,
 }
 
+/// Creates a fresh session and returns its id.
 #[command]
 pub async fn create_new_session(
     algorithm: AlgorithmConfig,
@@ -29,6 +41,7 @@ pub async fn create_new_session(
     state.initialize_session(algorithm)
 }
 
+/// Loads `sessionId` (if given) and returns the active session as JSON.
 #[command]
 #[allow(non_snake_case)]
 pub async fn get_session_info(
@@ -45,6 +58,7 @@ pub async fn get_session_info(
     Ok(serde_json::to_string(session)?)
 }
 
+/// Returns all stored sessions as JSON, newest first.
 #[command]
 pub async fn get_available_sessions() -> Result<String> {
     let mut sessions: Vec<SessionConfig> = collect_stored_sessions()?
@@ -55,6 +69,8 @@ pub async fn get_available_sessions() -> Result<String> {
     Ok(serde_json::to_string(&sessions)?)
 }
 
+/// Returns recent sessions newest first, pruning anything past the history cap
+/// as a side effect.
 #[command]
 pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<SessionConfig>> {
     let mut sessions = collect_stored_sessions()?;
@@ -63,6 +79,8 @@ pub async fn get_session_history(state: State<'_, AppState>) -> Result<Vec<Sessi
     Ok(sessions.into_iter().map(|stored| stored.session).collect())
 }
 
+/// Gathers sessions from both stored documents and processing directories,
+/// keyed by id so a live processing copy shadows the packed one.
 fn collect_stored_sessions() -> Result<Vec<StoredSession>> {
     let mut sessions: HashMap<String, StoredSession> = HashMap::new();
 
@@ -114,6 +132,11 @@ fn collect_stored_sessions() -> Result<Vec<StoredSession>> {
     Ok(sessions.into_values().collect())
 }
 
+/// Deletes sessions beyond [`SESSION_HISTORY_LIMIT`] from disk and from
+/// `sessions`, expecting the slice to be sorted newest-first.
+///
+/// The active session and any with a running job are always kept, even if they
+/// fall outside the limit.
 fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) -> Result<()> {
     if sessions.len() <= SESSION_HISTORY_LIMIT {
         return Ok(());
@@ -153,12 +176,17 @@ fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) ->
     Ok(())
 }
 
+/// Returns the ids of sessions that currently have a running job.
 #[command]
 pub async fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<String>> {
     let running_jobs = state.current_job_children.lock().unwrap();
     Ok(running_jobs.keys().cloned().collect())
 }
 
+/// Returns the most recently modified completed (`Clustered`) session.
+///
+/// When there are no sessions at all, seeds the bundled example session and
+/// returns its id instead.
 #[command]
 pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<String>> {
     let sessions = collect_stored_sessions()?;
@@ -179,12 +207,17 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
     Ok(latest)
 }
 
+/// Resolves and returns the on-disk directory for a session.
 #[command]
 #[allow(non_snake_case)]
 pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
     AppState::resolve_session_dir(&sessionId)
 }
 
+/// Deletes a session's document and working/view directories.
+///
+/// Returns `true` if a document or processing directory was removed (i.e. the
+/// session actually existed).
 #[command]
 #[allow(non_snake_case)]
 pub async fn delete_session(sessionUuid: String) -> Result<bool> {

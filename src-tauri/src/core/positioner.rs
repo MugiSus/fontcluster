@@ -1,19 +1,33 @@
+//! Positioning stage: projects each font's embedding to a 2-D layout point.
+//!
+//! A small linear "preference projector" (mean/std standardisation followed by
+//! a learned linear map, baked into a bundled JSON file) turns each
+//! high-dimensional embedding into the `(x, y)` coordinate the UI plots. The
+//! same projection is reused for interactive lasso selection.
+
 use crate::commands::progress::progress_events;
 use crate::config::{ComputedData, PositioningData, ProgressStage};
-use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
+use crate::core::session::{
+    load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
+};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use ndarray::Array2;
 use serde::Deserialize;
-use std::fs;
 
+/// Number of output axes; the layout is always 2-D.
 const POSITIONING_DIMENSIONS: usize = 2;
+/// The learned projector parameters, embedded in the binary at build time.
 const PROJECTOR_JSON: &str =
     include_str!("../../models/repvit_m1.dist_in1k/repvit_preference_projector.json");
+/// Floor applied to standard deviations to avoid dividing by zero.
 const MIN_PROJECTOR_STD: f32 = 1e-6;
 
+/// Stateless façade for the positioning routine.
 pub struct Positioner;
 
+/// Parameters of the linear embedding-to-2-D projector loaded from
+/// [`PROJECTOR_JSON`].
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PreferenceProjector {
@@ -26,34 +40,17 @@ struct PreferenceProjector {
 }
 
 impl Positioner {
+    /// Positions every analysed font in the active session.
+    ///
+    /// Projects each embedding to 2-D, stores the coordinate on the font, and
+    /// advances the session status to `Positioned`.
     pub async fn position_all(events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
-        let session_dir = session_dir.clone();
         let events = events.clone();
         let state_clone = state.clone();
 
         tokio::task::spawn_blocking(move || -> Result<()> {
-            let mut vectors = Vec::new();
-            let mut font_ids = Vec::new();
-
-            let mut entries: Vec<_> = fs::read_dir(session_dir.join("samples"))?
-                .filter_map(|e| e.ok())
-                .collect();
-            entries.sort_by_key(|e| e.path());
-
-            for entry in entries {
-                let path = entry.path();
-                if path.is_dir() {
-                    let bin_path = path.join("vector.bin");
-                    if bin_path.exists() {
-                        let bytes = fs::read(&bin_path)?;
-                        let floats: Vec<f32> = bytemuck::cast_slice(&bytes).to_vec();
-                        vectors.push(floats);
-                        font_ids.push(path.file_name().unwrap().to_str().unwrap().to_string());
-                    }
-                }
-            }
-
+            let (vectors, font_ids) = load_sample_vectors(&session_dir)?;
             let embedding = position_vectors(vectors)?;
 
             progress_events::reset_progress(&events, &state_clone, ProgressStage::Position);
@@ -94,6 +91,12 @@ impl Positioner {
     }
 }
 
+/// Projects a batch of embeddings to 2-D layout coordinates.
+///
+/// Loads and validates the [`PreferenceProjector`], then for each vector
+/// standardises the input, applies the linear map, and de-standardises the
+/// output. Returns an `n_samples × 2` array. Errors if the vectors are empty,
+/// have inconsistent lengths, or do not match the projector's dimensions.
 pub fn position_vectors(vectors: Vec<Vec<f32>>) -> Result<Array2<f32>> {
     if vectors.is_empty() {
         return Err(AppError::Processing("No vectors to position".into()));

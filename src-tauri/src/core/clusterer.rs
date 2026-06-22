@@ -1,15 +1,29 @@
+//! Clustering stage: groups fonts by visual similarity of their embeddings.
+//!
+//! Embeddings are optionally reduced with PCA, min-max normalised, and fed to
+//! agglomerative (hierarchical) clustering via [`kodama`]. The dendrogram is
+//! cut by either a target cluster count or a distance threshold (see
+//! [`ClusteringConfig`]), and the resulting label is stored on each font.
+
 use crate::commands::progress::progress_events;
 use crate::config::{
     ClusteringConfig, ClusteringData, ClusteringMethod, ComputedData, ProgressStage,
 };
-use crate::core::session::{load_computed_data, load_font_metadata, save_computed_data};
+use crate::core::session::{
+    load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
+};
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use kodama::{linkage, Method as KodamaMethod};
 use ndarray::Array2;
 use petal_decomposition::PcaBuilder;
-use std::fs;
 
+/// Clusters every analysed font in the active session and persists the labels.
+///
+/// Reads the embeddings, reduces/normalises them, runs agglomerative
+/// clustering, writes each font's cluster index, and records the cluster and
+/// sample counts on the session status. A no-op when there is nothing to
+/// cluster.
 pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()> {
     let session_dir = state.get_session_dir()?;
 
@@ -28,27 +42,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
 
     let (points, ids) =
         tokio::task::spawn_blocking(move || -> Result<(Array2<f32>, Vec<String>)> {
-            let mut vectors = Vec::new();
-            let mut ids = Vec::new();
-
-            let mut entries: Vec<_> = fs::read_dir(session_dir_for_first.join("samples"))?
-                .filter_map(|e| e.ok())
-                .collect();
-            entries.sort_by_key(|e| e.path());
-
-            for entry in entries {
-                let path = entry.path();
-                if path.is_dir() {
-                    let bin_path = path.join("vector.bin");
-                    if bin_path.exists() {
-                        let bytes = fs::read(&bin_path)?;
-                        let floats: Vec<f32> = bytemuck::cast_slice(&bytes).to_vec();
-                        vectors.push(floats);
-                        ids.push(path.file_name().unwrap().to_str().unwrap().to_string());
-                    }
-                }
-            }
-
+            let (vectors, ids) = load_sample_vectors(&session_dir_for_first)?;
             if vectors.is_empty() {
                 return Ok((Array2::zeros((0, 0)), ids));
             }
@@ -122,6 +116,10 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     Ok(())
 }
 
+/// Reduces `data` to at most `dimensions` principal components.
+///
+/// `dimensions` is clamped to the rank limit (`min(n_samples, n_features)`).
+/// Errors when there are too few samples or features for PCA to be defined.
 fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
     let (n_samples, n_features) = data.dim();
     if n_samples < 2 {
@@ -143,6 +141,19 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
         .map_err(|e| AppError::Processing(e.to_string()))
 }
 
+/// Runs agglomerative clustering and returns a `(labels, cluster_count)` pair.
+///
+/// Points are min-max normalised, all pairwise Euclidean distances are fed to
+/// [`kodama::linkage`], and the resulting dendrogram is replayed merge by
+/// merge until a stop criterion is hit:
+/// - if `config.target_cluster_count > 0`, stop once that many clusters
+///   remain;
+/// - otherwise, if `config.distance_threshold > 0`, stop before any merge
+///   above that distance;
+/// - otherwise no merges are applied (every point is its own cluster).
+///
+/// `labels[i]` is the cluster index of point `i`; clusters are numbered by
+/// their smallest member index for stable, deterministic ids.
 fn agglomerative_clustering(
     points: Array2<f32>,
     config: &ClusteringConfig,
@@ -219,6 +230,8 @@ fn agglomerative_clustering(
     Ok((labels, active_clusters.len()))
 }
 
+/// Min-max normalises each column (feature) into `[0, 1]`, mapping
+/// zero-variance columns to `0`.
 fn normalize_points(points: &Array2<f32>) -> Array2<f32> {
     let mut normalized = points.clone();
     for axis in 0..points.ncols() {
@@ -237,6 +250,7 @@ fn normalize_points(points: &Array2<f32>) -> Array2<f32> {
     normalized
 }
 
+/// Euclidean distance between rows `left` and `right` of `points`.
 fn point_distance(points: &Array2<f32>, left: usize, right: usize) -> f32 {
     points
         .row(left)
@@ -250,6 +264,8 @@ fn point_distance(points: &Array2<f32>, left: usize, right: usize) -> f32 {
         .sqrt()
 }
 
+/// Maps the config's [`ClusteringMethod`] onto the equivalent
+/// [`kodama::Method`].
 fn kodama_method(method: ClusteringMethod) -> KodamaMethod {
     match method {
         ClusteringMethod::Single => KodamaMethod::Single,

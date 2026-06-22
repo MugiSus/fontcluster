@@ -1,3 +1,9 @@
+//! Command for re-projecting a lasso-selected subset of fonts.
+//!
+//! When the user lassos fonts in the graph, their stored embeddings are run
+//! back through the same projector the positioning stage uses, so the
+//! selection can be laid out on its own without re-running the pipeline.
+
 use crate::config::PositioningData;
 use crate::core::{position_vectors, AppState};
 use crate::error::{AppError, Result};
@@ -6,6 +12,8 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use tauri::{command, State};
 
+/// Result of [`lasso_selected_process`]: the de-duplicated selection in order,
+/// plus each font's freshly computed 2-D position.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LassoSelectedProcessResult {
@@ -13,6 +21,10 @@ pub struct LassoSelectedProcessResult {
     pub positioning_by_safe_name: HashMap<String, PositioningData>,
 }
 
+/// Re-projects the embeddings of the selected fonts to 2-D coordinates.
+///
+/// Duplicate names are ignored; an empty selection yields an empty result.
+/// Errors if any selected font has no stored embedding.
 #[command]
 #[allow(non_snake_case)]
 pub async fn lasso_selected_process(
@@ -84,6 +96,8 @@ pub async fn lasso_selected_process(
     .map_err(|error| AppError::Processing(error.to_string()))?
 }
 
+/// Rejects names that could escape the samples directory (empty, `.`/`..`, or
+/// containing a path separator), guarding the path join against traversal.
 fn validate_safe_name(safe_name: &str) -> Result<()> {
     if safe_name.is_empty()
         || safe_name == "."

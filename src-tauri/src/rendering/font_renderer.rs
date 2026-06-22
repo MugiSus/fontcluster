@@ -1,3 +1,11 @@
+//! Rasterises a string of glyphs from a font face into a grayscale PNG.
+//!
+//! Shaping and scaling are done with [`swash`]: the text is shaped to glyph
+//! positions, each glyph is rendered (preferring colour outline/bitmap sources
+//! before plain outlines), and the glyph coverage is composited into a tightly
+//! cropped LA8 (luminance + alpha) image. The samples this produces are the
+//! input to the analysis stage.
+
 use crate::config::RenderConfig;
 use crate::error::{AppError, Result};
 use image::ImageEncoder;
@@ -13,12 +21,14 @@ use swash::text::Script;
 use swash::zeno::{Format, Vector};
 use swash::{FontRef, GlyphId};
 
+/// A rendered glyph image positioned in the output's pixel coordinate space.
 struct RenderedGlyph {
     image: Image,
     x: i32,
     y: i32,
 }
 
+/// Renders sample images for a single [`RenderConfig`] (text + size + output).
 pub struct FontRenderer {
     config: Arc<RenderConfig>,
 }
@@ -28,6 +38,7 @@ impl FontRenderer {
         Self { config }
     }
 
+    /// Renders the configured text into `samples/<safe_name>/sample.png`.
     pub fn render_sample(&self, font_path: &Path, font_index: u32, safe_name: &str) -> Result<()> {
         let path = self
             .config
@@ -38,6 +49,12 @@ impl FontRenderer {
         self.render_to_path(font_path, font_index, &path)
     }
 
+    /// Renders the configured text to an arbitrary `path`.
+    ///
+    /// Wraps the rendering in [`panic::catch_unwind`] and converts any panic
+    /// into an [`AppError`], because malformed fonts can make the underlying
+    /// shaping/scaling code panic and a single bad font must not abort a whole
+    /// parallel render pass.
     pub fn render_to_path(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
         match panic::catch_unwind(AssertUnwindSafe(|| {
             self.render_to_path_inner(font_path, font_index, path)
@@ -56,6 +73,13 @@ impl FontRenderer {
         }
     }
 
+    /// The actual rendering, run under the panic guard of
+    /// [`render_to_path`](Self::render_to_path).
+    ///
+    /// Validates that the face covers every character, shapes the text, renders
+    /// each glyph, composites them into a tightly-cropped LA8 buffer, and
+    /// writes it as a PNG. Returns an error if the face is missing a glyph or
+    /// produces no visible pixels.
     fn render_to_path_inner(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
         let font_data = std::fs::read(font_path).map_err(|e| {
             AppError::Io(format!(
@@ -151,6 +175,9 @@ impl FontRenderer {
             ));
         }
 
+        // Composite all glyphs into a tightly-cropped LA8 buffer: luminance is
+        // a constant 255 and the per-pixel coverage is accumulated into the
+        // alpha channel (saturating), so overlapping glyphs don't wrap around.
         let width = (max_x - min_x).max(1) as u32;
         let height = (max_y - min_y).max(1) as u32;
         let mut la8_pixels = vec![0u8; (width * height * 2) as usize];
