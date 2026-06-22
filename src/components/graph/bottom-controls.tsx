@@ -1,76 +1,45 @@
-import { Show, createSignal } from 'solid-js';
+import { Show } from 'solid-js';
 import { GraphBottomToolbar } from './bottom-toolbar';
-import { GraphSearchField } from './search-field';
 import { type GraphToolMode } from './types';
 import { type ViewportZoomControls } from './graph-viewer';
 import { LassoClearButton } from './lasso-clear-button';
-import { WeightSelector } from '../weight-selector';
-import { type FontWeight } from '../../types/font';
 
 interface GraphBottomControlsProps {
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
-  weights: FontWeight[];
-  activeWeights: FontWeight[];
+  isFilterOpen: boolean;
   zoomControls: ViewportZoomControls | null;
   hasLassoResult: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
-  onWeightsChange: (weights: FontWeight[]) => void;
+  onToggleFilter: () => void;
   onClearLasso: () => void;
 }
 
 export function GraphBottomControls(props: GraphBottomControlsProps) {
-  const [isSearchVisible, setIsSearchVisible] = createSignal(false);
-  const [searchFocusRequest, setSearchFocusRequest] = createSignal(0);
-
-  const toggleSearch = () => {
-    const nextIsSearchVisible = !isSearchVisible();
-    setIsSearchVisible(nextIsSearchVisible);
-    if (nextIsSearchVisible) {
-      setSearchFocusRequest((request) => request + 1);
-    }
-  };
-
   return (
     <div
       class='pointer-events-none absolute bottom-2 right-2 z-20 flex items-end gap-1.5 *:pointer-events-auto'
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <div class='flex flex-col items-end gap-1.5'>
-        <Show when={props.hasLassoResult}>
-          <LassoClearButton onClear={props.onClearLasso} />
-        </Show>
-        <Show when={isSearchVisible()}>
-          <GraphSearchField focusRequest={searchFocusRequest()} />
-          <Show
-            when={props.weights.length > 1 ? props.weights.join(',') : false}
-            keyed
-          >
-            <WeightSelector
-              weights={props.weights}
-              defaultValue={props.activeWeights}
-              onChange={props.onWeightsChange}
-              showUnavailableWeights
-            />
-          </Show>
-        </Show>
-      </div>
+      <Show when={props.hasLassoResult}>
+        <LassoClearButton onClear={props.onClearLasso} />
+      </Show>
       <GraphBottomToolbar
         toolMode={props.toolMode}
-        isSerachVisible={isSearchVisible()}
         showImages={props.showImages}
         showFontNames={props.showFontNames}
         showGlow={props.showGlow}
+        isFilterOpen={props.isFilterOpen}
         onToolModeChange={props.onToolModeChange}
         onToggleImages={props.onToggleImages}
         onToggleFontNames={props.onToggleFontNames}
         onToggleGlow={props.onToggleGlow}
-        onToggleSearch={toggleSearch}
+        onToggleFilter={props.onToggleFilter}
         onZoomIn={props.zoomControls?.zoomIn}
         onZoomOut={props.zoomControls?.zoomOut}
         onResetZoom={props.zoomControls?.resetView}

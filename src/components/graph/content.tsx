@@ -1,5 +1,6 @@
 import { createEffect, createSignal } from 'solid-js';
 import { GraphBottomControls } from './bottom-controls';
+import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
 import { appState } from '../../store';
 import { clearLassoResult, setActiveGraphWeights } from '../../actions';
@@ -10,6 +11,7 @@ export function GraphContent() {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [showGlow, setShowGlow] = createSignal(true);
+  const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
     createSignal<ViewportZoomControls | null>(null);
   const sessionWeights = () =>
@@ -38,16 +40,22 @@ export function GraphContent() {
         showImages={showImages()}
         showFontNames={showFontNames()}
         showGlow={showGlow()}
-        weights={sessionWeights()}
-        activeWeights={activeGraphWeights()}
+        isFilterOpen={isFilterOpen()}
         zoomControls={viewportZoomControls()}
         hasLassoResult={!!appState.ui.lassoResult}
         onToolModeChange={setToolMode}
         onToggleImages={() => setShowImages((shown) => !shown)}
         onToggleFontNames={() => setShowFontNames((shown) => !shown)}
         onToggleGlow={() => setShowGlow((shown) => !shown)}
-        onWeightsChange={setActiveGraphWeights}
+        onToggleFilter={() => setIsFilterOpen((open) => !open)}
         onClearLasso={clearLassoResult}
+      />
+      <GraphFilterDock
+        open={isFilterOpen()}
+        weights={sessionWeights()}
+        activeWeights={activeGraphWeights()}
+        onWeightsChange={setActiveGraphWeights}
+        onClose={() => setIsFilterOpen(false)}
       />
     </div>
   );

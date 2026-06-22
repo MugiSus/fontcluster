@@ -12,6 +12,7 @@ interface WeightSelectorProps {
   onChange?: (weights: FontWeight[]) => void;
   isVertical?: boolean;
   isCompact?: boolean;
+  isBare?: boolean;
   showUnavailableWeights?: boolean;
 }
 
@@ -45,8 +46,11 @@ export function WeightSelector(props: WeightSelectorProps) {
   return (
     <div
       class={cn(
-        'flex items-stretch overflow-hidden rounded-md border bg-background',
+        'flex items-stretch',
         props.isVertical ? 'flex-col' : 'flex-row',
+        props.isBare
+          ? 'gap-0.5'
+          : 'overflow-hidden rounded-md border bg-background',
       )}
     >
       <input
@@ -71,7 +75,10 @@ export function WeightSelector(props: WeightSelectorProps) {
                 type='button'
                 variant={isSelected() ? 'default' : 'ghost'}
                 size='sm'
-                class='relative size-8 grow rounded-none px-2 shadow-none disabled:opacity-25'
+                class={cn(
+                  'relative size-8 shadow-none disabled:opacity-25',
+                  props.isBare ? 'rounded-full' : 'grow rounded-none px-2',
+                )}
                 style={{ 'font-weight': weight }}
                 onClick={() => handleWeightToggle(weight)}
                 data-checked={isSelected()}

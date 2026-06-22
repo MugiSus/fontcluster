@@ -11,31 +11,31 @@ import {
   TypeIcon,
   ZoomInIcon,
 } from 'lucide-solid';
+import { createMemo } from 'solid-js';
 import { appState } from '../../store';
+import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { type GraphToolMode } from './types';
-import { createMemo } from 'solid-js';
-import { cn } from '../../lib/utils';
 
 interface GraphBottomToolbarProps {
   toolMode: GraphToolMode;
-  isSerachVisible: boolean;
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  isFilterOpen: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
-  onToggleSearch: () => void;
+  onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
   onZoomOut?: (() => void) | undefined;
   onResetZoom?: (() => void) | undefined;
 }
 
 export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
-  const isSearchActive = createMemo(
+  const isFilterActive = createMemo(
     () =>
       appState.ui.searchQuery.length > 0 ||
       appState.ui.activeGraphWeights.length !==
@@ -226,17 +226,18 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
-          variant={isSearchActive() ? 'default' : 'ghost'}
+          variant={isFilterActive() ? 'default' : 'ghost'}
           size='icon'
           class={cn(
             'size-8 rounded-md shadow-none',
-            !isSearchActive() &&
-              props.isSerachVisible &&
+            !isFilterActive() &&
+              props.isFilterOpen &&
               'bg-accent text-accent-foreground',
           )}
-          aria-pressed={props.isSerachVisible}
+          data-filter-toggle
+          aria-pressed={props.isFilterOpen}
           aria-label='Filter'
-          onClick={() => props.onToggleSearch()}
+          onClick={() => props.onToggleFilter()}
         >
           <FunnelIcon class='size-4' />
         </TooltipTrigger>
