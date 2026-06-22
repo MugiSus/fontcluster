@@ -58,7 +58,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           <Show
             when={isFiltered()}
             fallback={
-              <SearchIcon class='pointer-events-none absolute left-3 size-4 text-muted-foreground' />
+              <SearchIcon class='pointer-events-none absolute left-2 size-4 text-muted-foreground' />
             }
           >
             <button
@@ -68,16 +68,16 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
                 updateQuery('');
                 inputElement?.focus();
               }}
-              class='absolute left-1.5 flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+              class='absolute left-0.5 flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
             >
-              <XIcon class='size-3.5' />
+              <XIcon class='size-4' />
             </button>
           </Show>
           <input
             ref={inputElement}
             type='text'
             placeholder='Font name, Designer, Foundry, etc...'
-            class='h-8 w-64 bg-transparent pl-10 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
+            class='h-8 w-64 bg-transparent pl-9 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
             value={query()}
             onInput={(event) => updateQuery(event.currentTarget.value)}
             spellcheck={false}

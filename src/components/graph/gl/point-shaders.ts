@@ -35,10 +35,10 @@ varying float vCoreFrac; // core radius as a fraction of the sprite radius
 void main() {
   bool dimmed = aState > 0.5;
   vColor = aColor;
-  // Dimmed (filtered-out / inactive) points are 0.6x the size and much fainter.
-  float scale = dimmed ? 0.6 : 1.0;
+  // Dimmed (filtered-out / inactive) points are 0.75x the size and much fainter.
+  float scale = dimmed ? 0.75 : 1.0;
   vAlpha = dimmed ? 0.2 : 1.0;
-  vGlow = dimmed ? 0.5 : 1.0;
+  vGlow = dimmed ? 0.2 : 1.0;
 
   // The sprite footprint depends on the pass. The core pass needs only the tiny
   // core dot (no wasted fill-rate); the halo pass needs the full blur sprite.
