@@ -7,7 +7,7 @@ import {
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
-  SparklesIcon,
+  TelescopeIcon,
   TypeIcon,
   ZoomInIcon,
 } from 'lucide-solid';
@@ -216,7 +216,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           aria-label='Glow Mode'
           onClick={() => props.onToggleGlow()}
         >
-          <SparklesIcon class='size-4' />
+          <TelescopeIcon class='size-4' />
         </TooltipTrigger>
         <TooltipContent>Glow Mode</TooltipContent>
       </Tooltip>
