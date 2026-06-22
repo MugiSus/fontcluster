@@ -153,6 +153,14 @@
     @apply ml-[-50px] mt-[-4px];
     content: counter(step);
   }
+
+  .shadow-inner-background {
+    --tw-shadow-inner-background: inset 0 0 16px 4px
+      hsl(var(--background) / 0.92);
+    box-shadow:
+      var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow),
+      var(--tw-shadow-inner-background);
+  }
 }
 
 @media (max-width: 640px) {
