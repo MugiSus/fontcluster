@@ -17,15 +17,14 @@ import {
 import { blitFragmentShader, blitVertexShader } from './blit-shaders';
 
 /**
- * The glow buffer's resolution relative to the screen. The glow is a soft, low-
- * frequency blur, so rendering it at half resolution is visually free while it
- * quarters the (heavy, high-overdraw) fill cost — the whole point of splitting
- * it out from the sharp content.
+ * The glow buffer's resolution relative to the screen. Keep this at full
+ * resolution while evaluating stripe and glow quality; lowering it trades sharp
+ * mask fidelity for fill-rate savings.
  */
-const GLOW_SCALE = 0.5;
+const GLOW_SCALE = 1.0;
 
 /**
- * Bloom compositor: a low-resolution half-float buffer for the glow, plus the
+ * Bloom compositor: a full-resolution half-float buffer for the glow, plus the
  * pass that composites it back over the screen.
  *
  * The glow's many translucent halos stack on the same pixels — additively in
@@ -41,10 +40,9 @@ const GLOW_SCALE = 0.5;
  * final composite keep a src factor of One and select the operator with the dst
  * factor alone (One = additive, OneMinusSrcAlpha = over).
  *
- * Keeping the buffer at {@link GLOW_SCALE} of the screen is what recovers the
- * 4K performance the full-resolution float path cost: the expensive overdraw
- * now happens on a quarter of the pixels, and the sharp dots / rings / images /
- * axes are untouched at full resolution.
+ * Keeping the buffer split out from the sharp scene lets the glow accumulate in
+ * half-float precision while the sharp dots / rings / images / axes stay in the
+ * ordinary full-resolution screen pass.
  */
 export function createGlowCompositor() {
   // The glow accumulation buffer. Half-float so the overlaps don't band; no
@@ -54,8 +52,7 @@ export function createGlowCompositor() {
     depthBuffer: false,
     stencilBuffer: false,
   });
-  // Raw passthrough (see the renderer's outputColorSpace note); bilinear so the
-  // low-res buffer upsamples smoothly when composited over the full-res screen.
+  // Raw passthrough (see the renderer's outputColorSpace note).
   glowTarget.texture.colorSpace = LinearSRGBColorSpace;
   glowTarget.texture.minFilter = LinearFilter;
   glowTarget.texture.magFilter = LinearFilter;
@@ -87,7 +84,7 @@ export function createGlowCompositor() {
 
   /**
    * Sizes the glow buffer to {@link GLOW_SCALE} of the renderer's drawing-buffer
-   * resolution (CSS size × pixel ratio).
+   * resolution (CSS size × pixel ratio). At 1.0 this is full resolution.
    */
   const setSize = (drawingBufferWidth: number, drawingBufferHeight: number) => {
     glowTarget.setSize(

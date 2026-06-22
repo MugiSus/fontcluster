@@ -127,13 +127,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const pixelRatio = window.devicePixelRatio;
 
-      // 1) Glow pass: halos only, into the low-res half-float buffer. Cleared to
-      //    transparent black: the premultiplied halos accumulate from zero for
-      //    both operators (sum for dark additive, 'over' for light). Scale the
-      //    sprite pixel size to the buffer's lower resolution so the glow lands
-      //    at the same on-screen size; hide the sharp-only layers. This pass is
-      //    rendered offscreen, so scene renderOrder cannot put other layers over
-      //    it yet.
+      // 1) Glow pass: halos only, into the full-resolution half-float buffer.
+      //    Cleared to transparent black: the premultiplied halos accumulate from
+      //    zero for both operators (sum for dark additive, 'over' for light).
+      //    Scale the sprite pixel size by the compositor scale so the glow stays
+      //    the same on-screen size if the buffer resolution changes; hide the
+      //    sharp-only layers. This pass is rendered offscreen, so scene
+      //    renderOrder cannot put other layers over it yet.
       pointLayer.setPass('halo');
       pointLayer.setPixelRatio(pixelRatio * compositor.glowScale);
       axisLayer.object.visible = false;

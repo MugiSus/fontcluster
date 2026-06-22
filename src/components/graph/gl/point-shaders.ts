@@ -11,8 +11,8 @@
 //   0 = combined — core + halo in one sprite (light mode / glow off; rendered
 //       straight to the screen, blend mode set by the material).
 //   1 = core only — just the data dot, normal-blended to the full-res screen.
-//   2 = halo only — just the glow, additively accumulated into the low-res
-//       half-float bloom buffer (see GlowCompositor).
+//   2 = halo only — just the glow, additively accumulated into the half-float
+//       bloom buffer (see GlowCompositor).
 //
 // `position` / projection uniforms are injected by three's ShaderMaterial, so
 // only the custom attributes are declared here.

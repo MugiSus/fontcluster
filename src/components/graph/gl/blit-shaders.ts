@@ -1,4 +1,4 @@
-// GLSL for the full-screen quad that composites the low-res half-float glow
+// GLSL for the full-screen quad that composites the half-float glow
 // buffer back over the screen (the blend — additive or 'over' = normal blending
 // — is set on the material). This composite is the single point where the high-
 // precision (16-bit float) glow accumulation is quantized down to the 8-bit
