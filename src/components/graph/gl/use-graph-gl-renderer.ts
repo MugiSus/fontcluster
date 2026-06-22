@@ -1,6 +1,7 @@
 import {
   type Accessor,
   createEffect,
+  createMemo,
   onCleanup,
   onMount,
   untrack,
@@ -198,9 +199,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- shared derived state --------------------------------------------
     // `pointByKey` lets the ring/image effects look up point positions without
-    // rescanning the array; it is cleared and repopulated in place. `isDark` is
-    // a reactive read of the color-mode hook used by every color-bearing effect.
-    const pointByKey = new Map<string, GraphPointData>();
+    // rescanning the array, while still staying subscribed to point-set changes.
+    const pointByKey = createMemo(
+      () => new Map(props.points().map((point) => [point.key, point])),
+    );
     const isDark = () => colorMode() === 'dark';
 
     // --- effect: theme (light vs. dark) ----------------------------------
@@ -223,8 +225,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // effects below own those (and re-run when clustering / theme / filter move).
     createEffect(() => {
       const points = props.points();
-      pointByKey.clear();
-      for (const point of points) pointByKey.set(point.key, point);
       pointLayer.setPoints(points);
       untrack(() => {
         pointLayer.setColors(points, isDark());
@@ -274,6 +274,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
       const dark = isDark();
+      const pointsByKey = pointByKey();
 
       // Dedupe per key, keeping the strongest affordance (selected wins).
       const radiusByKey = new Map<string, number>();
@@ -289,7 +290,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const specs: RingSpec[] = [];
       for (const [key, radiusPx] of radiusByKey) {
-        const point = pointByKey.get(key);
+        const point = pointsByKey.get(key);
         if (!point) continue;
         specs.push({
           x: point.x,
@@ -307,6 +308,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- effect: sample images -------------------------------------------
     createEffect(() => {
+      const pointsByKey = pointByKey();
       const imageKeys = props.imageKeys();
       const selected = props.selectedKey();
       const showImages = props.showImages();
@@ -324,7 +326,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const specs: ImageSpec[] = [];
       for (const key of wanted) {
-        const point = pointByKey.get(key);
+        const point = pointsByKey.get(key);
         if (!point || !point.item.meta.safe_name) continue;
         const active = predicate(point) || key === selected;
         specs.push({

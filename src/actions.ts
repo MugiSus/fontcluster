@@ -167,9 +167,17 @@ export const clearLassoResult = () => {
 };
 
 export const setCurrentSessionId = (id: string) => {
+  const isSessionSwitch = appState.session.id !== id;
   batch(() => {
     setAppState('ui', 'lassoResult', null);
     setAppState('ui', 'lassoProcessing', false);
+    if (isSessionSwitch) {
+      setAppState('ui', 'selectedFontKey', null);
+      setAppState('ui', 'hoveredFontKey', null);
+      setAppState('ui', 'sentFontItemKey', null);
+      setAppState('session', 'directory', '');
+      setAppState('fonts', 'data', reconcile({}));
+    }
     setAppState('session', 'id', id);
   });
   selectionHistory.reset();
