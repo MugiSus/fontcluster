@@ -4,6 +4,7 @@ import {
   LinearSRGBColorSpace,
   OrthographicCamera,
   Scene,
+  Vector2,
   WebGLRenderer,
 } from 'three';
 import { useColorMode } from '@kobalte/core';
@@ -15,6 +16,7 @@ import {
 } from '../types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
+import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingSpec } from './ring-layer';
@@ -99,10 +101,20 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- on-demand render loop -------------------------------------------
     // Nothing animates continuously; render a single frame whenever a reactive
     // dependency or an async texture asks for one.
+    //
+    // Two render paths: with the glow on we route through the half-float
+    // compositor so additive overlaps don't band (see createGlowCompositor);
+    // with it off we render straight to the screen and skip that extra pass.
     let rafId: number | undefined;
+    let useFloatTarget = false;
     const renderFrame = () => {
       rafId = undefined;
-      renderer.render(scene, camera);
+      if (useFloatTarget) {
+        compositor.render(renderer, scene, camera);
+      } else {
+        renderer.setRenderTarget(null);
+        renderer.render(scene, camera);
+      }
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
@@ -114,6 +126,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const pointLayer = createPointLayer();
     const ringLayer = createRingLayer();
     const imageLayer = createImageLayer(scheduleRender);
+    const compositor = createGlowCompositor();
     scene.add(axisLayer.object);
     scene.add(pointLayer.object);
     scene.add(ringLayer.object);
@@ -155,8 +168,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
 
     // --- effect: glow on/off ---------------------------------------------
+    // Glow on also enables the half-float compositor path: it is the only mode
+    // whose additive overlaps band on an 8-bit screen.
     createEffect(() => {
-      pointLayer.setGlow(props.glow());
+      const glow = props.glow();
+      pointLayer.setGlow(glow);
+      useFloatTarget = glow;
       scheduleRender();
     });
 
@@ -263,6 +280,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
 
     // --- effect: renderer sizing -----------------------------------------
+    const drawingBufferSize = new Vector2();
     createEffect(() => {
       const { width, height } = props.size();
       if (width <= 0 || height <= 0) return;
@@ -272,6 +290,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       );
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
+      // Match the float target to the actual drawing-buffer resolution so the
+      // blit is a 1:1 copy (getDrawingBufferSize already folds in pixelRatio).
+      renderer.getDrawingBufferSize(drawingBufferSize);
+      compositor.setSize(drawingBufferSize.x, drawingBufferSize.y);
       pointLayer.setPixelRatio(pixelRatio);
       ringLayer.setResolution(width, height);
       axisLayer.setResolution(width, height);
@@ -312,6 +334,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       pointLayer.dispose();
       ringLayer.dispose();
       imageLayer.dispose();
+      compositor.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
     });

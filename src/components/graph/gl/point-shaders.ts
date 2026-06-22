@@ -66,7 +66,9 @@ void main() {
   float intensity = clamp(core + halo * uOpacity * vGlow * uGlowEnabled, 0.0, 1.0);
 
   // Straight alpha; the material's blend mode (additive on dark, normal on
-  // light) decides how this composites over the background.
+  // light) decides how this composites over the background. Banding from the
+  // 8-bit framebuffer is handled downstream: when the glow is on the scene
+  // accumulates into a half-float target instead (see GlowCompositor).
   gl_FragColor = vec4(vColor, intensity * vAlpha);
 }
 `;
