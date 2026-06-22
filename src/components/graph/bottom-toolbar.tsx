@@ -2,7 +2,6 @@ import {
   CircleMinusIcon,
   FunnelIcon,
   HandIcon,
-  ImageIcon,
   LassoSelectIcon,
   MaximizeIcon,
   MinusIcon,
@@ -178,28 +177,34 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           size='icon'
           class='size-8 rounded-md shadow-none'
           aria-pressed={props.showImages}
-          aria-label='Show Images'
+          aria-label='Show Samples'
           onClick={() => props.onToggleImages()}
-        >
-          <ImageIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Show Images</TooltipContent>
-      </Tooltip>
-
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.showFontNames ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.showFontNames}
-          aria-label='Show Font Names'
-          onClick={() => props.onToggleFontNames()}
         >
           <TypeIcon class='size-4' />
         </TooltipTrigger>
-        <TooltipContent>Show Font Names</TooltipContent>
+        <TooltipContent>Show Samples</TooltipContent>
       </Tooltip>
+
+      {/*
+        "Show Font Names" is paused for now. The showFontNames signal and
+        onToggleFontNames handler (see GraphContent) plus the props below are
+        kept, so the feature can be restored by uncommenting this button.
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant={props.showFontNames ? 'default' : 'ghost'}
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-pressed={props.showFontNames}
+            aria-label='Show Font Names'
+            onClick={() => props.onToggleFontNames()}
+          >
+            <TypeIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Show Font Names</TooltipContent>
+        </Tooltip>
+      */}
 
       <Tooltip placement='left'>
         <TooltipTrigger
@@ -208,12 +213,12 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           size='icon'
           class='size-8 rounded-md shadow-none'
           aria-pressed={props.showGlow}
-          aria-label='Show Glow'
+          aria-label='Glow Mode'
           onClick={() => props.onToggleGlow()}
         >
           <SparklesIcon class='size-4' />
         </TooltipTrigger>
-        <TooltipContent>Show Glow</TooltipContent>
+        <TooltipContent>Glow Mode</TooltipContent>
       </Tooltip>
 
       <div class='w-6 border-t' />
