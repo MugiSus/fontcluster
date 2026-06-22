@@ -22,7 +22,7 @@ export function GraphUtilityControls() {
 
   return (
     <div
-      class='pointer-events-auto absolute right-[3px] top-[3px] z-10 flex items-center justify-end gap-0 rounded-full border border-border/25 bg-background/75 backdrop-blur-md'
+      class='shadow-inner-background pointer-events-auto absolute right-[3px] top-[3px] z-10 flex items-center justify-end gap-0 rounded-full border border-border/25 bg-background/50 backdrop-blur-md'
       data-tauri-drag-region
     >
       <Tooltip>
