@@ -1,6 +1,8 @@
-// GLSL for the full-screen blit that copies the half-float scene buffer to the
-// screen. This is the single point where the high-precision (16-bit float)
-// accumulation is quantized down to the 8-bit screen. See
+// GLSL for the full-screen quad that composites the low-res half-float glow
+// buffer back over the screen (additive blend set on the material). This add is
+// the single point where the high-precision (16-bit float) glow accumulation is
+// quantized down to the 8-bit screen — so the only banding left is an ordinary
+// single-quantization gradient, not the compounded kind. See
 // {@link createGlowCompositor}.
 
 /**
@@ -17,10 +19,11 @@ void main() {
 `;
 
 /**
- * Samples the half-float scene buffer 1:1 and writes it to the screen.
+ * Samples the half-float glow buffer and outputs it; the material's additive
+ * blend adds it over the sharp content already on the screen.
  *
- * The scene was accumulated in 16-bit float so additive overlaps stay smooth;
- * this pass is the single quantization down to the 8-bit screen.
+ * The glow was accumulated in 16-bit float so the overlaps stay smooth; this
+ * add is the single quantization down to the 8-bit screen.
  */
 export const blitFragmentShader = /* glsl */ `
 uniform sampler2D uTexture;
