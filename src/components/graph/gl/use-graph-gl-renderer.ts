@@ -33,8 +33,6 @@ const RING_RADIUS_FAMILY = 24;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.35;
-/** Cap the device pixel ratio so rendering stays affordable on HiDPI displays. */
-const MAX_PIXEL_RATIO = 2;
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
@@ -100,21 +98,57 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- on-demand render loop -------------------------------------------
     // Nothing animates continuously; render a single frame whenever a reactive
-    // dependency or an async texture asks for one.
-    //
-    // Two render paths: with the glow on we route through the half-float
-    // compositor so additive overlaps don't band (see createGlowCompositor);
-    // with it off we render straight to the screen and skip that extra pass.
+    // dependency or an async texture asks for one. `renderFrame` runs from
+    // requestAnimationFrame — outside Solid's tracking scope — so it reads the
+    // signals/hooks directly (a plain value read, no subscription); the effects
+    // below only schedule a frame when those inputs change. `rafId` is the lone
+    // piece of genuine mutable state: the dedupe token for the pending frame.
     let rafId: number | undefined;
-    let useFloatTarget = false;
+
     const renderFrame = () => {
       rafId = undefined;
-      if (useFloatTarget) {
-        compositor.render(renderer, scene, camera);
-      } else {
+
+      // The dark-mode glow is the only case whose additive overlaps band on an
+      // 8-bit screen, so only it pays for the bloom pipeline. Everything else
+      // renders straight to the screen in a single pass.
+      const dark = isDark();
+      if (!(dark && props.glow())) {
+        pointLayer.setPass('combined');
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
+        return;
       }
+
+      const pixelRatio = window.devicePixelRatio;
+
+      // 1) Sharp pass: cores + rings + images + axes, full-res to the screen.
+      pointLayer.setPass('core');
+      renderer.setRenderTarget(null);
+      renderer.render(scene, camera);
+
+      // 2) Glow pass: halos only, into the low-res half-float buffer (cleared to
+      //    transparent black so the additive accumulation starts from zero).
+      //    Scale the sprite pixel size to the buffer's lower resolution so the
+      //    glow lands at the same on-screen size; hide the sharp-only layers.
+      pointLayer.setPass('halo');
+      pointLayer.setPixelRatio(pixelRatio * compositor.glowScale);
+      axisLayer.object.visible = false;
+      ringLayer.object.visible = false;
+      imageLayer.object.visible = false;
+      renderer.setRenderTarget(compositor.target);
+      renderer.setClearColor(0x000000, 0);
+      renderer.render(scene, camera);
+
+      // Restore the shared state the next sharp pass / frame expects.
+      renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
+      pointLayer.setPixelRatio(pixelRatio);
+      axisLayer.object.visible = true;
+      ringLayer.object.visible = true;
+      imageLayer.object.visible = true;
+
+      // 3) Add the upsampled glow over the sharp screen.
+      renderer.setRenderTarget(null);
+      compositor.composite(renderer);
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
@@ -168,12 +202,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
 
     // --- effect: glow on/off ---------------------------------------------
-    // Glow on also enables the half-float compositor path: it is the only mode
-    // whose additive overlaps band on an 8-bit screen.
+    // Glow on (in dark mode) is what enables the bloom pipeline in renderFrame:
+    // it is the only mode whose additive overlaps band on an 8-bit screen.
     createEffect(() => {
-      const glow = props.glow();
-      pointLayer.setGlow(glow);
-      useFloatTarget = glow;
+      pointLayer.setGlow(props.glow());
       scheduleRender();
     });
 
@@ -284,14 +316,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     createEffect(() => {
       const { width, height } = props.size();
       if (width <= 0 || height <= 0) return;
-      const pixelRatio = Math.min(
-        window.devicePixelRatio || 1,
-        MAX_PIXEL_RATIO,
-      );
+      const pixelRatio = window.devicePixelRatio;
       renderer.setPixelRatio(pixelRatio);
       renderer.setSize(width, height, false);
-      // Match the float target to the actual drawing-buffer resolution so the
-      // blit is a 1:1 copy (getDrawingBufferSize already folds in pixelRatio).
+      // Size the glow buffer from the actual drawing-buffer resolution
+      // (getDrawingBufferSize already folds in pixelRatio); the compositor then
+      // applies its own GLOW_SCALE.
       renderer.getDrawingBufferSize(drawingBufferSize);
       compositor.setSize(drawingBufferSize.x, drawingBufferSize.y);
       pointLayer.setPixelRatio(pixelRatio);

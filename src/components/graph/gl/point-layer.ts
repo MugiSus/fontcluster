@@ -50,6 +50,14 @@ export interface PointLayer {
   setLightMode(isLight: boolean): void;
   /** Toggles the halo glow (off = just the core dots, with normal blending). */
   setGlow(enabled: boolean): void;
+  /**
+   * Selects which part of the sprite to draw, and the matching blend mode, for
+   * the dark-mode bloom pipeline (see the orchestrator's render loop):
+   * - `combined` — core + halo in one sprite (light mode / glow off).
+   * - `core` — the sharp data dot only, normal-blended.
+   * - `halo` — the glow only, additively blended (into the half-float buffer).
+   */
+  setPass(pass: 'combined' | 'core' | 'halo'): void;
   /** Keeps the sprite size constant in CSS pixels across device pixel ratios. */
   setPixelRatio(pixelRatio: number): void;
   /** Releases GPU resources. */
@@ -66,6 +74,7 @@ export function createPointLayer(): PointLayer {
       uCore: { value: CORE },
       uOpacity: { value: GLOW_OPACITY },
       uGlowEnabled: { value: 1 },
+      uPass: { value: 0 },
     },
     vertexShader: pointVertexShader,
     fragmentShader: pointFragmentShader,
@@ -160,6 +169,21 @@ export function createPointLayer(): PointLayer {
       glowEnabled = enabled;
       material.uniforms['uGlowEnabled']!.value = enabled ? 1 : 0;
       updateBlending();
+    },
+
+    setPass(pass) {
+      // Set blending directly (not via updateBlending) since this runs per
+      // frame; changing material.blending alone needs no shader recompile.
+      if (pass === 'core') {
+        material.uniforms['uPass']!.value = 1;
+        material.blending = NormalBlending;
+      } else if (pass === 'halo') {
+        material.uniforms['uPass']!.value = 2;
+        material.blending = AdditiveBlending;
+      } else {
+        material.uniforms['uPass']!.value = 0;
+        updateBlending();
+      }
     },
 
     setPixelRatio(pixelRatio) {
