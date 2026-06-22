@@ -150,22 +150,35 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       ringLayer.object.visible = true;
       imageLayer.object.visible = true;
 
-      // 2) Clear the screen to the theme background, then composite the upsampled
-      //    glow onto that empty background. Since the sharp scene has not drawn
-      //    yet, the glow becomes the bottom visual layer instead of sitting over
-      //    sample images.
+      // 2) Clear the screen to the theme background and draw only the axes. The
+      //    axes are the backplate reference lines; renderOrder keeps them behind
+      //    points inside a single scene render, but it cannot put them behind a
+      //    later full-screen glow composite. Draw them before the composite so
+      //    they stay at the visual back.
       renderer.setRenderTarget(null);
-      renderer.clear();
+      pointLayer.object.visible = false;
+      ringLayer.object.visible = false;
+      imageLayer.object.visible = false;
+      renderer.render(scene, camera);
+
+      // 3) Composite the upsampled glow over the background + axes, but still
+      //    below the sharp graph content drawn in the next pass.
       compositor.composite(renderer, dark);
 
-      // 3) Sharp pass: cores + rings + images + axes, full-res over the already
-      //    composited glow. Disable autoClear for this one render only; otherwise
-      //    three would wipe the glow/background before drawing the scene.
+      // 4) Sharp pass: cores + rings + images, full-res over the already
+      //    composited glow. Hide the axes for this pass because they already
+      //    occupy the backplate. Disable autoClear for this one render only;
+      //    otherwise three would wipe the glow/background before drawing.
       pointLayer.setPass('core');
+      pointLayer.object.visible = true;
+      axisLayer.object.visible = false;
+      ringLayer.object.visible = true;
+      imageLayer.object.visible = true;
       const previousAutoClear = renderer.autoClear;
       renderer.autoClear = false;
       renderer.render(scene, camera);
       renderer.autoClear = previousAutoClear;
+      axisLayer.object.visible = true;
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
