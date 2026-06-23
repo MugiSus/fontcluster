@@ -315,6 +315,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       scheduleRender();
     });
 
+    // --- effect: glow on/off ---------------------------------------------
+    // `renderFrame` switches between the bloom and straight paths on `glow`, but
+    // it reads it untracked (it runs in rAF), so subscribe here to repaint.
+    createEffect(() => {
+      props.glow();
+      scheduleRender();
+    });
+
     // --- effect: renderer sizing -----------------------------------------
     const drawingBufferSize = new Vector2();
     createEffect(() => {
