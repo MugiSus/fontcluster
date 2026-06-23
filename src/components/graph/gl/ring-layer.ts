@@ -1,15 +1,22 @@
 import { type Accessor, createEffect, indexArray, onCleanup } from 'solid-js';
-import { Group, NormalBlending, type Object3D } from 'three';
-import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import {
+  Color,
+  Group,
+  Mesh,
+  NormalBlending,
+  type Object3D,
+  PlaneGeometry,
+  ShaderMaterial,
+} from 'three';
+import { ringFragmentShader, ringVertexShader } from './ring-shaders';
 
 /** Stroke width (CSS px) of every ring, constant regardless of radius. A thin
  *  1px line anti-aliases into the bright glow behind it and loses its true
  *  color, so give it a solid core. */
 const LINE_WIDTH_PX = 1;
-/** Number of segments approximating each circle. */
-const SEGMENTS = 64;
+/** Extra screen px the quad extends past the ring radius, so the stroke's outer
+ *  half-width and its anti-aliased feather are never clipped by the quad edge. */
+const AA_PAD_PX = 2;
 
 /** Which highlight affordance a ring represents — it sets the radius. */
 export type RingKind = 'selected' | 'hover' | 'family';
@@ -33,12 +40,10 @@ export interface RingSpec {
 }
 
 export interface RingLayerProps {
-  /** The rings to show; one {@link Line2} is kept alive per array slot. */
+  /** The rings to show; one mesh is kept alive per array slot. */
   specs: Accessor<RingSpec[]>;
   /** World-units-per-CSS-pixel factor so radii stay constant on zoom. */
   zoom: Accessor<number>;
-  /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
-  resolution: Accessor<{ width: number; height: number }>;
   /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
 }
@@ -46,79 +51,84 @@ export interface RingLayerProps {
 /**
  * The selection / hover / family highlight rings.
  *
- * Each ring is a {@link Line2} sharing one unit-circle geometry, scaled to its
- * pixel radius. Because `Line2` measures `linewidth` in screen pixels, the
- * stroke stays a constant width no matter how large the circle is — and it is
- * kept out of the bloom pass so it renders crisp rather than glowing.
+ * Each ring is a single quad carrying a signed-distance ring stroke (see
+ * {@link ringFragmentShader}), scaled so the stroke sits at its pixel radius. The
+ * SDF keeps the stroke a constant pixel width at any zoom, and — unlike a `Line2`
+ * polyline, which double-blends at its segment joints — has no self-overlap, so a
+ * dimmed (filtered-out / inactive-weight) ring veils evenly with no brighter
+ * seams. It is kept out of the bloom pass so it renders crisp rather than glowing.
  *
- * The ring set is owned reactively: {@link indexArray} keeps one line per slot
- * of `props.specs`, updating it in place when its spec changes and disposing it
- * (three.js does not free GPU resources automatically) when the slot goes away.
- * The unit-circle geometry is shared by all rings and freed on teardown.
+ * The ring set is owned reactively: {@link indexArray} keeps one mesh per slot of
+ * `props.specs`, updating it in place when its spec changes and disposing its
+ * material (three.js does not free GPU resources automatically) when the slot goes
+ * away. The unit quad geometry is shared by all rings and freed on teardown.
  */
 export function createRingLayer(props: RingLayerProps): Object3D {
-  // Shared unit circle (radius 1); each ring scales it to its pixel radius.
-  const circleGeometry = new LineGeometry();
-  circleGeometry.setPositions(
-    Array.from({ length: SEGMENTS + 1 }, (_, segment) => {
-      const angle = (segment / SEGMENTS) * Math.PI * 2;
-      return [Math.cos(angle), Math.sin(angle), 0];
-    }).flat(),
-  );
+  // Shared unit quad ([-1, 1] in local space); each ring scales it so local 1.0
+  // maps to (its radius + padding) screen px.
+  const quadGeometry = new PlaneGeometry(2, 2);
 
   const group = new Group();
   group.renderOrder = 1;
 
-  const lines = indexArray(
+  const meshes = indexArray(
     () => props.specs(),
     (spec) => {
-      const material = new LineMaterial({
-        linewidth: LINE_WIDTH_PX,
+      const material = new ShaderMaterial({
+        uniforms: {
+          uColor: { value: new Color() },
+          uOpacity: { value: 1 },
+          uHalfPx: { value: 1 },
+          uRadiusPx: { value: 1 },
+          uHalfWidthPx: { value: LINE_WIDTH_PX / 2 },
+        },
+        vertexShader: ringVertexShader,
+        fragmentShader: ringFragmentShader,
         transparent: true,
         depthTest: false,
+        depthWrite: false,
         // Explicit normal blend: the ring is a solid stroke, never additive, so
         // its color stays the pure cluster color and isn't tinted by the glow.
         blending: NormalBlending,
       });
-      const line = new Line2(circleGeometry, material);
-      line.frustumCulled = false;
-      group.add(line);
+      const mesh = new Mesh(quadGeometry, material);
+      mesh.frustumCulled = false;
+      group.add(mesh);
 
       // Appearance / position follow the spec at this slot.
       createEffect(() => {
-        material.color.set(spec().color);
-        material.opacity = spec().opacity;
-        line.position.set(spec().x, spec().y, 1);
+        (material.uniforms['uColor']!.value as Color).set(spec().color);
+        material.uniforms['uOpacity']!.value = spec().opacity;
+        mesh.position.set(spec().x, spec().y, 1);
       });
-      // The kind's pixel radius is held constant on zoom by scaling the circle.
+      // The kind's pixel radius is held constant on zoom by scaling the quad; the
+      // shader reads the same radius/half-extent in screen px to place the stroke.
       createEffect(() => {
-        const size = RING_RADIUS_PX[spec().kind] * props.zoom();
-        line.scale.set(size, size, 1);
-      });
-      // Pixel-space stroke width needs the live viewport resolution.
-      createEffect(() => {
-        const { width, height } = props.resolution();
-        if (width > 0 && height > 0) material.resolution.set(width, height);
+        const radiusPx = RING_RADIUS_PX[spec().kind];
+        const halfPx = radiusPx + LINE_WIDTH_PX / 2 + AA_PAD_PX;
+        material.uniforms['uRadiusPx']!.value = radiusPx;
+        material.uniforms['uHalfPx']!.value = halfPx;
+        const size = halfPx * props.zoom();
+        mesh.scale.set(size, size, 1);
       });
 
       onCleanup(() => {
-        group.remove(line);
+        group.remove(mesh);
         material.dispose();
       });
 
-      return line;
+      return mesh;
     },
   );
 
   // Realize the mapping and repaint whenever the rings or shared inputs change.
   createEffect(() => {
-    lines();
+    meshes();
     props.zoom();
-    props.resolution();
     props.requestRender();
   });
 
-  onCleanup(() => circleGeometry.dispose());
+  onCleanup(() => quadGeometry.dispose());
 
   return group;
 }
