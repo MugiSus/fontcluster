@@ -79,7 +79,7 @@ export function ListFontItem(props: ListFontItemProps) {
     >
       <div
         class={cn(
-          'absolute bottom-0 left-px top-px z-10 w-[5px]',
+          'absolute bottom-0 left-px top-px z-10 w-1',
           getClusterBackgroundColor(clusterId()),
         )}
       />
