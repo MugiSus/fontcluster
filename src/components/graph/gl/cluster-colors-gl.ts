@@ -23,6 +23,9 @@ const UNCLUSTERED = 0x71717a;
 // Hex equivalents of the `--background` HSL values in index.css.
 const BACKGROUND_LIGHT = 0xfdfdfe;
 const BACKGROUND_DARK = 0x0e0f13;
+// Hex equivalents of the `--foreground` HSL values in index.css.
+const FOREGROUND_LIGHT = 0x0f172a;
+const FOREGROUND_DARK = 0xf4f4f5;
 
 /** Returns the 0xRRGGBB color for a cluster id in the given theme. */
 export function getClusterColor({
@@ -40,4 +43,9 @@ export function getClusterColor({
 /** Returns the 0xRRGGBB clear color (matching `--background`) for the theme. */
 export function getBackgroundColor({ isDark }: { isDark?: boolean }): number {
   return isDark ? BACKGROUND_DARK : BACKGROUND_LIGHT;
+}
+
+/** Returns the 0xRRGGBB foreground color (matching `text-foreground`). */
+export function getForegroundColor({ isDark }: { isDark?: boolean }): number {
+  return isDark ? FOREGROUND_DARK : FOREGROUND_LIGHT;
 }
