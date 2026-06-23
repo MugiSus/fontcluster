@@ -127,8 +127,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         return;
       }
 
-      // The glow's overlapping halos band on an 8-bit screen (additively in dark
-      // mode, 'over' in light mode), so route the glow through the bloom buffer.
+      // The glow's overlapping halos band when 'over'-composited straight onto an
+      // 8-bit screen, so route the glow through the half-float bloom buffer where
+      // the accumulation stays smooth.
 
       // 1) Glow pass: halos only, into the half-float bloom buffer (cleared to
       //    transparent black so the premultiplied halos accumulate from zero).
@@ -151,7 +152,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
 
       // 3) Composite the upsampled glow over the background + axes.
-      compositor.composite(renderer, dark);
+      compositor.composite(renderer);
 
       // 4) Sharp pass: core dots + rings + images over the composite (the axes
       //    are already drawn). autoClear off so the glow/background isn't wiped.

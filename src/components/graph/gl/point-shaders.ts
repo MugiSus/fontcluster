@@ -86,11 +86,9 @@ void main() {
   if (dist > 1.0) discard;
 
   float halo = pow(max(0.0, 1.0 - dist), 3.0);
-  // Premultiplied output (rgb already × alpha) so the SAME output works for both
-  // operators: the material keeps src factor = One and only swaps the dst factor
-  // — One for the dark additive glow, OneMinusSrcAlpha for the light 'over' (=
-  // normal blending). Accumulating into a transparent buffer needs premultiplied
-  // alpha to avoid dark fringing.
+  // Premultiplied output (rgb already × alpha) so the halos 'over'-composite into
+  // the transparent bloom buffer (src factor = One, dst = OneMinusSrcAlpha)
+  // without dark fringing — opacity asymptotes toward 1, the same in both themes.
   float a = halo * uOpacity * vGlow * vAlpha;
   gl_FragColor = vec4(vColor * a, a);
 }
