@@ -1,3 +1,4 @@
+import { type Accessor, createEffect, onCleanup } from 'solid-js';
 import { NormalBlending, type Object3D } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -14,27 +15,31 @@ const AXIS_OPACITY = 1;
 const BORDER_LIGHT = 0xd6dee9;
 const BORDER_DARK = 0x333338;
 
+export interface AxisLayerProps {
+  /** Graph-space origin the crosshair is centered on (y is negated to world). */
+  origin: Accessor<{ x: number; y: number }>;
+  /** Whether the active theme is light (picks the border color). */
+  isLight: Accessor<boolean>;
+  /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
+  resolution: Accessor<{ width: number; height: number }>;
+  /** Schedules a repaint of the (on-demand) render loop. */
+  requestRender: () => void;
+}
+
+export interface AxisLayer {
+  /** The three.js object to add to the scene. */
+  readonly object: Object3D;
+}
+
 /**
  * The origin crosshair: a horizontal and vertical reference line through graph
  * (0, 0). Rendered behind the points (renderOrder -1). Uses fat lines (Line2
  * family) so the stroke has a solid core and renders the exact `--border`
  * color, rather than a native 1px line that anti-aliases into the background.
+ *
+ * Origin, theme color and resolution all follow their accessors via effects.
  */
-export interface AxisLayer {
-  /** The three.js object to add to the scene. */
-  readonly object: Object3D;
-  /** Positions the crosshair at the graph-space origin (y is negated to world). */
-  setOrigin(x: number, y: number): void;
-  /** Recolors the lines for the active theme. */
-  setTheme(isLight: boolean): void;
-  /** Feeds the viewport resolution LineMaterial needs for its pixel width. */
-  setResolution(width: number, height: number): void;
-  /** Releases GPU resources. */
-  dispose(): void;
-}
-
-/** Creates the {@link AxisLayer}. */
-export function createAxisLayer(): AxisLayer {
+export function createAxisLayer(props: AxisLayerProps): AxisLayer {
   const geometry = new LineSegmentsGeometry();
   geometry.setPositions([
     -AXIS_EXTENT,
@@ -64,21 +69,26 @@ export function createAxisLayer(): AxisLayer {
   lines.frustumCulled = false;
   lines.renderOrder = -1;
 
-  return {
-    object: lines,
-    setOrigin(x, y) {
-      // World Y is the negated graph Y (graph space is y-down).
-      lines.position.set(x, -y, 0);
-    },
-    setTheme(isLight) {
-      material.color.set(isLight ? BORDER_LIGHT : BORDER_DARK);
-    },
-    setResolution(width, height) {
-      material.resolution.set(width, height);
-    },
-    dispose() {
-      geometry.dispose();
-      material.dispose();
-    },
-  };
+  // World Y is the negated graph Y (graph space is y-down).
+  createEffect(() => {
+    const { x, y } = props.origin();
+    lines.position.set(x, -y, 0);
+    props.requestRender();
+  });
+  createEffect(() => {
+    material.color.set(props.isLight() ? BORDER_LIGHT : BORDER_DARK);
+    props.requestRender();
+  });
+  createEffect(() => {
+    const { width, height } = props.resolution();
+    if (width > 0 && height > 0) material.resolution.set(width, height);
+    props.requestRender();
+  });
+
+  onCleanup(() => {
+    geometry.dispose();
+    material.dispose();
+  });
+
+  return { object: lines };
 }

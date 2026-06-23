@@ -4,7 +4,6 @@ import {
   createMemo,
   onCleanup,
   onMount,
-  untrack,
 } from 'solid-js';
 import {
   ColorManagement,
@@ -62,13 +61,14 @@ export interface UseGraphGlRendererProps {
 /**
  * Orchestrates the GPU graph renderer.
  *
- * Responsibilities are split across three composable layers — see
- * {@link createPointLayer}, {@link createRingLayer} and {@link createImageLayer}.
- * Everything is drawn in a single scene rendered directly (no post-processing):
- * the glow lives in the point sprite itself, so the background stays exactly the
- * theme color. This hook owns the renderer, scene, camera and the on-demand
- * render loop, and wires Solid signals to the layers via fine-grained effects.
- * It is a pure renderer of derived state — it never mutates application state.
+ * Responsibilities are split across composable layers — see
+ * {@link createAxisLayer}, {@link createPointLayer}, {@link createRingLayer} and
+ * {@link createImageLayer}. Each layer is constructed with accessors and owns
+ * its own reactive updates (Solid manages its objects' lifecycle and teardown);
+ * this hook only derives their inputs (e.g. the ring/image specs), wires the
+ * on-demand render loop, and owns the renderer, scene, camera and glow
+ * compositor. It is a pure renderer of derived state — it never mutates
+ * application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
   const { colorMode } = useColorMode();
@@ -186,103 +186,29 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       rafId = window.requestAnimationFrame(renderFrame);
     };
 
-    // --- layers (one scene; render order keeps images over rings over dots) -
-    const axisLayer = createAxisLayer();
-    const pointLayer = createPointLayer();
-    const ringLayer = createRingLayer();
-    const imageLayer = createImageLayer(scheduleRender);
-    const compositor = createGlowCompositor();
-    scene.add(axisLayer.object);
-    scene.add(pointLayer.object);
-    scene.add(ringLayer.object);
-    scene.add(imageLayer.object);
-
     // --- shared derived state --------------------------------------------
-    // `pointByKey` lets the ring/image effects look up point positions without
+    const isDark = () => colorMode() === 'dark';
+    // `pointByKey` lets the ring/image specs look up point positions without
     // rescanning the array, while still staying subscribed to point-set changes.
     const pointByKey = createMemo(
       () => new Map(props.points().map((point) => [point.key, point])),
     );
-    const isDark = () => colorMode() === 'dark';
 
-    // --- effect: theme (light vs. dark) ----------------------------------
-    // The clear color is the theme background; the point layer flips between
-    // additive glow (dark) and normal-blended halos (light).
-    createEffect(() => {
-      const dark = isDark();
-      renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
-      pointLayer.setLightMode(!dark);
-      axisLayer.setTheme(!dark);
-      scheduleRender();
-    });
-
-    // --- effect: point geometry (point set changed) ----------------------
-    // setPoints reallocates the color/state buffers to zero, so we re-apply both
-    // right here from the *same* points array — otherwise a rebuilt buffer can be
-    // left at the zero (black) default if the dedicated effects below don't run
-    // in this same flush (e.g. across a session switch). Theme / filter are read
-    // untracked so this effect still only re-runs on a point-set change; the
-    // effects below own those (and re-run when clustering / theme / filter move).
-    createEffect(() => {
-      const points = props.points();
-      pointLayer.setPoints(points);
-      untrack(() => {
-        pointLayer.setColors(points, isDark());
-        pointLayer.setActiveState(
-          points,
-          makeActivePredicate(
-            props.filteredKeys(),
-            new Set(props.activeWeights()),
-          ),
-        );
-      });
-      scheduleRender();
-    });
-
-    // --- effect: point colors (theme / clustering changed) ---------------
-    // The geometry effect already seeds colors on a point-set change; this keeps
-    // them current when the theme flips or clustering loads in later (setColors
-    // reads each point's clustering, so this re-runs when that arrives).
-    createEffect(() => {
-      pointLayer.setColors(props.points(), isDark());
-      scheduleRender();
-    });
-
-    // --- effect: glow on/off ---------------------------------------------
-    // Glow on is what enables the bloom pipeline in renderFrame (both themes —
-    // the overlapping halos band on an 8-bit screen either way).
-    createEffect(() => {
-      pointLayer.setGlow(props.glow());
-      scheduleRender();
-    });
-
-    // --- effect: point active/dimmed state (filter / active weights) -----
-    createEffect(() => {
-      const points = props.points();
-      const predicate = makeActivePredicate(
-        props.filteredKeys(),
-        new Set(props.activeWeights()),
-      );
-      pointLayer.setActiveState(points, predicate);
-      scheduleRender();
-    });
-
-    // --- effect: highlight rings (selection / hover / family) ------------
-    createEffect(() => {
+    // The highlight rings to show (selection / hover / family). Each font gets
+    // at most one ring (selected wins), dimmed with the same active/dimmed rule
+    // as the points and images when it is filtered out / weight-inactive.
+    const ringSpecs = createMemo<RingSpec[]>(() => {
       const points = props.points();
       const selected = props.selectedKey();
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
       const dark = isDark();
       const pointsByKey = pointByKey();
-      // Same active/dimmed rule as the points and images: a ring fades with its
-      // font when that font is filtered out or its weight is inactive.
       const predicate = makeActivePredicate(
         props.filteredKeys(),
         new Set(props.activeWeights()),
       );
 
-      // Dedupe per key, keeping the strongest affordance (selected wins).
       const radiusByKey = new Map<string, number>();
       if (family) {
         for (const point of points) {
@@ -309,24 +235,22 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
       }
-      ringLayer.setRings(specs);
-      scheduleRender();
+      return specs;
     });
 
-    // --- effect: sample images -------------------------------------------
-    createEffect(() => {
+    // The sample images to show. The selected font always shows its image, but
+    // it still dims with its ring when filtered out / weight-inactive.
+    const imageSpecs = createMemo<ImageSpec[]>(() => {
       const pointsByKey = pointByKey();
       const imageKeys = props.imageKeys();
       const selected = props.selectedKey();
       const showImages = props.showImages();
-      const sessionDirectory = props.sessionDirectory();
       const predicate = makeActivePredicate(
         props.filteredKeys(),
         new Set(props.activeWeights()),
       );
       const dark = isDark();
 
-      // The selected font always shows its image; otherwise honour the toggle.
       const wanted = new Set<string>();
       if (showImages) for (const key of imageKeys) wanted.add(key);
       if (selected) wanted.add(selected);
@@ -335,9 +259,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       for (const key of wanted) {
         const point = pointsByKey.get(key);
         if (!point || !point.item.meta.safe_name) continue;
-        // The selected font's image is always shown (added to `wanted` above),
-        // but it still dims with its ring when filtered out / weight-inactive.
-        const active = predicate(point);
         specs.push({
           key,
           safeName: point.item.meta.safe_name,
@@ -347,25 +268,52 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             k: point.item.computed?.clustering?.k,
             isDark: dark,
           }),
-          opacity: active ? 1 : DIMMED_OPACITY,
+          opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
       }
-      imageLayer.update(specs, sessionDirectory);
-      scheduleRender();
+      return specs;
     });
 
-    // --- effect: origin crosshair position -------------------------------
-    createEffect(() => {
-      const origin = props.origin();
-      axisLayer.setOrigin(origin.x, origin.y);
-      scheduleRender();
+    // --- layers (one scene; render order keeps images over rings over dots) -
+    // Each layer owns its own reactive updates from the accessors below; this
+    // hook only constructs them, wires the render loop, and sizes the renderer.
+    const axisLayer = createAxisLayer({
+      origin: props.origin,
+      isLight: () => !isDark(),
+      resolution: props.size,
+      requestRender: scheduleRender,
     });
+    const pointLayer = createPointLayer({
+      points: props.points,
+      isDark,
+      filteredKeys: props.filteredKeys,
+      activeWeights: props.activeWeights,
+      glow: props.glow,
+      requestRender: scheduleRender,
+    });
+    const ringLayer = createRingLayer({
+      specs: ringSpecs,
+      zoom: props.zoomFactor,
+      resolution: props.size,
+      requestRender: scheduleRender,
+    });
+    const imageLayer = createImageLayer({
+      specs: imageSpecs,
+      sessionDirectory: props.sessionDirectory,
+      zoom: props.zoomFactor,
+      requestRender: scheduleRender,
+    });
+    const compositor = createGlowCompositor();
+    scene.add(axisLayer.object);
+    scene.add(pointLayer.object);
+    scene.add(ringLayer.object);
+    scene.add(imageLayer.object);
 
-    // --- effect: zoom (keeps ring/image sizes constant in CSS pixels) ----
+    // --- effect: clear color (theme) -------------------------------------
+    // The renderer's clear color is the theme background; each layer handles its
+    // own theme response (colors / blending) from the accessors above.
     createEffect(() => {
-      const zoom = props.zoomFactor();
-      ringLayer.setZoom(zoom);
-      imageLayer.setZoom(zoom);
+      renderer.setClearColor(getBackgroundColor({ isDark: isDark() }), 1);
       scheduleRender();
     });
 
@@ -382,9 +330,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // applies its own GLOW_SCALE.
       renderer.getDrawingBufferSize(drawingBufferSize);
       compositor.setSize(drawingBufferSize.x, drawingBufferSize.y);
+      // The point sprite's base pixel ratio (the render loop overrides it for the
+      // glow pass); the line layers track resolution via their own accessors.
       pointLayer.setPixelRatio(pixelRatio);
-      ringLayer.setResolution(width, height);
-      axisLayer.setResolution(width, height);
       scheduleRender();
     });
 
@@ -418,10 +366,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     onCleanup(() => {
       if (rafId !== undefined) window.cancelAnimationFrame(rafId);
-      axisLayer.dispose();
-      pointLayer.dispose();
-      ringLayer.dispose();
-      imageLayer.dispose();
+      // The layers own their own teardown (Solid disposes their effects /
+      // onCleanups with this owner); the compositor and renderer do not.
       compositor.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

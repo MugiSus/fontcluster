@@ -1,4 +1,5 @@
-import { Group, NormalBlending, type Object3D, Vector2 } from 'three';
+import { type Accessor, createEffect, indexArray, onCleanup } from 'solid-js';
+import { Group, NormalBlending, type Object3D } from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -20,6 +21,22 @@ export interface RingSpec {
   opacity: number;
 }
 
+export interface RingLayerProps {
+  /** The rings to show; one {@link Line2} is kept alive per array slot. */
+  specs: Accessor<RingSpec[]>;
+  /** World-units-per-CSS-pixel factor so radii stay constant on zoom. */
+  zoom: Accessor<number>;
+  /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
+  resolution: Accessor<{ width: number; height: number }>;
+  /** Schedules a repaint of the (on-demand) render loop. */
+  requestRender: () => void;
+}
+
+export interface RingLayer {
+  /** The three.js object to add to the (un-bloomed) overlay scene. */
+  readonly object: Object3D;
+}
+
 /**
  * The selection / hover / family highlight rings.
  *
@@ -28,31 +45,12 @@ export interface RingSpec {
  * stroke stays a constant width no matter how large the circle is — and it is
  * kept out of the bloom pass so it renders crisp rather than glowing.
  *
- * The handful of rings is small enough that `setRings` simply rebuilds them:
- * it disposes the previous lines' materials (three.js does not free GPU
- * resources automatically) and creates fresh ones. The unit-circle geometry is
- * shared across all rings and only disposed on teardown.
+ * The ring set is owned reactively: {@link indexArray} keeps one line per slot
+ * of `props.specs`, updating it in place when its spec changes and disposing it
+ * (three.js does not free GPU resources automatically) when the slot goes away.
+ * The unit-circle geometry is shared by all rings and freed on teardown.
  */
-export interface RingLayer {
-  /** The three.js object to add to the (un-bloomed) overlay scene. */
-  readonly object: Object3D;
-  /** Replaces the shown rings with exactly these (rebuilds from scratch). */
-  setRings(specs: RingSpec[]): void;
-  /** Updates the world-units-per-CSS-pixel factor so radii stay constant on zoom. */
-  setZoom(zoom: number): void;
-  /** Feeds the viewport resolution `LineMaterial` needs for pixel widths. */
-  setResolution(width: number, height: number): void;
-  /** Releases GPU resources. */
-  dispose(): void;
-}
-
-interface RingEntry {
-  line: Line2;
-  radiusPx: number;
-}
-
-/** Creates the {@link RingLayer}. Starts empty until `setRings` is called. */
-export function createRingLayer(): RingLayer {
+export function createRingLayer(props: RingLayerProps): RingLayer {
   // Shared unit circle (radius 1); each ring scales it to its pixel radius.
   const circleGeometry = new LineGeometry();
   circleGeometry.setPositions(
@@ -65,68 +63,56 @@ export function createRingLayer(): RingLayer {
   const group = new Group();
   group.renderOrder = 1;
 
-  // The rings currently in the scene; rebuilt by every `setRings`.
-  let entries: RingEntry[] = [];
-  // Viewport resolution LineMaterial needs for pixel widths; remembered so new
-  // rings adopt the latest value.
-  const resolution = new Vector2(1, 1);
-  let zoom = 1;
-
-  /** Sizes a ring's stroke to its pixel radius at the current zoom. */
-  const scaleEntry = ({ line, radiusPx }: RingEntry) => {
-    const size = radiusPx * zoom;
-    line.scale.set(size, size, 1);
-  };
-
-  /** Removes the current rings and frees their per-ring GPU material. */
-  const clear = () => {
-    for (const { line } of entries) {
-      group.remove(line);
-      line.material.dispose();
-    }
-    entries = [];
-  };
-
-  return {
-    object: group,
-
-    setRings(specs) {
-      clear();
-      entries = specs.map((spec) => {
-        const material = new LineMaterial({
-          color: spec.color,
-          linewidth: LINE_WIDTH_PX,
-          transparent: true,
-          opacity: spec.opacity,
-          depthTest: false,
-          // Explicit normal blend: the ring is a solid stroke, never additive, so
-          // its color stays the pure cluster color and isn't tinted by the glow.
-          blending: NormalBlending,
-        });
-        material.resolution.copy(resolution);
-        const line = new Line2(circleGeometry, material);
-        line.frustumCulled = false;
-        line.position.set(spec.x, spec.y, 1);
-        const entry: RingEntry = { line, radiusPx: spec.radiusPx };
-        scaleEntry(entry);
-        group.add(line);
-        return entry;
+  const lines = indexArray(
+    () => props.specs(),
+    (spec) => {
+      const material = new LineMaterial({
+        linewidth: LINE_WIDTH_PX,
+        transparent: true,
+        depthTest: false,
+        // Explicit normal blend: the ring is a solid stroke, never additive, so
+        // its color stays the pure cluster color and isn't tinted by the glow.
+        blending: NormalBlending,
       });
-    },
+      const line = new Line2(circleGeometry, material);
+      line.frustumCulled = false;
+      group.add(line);
 
-    setZoom(nextZoom) {
-      zoom = nextZoom;
-      for (const entry of entries) scaleEntry(entry);
-    },
+      // Appearance / position follow the spec at this slot.
+      createEffect(() => {
+        material.color.set(spec().color);
+        material.opacity = spec().opacity;
+        line.position.set(spec().x, spec().y, 1);
+      });
+      // Pixel radius is held constant on zoom by scaling the unit circle.
+      createEffect(() => {
+        const size = spec().radiusPx * props.zoom();
+        line.scale.set(size, size, 1);
+      });
+      // Pixel-space stroke width needs the live viewport resolution.
+      createEffect(() => {
+        const { width, height } = props.resolution();
+        if (width > 0 && height > 0) material.resolution.set(width, height);
+      });
 
-    setResolution(width, height) {
-      resolution.set(width, height);
-      for (const { line } of entries) line.material.resolution.copy(resolution);
-    },
+      onCleanup(() => {
+        group.remove(line);
+        material.dispose();
+      });
 
-    dispose() {
-      clear();
-      circleGeometry.dispose();
+      return line;
     },
-  };
+  );
+
+  // Realize the mapping and repaint whenever the rings or shared inputs change.
+  createEffect(() => {
+    lines();
+    props.zoom();
+    props.resolution();
+    props.requestRender();
+  });
+
+  onCleanup(() => circleGeometry.dispose());
+
+  return { object: group };
 }

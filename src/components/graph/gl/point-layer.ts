@@ -1,3 +1,4 @@
+import { type Accessor, createEffect, onCleanup, untrack } from 'solid-js';
 import {
   AddEquation,
   AdditiveBlending,
@@ -22,6 +23,18 @@ const CORE = 3.5;
 /** Peak opacity at the glow center (it fades out from here). */
 const GLOW_OPACITY = 0.1;
 
+export interface PointLayerProps {
+  points: Accessor<GraphPointData[]>;
+  /** Whether the active theme is dark (drives colors and additive glow). */
+  isDark: Accessor<boolean>;
+  filteredKeys: Accessor<Set<string>>;
+  activeWeights: Accessor<FontWeight[]>;
+  /** Whether the halo glow is on (off = just the core dots). */
+  glow: Accessor<boolean>;
+  /** Schedules a repaint of the (on-demand) render loop. */
+  requestRender: () => void;
+}
+
 /**
  * The point cloud: every graph node as one vertex in a single draw call.
  *
@@ -30,30 +43,14 @@ const GLOW_OPACITY = 0.1;
  * - `aState` — 0 for active points, 1 for dimmed (filtered-out / inactive
  *   weight) points.
  *
- * The blend mode flips with the theme: additive glow on dark backgrounds,
- * normal-blended colored halos on light ones — see {@link PointLayer.setLightMode}.
+ * Colors, dimmed state, theme blending and glow all follow their accessors via
+ * effects. {@link PointLayer.setPass} and {@link PointLayer.setPixelRatio} stay
+ * imperative because they are driven by the render loop (the dark-mode bloom
+ * pipeline switches passes and sprite scale per frame), not by reactive state.
  */
 export interface PointLayer {
   /** The three.js object to add to the (bloomed) scene. */
   readonly object: Points;
-  /**
-   * Rebuilds the position buffer for a new point set and allocates the color /
-   * state buffers (filled by {@link PointLayer.setColors} /
-   * {@link PointLayer.setActiveState}). Resets color and state to zero, so
-   * callers must re-apply both after calling this.
-   */
-  setPoints(points: GraphPointData[]): void;
-  /** Updates the per-point color in place; call on theme change. */
-  setColors(points: GraphPointData[], isDark: boolean): void;
-  /** Updates only the active/dimmed flag per point (cheap, no realloc). */
-  setActiveState(
-    points: GraphPointData[],
-    isActive: (point: GraphPointData) => boolean,
-  ): void;
-  /** Sets the theme; blending is additive only in dark mode with glow on. */
-  setLightMode(isLight: boolean): void;
-  /** Toggles the halo glow (off = just the core dots, with normal blending). */
-  setGlow(enabled: boolean): void;
   /**
    * Selects which part of the sprite to draw, and the matching blend mode, for
    * the dark-mode bloom pipeline (see the orchestrator's render loop):
@@ -64,12 +61,10 @@ export interface PointLayer {
   setPass(pass: 'combined' | 'core' | 'halo'): void;
   /** Keeps the sprite size constant in CSS pixels across device pixel ratios. */
   setPixelRatio(pixelRatio: number): void;
-  /** Releases GPU resources. */
-  dispose(): void;
 }
 
-/** Creates the {@link PointLayer}. The buffers stay empty until `setPoints`. */
-export function createPointLayer(): PointLayer {
+/** Creates the {@link PointLayer}. */
+export function createPointLayer(props: PointLayerProps): PointLayer {
   const geometry = new BufferGeometry();
   const material = new ShaderMaterial({
     uniforms: {
@@ -103,76 +98,131 @@ export function createPointLayer(): PointLayer {
     material.needsUpdate = true;
   };
 
+  /**
+   * Rebuilds the position buffer for a new point set and allocates the color /
+   * state buffers (filled by setColors / setActiveState). Resets color and state
+   * to zero, so callers must re-apply both after calling this.
+   */
+  const setPoints = (pointData: GraphPointData[]) => {
+    const count = pointData.length;
+    const positions = new Float32Array(count * 3);
+    for (const [index, point] of pointData.entries()) {
+      positions[index * 3] = point.x;
+      // Graph space is y-down; negate so the world is y-up for the camera.
+      positions[index * 3 + 1] = -point.y;
+      positions[index * 3 + 2] = 0;
+    }
+
+    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+    // Color and state are filled separately; allocate them empty so those
+    // updates can write in place without reallocating.
+    geometry.setAttribute(
+      'aColor',
+      new Float32BufferAttribute(new Float32Array(count * 3), 3),
+    );
+    geometry.setAttribute(
+      'aState',
+      new Float32BufferAttribute(new Float32Array(count), 1),
+    );
+    geometry.setDrawRange(0, count);
+  };
+
+  /** Updates the per-point color in place; call on theme change. */
+  const setColors = (pointData: GraphPointData[], isDark: boolean) => {
+    const attribute = geometry.getAttribute('aColor');
+    // Guard against running before the matching geometry has been built.
+    if (!attribute || attribute.count !== pointData.length) return;
+
+    const colors = attribute.array as Float32Array;
+    for (const [index, point] of pointData.entries()) {
+      const hex = getClusterColor({
+        k: point.item.computed?.clustering?.k,
+        isDark,
+      });
+      colors[index * 3] = ((hex >> 16) & 0xff) / 255;
+      colors[index * 3 + 1] = ((hex >> 8) & 0xff) / 255;
+      colors[index * 3 + 2] = (hex & 0xff) / 255;
+    }
+    attribute.needsUpdate = true;
+  };
+
+  /** Updates only the active/dimmed flag per point (cheap, no realloc). */
+  const setActiveState = (
+    pointData: GraphPointData[],
+    isActive: (point: GraphPointData) => boolean,
+  ) => {
+    const attribute = geometry.getAttribute('aState');
+    // Guard against running before the matching geometry has been built.
+    if (!attribute || attribute.count !== pointData.length) return;
+
+    const states = attribute.array as Float32Array;
+    for (const [index, point] of pointData.entries()) {
+      states[index] = isActive(point) ? 0 : 1;
+    }
+    attribute.needsUpdate = true;
+  };
+
+  // Geometry (point set changed). setPoints reallocates the color/state buffers
+  // to zero, so re-apply both right here from the *same* points array —
+  // otherwise a rebuilt buffer can be left at the zero (black) default if the
+  // dedicated effects below don't run in this same flush (e.g. across a session
+  // switch). Theme / filter are read untracked so this effect only re-runs on a
+  // point-set change; the effects below own those.
+  createEffect(() => {
+    const pointData = props.points();
+    setPoints(pointData);
+    untrack(() => {
+      setColors(pointData, props.isDark());
+      setActiveState(
+        pointData,
+        makeActivePredicate(
+          props.filteredKeys(),
+          new Set(props.activeWeights()),
+        ),
+      );
+    });
+    props.requestRender();
+  });
+
+  // Colors (theme / clustering changed). The geometry effect seeds colors on a
+  // point-set change; this keeps them current when the theme flips or clustering
+  // loads in later (setColors reads each point's clustering).
+  createEffect(() => {
+    setColors(props.points(), props.isDark());
+    props.requestRender();
+  });
+
+  // Theme blending: additive glow only in dark mode with glow on.
+  createEffect(() => {
+    darkMode = props.isDark();
+    updateBlending();
+    props.requestRender();
+  });
+
+  // Glow on/off (enables the bloom pipeline in the render loop).
+  createEffect(() => {
+    glowEnabled = props.glow();
+    material.uniforms['uGlowEnabled']!.value = glowEnabled ? 1 : 0;
+    updateBlending();
+    props.requestRender();
+  });
+
+  // Active/dimmed state (filter / active weights).
+  createEffect(() => {
+    setActiveState(
+      props.points(),
+      makeActivePredicate(props.filteredKeys(), new Set(props.activeWeights())),
+    );
+    props.requestRender();
+  });
+
+  onCleanup(() => {
+    geometry.dispose();
+    material.dispose();
+  });
+
   return {
     object: points,
-
-    setPoints(pointData) {
-      const count = pointData.length;
-      const positions = new Float32Array(count * 3);
-      for (const [index, point] of pointData.entries()) {
-        positions[index * 3] = point.x;
-        // Graph space is y-down; negate so the world is y-up for the camera.
-        positions[index * 3 + 1] = -point.y;
-        positions[index * 3 + 2] = 0;
-      }
-
-      geometry.setAttribute(
-        'position',
-        new Float32BufferAttribute(positions, 3),
-      );
-      // Color and state are filled separately; allocate them empty so those
-      // updates can write in place without reallocating.
-      geometry.setAttribute(
-        'aColor',
-        new Float32BufferAttribute(new Float32Array(count * 3), 3),
-      );
-      geometry.setAttribute(
-        'aState',
-        new Float32BufferAttribute(new Float32Array(count), 1),
-      );
-      geometry.setDrawRange(0, count);
-    },
-
-    setColors(pointData, isDark) {
-      const attribute = geometry.getAttribute('aColor');
-      // Guard against running before the matching geometry has been built.
-      if (!attribute || attribute.count !== pointData.length) return;
-
-      const colors = attribute.array as Float32Array;
-      for (const [index, point] of pointData.entries()) {
-        const hex = getClusterColor({
-          k: point.item.computed?.clustering?.k,
-          isDark,
-        });
-        colors[index * 3] = ((hex >> 16) & 0xff) / 255;
-        colors[index * 3 + 1] = ((hex >> 8) & 0xff) / 255;
-        colors[index * 3 + 2] = (hex & 0xff) / 255;
-      }
-      attribute.needsUpdate = true;
-    },
-
-    setActiveState(pointData, isActive) {
-      const attribute = geometry.getAttribute('aState');
-      // Guard against running before the matching geometry has been built.
-      if (!attribute || attribute.count !== pointData.length) return;
-
-      const states = attribute.array as Float32Array;
-      for (const [index, point] of pointData.entries()) {
-        states[index] = isActive(point) ? 0 : 1;
-      }
-      attribute.needsUpdate = true;
-    },
-
-    setLightMode(isLight) {
-      darkMode = !isLight;
-      updateBlending();
-    },
-
-    setGlow(enabled) {
-      glowEnabled = enabled;
-      material.uniforms['uGlowEnabled']!.value = enabled ? 1 : 0;
-      updateBlending();
-    },
 
     setPass(pass) {
       // Set blending directly (not via updateBlending) since this runs per
@@ -198,11 +248,6 @@ export function createPointLayer(): PointLayer {
 
     setPixelRatio(pixelRatio) {
       material.uniforms['uPixelRatio']!.value = pixelRatio;
-    },
-
-    dispose() {
-      geometry.dispose();
-      material.dispose();
     },
   };
 }

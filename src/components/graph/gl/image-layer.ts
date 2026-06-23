@@ -1,3 +1,4 @@
+import { type Accessor, createEffect, onCleanup } from 'solid-js';
 import {
   Color,
   Group,
@@ -40,18 +41,24 @@ export interface ImageSpec {
  * aspect ratio (the SVG `xMidYMid meet` behaviour).
  *
  * Meshes are pooled by font key, and textures are cached by sample name so
- * revisiting a font does not reload it. Textures load asynchronously, so the
- * factory takes a `requestRender` callback to repaint once one arrives.
+ * revisiting a font does not reload it. The shown set, session and zoom all
+ * follow their accessors via effects; `requestRender` repaints once an async
+ * texture arrives (and after each reactive update).
  */
+export interface ImageLayerProps {
+  /** The images to show; meshes are pooled by `spec.key` across updates. */
+  specs: Accessor<ImageSpec[]>;
+  /** Session the pooled meshes / cached textures belong to (drops all on change). */
+  sessionDirectory: Accessor<string>;
+  /** World-units-per-CSS-pixel factor so the box stays constant on zoom. */
+  zoom: Accessor<number>;
+  /** Schedules a repaint of the (on-demand) render loop. */
+  requestRender: () => void;
+}
+
 export interface ImageLayer {
   /** The three.js object to add to the (un-bloomed) overlay scene. */
   readonly object: Object3D;
-  /** Shows exactly these images, creating/removing pooled meshes as needed. */
-  update(specs: ImageSpec[], sessionDirectory: string): void;
-  /** Rescales every image so its box stays constant in CSS pixels on zoom. */
-  setZoom(zoom: number): void;
-  /** Releases GPU resources (meshes, materials and cached textures). */
-  dispose(): void;
 }
 
 interface ImageEntry {
@@ -61,8 +68,12 @@ interface ImageEntry {
   aspect?: number | undefined;
 }
 
-/** Creates the {@link ImageLayer}. `requestRender` is called after async loads. */
-export function createImageLayer(requestRender: () => void): ImageLayer {
+/** Creates the {@link ImageLayer}. */
+export function createImageLayer(props: ImageLayerProps): ImageLayer {
+  // Stable repaint callback; captured so the async texture load (which runs
+  // outside any tracked scope) doesn't read it off the reactive props object.
+  // eslint-disable-next-line solid/reactivity -- a plain callback, never reactive
+  const requestRender = props.requestRender;
   const group = new Group();
   group.renderOrder = 2;
 
@@ -149,59 +160,65 @@ export function createImageLayer(requestRender: () => void): ImageLayer {
     return entry;
   };
 
-  return {
-    object: group,
-
-    update(specs, sessionDirectory) {
-      // On a session switch, drop every pooled mesh and cached texture: the same
-      // safeName / font key refers to a different file now, so reusing them would
-      // mix the previous session's images with the new ones.
-      if (sessionDirectory !== currentSession) {
-        for (const entry of entries.values()) {
-          group.remove(entry.mesh);
-          entry.material.dispose();
-        }
-        entries.clear();
-        for (const texture of textureCache.values()) texture.dispose();
-        textureCache.clear();
-        currentSession = sessionDirectory;
-      }
-
-      const wanted = new Set(specs.map((spec) => spec.key));
-
-      // Remove meshes whose font is no longer shown (textures stay cached).
-      for (const [key, entry] of entries) {
-        if (wanted.has(key)) continue;
+  /** Shows exactly `specs`, creating/removing pooled meshes as needed. */
+  const update = (specs: ImageSpec[], sessionDirectory: string) => {
+    // On a session switch, drop every pooled mesh and cached texture: the same
+    // safeName / font key refers to a different file now, so reusing them would
+    // mix the previous session's images with the new ones.
+    if (sessionDirectory !== currentSession) {
+      for (const entry of entries.values()) {
         group.remove(entry.mesh);
         entry.material.dispose();
-        entries.delete(key);
       }
-
-      for (const spec of specs) {
-        if (!sessionDirectory || !spec.safeName) continue;
-        let entry = entries.get(spec.key);
-        if (!entry) {
-          entry = createEntry(spec, sessionDirectory);
-          entries.set(spec.key, entry);
-        }
-        (entry.material.uniforms['uColor']!.value as Color).set(spec.color);
-        entry.material.uniforms['uOpacity']!.value = spec.opacity;
-        entry.mesh.position.set(spec.x, spec.y, 2);
-        applyFit(entry);
-      }
-    },
-
-    setZoom(nextZoom) {
-      zoom = nextZoom;
-      for (const entry of entries.values()) applyFit(entry);
-    },
-
-    dispose() {
-      for (const entry of entries.values()) entry.material.dispose();
       entries.clear();
       for (const texture of textureCache.values()) texture.dispose();
       textureCache.clear();
-      quad.dispose();
-    },
+      currentSession = sessionDirectory;
+    }
+
+    const wanted = new Set(specs.map((spec) => spec.key));
+
+    // Remove meshes whose font is no longer shown (textures stay cached).
+    for (const [key, entry] of entries) {
+      if (wanted.has(key)) continue;
+      group.remove(entry.mesh);
+      entry.material.dispose();
+      entries.delete(key);
+    }
+
+    for (const spec of specs) {
+      if (!sessionDirectory || !spec.safeName) continue;
+      let entry = entries.get(spec.key);
+      if (!entry) {
+        entry = createEntry(spec, sessionDirectory);
+        entries.set(spec.key, entry);
+      }
+      (entry.material.uniforms['uColor']!.value as Color).set(spec.color);
+      entry.material.uniforms['uOpacity']!.value = spec.opacity;
+      entry.mesh.position.set(spec.x, spec.y, 2);
+      applyFit(entry);
+    }
   };
+
+  // Shown set / session follow their accessors.
+  createEffect(() => {
+    update(props.specs(), props.sessionDirectory());
+    requestRender();
+  });
+  // Keep every image's box constant in CSS pixels across zoom.
+  createEffect(() => {
+    zoom = props.zoom();
+    for (const entry of entries.values()) applyFit(entry);
+    requestRender();
+  });
+
+  onCleanup(() => {
+    for (const entry of entries.values()) entry.material.dispose();
+    entries.clear();
+    for (const texture of textureCache.values()) texture.dispose();
+    textureCache.clear();
+    quad.dispose();
+  });
+
+  return { object: group };
 }
