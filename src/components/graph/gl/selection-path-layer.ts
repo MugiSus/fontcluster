@@ -4,8 +4,8 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
-const LINE_START_WIDTH_PX = 3.5;
-const LINE_END_WIDTH_PX = 0.5;
+const LINE_START_WIDTH_PX = 1;
+const LINE_END_WIDTH_PX = 1;
 const LINE_DURATION_MS = 250;
 
 export interface SelectionPathSpec {
