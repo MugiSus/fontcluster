@@ -25,17 +25,11 @@ import { createAxisLayer } from './axis-layer';
 import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
-import { createRingLayer, type RingSpec } from './ring-layer';
+import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
 
 // Colors come straight from the CSS variables as sRGB, so disable three's
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the CSS theme.
 ColorManagement.enabled = false;
-
-// Highlight ring radii in CSS pixels (stroke width is constant; see RingLayer).
-// Matches the original SVG circle radii (selected 40 / hover 20 / family 24).
-const RING_RADIUS_SELECTED = 40;
-const RING_RADIUS_HOVERED = 20;
-const RING_RADIUS_FAMILY = 24;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.4;
@@ -47,6 +41,8 @@ export interface UseGraphGlRendererProps {
   origin: Accessor<GraphCoordinate>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
+  getPointByKey: (key: string) => GraphPointData | undefined;
+  getPointsByFamilyName: (familyName: string) => readonly GraphPointData[];
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
   selectedKey: Accessor<string | null>;
@@ -178,47 +174,42 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- shared derived state --------------------------------------------
     const isDark = () => colorMode() === 'dark';
-    // `pointByKey` lets the ring/image specs look up point positions without
-    // rescanning the array, while still staying subscribed to point-set changes.
-    const pointByKey = createMemo(
-      () => new Map(props.points().map((point) => [point.key, point])),
-    );
     // Device pixel ratio, re-read on resize (the only time it changes here); the
     // renderer and the point sprite both size to it.
     const pixelRatio = createMemo(() => {
       props.size();
       return window.devicePixelRatio;
     });
+    // The active/dimmed rule, derived once and shared by the points, rings and
+    // images (a point is active when it passes the filter and its weight is on).
+    const activePredicate = createMemo(() =>
+      makeActivePredicate(props.filteredKeys(), new Set(props.activeWeights())),
+    );
 
     // The highlight rings to show (selection / hover / family). Each font gets
     // at most one ring (selected wins), dimmed with the same active/dimmed rule
     // as the points and images when it is filtered out / weight-inactive.
     const ringSpecs = createMemo<RingSpec[]>(() => {
-      const points = props.points();
       const selected = props.selectedKey();
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
       const dark = isDark();
-      const pointsByKey = pointByKey();
-      const predicate = makeActivePredicate(
-        props.filteredKeys(),
-        new Set(props.activeWeights()),
-      );
+      const predicate = activePredicate();
 
-      const radiusByKey = new Map<string, number>();
+      // Dedupe per font, keeping the strongest affordance (selected > hover >
+      // family) via later overwrites; the layer maps each kind to a radius.
+      const kindByKey = new Map<string, RingKind>();
       if (family) {
-        for (const point of points) {
-          if (point.item.meta.family_name === family) {
-            radiusByKey.set(point.key, RING_RADIUS_FAMILY);
-          }
+        for (const point of props.getPointsByFamilyName(family)) {
+          kindByKey.set(point.key, 'family');
         }
       }
-      if (hovered) radiusByKey.set(hovered, RING_RADIUS_HOVERED);
-      if (selected) radiusByKey.set(selected, RING_RADIUS_SELECTED);
+      if (hovered) kindByKey.set(hovered, 'hover');
+      if (selected) kindByKey.set(selected, 'selected');
 
       const specs: RingSpec[] = [];
-      for (const [key, radiusPx] of radiusByKey) {
-        const point = pointsByKey.get(key);
+      for (const [key, kind] of kindByKey) {
+        const point = props.getPointByKey(key);
         if (!point) continue;
         specs.push({
           x: point.x,
@@ -227,7 +218,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             k: point.item.computed?.clustering?.k,
             isDark: dark,
           }),
-          radiusPx,
+          kind,
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
       }
@@ -237,14 +228,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // The sample images to show. The selected font always shows its image, but
     // it still dims with its ring when filtered out / weight-inactive.
     const imageSpecs = createMemo<ImageSpec[]>(() => {
-      const pointsByKey = pointByKey();
       const imageKeys = props.imageKeys();
       const selected = props.selectedKey();
       const showImages = props.showImages();
-      const predicate = makeActivePredicate(
-        props.filteredKeys(),
-        new Set(props.activeWeights()),
-      );
+      const predicate = activePredicate();
       const dark = isDark();
 
       const wanted = new Set<string>();
@@ -253,7 +240,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const specs: ImageSpec[] = [];
       for (const key of wanted) {
-        const point = pointsByKey.get(key);
+        const point = props.getPointByKey(key);
         if (!point || !point.item.meta.safe_name) continue;
         specs.push({
           key,
@@ -283,8 +270,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const pointLayer = createPointLayer({
       points: props.points,
       isDark,
-      filteredKeys: props.filteredKeys,
-      activeWeights: props.activeWeights,
+      activePredicate,
       pixelRatio,
       glowScale: compositor.glowScale,
       requestRender: scheduleRender,

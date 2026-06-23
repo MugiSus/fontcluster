@@ -31,8 +31,8 @@ export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
   /** Whether the active theme is dark (drives colors and the glow blend op). */
   isDark: Accessor<boolean>;
-  filteredKeys: Accessor<Set<string>>;
-  activeWeights: Accessor<FontWeight[]>;
+  /** Marks a point active (full) vs dimmed (filtered-out / inactive weight). */
+  activePredicate: Accessor<(point: GraphPointData) => boolean>;
   /** Device pixel ratio; sprite size = CSS px × this. */
   pixelRatio: Accessor<number>;
   /** The glow buffer's resolution scale (applied to the halo sprite in-shader). */
@@ -189,13 +189,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     setPoints(pointData);
     untrack(() => {
       setColors(pointData, props.isDark());
-      setActiveState(
-        pointData,
-        makeActivePredicate(
-          props.filteredKeys(),
-          new Set(props.activeWeights()),
-        ),
-      );
+      setActiveState(pointData, props.activePredicate());
     });
     props.requestRender();
   });
@@ -210,10 +204,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
 
   // Active/dimmed state (filter / active weights).
   createEffect(() => {
-    setActiveState(
-      props.points(),
-      makeActivePredicate(props.filteredKeys(), new Set(props.activeWeights())),
-    );
+    setActiveState(props.points(), props.activePredicate());
     props.requestRender();
   });
 

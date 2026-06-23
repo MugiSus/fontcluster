@@ -13,6 +13,8 @@ interface GraphGlLayerProps {
   origin: Accessor<GraphCoordinate>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
+  getPointByKey: (key: string) => GraphPointData | undefined;
+  getPointsByFamilyName: (familyName: string) => readonly GraphPointData[];
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
   selectedKey: Accessor<string | null>;
@@ -39,6 +41,9 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     origin: () => props.origin(),
     zoomFactor: () => props.zoomFactor(),
     points: () => props.points(),
+    getPointByKey: (key) => props.getPointByKey(key),
+    getPointsByFamilyName: (familyName) =>
+      props.getPointsByFamilyName(familyName),
     filteredKeys: () => props.filteredKeys(),
     activeWeights: () => props.activeWeights(),
     selectedKey: () => props.selectedKey(),

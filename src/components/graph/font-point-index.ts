@@ -8,14 +8,25 @@ import {
   type GraphPointData,
   type GraphVisibleBounds,
 } from './types';
+import { collectVisibleImageKeys } from './lib';
 
-export const MAX_NEAREST_FONT_ITEMS = 120;
+const MAX_NEAREST_FONT_ITEMS = 120;
 
 interface VectorBounds {
   minX: number;
   maxX: number;
   minY: number;
   maxY: number;
+}
+
+interface FontPointState {
+  points: GraphPointData[];
+  origin: GraphCoordinate;
+}
+
+interface FontPointIndexes {
+  byKey: Map<string, GraphPointData>;
+  byFamilyName: Map<string, GraphPointData[]>;
 }
 
 function getFontVectorPosition(item: FontItem) {
@@ -56,7 +67,7 @@ function getVectorBounds(fontItems: FontItem[]): VectorBounds {
   return { minX, maxX, minY, maxY };
 }
 
-function createFontPoints(data: Record<string, FontItem>): GraphPointData[] {
+function createFontPointState(data: Record<string, FontItem>): FontPointState {
   const fontItems = Object.values(data);
   const { minX, maxX, minY, maxY } = getVectorBounds(fontItems);
   const rangeX = maxX - minX || 1;
@@ -75,7 +86,13 @@ function createFontPoints(data: Record<string, FontItem>): GraphPointData[] {
     });
   }
 
-  return points;
+  return {
+    points,
+    origin: {
+      x: ((0 - minX) / rangeX) * GRAPH_SIZE,
+      y: ((maxY - 0) / rangeY) * GRAPH_SIZE,
+    },
+  };
 }
 
 function getSelectableFontPointData(
@@ -117,88 +134,106 @@ function findNearestFontItems(
   return nearestItems;
 }
 
-export const fontPoints = createRoot(() => {
-  const memo = createMemo(() => createFontPoints(appState.fonts.displayData));
-  return memo;
-});
-
-export const graphOrigin = createRoot(() => {
-  const memo = createMemo<GraphCoordinate>(() => {
-    const fontItems = Object.values(appState.fonts.displayData);
-    const { minX, maxX, minY, maxY } = getVectorBounds(fontItems);
-    const rangeX = maxX - minX || 1;
-    const rangeY = maxY - minY || 1;
-
-    return {
-      x: ((0 - minX) / rangeX) * GRAPH_SIZE,
-      y: ((maxY - 0) / rangeY) * GRAPH_SIZE,
-    };
-  });
-  return memo;
-});
-
-export const fontPointByKey = createRoot(() => {
-  const memo = createMemo(
-    () => new Map(fontPoints().map((point) => [point.key, point])),
+const fontPointIndex = createRoot(() => {
+  const state = createMemo(() =>
+    createFontPointState(appState.fonts.displayData),
   );
-  return memo;
-});
+  const indexes = createMemo<FontPointIndexes>(() => {
+    const byKey = new Map<string, GraphPointData>();
+    const byFamilyName = new Map<string, GraphPointData[]>();
 
-export const selectableFontPoints = createRoot(() => {
-  const memo = createMemo(() =>
-    getSelectableFontPointData(fontPoints(), appState.fonts.filteredKeys),
-  );
-  return memo;
-});
+    for (const point of state().points) {
+      byKey.set(point.key, point);
 
-export const selectableFontPointTree = createRoot(() => {
-  const memo = createMemo(() =>
-    createSelectableFontPointTree(selectableFontPoints()),
-  );
-  return memo;
-});
-
-export function getNearestSelectableFontItems(selectedKey: string): FontItem[] {
-  const selectedPoint = fontPointByKey().get(selectedKey);
-  if (!selectedPoint) return [];
-
-  return findNearestFontItems(selectableFontPointTree(), selectedPoint);
-}
-
-export function getSelectableFontPoints(): GraphPointData[] {
-  return selectableFontPoints();
-}
-
-export function getSelectableFontPointsInBounds(
-  bounds: GraphVisibleBounds,
-): GraphPointData[] {
-  const points: GraphPointData[] = [];
-  selectableFontPointTree().visit((node, x0, y0, x1, y1) => {
-    if (
-      x0 > bounds.maxX ||
-      x1 < bounds.minX ||
-      y0 > bounds.maxY ||
-      y1 < bounds.minY
-    ) {
-      return true;
-    }
-
-    if (node.length) return false;
-
-    let leaf: QuadtreeLeaf<GraphPointData> | undefined = node;
-    while (leaf) {
-      const point = leaf.data;
-      if (
-        point.x >= bounds.minX &&
-        point.x <= bounds.maxX &&
-        point.y >= bounds.minY &&
-        point.y <= bounds.maxY
-      ) {
-        points.push(point);
+      const familyName = point.item.meta.family_name;
+      const familyPoints = byFamilyName.get(familyName);
+      if (familyPoints) {
+        familyPoints.push(point);
+      } else {
+        byFamilyName.set(familyName, [point]);
       }
-      leaf = leaf.next;
     }
-    return false;
+
+    return { byKey, byFamilyName };
   });
-  return points;
-}
+  const selectablePoints = createMemo(() =>
+    getSelectableFontPointData(state().points, appState.fonts.filteredKeys),
+  );
+  const selectableTree = createMemo(() =>
+    createSelectableFontPointTree(selectablePoints()),
+  );
+
+  const getSelectablePointsInBounds = (
+    bounds: GraphVisibleBounds,
+  ): GraphPointData[] => {
+    const points: GraphPointData[] = [];
+    selectableTree().visit((node, x0, y0, x1, y1) => {
+      if (
+        x0 > bounds.maxX ||
+        x1 < bounds.minX ||
+        y0 > bounds.maxY ||
+        y1 < bounds.minY
+      ) {
+        return true;
+      }
+
+      if (node.length) return false;
+
+      let leaf: QuadtreeLeaf<GraphPointData> | undefined = node;
+      while (leaf) {
+        const point = leaf.data;
+        if (
+          point.x >= bounds.minX &&
+          point.x <= bounds.maxX &&
+          point.y >= bounds.minY &&
+          point.y <= bounds.maxY
+        ) {
+          points.push(point);
+        }
+        leaf = leaf.next;
+      }
+      return false;
+    });
+    return points;
+  };
+
+  return {
+    points: () => state().points,
+    origin: () => state().origin,
+    selectablePoints,
+    getPointByKey: (key: string) => indexes().byKey.get(key),
+    getPointsByFamilyName: (familyName: string): readonly GraphPointData[] =>
+      indexes().byFamilyName.get(familyName) ?? [],
+    findSelectablePoint: (x: number, y: number, radius: number) =>
+      selectableTree().find(x, y, radius),
+    getVisibleImageKeys: (bounds: GraphVisibleBounds, scale: number) =>
+      collectVisibleImageKeys(selectableTree(), bounds, scale),
+    getNearestSelectableFontItems: (selectedKey: string) => {
+      const selectedPoint = indexes().byKey.get(selectedKey);
+      if (!selectedPoint) return [];
+
+      return findNearestFontItems(selectableTree(), selectedPoint);
+    },
+    getSelectablePointsInBounds,
+  };
+});
+
+export const fontPoints = fontPointIndex.points;
+
+export const graphOrigin = fontPointIndex.origin;
+
+export const getGraphPointByKey = fontPointIndex.getPointByKey;
+
+export const getGraphPointsByFamilyName = fontPointIndex.getPointsByFamilyName;
+
+export const getSelectableFontPoints = fontPointIndex.selectablePoints;
+
+export const findSelectableFontPoint = fontPointIndex.findSelectablePoint;
+
+export const getVisibleImageKeys = fontPointIndex.getVisibleImageKeys;
+
+export const getNearestSelectableFontItems =
+  fontPointIndex.getNearestSelectableFontItems;
+
+export const getSelectableFontPointsInBounds =
+  fontPointIndex.getSelectablePointsInBounds;

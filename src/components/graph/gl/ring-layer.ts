@@ -11,12 +11,23 @@ const LINE_WIDTH_PX = 1;
 /** Number of segments approximating each circle. */
 const SEGMENTS = 64;
 
-/** One ring to draw: a circle of `radiusPx` (CSS px) centered at world (x, y). */
+/** Which highlight affordance a ring represents — it sets the radius. */
+export type RingKind = 'selected' | 'hover' | 'family';
+
+/** Radius (CSS px) per affordance; the stroke width stays constant regardless.
+ *  Matches the original SVG circle radii. */
+const RING_RADIUS_PX: Record<RingKind, number> = {
+  selected: 40,
+  hover: 20,
+  family: 24,
+};
+
+/** One ring to draw: a circle centered at world (x, y), sized by its kind. */
 export interface RingSpec {
   x: number;
   y: number;
   color: number;
-  radiusPx: number;
+  kind: RingKind;
   /** 1 = full; < 1 dims the stroke for filtered-out / inactive-weight fonts. */
   opacity: number;
 }
@@ -79,9 +90,9 @@ export function createRingLayer(props: RingLayerProps): Object3D {
         material.opacity = spec().opacity;
         line.position.set(spec().x, spec().y, 1);
       });
-      // Pixel radius is held constant on zoom by scaling the unit circle.
+      // The kind's pixel radius is held constant on zoom by scaling the circle.
       createEffect(() => {
-        const size = spec().radiusPx * props.zoom();
+        const size = RING_RADIUS_PX[spec().kind] * props.zoom();
         line.scale.set(size, size, 1);
       });
       // Pixel-space stroke width needs the live viewport resolution.

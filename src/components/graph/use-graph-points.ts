@@ -7,12 +7,12 @@ import {
 } from 'solid-js';
 import { appState } from '../../store';
 import { type FontWeight } from '../../types/font';
-import { fontPoints, selectableFontPointTree } from './font-point-index';
 import {
-  collectVisibleImageKeys,
-  getVisibleBounds,
-  partitionVisiblePoints,
-} from './lib';
+  findSelectableFontPoint,
+  fontPoints,
+  getVisibleImageKeys,
+} from './font-point-index';
+import { getVisibleBounds, partitionVisiblePoints } from './lib';
 import { type GraphViewBox, type GraphVisibleBounds } from './types';
 
 interface UseGraphPointsProps {
@@ -55,11 +55,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     const bounds = imageVisibleBounds();
     if (!bounds) return new Set<string>();
 
-    return collectVisibleImageKeys(
-      selectableFontPointTree(),
-      bounds,
-      imageZoomFactor(),
-    );
+    return getVisibleImageKeys(bounds, imageZoomFactor());
   });
 
   const isImageVisible = createSelector(
@@ -68,7 +64,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
   );
 
   const findSelectablePoint = (x: number, y: number, radius: number) =>
-    selectableFontPointTree().find(x, y, radius);
+    findSelectableFontPoint(x, y, radius);
 
   return {
     allPoints: fontPoints,

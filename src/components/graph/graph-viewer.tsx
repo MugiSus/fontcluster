@@ -7,9 +7,11 @@ import { useElementSize } from '../../hooks/use-element-size';
 import { type FontWeight } from '../../types/font';
 import {
   fontPoints,
-  graphOrigin,
+  getGraphPointByKey,
+  getGraphPointsByFamilyName,
   getSelectableFontPoints,
   getSelectableFontPointsInBounds,
+  graphOrigin,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import {
@@ -330,6 +332,8 @@ export function GraphViewer(props: GraphViewerProps) {
           origin={graphOrigin}
           zoomFactor={viewport.zoomFactor}
           points={fontPoints}
+          getPointByKey={getGraphPointByKey}
+          getPointsByFamilyName={getGraphPointsByFamilyName}
           filteredKeys={() => appState.fonts.filteredKeys}
           activeWeights={() => props.activeGraphWeights}
           selectedKey={selection.selectedKey}
