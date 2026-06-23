@@ -109,8 +109,7 @@ export function createPointLayer(): PointLayer {
     setPoints(pointData) {
       const count = pointData.length;
       const positions = new Float32Array(count * 3);
-      for (let index = 0; index < count; index += 1) {
-        const point = pointData[index]!;
+      for (const [index, point] of pointData.entries()) {
         positions[index * 3] = point.x;
         // Graph space is y-down; negate so the world is y-up for the camera.
         positions[index * 3 + 1] = -point.y;
@@ -140,9 +139,9 @@ export function createPointLayer(): PointLayer {
       if (!attribute || attribute.count !== pointData.length) return;
 
       const colors = attribute.array as Float32Array;
-      for (let index = 0; index < pointData.length; index += 1) {
+      for (const [index, point] of pointData.entries()) {
         const hex = getClusterColor({
-          k: pointData[index]!.item.computed?.clustering?.k,
+          k: point.item.computed?.clustering?.k,
           isDark,
         });
         colors[index * 3] = ((hex >> 16) & 0xff) / 255;
@@ -158,8 +157,8 @@ export function createPointLayer(): PointLayer {
       if (!attribute || attribute.count !== pointData.length) return;
 
       const states = attribute.array as Float32Array;
-      for (let index = 0; index < pointData.length; index += 1) {
-        states[index] = isActive(pointData[index]!) ? 0 : 1;
+      for (const [index, point] of pointData.entries()) {
+        states[index] = isActive(point) ? 0 : 1;
       }
       attribute.needsUpdate = true;
     },

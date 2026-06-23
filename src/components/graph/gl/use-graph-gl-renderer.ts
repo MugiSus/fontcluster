@@ -39,7 +39,7 @@ const RING_RADIUS_HOVERED = 20;
 const RING_RADIUS_FAMILY = 24;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
-const DIMMED_OPACITY = 0.35;
+const DIMMED_OPACITY = 0.4;
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
@@ -275,6 +275,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const family = props.selectedFamily();
       const dark = isDark();
       const pointsByKey = pointByKey();
+      // Same active/dimmed rule as the points and images: a ring fades with its
+      // font when that font is filtered out or its weight is inactive.
+      const predicate = makeActivePredicate(
+        props.filteredKeys(),
+        new Set(props.activeWeights()),
+      );
 
       // Dedupe per key, keeping the strongest affordance (selected wins).
       const radiusByKey = new Map<string, number>();
@@ -300,6 +306,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             isDark: dark,
           }),
           radiusPx,
+          opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
       }
       ringLayer.setRings(specs);
@@ -328,7 +335,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       for (const key of wanted) {
         const point = pointsByKey.get(key);
         if (!point || !point.item.meta.safe_name) continue;
-        const active = predicate(point) || key === selected;
+        // The selected font's image is always shown (added to `wanted` above),
+        // but it still dims with its ring when filtered out / weight-inactive.
+        const active = predicate(point);
         specs.push({
           key,
           safeName: point.item.meta.safe_name,
