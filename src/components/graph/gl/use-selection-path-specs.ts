@@ -8,8 +8,8 @@ import { type GraphPointData } from '../types';
 import { getClusterColor } from './cluster-colors-gl';
 import { type SelectionPathSpec } from './selection-path-layer';
 
-const MAX_SELECTION_PATH_SEGMENTS = 30;
-const SELECTION_PATH_ENDPOINT_INSET_PX = 4;
+const MAX_SELECTION_PATH_SEGMENTS = 40;
+const SELECTION_PATH_ENDPOINT_INSET_PX = 6;
 
 interface SelectionPathEntry {
   fromKey: string;
