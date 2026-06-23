@@ -69,7 +69,7 @@ export function ListFontItem(props: ListFontItemProps) {
       type='button'
       variant='ghost'
       class={cn(
-        'group relative flex h-20 w-full min-w-0 flex-col items-start justify-center gap-2 overflow-hidden rounded-none p-0 shadow-none hover:bg-muted',
+        'group relative flex h-20 w-full min-w-0 flex-col items-start justify-center gap-1.5 overflow-hidden rounded-none p-0 pb-1 shadow-none hover:bg-muted',
         props.class,
       )}
       onClick={props.onClick}
@@ -79,19 +79,15 @@ export function ListFontItem(props: ListFontItemProps) {
     >
       <div
         class={cn(
-          'absolute inset-y-px left-px w-1',
+          'absolute bottom-0 left-px top-px z-10 w-[5px]',
           getClusterBackgroundColor(clusterId()),
         )}
       />
-      <div class='flex items-center gap-2 px-4 font-semibold'>
-        <div class={cn('text-sm', getClusterTextColor(clusterId()))}>
-          {weightLabel()}
-        </div>
-        <div class='text-nowrap text-sm text-muted-foreground'>
-          {meta().font_name}
-        </div>
+      <div class='ml-5 flex items-center gap-2 text-sm font-semibold'>
+        <div style={{ 'font-weight': weight() }}>{weightLabel()}</div>
+        <div class='text-nowrap text-muted-foreground'>{meta().font_name}</div>
       </div>
-      <div class='w-full min-w-0 overflow-x-auto overflow-y-hidden px-4'>
+      <div class='ml-5 w-full min-w-0 overflow-x-auto overflow-y-hidden'>
         <img
           class={cn(
             'block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0',
@@ -113,8 +109,9 @@ export function ListFontItem(props: ListFontItemProps) {
         class={cn(
           'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground',
           props.isSentFontItem ? 'opacity-100' : 'opacity-0 transition-opacity',
+          getClusterTextColor(clusterId()),
         )}
-        stroke-width={1.5}
+        stroke-width={2}
       />
     </Button>
   );
