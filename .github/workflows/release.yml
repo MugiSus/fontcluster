@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
+          - platform: 'macos-26'
             target: 'aarch64-apple-darwin'
             args: '--target aarch64-apple-darwin'
           # - platform: 'macos-latest'
@@ -63,6 +63,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
+          prefix-key: v1-rust-${{ matrix.platform }}-${{ matrix.target }}
           workspaces: |
             src-tauri -> target
 
