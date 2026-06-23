@@ -70,7 +70,7 @@ export function ListFontItem(props: ListFontItemProps) {
       type='button'
       variant='ghost'
       class={cn(
-        'group relative flex h-20 w-full min-w-0 flex-col items-start justify-center gap-1.5 overflow-hidden rounded-none p-0 pb-1 shadow-none hover:bg-muted',
+        'group relative flex h-20 w-full min-w-0 flex-col items-start justify-center gap-1.5 overflow-hidden rounded-none p-0 pb-1 pl-5 shadow-none hover:bg-muted',
         props.class,
       )}
       onClick={props.onClick}
@@ -93,11 +93,11 @@ export function ListFontItem(props: ListFontItemProps) {
           'mask-image': 'linear-gradient(to right, transparent, black)',
         }}
       />
-      <div class='ml-5 flex items-center gap-2 text-sm font-semibold'>
+      <div class='flex items-center gap-2 text-sm font-semibold'>
         <div style={{ 'font-weight': weight() }}>{weightLabel()}</div>
         <div class='text-nowrap text-muted-foreground'>{meta().font_name}</div>
       </div>
-      <div class='ml-5 w-full min-w-0 overflow-x-auto overflow-y-hidden'>
+      <div class='w-full min-w-0 overflow-x-auto overflow-y-hidden pr-4'>
         <img
           class={cn(
             'block size-auto h-7 max-h-none max-w-none mix-blend-darken grayscale invert dark:mix-blend-lighten dark:invert-0',
