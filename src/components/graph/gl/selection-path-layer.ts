@@ -4,7 +4,8 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
-const LINE_WIDTH_PX = 1;
+const LINE_START_WIDTH_PX = 3.5;
+const LINE_END_WIDTH_PX = 0.5;
 const LINE_DURATION_MS = 250;
 
 export interface SelectionPathSpec {
@@ -38,7 +39,7 @@ export function createSelectionPathLayer(
     (spec) => {
       const geometry = new LineGeometry();
       const material = new LineMaterial({
-        linewidth: LINE_WIDTH_PX,
+        linewidth: LINE_START_WIDTH_PX,
         transparent: true,
         depthTest: false,
         blending: NormalBlending,
@@ -63,6 +64,9 @@ export function createSelectionPathLayer(
             (performance.now() - current.startedAt) / LINE_DURATION_MS,
           );
           const remaining = (1 - progress) ** 3;
+          material.linewidth =
+            LINE_END_WIDTH_PX +
+            (LINE_START_WIDTH_PX - LINE_END_WIDTH_PX) * remaining;
           geometry.setPositions([
             current.toX + (current.fromX - current.toX) * remaining,
             current.toY + (current.fromY - current.toY) * remaining,
