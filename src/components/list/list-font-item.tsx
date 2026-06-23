@@ -91,9 +91,9 @@ export function ListFontItem(props: ListFontItemProps) {
         )}
         style={{
           'background-image':
-            'repeating-linear-gradient(135deg, transparent 0 13px, currentColor 13px 14px)',
-          '-webkit-mask-image': 'linear-gradient(to right, transparent, #000b)',
-          'mask-image': 'linear-gradient(to right, transparent, #000b)',
+            'repeating-linear-gradient(-45deg, transparent 0 13.14px, currentColor 13.14px 14.14px)',
+          '-webkit-mask-image': 'linear-gradient(to right, transparent, #000a)',
+          'mask-image': 'linear-gradient(to right, transparent, #000a)',
         }}
       />
       <div class='ml-5 flex items-center gap-2 text-sm font-semibold'>
