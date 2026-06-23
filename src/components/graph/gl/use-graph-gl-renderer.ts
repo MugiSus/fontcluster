@@ -43,6 +43,7 @@ ColorManagement.enabled = false;
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.4;
 const MAX_SELECTION_PATH_SEGMENTS = 30;
+const SELECTION_PATH_ENDPOINT_INSET_PX = 6;
 
 interface SelectionPathEntry {
   fromKey: string;
@@ -91,9 +92,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- core: renderer, scene, camera -----------------------------------
     const renderer = new WebGLRenderer({
       canvas,
-      // No MSAA: points, rings and axes anti-alias themselves in-shader, so it
-      // only adds full-framebuffer cost.
-      antialias: false,
+      // Enable MSAA for crisp line edges. This increases full-framebuffer cost,
+      // so revisit it if graph panning becomes GPU-bound.
+      antialias: true,
       // Intentionally NOT 'high-performance': on macOS that can put WebGL on the
       // discrete GPU while the window composites on the integrated one, forcing a
       // full-framebuffer GPU-to-GPU copy every frame (scales with dpr×resolution
@@ -315,15 +316,29 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         const to = props.getPointByKey(entry.toKey);
         if (!from || !to) continue;
 
-        const x = (index + 1) / (MAX_SELECTION_PATH_SEGMENTS + 1);
+        const fromY = -from.y;
+        const toY = -to.y;
+        const dx = to.x - from.x;
+        const dy = toY - fromY;
+        const distance = Math.hypot(dx, dy);
+        if (distance === 0) continue;
+
+        const endpointInset = Math.min(
+          SELECTION_PATH_ENDPOINT_INSET_PX * props.zoomFactor(),
+          distance / 2,
+        );
+        const offsetX = (dx / distance) * endpointInset;
+        const offsetY = (dy / distance) * endpointInset;
+        const opacityPosition = index / MAX_SELECTION_PATH_SEGMENTS;
         specs.push({
-          fromX: from.x,
-          fromY: -from.y,
-          toX: to.x,
-          toY: -to.y,
+          fromX: from.x + offsetX,
+          fromY: fromY + offsetY,
+          toX: to.x - offsetX,
+          toY: toY - offsetY,
           color,
           opacity:
-            (1 - x ** 3.0) *
+            0.8 *
+            (1 - opacityPosition ** 2.0 * 0.75) *
             (predicate(from) && predicate(to) ? 1 : DIMMED_OPACITY),
         });
       }
