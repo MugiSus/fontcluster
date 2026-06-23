@@ -21,7 +21,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
       <div
         class={cn(
           'pointer-events-auto absolute left-[3px] top-[3px] z-10 flex items-center gap-0 rounded-full border border-border/25 bg-background/50 shadow-inner-background backdrop-blur-md',
-          props.isLeftInset && 'pl-[70px]',
+          props.isLeftInset && 'pl-[74px]',
         )}
         data-tauri-drag-region
       >
