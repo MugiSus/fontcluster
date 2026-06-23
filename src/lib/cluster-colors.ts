@@ -20,6 +20,17 @@ const CLUSTER_BG_COLORS = [
   'bg-cluster-8',
 ];
 
+const CLUSTER_CSS_COLORS = [
+  'var(--cluster-1)',
+  'var(--cluster-2)',
+  'var(--cluster-3)',
+  'var(--cluster-4)',
+  'var(--cluster-5)',
+  'var(--cluster-6)',
+  'var(--cluster-7)',
+  'var(--cluster-8)',
+];
+
 export function getClusterTextColor(clusterId: number | undefined): string {
   if (clusterId === undefined || clusterId === -1) {
     return 'text-zinc-500';
@@ -36,4 +47,12 @@ export function getClusterBackgroundColor(
   }
 
   return CLUSTER_BG_COLORS[clusterId % CLUSTER_BG_COLORS.length]!;
+}
+
+export function getClusterCssColor(clusterId: number | undefined): string {
+  if (clusterId === undefined || clusterId === -1) {
+    return 'rgb(113 113 122)';
+  }
+
+  return CLUSTER_CSS_COLORS[clusterId % CLUSTER_CSS_COLORS.length]!;
 }

@@ -8,6 +8,7 @@ import {
 } from '../../types/font';
 import { cn } from '../../lib/utils';
 import {
+  getClusterCssColor,
   getClusterBackgroundColor,
   getClusterTextColor,
 } from '../../lib/cluster-colors';
@@ -85,15 +86,11 @@ export function ListFontItem(props: ListFontItemProps) {
       />
       <div
         aria-hidden='true'
-        class={cn(
-          'pointer-events-none absolute inset-y-0 right-0 w-16',
-          getClusterTextColor(clusterId()),
-        )}
+        class='pointer-events-none absolute inset-y-0 right-0 w-16 opacity-60 transition-opacity group-hover:opacity-90'
         style={{
-          'background-image':
-            'repeating-linear-gradient(-45deg, transparent 0 13.14px, currentColor 13.14px 14.14px)',
-          '-webkit-mask-image': 'linear-gradient(to right, transparent, #000a)',
-          'mask-image': 'linear-gradient(to right, transparent, #000a)',
+          'background-image': `repeating-linear-gradient(-45deg, black 0 13.14px, ${getClusterCssColor(clusterId())} 13.14px 14.14px)`,
+          '-webkit-mask-image': 'linear-gradient(to right, transparent, black)',
+          'mask-image': 'linear-gradient(to right, transparent, black)',
         }}
       />
       <div class='ml-5 flex items-center gap-2 text-sm font-semibold'>
