@@ -25,7 +25,7 @@ export function AppShellPanel(props: AppShellPanelProps) {
           data-tauri-drag-region
           class={cn(
             'flex h-full min-w-0 flex-1 items-center text-xs font-medium capitalize',
-            props.isLeftInset && 'pl-[72px]',
+            props.isLeftInset && 'pl-[70px]',
           )}
         >
           {props.title}
