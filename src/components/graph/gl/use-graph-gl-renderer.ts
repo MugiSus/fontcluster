@@ -43,7 +43,7 @@ ColorManagement.enabled = false;
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.4;
 const MAX_SELECTION_PATH_SEGMENTS = 30;
-const SELECTION_PATH_ENDPOINT_INSET_PX = 6;
+const SELECTION_PATH_ENDPOINT_INSET_PX = 4;
 
 interface SelectionPathEntry {
   fromKey: string;
