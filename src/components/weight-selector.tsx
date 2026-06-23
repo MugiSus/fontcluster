@@ -44,9 +44,7 @@ export function WeightSelector(props: WeightSelectorProps) {
       class={cn(
         'flex items-stretch',
         props.isVertical ? 'flex-col' : 'flex-row',
-        props.isBare
-          ? 'gap-0.5'
-          : 'overflow-hidden rounded-md border bg-background',
+        props.isBare ? 'gap-0.5' : 'overflow-hidden rounded-md bg-background',
       )}
     >
       <input

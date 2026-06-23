@@ -122,7 +122,7 @@ export function ControlContent() {
   return (
     <form onSubmit={handleSubmit} class='flex h-full min-h-0 flex-1 flex-col'>
       <Show when={appState.session.config.session_id || true} keyed>
-        <div class='flex flex-col gap-2 border-b p-4'>
+        <div class='flex flex-col gap-1 border-b p-4'>
           <TextField class='relative grid w-full items-center gap-1'>
             <TextFieldLabel
               for='rendering-text'
