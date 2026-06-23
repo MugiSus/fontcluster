@@ -5,6 +5,7 @@ import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 const LINE_WIDTH_PX = 1;
+const LINE_DURATION_MS = 250;
 
 export interface SelectionPathSpec {
   fromX: number;
@@ -12,7 +13,7 @@ export interface SelectionPathSpec {
   toX: number;
   toY: number;
   color: number;
-  opacity: number;
+  startedAt: number;
 }
 
 export interface SelectionPathLayerProps {
@@ -22,9 +23,9 @@ export interface SelectionPathLayerProps {
 }
 
 /**
- * Draws recent selection transitions as short path segments. The history itself
- * is owned by the renderer; this layer only mirrors the derived line specs into
- * GPU objects and frees them on teardown.
+ * Draws recent selection transitions as short path segments. The history and
+ * coordinate specs are owned by useSelectionPathSpecs; this layer only mirrors
+ * those specs into GPU objects, animates line length, and frees resources.
  */
 export function createSelectionPathLayer(
   props: SelectionPathLayerProps,
@@ -45,19 +46,41 @@ export function createSelectionPathLayer(
       const line = new Line2(geometry, material);
       line.frustumCulled = false;
       group.add(line);
+      let animationFrameId: number | undefined;
 
       createEffect(() => {
         const current = spec();
-        geometry.setPositions([
-          current.fromX,
-          current.fromY,
-          0,
-          current.toX,
-          current.toY,
-          0,
-        ]);
         material.color.set(current.color);
-        material.opacity = current.opacity;
+        material.opacity = 1;
+
+        if (animationFrameId !== undefined) {
+          window.cancelAnimationFrame(animationFrameId);
+        }
+
+        const animateLength = () => {
+          const progress = Math.min(
+            1,
+            (performance.now() - current.startedAt) / LINE_DURATION_MS,
+          );
+          const remaining = (1 - progress) ** 3;
+          geometry.setPositions([
+            current.toX + (current.fromX - current.toX) * remaining,
+            current.toY + (current.fromY - current.toY) * remaining,
+            0,
+            current.toX,
+            current.toY,
+            0,
+          ]);
+          props.requestRender();
+
+          if (progress < 1) {
+            animationFrameId = window.requestAnimationFrame(animateLength);
+          } else {
+            animationFrameId = undefined;
+          }
+        };
+
+        animateLength();
       });
       createEffect(() => {
         const { width, height } = props.resolution();
@@ -65,6 +88,9 @@ export function createSelectionPathLayer(
       });
 
       onCleanup(() => {
+        if (animationFrameId !== undefined) {
+          window.cancelAnimationFrame(animationFrameId);
+        }
         group.remove(line);
         geometry.dispose();
         material.dispose();

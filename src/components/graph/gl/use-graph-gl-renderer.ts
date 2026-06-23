@@ -26,6 +26,8 @@ import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
+import { createSelectionPathLayer } from './selection-path-layer';
+import { useSelectionPathSpecs } from './use-selection-path-specs';
 
 // Colors come straight from the CSS variables as sRGB, so disable three's
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the CSS theme.
@@ -58,13 +60,13 @@ export interface UseGraphGlRendererProps {
  * Orchestrates the GPU graph renderer.
  *
  * Responsibilities are split across composable layers — see
- * {@link createAxisLayer}, {@link createPointLayer}, {@link createRingLayer} and
- * {@link createImageLayer}. Each layer is constructed with accessors and owns
- * its own reactive updates (Solid manages its objects' lifecycle and teardown);
- * this hook only derives their inputs (e.g. the ring/image specs), wires the
- * on-demand render loop, and owns the renderer, scene, camera and glow
- * compositor. It is a pure renderer of derived state — it never mutates
- * application state.
+ * {@link createAxisLayer}, {@link createPointLayer}, {@link createRingLayer},
+ * {@link createSelectionPathLayer} and {@link createImageLayer}. Each layer is
+ * constructed with accessors and owns its own reactive updates (Solid manages
+ * its objects' lifecycle and teardown); this hook only derives their inputs
+ * (e.g. the ring/image/path specs), wires the on-demand render loop, and owns
+ * the renderer, scene, camera and glow compositor. It is a pure renderer of
+ * derived state — it never mutates application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
   const { colorMode } = useColorMode();
@@ -120,6 +122,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         halo.visible = false;
         core.visible = true;
         axisLayer.visible = true;
+        selectionPathLayer.visible = true;
         ringLayer.visible = true;
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
@@ -136,6 +139,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = true;
       core.visible = false;
       axisLayer.visible = false;
+      selectionPathLayer.visible = false;
       ringLayer.visible = false;
       imageLayer.visible = false;
       renderer.setRenderTarget(compositor.target);
@@ -158,6 +162,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       //    are already drawn). autoClear off so the glow/background isn't wiped.
       core.visible = true;
       axisLayer.visible = false;
+      selectionPathLayer.visible = true;
       ringLayer.visible = true;
       imageLayer.visible = true;
       const previousAutoClear = renderer.autoClear;
@@ -186,6 +191,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const activePredicate = createMemo(() =>
       makeActivePredicate(props.filteredKeys(), new Set(props.activeWeights())),
     );
+    const selectionPathSpecs = useSelectionPathSpecs({
+      selectedKey: props.selectedKey,
+      points: props.points,
+      zoomFactor: props.zoomFactor,
+      isDark,
+    });
 
     // The highlight rings to show (selection / hover / family). Each font gets
     // at most one ring (selected wins), dimmed with the same active/dimmed rule
@@ -258,7 +269,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return specs;
     });
 
-    // --- layers (one scene; render order keeps images over rings over dots) -
+    // --- layers (one scene; render order keeps images over rings over path
+    // lines over dots) -----------------------------------------------------
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
     const compositor = createGlowCompositor();
@@ -281,6 +293,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
+    const selectionPathLayer = createSelectionPathLayer({
+      specs: selectionPathSpecs,
+      resolution: props.size,
+      requestRender: scheduleRender,
+    });
     const imageLayer = createImageLayer({
       specs: imageSpecs,
       sessionDirectory: props.sessionDirectory,
@@ -290,6 +307,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     scene.add(axisLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);
+    scene.add(selectionPathLayer);
     scene.add(ringLayer);
     scene.add(imageLayer);
 
