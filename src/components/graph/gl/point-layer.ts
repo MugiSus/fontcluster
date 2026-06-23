@@ -1,7 +1,6 @@
 import { type Accessor, createEffect, onCleanup, untrack } from 'solid-js';
 import {
   AddEquation,
-  AdditiveBlending,
   BufferGeometry,
   CustomBlending,
   Float32BufferAttribute,
@@ -14,7 +13,12 @@ import {
 import { type FontWeight } from '../../../types/font';
 import { type GraphPointData } from '../types';
 import { getClusterColor } from './cluster-colors-gl';
-import { pointFragmentShader, pointVertexShader } from './point-shaders';
+import {
+  coreFragmentShader,
+  coreVertexShader,
+  haloFragmentShader,
+  haloVertexShader,
+} from './point-shaders';
 
 /** Sprite diameter (CSS px) = the blur/glow extent. */
 const SIZE = 128;
@@ -25,12 +29,10 @@ const GLOW_OPACITY = 0.1;
 
 export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
-  /** Whether the active theme is dark (drives colors and additive glow). */
+  /** Whether the active theme is dark (drives colors and the glow blend op). */
   isDark: Accessor<boolean>;
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
-  /** Whether the halo glow is on (off = just the core dots). */
-  glow: Accessor<boolean>;
   /** Device pixel ratio; sprite size = CSS px × this. */
   pixelRatio: Accessor<number>;
   /** The glow buffer's resolution scale (applied to the halo sprite in-shader). */
@@ -40,67 +42,77 @@ export interface PointLayerProps {
 }
 
 /**
- * The point cloud: every graph node as one vertex in a single draw call.
+ * The point cloud: every graph node as one vertex, drawn in two single-purpose
+ * objects that share one geometry:
+ * - {@link PointLayer.core} — the sharp data dot (normal-blended to the screen).
+ * - {@link PointLayer.halo} — the soft glow (premultiplied, accumulated into the
+ *   bloom buffer). Only rendered when the glow is on.
  *
  * Two per-vertex attributes drive appearance:
  * - `aColor` — the cluster color (rebuilt with the point set / theme).
  * - `aState` — 0 for active points, 1 for dimmed (filtered-out / inactive
  *   weight) points.
  *
- * Colors, dimmed state, theme blending, glow and pixel ratio all follow their
- * accessors via effects. Only {@link PointLayer.setPass} stays imperative: the
- * render loop reconfigures the point material's draw mode + blend between the
- * bloom passes (changing within one frame), which signals cannot express — so
- * the layer exposes it alongside its `points` object.
+ * Everything follows the accessors via effects; the render loop simply shows the
+ * core or halo object per pass, so there is no imperative per-frame API.
  */
 export interface PointLayer {
-  /** The point cloud to add to the (bloomed) scene. */
-  points: Points;
-  /**
-   * Selects which part of the sprite to draw, and the matching blend mode, for
-   * the dark-mode bloom pipeline (see the orchestrator's render loop):
-   * - `combined` — core + halo in one sprite (light mode / glow off).
-   * - `core` — the sharp data dot only, normal-blended.
-   * - `halo` — the glow only, additively blended (into the half-float buffer).
-   */
-  setPass(pass: 'combined' | 'core' | 'halo'): void;
+  /** The sharp data dots; drawn straight to the screen. */
+  core: Points;
+  /** The glow sprites; rendered into the bloom buffer when the glow is on. */
+  halo: Points;
 }
 
 /** Creates the {@link PointLayer}. */
 export function createPointLayer(props: PointLayerProps): PointLayer {
+  // Constant config (the glow buffer's resolution scale), read once.
+  // eslint-disable-next-line solid/reactivity -- a constant, never reactive
+  const glowScale = props.glowScale;
+
+  // One geometry shared by both objects: position + the color / state attributes
+  // (filled by setColors / setActiveState).
   const geometry = new BufferGeometry();
-  const material = new ShaderMaterial({
+
+  const coreMaterial = new ShaderMaterial({
     uniforms: {
       uPixelRatio: { value: 1 },
-      uGlowScale: { value: props.glowScale },
-      uSize: { value: SIZE },
       uCore: { value: CORE },
-      uOpacity: { value: GLOW_OPACITY },
-      uGlowEnabled: { value: 1 },
-      uPass: { value: 0 },
     },
-    vertexShader: pointVertexShader,
-    fragmentShader: pointFragmentShader,
+    vertexShader: coreVertexShader,
+    fragmentShader: coreFragmentShader,
     transparent: true,
     depthTest: false,
     depthWrite: false,
     blending: NormalBlending,
   });
 
-  const points = new Points(geometry, material);
-  points.frustumCulled = false;
-  points.renderOrder = 0;
+  const haloMaterial = new ShaderMaterial({
+    uniforms: {
+      uPixelRatio: { value: 1 },
+      uGlowScale: { value: glowScale },
+      uSize: { value: SIZE },
+      uOpacity: { value: GLOW_OPACITY },
+    },
+    vertexShader: haloVertexShader,
+    fragmentShader: haloFragmentShader,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    // Premultiplied halos: src factor stays One; the theme effect picks the dst
+    // factor (One = dark additive, OneMinusSrcAlpha = light 'over').
+    blending: CustomBlending,
+    blendEquation: AddEquation,
+    blendSrc: OneFactor,
+    blendDst: OneFactor,
+  });
 
-  // Additive blending exists only for the dark-mode glow. In light mode, or
-  // whenever the glow is off (just the core dots), use normal blending so dots
-  // show their true, un-brightened color.
-  let darkMode = false;
-  let glowEnabled = true;
-  const updateBlending = () => {
-    material.blending =
-      darkMode && glowEnabled ? AdditiveBlending : NormalBlending;
-    material.needsUpdate = true;
-  };
+  const core = new Points(geometry, coreMaterial);
+  core.frustumCulled = false;
+  core.renderOrder = 0;
+
+  const halo = new Points(geometry, haloMaterial);
+  halo.frustumCulled = false;
+  halo.renderOrder = 0;
 
   /**
    * Rebuilds the position buffer for a new point set and allocates the color /
@@ -196,21 +208,6 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     props.requestRender();
   });
 
-  // Theme blending: additive glow only in dark mode with glow on.
-  createEffect(() => {
-    darkMode = props.isDark();
-    updateBlending();
-    props.requestRender();
-  });
-
-  // Glow on/off (enables the bloom pipeline in the render loop).
-  createEffect(() => {
-    glowEnabled = props.glow();
-    material.uniforms['uGlowEnabled']!.value = glowEnabled ? 1 : 0;
-    updateBlending();
-    props.requestRender();
-  });
-
   // Active/dimmed state (filter / active weights).
   createEffect(() => {
     setActiveState(
@@ -220,46 +217,30 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     props.requestRender();
   });
 
-  // Device pixel ratio (sprite size = CSS px × dpr). The glow-buffer scale is
-  // applied in-shader on the halo pass, so this is the only pixel-ratio input.
+  // Device pixel ratio (sprite size = CSS px × dpr) on both materials. The
+  // glow-buffer scale is applied in-shader on the halo, so this is the only
+  // pixel-ratio input.
   createEffect(() => {
-    material.uniforms['uPixelRatio']!.value = props.pixelRatio();
+    const pr = props.pixelRatio();
+    coreMaterial.uniforms['uPixelRatio']!.value = pr;
+    haloMaterial.uniforms['uPixelRatio']!.value = pr;
+    props.requestRender();
+  });
+
+  // Glow blend op: the premultiplied halos add in dark mode and 'over'-blend in
+  // light mode (only the dst factor changes). The core is always normal-blended.
+  createEffect(() => {
+    haloMaterial.blendDst = props.isDark() ? OneFactor : OneMinusSrcAlphaFactor;
     props.requestRender();
   });
 
   onCleanup(() => {
     geometry.dispose();
-    material.dispose();
+    coreMaterial.dispose();
+    haloMaterial.dispose();
   });
 
-  // The render loop drives the pass per frame (not reactive — blend mode + uPass
-  // change between draws within one frame), so the layer exposes it as a method
-  // alongside its `points` scene object.
-  return {
-    points,
-
-    setPass(pass: 'combined' | 'core' | 'halo') {
-      // Set blending directly (not via updateBlending) since this runs per
-      // frame; changing the blend factors alone needs no shader recompile.
-      if (pass === 'core') {
-        material.uniforms['uPass']!.value = 1;
-        material.blending = NormalBlending;
-      } else if (pass === 'halo') {
-        // The halo outputs premultiplied alpha (see shader), so src factor stays
-        // One and only the dst factor selects the operator: One = additive (dark
-        // glow), OneMinusSrcAlpha = 'over' = normal blending (light glow). Both
-        // accumulate into a transparent buffer.
-        material.uniforms['uPass']!.value = 2;
-        material.blending = CustomBlending;
-        material.blendEquation = AddEquation;
-        material.blendSrc = OneFactor;
-        material.blendDst = darkMode ? OneFactor : OneMinusSrcAlphaFactor;
-      } else {
-        material.uniforms['uPass']!.value = 0;
-        updateBlending();
-      }
-    },
-  };
+  return { core, halo };
 }
 
 /** Builds the active-state predicate from the current filter + weight set. */

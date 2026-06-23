@@ -1,37 +1,25 @@
-// GLSL for the graph point cloud.
+// GLSL for the graph point cloud, split into two single-purpose programs:
+//   - core: the sharp data dot, normal-blended straight to the screen.
+//   - halo: the soft glow, premultiplied and accumulated into the half-float
+//     bloom buffer (see GlowCompositor). The halo sprite scales by uGlowScale so
+//     it keeps its on-screen size when the glow buffer is downscaled.
 //
-// Each point is a screen-space-sized sprite. The sprite diameter is the *blur*
-// extent; the solid core (the data dot) is a fixed pixel size, independent of
-// the blur radius — the vertex shader converts the core's pixel size into a
-// fraction of the current sprite so it stays small as the blur grows. The halo
-// fades to zero before the sprite edge, so it never lifts the empty background.
-//
-// The same material draws in one of three passes (`uPass`), so the orchestrator
-// can split the cheap-but-sharp core from the heavy-but-blurry halo:
-//   0 = combined — core + halo in one sprite (light mode / glow off; rendered
-//       straight to the screen, blend mode set by the material).
-//   1 = core only — just the data dot, normal-blended to the full-res screen.
-//   2 = halo only — just the glow, additively accumulated into the half-float
-//       bloom buffer (see GlowCompositor).
+// Both programs read the same geometry (position / aColor / aState); the
+// orchestrator shows the core or halo points per render pass (visibility),
+// rather than switching a uPass uniform — so each shader stays branch-free.
 //
 // `position` / projection uniforms are injected by three's ShaderMaterial, so
 // only the custom attributes are declared here.
 
-export const pointVertexShader = /* glsl */ `
+export const coreVertexShader = /* glsl */ `
 attribute vec3 aColor;
 attribute float aState; // 0 = active, 1 = dimmed (filtered out / inactive weight)
 
 uniform float uPixelRatio;
-uniform float uGlowScale;   // glow-buffer scale, applied only on the halo pass
-uniform float uSize;        // blur diameter (CSS px)
-uniform float uCore;        // solid core diameter (CSS px)
-uniform float uGlowEnabled; // 1 = full glow sprite, 0 = shrink to the core dot
-uniform float uPass;        // 0 = combined, 1 = core only, 2 = halo only
+uniform float uCore; // solid core diameter (CSS px)
 
 varying vec3 vColor;
 varying float vAlpha;
-varying float vGlow;
-varying float vCoreFrac; // core radius as a fraction of the sprite radius
 
 void main() {
   bool dimmed = aState > 0.5;
@@ -39,74 +27,71 @@ void main() {
   // Dimmed (filtered-out / inactive) points are 0.75x the size and much fainter.
   float scale = dimmed ? 0.75 : 1.0;
   vAlpha = dimmed ? 0.2 : 1.0;
-  vGlow = dimmed ? 0.2 : 1.0;
-
-  // The sprite footprint depends on the pass. The core pass needs only the tiny
-  // core dot (no wasted fill-rate); the halo pass needs the full blur sprite.
-  // The combined pass mirrors the old single-pass behaviour: full sprite with
-  // the glow, else shrunk to the core dot. The visible dot stays the same size
-  // either way because vCoreFrac scales with the sprite.
-  float spriteSize;
-  if (uPass > 1.5) {
-    spriteSize = uSize;                               // halo only
-  } else if (uPass > 0.5) {
-    spriteSize = uCore;                               // core only
-  } else {
-    spriteSize = uGlowEnabled > 0.5 ? uSize : uCore;  // combined
-  }
-  vCoreFrac = uCore / spriteSize;
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  // The halo pass renders into the (possibly downscaled) glow buffer, so the
-  // sprite scales by uGlowScale there to keep its on-screen size; other passes
-  // draw at the screen's own resolution (uGlowScale factor = 1).
-  float passScale = uPass > 1.5 ? uGlowScale : 1.0;
-  gl_PointSize = spriteSize * scale * uPixelRatio * passScale;
+  gl_PointSize = uCore * scale * uPixelRatio;
 }
 `;
 
-export const pointFragmentShader = /* glsl */ `
-uniform float uOpacity; // peak opacity at the core (the glow fades out from here)
-uniform float uGlowEnabled; // 1 = draw the halo glow, 0 = just the core dot
-uniform float uPass;        // 0 = combined, 1 = core only, 2 = halo only
-
+export const coreFragmentShader = /* glsl */ `
 varying vec3 vColor;
 varying float vAlpha;
-varying float vGlow;
-varying float vCoreFrac;
 
 void main() {
   vec2 uv = gl_PointCoord * 2.0 - 1.0;
   float dist = length(uv);
   if (dist > 1.0) discard;
 
-  // Fixed-size solid core, plus a soft faint halo spanning the whole sprite.
-  float core = smoothstep(vCoreFrac, vCoreFrac * 0.8, dist);
-  float halo = pow(max(0.0, 1.0 - dist), 3.0);
-
-  // Halo only — the glow, accumulated into the half-float bloom buffer. Output is
-  // premultiplied (rgb already times alpha) so the SAME output works for both
-  // operators: the material's blend keeps src factor = One and only swaps the dst
-  // factor — One for the dark additive glow, OneMinusSrcAlpha for the light
-  // 'over' (= normal blending). Accumulating into a transparent buffer needs
-  // premultiplied alpha to avoid dark fringing.
-  if (uPass > 1.5) {
-    float a = halo * uOpacity * vGlow * vAlpha;
-    gl_FragColor = vec4(vColor * a, a);
-    return;
-  }
-
-  float intensity;
-  if (uPass > 0.5) {
-    // Core only — the sharp data dot at full strength.
-    intensity = core;
-  } else {
-    // Combined — the original single-pass look. The core is full strength;
-    // uOpacity scales only the halo so a non-dimmed point keeps its true color.
-    intensity = clamp(core + halo * uOpacity * vGlow * uGlowEnabled, 0.0, 1.0);
-  }
-
-  // Straight alpha; the material's blend mode decides how this composites.
+  // A soft-edged solid dot filling the (tiny) core sprite.
+  float intensity = smoothstep(1.0, 0.8, dist);
+  // Straight alpha; the material normal-blends this onto the screen.
   gl_FragColor = vec4(vColor, intensity * vAlpha);
+}
+`;
+
+export const haloVertexShader = /* glsl */ `
+attribute vec3 aColor;
+attribute float aState;
+
+uniform float uPixelRatio;
+uniform float uGlowScale; // glow-buffer scale (keeps on-screen size when downscaled)
+uniform float uSize;      // blur / glow diameter (CSS px)
+
+varying vec3 vColor;
+varying float vAlpha;
+varying float vGlow;
+
+void main() {
+  bool dimmed = aState > 0.5;
+  vColor = aColor;
+  float scale = dimmed ? 0.75 : 1.0;
+  vAlpha = dimmed ? 0.2 : 1.0;
+  vGlow = dimmed ? 0.2 : 1.0;
+
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = uSize * scale * uPixelRatio * uGlowScale;
+}
+`;
+
+export const haloFragmentShader = /* glsl */ `
+uniform float uOpacity; // peak glow opacity at the center (it fades out from here)
+
+varying vec3 vColor;
+varying float vAlpha;
+varying float vGlow;
+
+void main() {
+  vec2 uv = gl_PointCoord * 2.0 - 1.0;
+  float dist = length(uv);
+  if (dist > 1.0) discard;
+
+  float halo = pow(max(0.0, 1.0 - dist), 3.0);
+  // Premultiplied output (rgb already × alpha) so the SAME output works for both
+  // operators: the material keeps src factor = One and only swaps the dst factor
+  // — One for the dark additive glow, OneMinusSrcAlpha for the light 'over' (=
+  // normal blending). Accumulating into a transparent buffer needs premultiplied
+  // alpha to avoid dark fringing.
+  float a = halo * uOpacity * vGlow * vAlpha;
+  gl_FragColor = vec4(vColor * a, a);
 }
 `;

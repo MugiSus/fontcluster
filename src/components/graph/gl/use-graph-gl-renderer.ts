@@ -115,59 +115,51 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const renderFrame = () => {
       rafId = undefined;
 
-      // The glow's overlapping halos band on an 8-bit screen (additively in dark
-      // mode, multiplicatively in light mode), so whenever it is on we route it
-      // through the bloom pipeline. Glow off renders straight to the screen.
+      const { core, halo } = pointLayer;
       const dark = isDark();
+
+      // Glow off: draw the sharp content (core dots + rings + images + axes)
+      // straight to the screen. The halo object is only used by the bloom path.
       if (!props.glow()) {
-        pointLayer.setPass('combined');
+        halo.visible = false;
+        core.visible = true;
+        axisLayer.visible = true;
+        ringLayer.visible = true;
+        imageLayer.visible = true;
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
         return;
       }
 
-      // 1) Glow pass: halos only, into the full-resolution half-float buffer.
-      //    Cleared to transparent black: the premultiplied halos accumulate from
-      //    zero for both operators (sum for dark additive, 'over' for light).
-      //    The halo sprite scales itself by the glow-buffer scale in-shader
-      //    (keyed on the pass), so no per-frame pixel-ratio change is needed;
-      //    hide the sharp-only layers. This pass is rendered offscreen, so scene
-      //    renderOrder cannot put other layers over it yet.
-      pointLayer.setPass('halo');
+      // The glow's overlapping halos band on an 8-bit screen (additively in dark
+      // mode, 'over' in light mode), so route the glow through the bloom buffer.
+
+      // 1) Glow pass: halos only, into the half-float bloom buffer (cleared to
+      //    transparent black so the premultiplied halos accumulate from zero).
+      halo.visible = true;
+      core.visible = false;
       axisLayer.visible = false;
       ringLayer.visible = false;
       imageLayer.visible = false;
       renderer.setRenderTarget(compositor.target);
       renderer.setClearColor(0x000000, 0);
       renderer.render(scene, camera);
-
-      // Restore the shared state the next sharp pass / frame expects.
       renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
-      axisLayer.visible = true;
-      ringLayer.visible = true;
-      imageLayer.visible = true;
 
-      // 2) Clear the screen to the theme background and draw only the axes. The
-      //    axes are the backplate reference lines; renderOrder keeps them behind
-      //    points inside a single scene render, but it cannot put them behind a
-      //    later full-screen glow composite. Draw them before the composite so
-      //    they stay at the visual back.
+      // 2) Background + axes to the screen. The axes are the backplate; draw them
+      //    before the composite so the glow sits above them but below the sharp
+      //    content drawn last.
+      halo.visible = false;
+      axisLayer.visible = true;
       renderer.setRenderTarget(null);
-      pointLayer.points.visible = false;
-      ringLayer.visible = false;
-      imageLayer.visible = false;
       renderer.render(scene, camera);
 
-      // 3) Composite the upsampled glow over the background + axes, but still
-      //    below the sharp graph content drawn in the next pass.
+      // 3) Composite the upsampled glow over the background + axes.
       compositor.composite(renderer, dark);
 
-      // 4) Sharp pass: cores + rings + images, full-res over the already
-      //    composited glow. Hide the axes for this pass because they already
-      //    occupy the backplate. Disable autoClear for this one render only;
-      //    otherwise three would wipe the glow/background before drawing.
-      pointLayer.setPass('core');
-      pointLayer.points.visible = true;
+      // 4) Sharp pass: core dots + rings + images over the composite (the axes
+      //    are already drawn). autoClear off so the glow/background isn't wiped.
+      core.visible = true;
       axisLayer.visible = false;
       ringLayer.visible = true;
       imageLayer.visible = true;
@@ -175,6 +167,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.autoClear = false;
       renderer.render(scene, camera);
       renderer.autoClear = previousAutoClear;
+
+      // Leave the scene in a sane default for any stray render.
       axisLayer.visible = true;
     };
     const scheduleRender = () => {
@@ -291,7 +285,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       isDark,
       filteredKeys: props.filteredKeys,
       activeWeights: props.activeWeights,
-      glow: props.glow,
       pixelRatio,
       glowScale: compositor.glowScale,
       requestRender: scheduleRender,
@@ -309,7 +302,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     scene.add(axisLayer);
-    scene.add(pointLayer.points);
+    scene.add(pointLayer.core);
+    scene.add(pointLayer.halo);
     scene.add(ringLayer);
     scene.add(imageLayer);
 
