@@ -47,11 +47,11 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
       inert={!props.open}
       onMouseDown={(event) => event.stopPropagation()}
       class={cn(
-        'absolute left-0 right-0 z-20 mx-auto w-max transition-[bottom,opacity] duration-300 ease-out',
+        'absolute left-0 right-0 z-20 mx-auto w-max rounded-full border border-border/25 bg-background/50 shadow-md backdrop-blur-md transition-[bottom,opacity] duration-300 ease-out',
         props.open ? 'bottom-4 opacity-100' : 'bottom-0 opacity-0',
       )}
     >
-      <div class='shadow-inner-background flex items-center gap-1 rounded-full border border-border/25 bg-background/50 p-1 shadow-md backdrop-blur-md'>
+      <div class='flex items-center gap-1 rounded-full p-1 shadow-inner-background'>
         <div class='relative flex items-center'>
           <Show
             when={isFiltered()}

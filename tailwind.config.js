@@ -95,6 +95,9 @@ export default {
       fontSize: {
         xxs: '10px',
       },
+      boxShadow: {
+        'inner-background': 'inset 0 0 16px 4px hsl(var(--background) / 0.92)',
+      },
       keyframes: {
         "content-show": {
           from: { opacity: 0, transform: "scale(0.96)" },
