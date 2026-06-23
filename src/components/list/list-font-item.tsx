@@ -77,11 +77,14 @@ export function ListFontItem(props: ListFontItemProps) {
       onMouseLeave={props.onMouseLeave}
       aria-label={`Apply ${meta().font_name} ${weightLabel()} to plugins`}
     >
+      <div
+        class={cn(
+          'absolute inset-y-px left-px w-1',
+          getClusterBackgroundColor(clusterId()),
+        )}
+      />
       <div class='flex items-center gap-2 px-4 font-semibold'>
-        <div
-          class={`h-3.5 w-1 rounded-full ${getClusterBackgroundColor(clusterId())}`}
-        />
-        <div class={`text-sm ${getClusterTextColor(clusterId())}`}>
+        <div class={cn('text-sm', getClusterTextColor(clusterId()))}>
           {weightLabel()}
         </div>
         <div class='text-nowrap text-sm text-muted-foreground'>
