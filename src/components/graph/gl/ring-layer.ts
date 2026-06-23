@@ -32,11 +32,6 @@ export interface RingLayerProps {
   requestRender: () => void;
 }
 
-export interface RingLayer {
-  /** The three.js object to add to the (un-bloomed) overlay scene. */
-  readonly object: Object3D;
-}
-
 /**
  * The selection / hover / family highlight rings.
  *
@@ -50,7 +45,7 @@ export interface RingLayer {
  * (three.js does not free GPU resources automatically) when the slot goes away.
  * The unit-circle geometry is shared by all rings and freed on teardown.
  */
-export function createRingLayer(props: RingLayerProps): RingLayer {
+export function createRingLayer(props: RingLayerProps): Object3D {
   // Shared unit circle (radius 1); each ring scales it to its pixel radius.
   const circleGeometry = new LineGeometry();
   circleGeometry.setPositions(
@@ -114,5 +109,5 @@ export function createRingLayer(props: RingLayerProps): RingLayer {
 
   onCleanup(() => circleGeometry.dispose());
 
-  return { object: group };
+  return group;
 }

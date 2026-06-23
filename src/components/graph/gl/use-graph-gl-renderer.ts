@@ -126,30 +126,26 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         return;
       }
 
-      const pixelRatio = window.devicePixelRatio;
-
       // 1) Glow pass: halos only, into the full-resolution half-float buffer.
       //    Cleared to transparent black: the premultiplied halos accumulate from
       //    zero for both operators (sum for dark additive, 'over' for light).
-      //    Scale the sprite pixel size by the compositor scale so the glow stays
-      //    the same on-screen size if the buffer resolution changes; hide the
-      //    sharp-only layers. This pass is rendered offscreen, so scene
+      //    The halo sprite scales itself by the glow-buffer scale in-shader
+      //    (keyed on the pass), so no per-frame pixel-ratio change is needed;
+      //    hide the sharp-only layers. This pass is rendered offscreen, so scene
       //    renderOrder cannot put other layers over it yet.
       pointLayer.setPass('halo');
-      pointLayer.setPixelRatio(pixelRatio * compositor.glowScale);
-      axisLayer.object.visible = false;
-      ringLayer.object.visible = false;
-      imageLayer.object.visible = false;
+      axisLayer.visible = false;
+      ringLayer.visible = false;
+      imageLayer.visible = false;
       renderer.setRenderTarget(compositor.target);
       renderer.setClearColor(0x000000, 0);
       renderer.render(scene, camera);
 
       // Restore the shared state the next sharp pass / frame expects.
       renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
-      pointLayer.setPixelRatio(pixelRatio);
-      axisLayer.object.visible = true;
-      ringLayer.object.visible = true;
-      imageLayer.object.visible = true;
+      axisLayer.visible = true;
+      ringLayer.visible = true;
+      imageLayer.visible = true;
 
       // 2) Clear the screen to the theme background and draw only the axes. The
       //    axes are the backplate reference lines; renderOrder keeps them behind
@@ -157,9 +153,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       //    later full-screen glow composite. Draw them before the composite so
       //    they stay at the visual back.
       renderer.setRenderTarget(null);
-      pointLayer.object.visible = false;
-      ringLayer.object.visible = false;
-      imageLayer.object.visible = false;
+      pointLayer.points.visible = false;
+      ringLayer.visible = false;
+      imageLayer.visible = false;
       renderer.render(scene, camera);
 
       // 3) Composite the upsampled glow over the background + axes, but still
@@ -171,15 +167,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       //    occupy the backplate. Disable autoClear for this one render only;
       //    otherwise three would wipe the glow/background before drawing.
       pointLayer.setPass('core');
-      pointLayer.object.visible = true;
-      axisLayer.object.visible = false;
-      ringLayer.object.visible = true;
-      imageLayer.object.visible = true;
+      pointLayer.points.visible = true;
+      axisLayer.visible = false;
+      ringLayer.visible = true;
+      imageLayer.visible = true;
       const previousAutoClear = renderer.autoClear;
       renderer.autoClear = false;
       renderer.render(scene, camera);
       renderer.autoClear = previousAutoClear;
-      axisLayer.object.visible = true;
+      axisLayer.visible = true;
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
@@ -193,6 +189,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const pointByKey = createMemo(
       () => new Map(props.points().map((point) => [point.key, point])),
     );
+    // Device pixel ratio, re-read on resize (the only time it changes here); the
+    // renderer and the point sprite both size to it.
+    const pixelRatio = createMemo(() => {
+      props.size();
+      return window.devicePixelRatio;
+    });
 
     // The highlight rings to show (selection / hover / family). Each font gets
     // at most one ring (selected wins), dimmed with the same active/dimmed rule
@@ -277,6 +279,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- layers (one scene; render order keeps images over rings over dots) -
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
+    const compositor = createGlowCompositor();
     const axisLayer = createAxisLayer({
       origin: props.origin,
       isLight: () => !isDark(),
@@ -289,6 +292,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       filteredKeys: props.filteredKeys,
       activeWeights: props.activeWeights,
       glow: props.glow,
+      pixelRatio,
+      glowScale: compositor.glowScale,
       requestRender: scheduleRender,
     });
     const ringLayer = createRingLayer({
@@ -303,11 +308,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
-    const compositor = createGlowCompositor();
-    scene.add(axisLayer.object);
-    scene.add(pointLayer.object);
-    scene.add(ringLayer.object);
-    scene.add(imageLayer.object);
+    scene.add(axisLayer);
+    scene.add(pointLayer.points);
+    scene.add(ringLayer);
+    scene.add(imageLayer);
 
     // --- effect: clear color (theme) -------------------------------------
     // The renderer's clear color is the theme background; each layer handles its
@@ -322,17 +326,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     createEffect(() => {
       const { width, height } = props.size();
       if (width <= 0 || height <= 0) return;
-      const pixelRatio = window.devicePixelRatio;
-      renderer.setPixelRatio(pixelRatio);
+      renderer.setPixelRatio(pixelRatio());
       renderer.setSize(width, height, false);
       // Size the glow buffer from the actual drawing-buffer resolution
       // (getDrawingBufferSize already folds in pixelRatio); the compositor then
-      // applies its own GLOW_SCALE.
+      // applies its own GLOW_SCALE. The point sprite + line layers track pixel
+      // ratio / resolution via their own accessors.
       renderer.getDrawingBufferSize(drawingBufferSize);
       compositor.setSize(drawingBufferSize.x, drawingBufferSize.y);
-      // The point sprite's base pixel ratio (the render loop overrides it for the
-      // glow pass); the line layers track resolution via their own accessors.
-      pointLayer.setPixelRatio(pixelRatio);
       scheduleRender();
     });
 

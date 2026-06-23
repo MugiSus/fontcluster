@@ -22,6 +22,7 @@ attribute vec3 aColor;
 attribute float aState; // 0 = active, 1 = dimmed (filtered out / inactive weight)
 
 uniform float uPixelRatio;
+uniform float uGlowScale;   // glow-buffer scale, applied only on the halo pass
 uniform float uSize;        // blur diameter (CSS px)
 uniform float uCore;        // solid core diameter (CSS px)
 uniform float uGlowEnabled; // 1 = full glow sprite, 0 = shrink to the core dot
@@ -56,7 +57,11 @@ void main() {
   vCoreFrac = uCore / spriteSize;
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = spriteSize * scale * uPixelRatio;
+  // The halo pass renders into the (possibly downscaled) glow buffer, so the
+  // sprite scales by uGlowScale there to keep its on-screen size; other passes
+  // draw at the screen's own resolution (uGlowScale factor = 1).
+  float passScale = uPass > 1.5 ? uGlowScale : 1.0;
+  gl_PointSize = spriteSize * scale * uPixelRatio * passScale;
 }
 `;
 

@@ -31,6 +31,10 @@ export interface PointLayerProps {
   activeWeights: Accessor<FontWeight[]>;
   /** Whether the halo glow is on (off = just the core dots). */
   glow: Accessor<boolean>;
+  /** Device pixel ratio; sprite size = CSS px × this. */
+  pixelRatio: Accessor<number>;
+  /** The glow buffer's resolution scale (applied to the halo sprite in-shader). */
+  glowScale: number;
   /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
 }
@@ -43,14 +47,15 @@ export interface PointLayerProps {
  * - `aState` — 0 for active points, 1 for dimmed (filtered-out / inactive
  *   weight) points.
  *
- * Colors, dimmed state, theme blending and glow all follow their accessors via
- * effects. {@link PointLayer.setPass} and {@link PointLayer.setPixelRatio} stay
- * imperative because they are driven by the render loop (the dark-mode bloom
- * pipeline switches passes and sprite scale per frame), not by reactive state.
+ * Colors, dimmed state, theme blending, glow and pixel ratio all follow their
+ * accessors via effects. Only {@link PointLayer.setPass} stays imperative: the
+ * render loop reconfigures the point material's draw mode + blend between the
+ * bloom passes (changing within one frame), which signals cannot express — so
+ * the layer exposes it alongside its `points` object.
  */
 export interface PointLayer {
-  /** The three.js object to add to the (bloomed) scene. */
-  readonly object: Points;
+  /** The point cloud to add to the (bloomed) scene. */
+  points: Points;
   /**
    * Selects which part of the sprite to draw, and the matching blend mode, for
    * the dark-mode bloom pipeline (see the orchestrator's render loop):
@@ -59,8 +64,6 @@ export interface PointLayer {
    * - `halo` — the glow only, additively blended (into the half-float buffer).
    */
   setPass(pass: 'combined' | 'core' | 'halo'): void;
-  /** Keeps the sprite size constant in CSS pixels across device pixel ratios. */
-  setPixelRatio(pixelRatio: number): void;
 }
 
 /** Creates the {@link PointLayer}. */
@@ -69,6 +72,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
   const material = new ShaderMaterial({
     uniforms: {
       uPixelRatio: { value: 1 },
+      uGlowScale: { value: props.glowScale },
       uSize: { value: SIZE },
       uCore: { value: CORE },
       uOpacity: { value: GLOW_OPACITY },
@@ -216,15 +220,25 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     props.requestRender();
   });
 
+  // Device pixel ratio (sprite size = CSS px × dpr). The glow-buffer scale is
+  // applied in-shader on the halo pass, so this is the only pixel-ratio input.
+  createEffect(() => {
+    material.uniforms['uPixelRatio']!.value = props.pixelRatio();
+    props.requestRender();
+  });
+
   onCleanup(() => {
     geometry.dispose();
     material.dispose();
   });
 
+  // The render loop drives the pass per frame (not reactive — blend mode + uPass
+  // change between draws within one frame), so the layer exposes it as a method
+  // alongside its `points` scene object.
   return {
-    object: points,
+    points,
 
-    setPass(pass) {
+    setPass(pass: 'combined' | 'core' | 'halo') {
       // Set blending directly (not via updateBlending) since this runs per
       // frame; changing the blend factors alone needs no shader recompile.
       if (pass === 'core') {
@@ -244,10 +258,6 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
         material.uniforms['uPass']!.value = 0;
         updateBlending();
       }
-    },
-
-    setPixelRatio(pixelRatio) {
-      material.uniforms['uPixelRatio']!.value = pixelRatio;
     },
   };
 }

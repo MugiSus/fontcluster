@@ -56,11 +56,6 @@ export interface ImageLayerProps {
   requestRender: () => void;
 }
 
-export interface ImageLayer {
-  /** The three.js object to add to the (un-bloomed) overlay scene. */
-  readonly object: Object3D;
-}
-
 interface ImageEntry {
   mesh: Mesh;
   material: ShaderMaterial;
@@ -68,8 +63,8 @@ interface ImageEntry {
   aspect?: number | undefined;
 }
 
-/** Creates the {@link ImageLayer}. */
-export function createImageLayer(props: ImageLayerProps): ImageLayer {
+/** Creates the image layer; returns the scene object to add. */
+export function createImageLayer(props: ImageLayerProps): Object3D {
   // Stable repaint callback; captured so the async texture load (which runs
   // outside any tracked scope) doesn't read it off the reactive props object.
   // eslint-disable-next-line solid/reactivity -- a plain callback, never reactive
@@ -220,5 +215,5 @@ export function createImageLayer(props: ImageLayerProps): ImageLayer {
     quad.dispose();
   });
 
-  return { object: group };
+  return group;
 }

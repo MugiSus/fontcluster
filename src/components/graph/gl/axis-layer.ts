@@ -26,11 +26,6 @@ export interface AxisLayerProps {
   requestRender: () => void;
 }
 
-export interface AxisLayer {
-  /** The three.js object to add to the scene. */
-  readonly object: Object3D;
-}
-
 /**
  * The origin crosshair: a horizontal and vertical reference line through graph
  * (0, 0). Rendered behind the points (renderOrder -1). Uses fat lines (Line2
@@ -38,8 +33,9 @@ export interface AxisLayer {
  * color, rather than a native 1px line that anti-aliases into the background.
  *
  * Origin, theme color and resolution all follow their accessors via effects.
+ * Returns the scene object to add (there is nothing else to expose).
  */
-export function createAxisLayer(props: AxisLayerProps): AxisLayer {
+export function createAxisLayer(props: AxisLayerProps): Object3D {
   const geometry = new LineSegmentsGeometry();
   geometry.setPositions([
     -AXIS_EXTENT,
@@ -90,5 +86,5 @@ export function createAxisLayer(props: AxisLayerProps): AxisLayer {
     material.dispose();
   });
 
-  return { object: lines };
+  return lines;
 }
