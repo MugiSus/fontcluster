@@ -83,6 +83,19 @@ export function ListFontItem(props: ListFontItemProps) {
           getClusterBackgroundColor(clusterId()),
         )}
       />
+      <div
+        aria-hidden='true'
+        class={cn(
+          'pointer-events-none absolute inset-y-0 right-0 w-16',
+          getClusterTextColor(clusterId()),
+        )}
+        style={{
+          'background-image':
+            'repeating-linear-gradient(135deg, transparent 0 13px, currentColor 13px 14px)',
+          '-webkit-mask-image': 'linear-gradient(to right, transparent, #000b)',
+          'mask-image': 'linear-gradient(to right, transparent, #000b)',
+        }}
+      />
       <div class='ml-5 flex items-center gap-2 text-sm font-semibold'>
         <div style={{ 'font-weight': weight() }}>{weightLabel()}</div>
         <div class='text-nowrap text-muted-foreground'>{meta().font_name}</div>
