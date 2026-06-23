@@ -5,8 +5,8 @@ import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 
 /** Stroke width (CSS px) of every ring, constant regardless of radius. A thin
- *  1px line anti-aliases into the (bright, additive) glow behind it and loses
- *  its true color, so give it a solid core. */
+ *  1px line anti-aliases into the bright glow behind it and loses its true
+ *  color, so give it a solid core. */
 const LINE_WIDTH_PX = 1;
 /** Number of segments approximating each circle. */
 const SEGMENTS = 64;

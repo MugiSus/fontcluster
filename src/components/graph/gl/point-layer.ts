@@ -24,8 +24,13 @@ import {
 const SIZE = 128;
 /** Solid core (data dot) diameter (CSS px), independent of the blur radius. */
 const CORE = 3.5;
-/** Peak opacity at the glow center (it fades out from here). */
-const GLOW_OPACITY = 0.1;
+/**
+ * Peak opacity at the glow center (it fades out from here). This is the punch of
+ * a *single* halo; the whole glow layer is capped separately by the compositor's
+ * GLOW_LAYER_OPACITY when the bloom buffer is blitted to the screen, so this can
+ * run higher without dense overlaps painting the layer fully opaque.
+ */
+const GLOW_OPACITY = 0.2;
 
 export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
@@ -98,12 +103,14 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     transparent: true,
     depthTest: false,
     depthWrite: false,
-    // Premultiplied halos: src factor stays One; the theme effect picks the dst
-    // factor (One = dark additive, OneMinusSrcAlpha = light 'over').
+    // Premultiplied halos accumulate with normal 'over' blending (src One, dst
+    // OneMinusSrcAlpha), so overlapping opacity asymptotes toward 1 and stays in
+    // [0, 1]. The composite then multiplies that opacity by GLOW_LAYER_OPACITY
+    // when it veils the screen.
     blending: CustomBlending,
     blendEquation: AddEquation,
     blendSrc: OneFactor,
-    blendDst: OneFactor,
+    blendDst: OneMinusSrcAlphaFactor,
   });
 
   const core = new Points(geometry, coreMaterial);
@@ -215,13 +222,6 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     const pr = props.pixelRatio();
     coreMaterial.uniforms['uPixelRatio']!.value = pr;
     haloMaterial.uniforms['uPixelRatio']!.value = pr;
-    props.requestRender();
-  });
-
-  // Glow blend op: the premultiplied halos add in dark mode and 'over'-blend in
-  // light mode (only the dst factor changes). The core is always normal-blended.
-  createEffect(() => {
-    haloMaterial.blendDst = props.isDark() ? OneFactor : OneMinusSrcAlphaFactor;
     props.requestRender();
   });
 
