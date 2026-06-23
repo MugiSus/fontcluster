@@ -53,7 +53,6 @@ export function GraphContent() {
       <GraphFilterDock
         open={isFilterOpen()}
         weights={sessionWeights()}
-        activeWeights={activeGraphWeights()}
         onWeightsChange={setActiveGraphWeights}
         onClose={() => setIsFilterOpen(false)}
       />

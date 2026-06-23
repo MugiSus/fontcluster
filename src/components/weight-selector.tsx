@@ -1,4 +1,4 @@
-import { createEffect, createSignal, For, Show } from 'solid-js';
+import { createSignal, For, Show } from 'solid-js';
 import { Button } from './ui/button';
 import { type FontWeight, WEIGHT_LABELS } from '../types/font';
 import { WeightIcon } from 'lucide-solid';
@@ -29,10 +29,6 @@ export function WeightSelector(props: WeightSelectorProps) {
     props.showUnavailableWeights
       ? (Object.keys(WEIGHT_LABELS).map(Number) as FontWeight[])
       : props.weights;
-
-  createEffect(() => {
-    setSelectedWeights(computeSelectedFromDefaults());
-  });
 
   const handleWeightToggle = (weight: FontWeight) => {
     const currentWeights = selectedWeights();

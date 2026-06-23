@@ -11,7 +11,6 @@ import { WeightSelector } from '../weight-selector';
 interface GraphFilterDockProps {
   open: boolean;
   weights: FontWeight[];
-  activeWeights: FontWeight[];
   onWeightsChange: (weights: FontWeight[]) => void;
   onClose: () => void;
 }
@@ -23,7 +22,6 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
 
   const [query, setQuery] = createSignal(appState.ui.searchQuery);
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
-  const hasWeightOptions = createMemo(() => props.weights.length > 1);
 
   let inputElement: HTMLInputElement | undefined;
 
@@ -84,15 +82,18 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           />
         </div>
 
-        <Show when={hasWeightOptions()}>
+        <Show when={props.weights.length > 1 && props.weights.join(',')} keyed>
           <div class='mx-0.5 h-5 w-px bg-border/60' />
           <WeightSelector
             isBare
             isCompact
             weights={props.weights}
-            defaultValue={props.activeWeights}
-            onChange={props.onWeightsChange}
-            showUnavailableWeights
+            defaultValue={[]}
+            onChange={(weights) =>
+              props.onWeightsChange(
+                weights.length > 0 ? weights : props.weights,
+              )
+            }
           />
         </Show>
       </div>
