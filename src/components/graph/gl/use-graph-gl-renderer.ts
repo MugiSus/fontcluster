@@ -279,7 +279,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const ringLayer = createRingLayer({
       specs: ringSpecs,
       zoom: props.zoomFactor,
-      resolution: props.size,
       requestRender: scheduleRender,
     });
     const imageLayer = createImageLayer({
