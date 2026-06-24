@@ -4,17 +4,37 @@ import { createContext, Show, splitProps, useContext } from 'solid-js';
 import type { PolymorphicProps } from '@kobalte/core/polymorphic';
 import * as ToggleGroupPrimitive from '@kobalte/core/toggle-group';
 import type { VariantProps } from 'class-variance-authority';
+import { cva } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 import { toggleVariants } from '@/components/ui/toggle';
 
+// Selection-state dot shared by ToggleGroupItem (fills while pressed) and any
+// consumer that wants a matching indicator. `side` centers the dot along the
+// chosen edge; callers supply the fill (e.g. group-data-[pressed]:bg-foreground
+// or a plain bg-foreground for an always-on marker).
+const dotVariants = cva('absolute size-[3px] rounded-full', {
+  variants: {
+    side: {
+      top: 'left-1/2 top-1 -translate-x-1/2',
+      right: 'right-[3px] top-1/2 -translate-y-1/2',
+      bottom: 'bottom-1 left-1/2 -translate-x-1/2',
+      left: 'left-[3px] top-1/2 -translate-y-1/2',
+    },
+  },
+  defaultVariants: {
+    side: 'top',
+  },
+});
+
+type DotSide = NonNullable<VariantProps<typeof dotVariants>['side']>;
+
 type ToggleGroupContextValue = VariantProps<typeof toggleVariants> & {
   // When set, each item renders a built-in selection-state dot (see
   // ToggleGroupItem) that fills in while the item is pressed. `dotSide`
-  // picks which edge the dot hugs ('top' centers it along the top edge,
-  // 'right' centers it along the right edge); defaults to 'top'.
+  // picks which edge the dot hugs; defaults to 'top'.
   showDot?: boolean | undefined;
-  dotSide?: 'top' | 'right' | undefined;
+  dotSide?: DotSide | undefined;
 };
 
 const ToggleGroupContext = createContext<ToggleGroupContextValue>({
@@ -28,7 +48,7 @@ type ToggleGroupRootProps<T extends ValidComponent = 'div'> =
       class?: string | undefined;
       children?: JSX.Element;
       showDot?: boolean;
-      dotSide?: 'top' | 'right';
+      dotSide?: DotSide;
     };
 
 const ToggleGroup = <T extends ValidComponent = 'div'>(
@@ -104,10 +124,8 @@ const ToggleGroupItem = <T extends ValidComponent = 'button'>(
       <Show when={context.showDot}>
         <div
           class={cn(
-            'absolute size-[3px] rounded-full bg-transparent transition-colors group-data-[pressed]:bg-foreground',
-            context.dotSide === 'right'
-              ? 'right-[3px] top-1/2 -translate-y-1/2'
-              : 'top-1',
+            dotVariants({ side: context.dotSide }),
+            'bg-transparent transition-colors group-data-[pressed]:bg-foreground',
           )}
         />
       </Show>
@@ -115,4 +133,5 @@ const ToggleGroupItem = <T extends ValidComponent = 'button'>(
   );
 };
 
-export { ToggleGroup, ToggleGroupItem };
+export { ToggleGroup, ToggleGroupItem, dotVariants };
+export type { DotSide };

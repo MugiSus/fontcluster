@@ -13,7 +13,7 @@ import { createMemo, Show } from 'solid-js';
 import { appState } from '../../store';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { dotVariants, ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { type GraphToolMode } from './types';
 
@@ -263,7 +263,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             eye away from the canvas, so we keep the accent budget for content.
           */}
           <Show when={isFilterActive()}>
-            <span class='absolute right-[3px] top-1/2 size-[3px] -translate-y-1/2 rounded-full bg-foreground' />
+            <span class={cn(dotVariants({ side: 'right' }), 'bg-foreground')} />
           </Show>
         </TooltipTrigger>
         <TooltipContent>Filter</TooltipContent>
