@@ -8,7 +8,7 @@ import {
 } from '../../types/font';
 import { cn } from '../../lib/utils';
 import {
-  getClusterCssColor,
+  getClusterBackgroundColor,
   getClusterTextColor,
 } from '../../lib/cluster-colors';
 import { appState } from '../../store';
@@ -77,12 +77,12 @@ export function ListFontItem(props: ListFontItemProps) {
       onMouseLeave={props.onMouseLeave}
       aria-label={`Apply ${meta().font_name} ${weightLabel()} to plugins`}
     >
-      {/* <div
+      <div
         class={cn(
-          'absolute bottom-0 left-px top-px z-10 w-1',
+          'absolute bottom-0 left-px top-px z-10 w-[5px]',
           getClusterBackgroundColor(clusterId()),
         )}
-      /> */}
+      />
       {/* <div
         aria-hidden='true'
         class='pointer-events-none absolute inset-y-0 right-0 w-16 opacity-60 transition-opacity group-hover:opacity-90'
@@ -92,13 +92,13 @@ export function ListFontItem(props: ListFontItemProps) {
           'mask-image': 'linear-gradient(to right, transparent, black)',
         }}
       /> */}
-      <div
+      {/* <div
         aria-hidden='true'
         class='pointer-events-none absolute inset-y-0 left-px w-2'
         style={{
           'background-image': `repeating-linear-gradient(-45deg, black 0 2.14px, ${getClusterCssColor(clusterId())} 2.14px 3.14px)`,
         }}
-      />
+      /> */}
       <div class='flex items-center gap-2 text-sm font-semibold'>
         <div style={{ 'font-weight': weight() }}>{weightLabel()}</div>
         <div class='text-nowrap text-muted-foreground'>{meta().font_name}</div>
