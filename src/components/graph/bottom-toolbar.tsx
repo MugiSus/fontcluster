@@ -9,7 +9,7 @@ import {
   TypeIcon,
   ZoomInIcon,
 } from 'lucide-solid';
-import { createMemo } from 'solid-js';
+import { createMemo, Show } from 'solid-js';
 import { appState } from '../../store';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
@@ -116,6 +116,8 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         onChange={(value) => {
           if (value) props.onToolModeChange(value as GraphToolMode);
         }}
+        showDot
+        dotSide='right'
       >
         <Tooltip placement='left'>
           <TooltipTrigger
@@ -191,6 +193,8 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         class='flex-col'
         value={displaySelection()}
         onChange={handleDisplayChange}
+        showDot
+        dotSide='right'
       >
         <Tooltip placement='left'>
           <TooltipTrigger
@@ -240,13 +244,12 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
-          variant={isFilterActive() ? 'default' : 'ghost'}
+          variant='ghost'
           size='icon'
           class={cn(
-            'size-8 rounded-md shadow-none',
-            !isFilterActive() &&
-              props.isFilterOpen &&
-              'bg-accent text-accent-foreground',
+            'relative size-8 rounded-md shadow-none',
+            props.isFilterOpen && 'bg-accent text-accent-foreground',
+            isFilterActive() && 'text-foreground',
           )}
           data-filter-toggle
           aria-pressed={props.isFilterOpen}
@@ -254,6 +257,14 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           onClick={() => props.onToggleFilter()}
         >
           <FunnelIcon class='size-4' />
+          {/*
+            Mark the active filter with a small neutral dot rather than a
+            primary-filled button: a lone primary surface here would pull the
+            eye away from the canvas, so we keep the accent budget for content.
+          */}
+          <Show when={isFilterActive()}>
+            <span class='absolute right-[3px] top-1/2 size-[3px] -translate-y-1/2 rounded-full bg-foreground' />
+          </Show>
         </TooltipTrigger>
         <TooltipContent>Filter</TooltipContent>
       </Tooltip>
