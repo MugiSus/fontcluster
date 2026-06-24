@@ -11,6 +11,10 @@ publish = false
 tag-name = "v{{version}}"
 tag-message = "{{date}} FontCluster v{{version}}"
 pre-release-commit-message = "release {{version}}"
+# Validate the frontend before tagging so a failing build never produces a tag.
+# Runs from the crate dir, so `-C ..` targets the repo root (same as the `../`
+# paths used below).
+pre-release-hook = ["pnpm", "-C", "..", "run", "check"]
 pre-release-replacements = [
   { file = "../package.json", search = '^  "version": ".*",$', replace = '  "version": "{{version}}",', exactly = 1 },
 ]

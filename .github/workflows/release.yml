@@ -14,7 +14,11 @@ on:
         default: false
 
 jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+
   publish-tauri:
+    needs: check
     permissions:
       contents: write
     strategy:
