@@ -72,14 +72,14 @@ export function WeightSelector(props: WeightSelectorProps) {
                 value={String(weight)}
                 type='button'
                 class={cn(
-                  'group relative size-8 pt-0.5 text-xs text-muted-foreground',
+                  'group relative size-8 pt-0.5 text-xs text-muted-foreground hover:text-foreground',
                   props.isBare ? 'rounded-full' : 'grow rounded px-0',
                 )}
                 style={{ 'font-weight': weight }}
                 disabled={!isSelectable()}
               >
                 {WEIGHT_LABELS[weight].short}
-                <div class='absolute top-1 size-1 rounded-full bg-transparent transition-colors group-data-[pressed]:bg-foreground' />
+                <div class='absolute top-1 size-[3px] rounded-full bg-transparent transition-colors group-data-[pressed]:bg-foreground' />
               </TooltipTrigger>
               <TooltipContent>{WEIGHT_LABELS[weight].full}</TooltipContent>
             </Tooltip>
