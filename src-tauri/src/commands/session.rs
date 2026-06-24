@@ -5,7 +5,7 @@
 //! directories; [`collect_stored_sessions`] unifies both views, de-duplicating
 //! by id so an in-progress session shadows its older packed copy.
 
-use crate::config::{AlgorithmConfig, ProcessStatus, SessionConfig};
+use crate::config::{ProcessStatus, SessionConfig};
 use crate::core::{
     is_session_document_path, read_session_config_from_dir, read_session_config_from_document,
     AppState,
@@ -32,15 +32,6 @@ struct StoredSession {
     location: StoredSessionLocation,
 }
 
-/// Creates a fresh session and returns its id.
-#[command]
-pub async fn create_new_session(
-    algorithm: AlgorithmConfig,
-    state: State<'_, AppState>,
-) -> Result<String> {
-    state.initialize_session(algorithm)
-}
-
 /// Loads `sessionId` (if given) and returns the active session as JSON.
 #[command]
 #[allow(non_snake_case)]
@@ -56,17 +47,6 @@ pub async fn get_session_info(
         .as_ref()
         .ok_or_else(|| crate::error::AppError::Processing("No session".into()))?;
     Ok(serde_json::to_string(session)?)
-}
-
-/// Returns all stored sessions as JSON, newest first.
-#[command]
-pub async fn get_available_sessions() -> Result<String> {
-    let mut sessions: Vec<SessionConfig> = collect_stored_sessions()?
-        .into_iter()
-        .map(|stored| stored.session)
-        .collect();
-    sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
-    Ok(serde_json::to_string(&sessions)?)
 }
 
 /// Returns recent sessions newest first, pruning anything past the history cap

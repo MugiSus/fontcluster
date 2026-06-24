@@ -153,7 +153,6 @@ pub fn run() {
     crate::core::start_plugin_bridge_server(app_state.clone());
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(app_state)
@@ -164,9 +163,7 @@ pub fn run() {
         })
         .on_menu_event(handle_menu)
         .invoke_handler(tauri::generate_handler![
-            crate::commands::create_new_session,
             crate::commands::get_session_info,
-            crate::commands::get_available_sessions,
             crate::commands::get_session_history,
             crate::commands::get_running_session_ids,
             crate::commands::get_latest_session_id,
@@ -176,7 +173,6 @@ pub fn run() {
             crate::commands::stop_jobs,
             crate::commands::lasso_selected_process,
             crate::commands::get_font_items,
-            crate::commands::get_system_fonts,
             crate::commands::render_font_preview,
             crate::commands::send_font_to_plugin,
             crate::commands::get_connected_plugins,

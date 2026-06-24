@@ -168,25 +168,6 @@ pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> R
     Ok(serde_json::to_string(&map)?)
 }
 
-/// Returns the sorted, de-duplicated list of installed family names,
-/// excluding emoji and icon fonts.
-#[command]
-pub async fn get_system_fonts() -> Result<Vec<String>> {
-    let mut db = fontdb::Database::new();
-    db.load_system_fonts();
-    let mut fonts: Vec<String> = db
-        .faces()
-        .flat_map(|face| face.families.iter().map(|(family, _)| family.clone()))
-        .filter(|family| {
-            let family = family.to_lowercase();
-            !family.contains("emoji") && !family.contains("icon")
-        })
-        .collect();
-    fonts.sort();
-    fonts.dedup();
-    Ok(fonts)
-}
-
 /// Renders (or returns a cached) preview PNG and yields its file path.
 ///
 /// The actual work runs on a blocking thread; see
