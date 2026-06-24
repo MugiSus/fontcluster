@@ -21,6 +21,9 @@ interface TabsProps {
 }
 
 export const Tabs: ParentComponent<TabsProps> = (props) => {
+  // props.value is read once as the initial (uncontrolled) value; later changes
+  // are intentionally ignored, so the reactivity warning is a false positive.
+  // eslint-disable-next-line solid/reactivity
   const [value, setValue] = createSignal(props.value || '');
 
   const handleValueChange = (newValue: string) => {
