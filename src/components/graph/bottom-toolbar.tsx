@@ -1,8 +1,6 @@
 import {
-  CircleMinusIcon,
   FunnelIcon,
   HandIcon,
-  LassoSelectIcon,
   MaximizeIcon,
   MinusIcon,
   MousePointer2Icon,
@@ -15,6 +13,7 @@ import { createMemo } from 'solid-js';
 import { appState } from '../../store';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { type GraphToolMode } from './types';
 
@@ -34,6 +33,11 @@ interface GraphBottomToolbarProps {
   onResetZoom?: (() => void) | undefined;
 }
 
+// Shared look for the ToggleGroup-based items: keep the toolbar's existing
+// icon-button footprint and its strong active highlight (primary), rather than
+// the default toggle-group accent, so the active tool stays clearly visible.
+const toggleItemClass = 'size-8 px-0';
+
 export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   const isFilterActive = createMemo(
     () =>
@@ -41,6 +45,19 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       appState.ui.activeGraphWeights.length !==
         appState.session.config.algorithm.rendering.weights.length,
   );
+
+  // ToggleGroup (multiple) owns the display toggles; derive its value from the
+  // booleans and translate changes back into the individual toggle handlers.
+  const displaySelection = () =>
+    [props.showImages && 'images', props.showGlow && 'glow'].filter(
+      Boolean,
+    ) as string[];
+
+  const handleDisplayChange = (values: string[]) => {
+    const next = new Set(values);
+    if (next.has('images') !== props.showImages) props.onToggleImages();
+    if (next.has('glow') !== props.showGlow) props.onToggleGlow();
+  };
 
   return (
     <div class='pointer-events-auto flex flex-col items-center gap-1 rounded-lg border border-border/25 bg-background/50 p-1 text-muted-foreground shadow-inner-background backdrop-blur-md'>
@@ -93,133 +110,130 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
 
       <div class='w-6 border-t' />
 
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'select' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'select'}
-          aria-label='Select'
-          onClick={() => props.onToolModeChange('select')}
-        >
-          <MousePointer2Icon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Select</TooltipContent>
-      </Tooltip>
+      <ToggleGroup
+        class='flex-col'
+        value={props.toolMode}
+        onChange={(value) => {
+          if (value) props.onToolModeChange(value as GraphToolMode);
+        }}
+      >
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='select'
+            class={toggleItemClass}
+            aria-label='Select'
+          >
+            <MousePointer2Icon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Select</TooltipContent>
+        </Tooltip>
 
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'lasso-select' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'lasso-select'}
-          aria-label='Lasso'
-          onClick={() => props.onToolModeChange('lasso-select')}
-        >
-          <LassoSelectIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Lasso</TooltipContent>
-      </Tooltip>
+        {/*
+          "Lasso" and "Exclude" are temporarily hidden as their importance has
+          faded. The tool modes ('lasso-select' / 'lasso-exclude') still exist,
+          so restore these items by uncommenting them.
 
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'lasso-exclude' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'lasso-exclude'}
-          aria-label='Exclude'
-          onClick={() => props.onToolModeChange('lasso-exclude')}
-        >
-          <CircleMinusIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Exclude</TooltipContent>
-      </Tooltip>
+          <Tooltip placement='left'>
+            <TooltipTrigger
+              as={ToggleGroupItem<'button'>}
+              value='lasso-select'
+              class={toggleItemClass}
+              aria-label='Lasso'
+            >
+              <LassoSelectIcon class='size-4' />
+            </TooltipTrigger>
+            <TooltipContent>Lasso</TooltipContent>
+          </Tooltip>
 
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'drag' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'drag'}
-          aria-label='Drag'
-          onClick={() => props.onToolModeChange('drag')}
-        >
-          <HandIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Drag</TooltipContent>
-      </Tooltip>
-
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.toolMode === 'zoom' ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.toolMode === 'zoom'}
-          aria-label='Zoom'
-          onClick={() => props.onToolModeChange('zoom')}
-        >
-          <ZoomInIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Zoom</TooltipContent>
-      </Tooltip>
-
-      <div class='w-6 border-t' />
-
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.showImages ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.showImages}
-          aria-label='Show Samples'
-          onClick={() => props.onToggleImages()}
-        >
-          <TypeIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Show Samples</TooltipContent>
-      </Tooltip>
-
-      {/*
-        "Show Font Names" is paused for now. The showFontNames signal and
-        onToggleFontNames handler (see GraphContent) plus the props below are
-        kept, so the feature can be restored by uncommenting this button.
+          <Tooltip placement='left'>
+            <TooltipTrigger
+              as={ToggleGroupItem<'button'>}
+              value='lasso-exclude'
+              class={toggleItemClass}
+              aria-label='Exclude'
+            >
+              <CircleMinusIcon class='size-4' />
+            </TooltipTrigger>
+            <TooltipContent>Exclude</TooltipContent>
+          </Tooltip>
+        */}
 
         <Tooltip placement='left'>
           <TooltipTrigger
-            as={Button<'button'>}
-            variant={props.showFontNames ? 'default' : 'ghost'}
-            size='icon'
-            class='size-8 rounded-md shadow-none'
-            aria-pressed={props.showFontNames}
-            aria-label='Show Font Names'
-            onClick={() => props.onToggleFontNames()}
+            as={ToggleGroupItem<'button'>}
+            value='drag'
+            class={toggleItemClass}
+            aria-label='Drag'
+          >
+            <HandIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Drag</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='zoom'
+            class={toggleItemClass}
+            aria-label='Zoom'
+          >
+            <ZoomInIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Zoom</TooltipContent>
+        </Tooltip>
+      </ToggleGroup>
+
+      <div class='w-6 border-t' />
+
+      <ToggleGroup
+        multiple
+        class='flex-col'
+        value={displaySelection()}
+        onChange={handleDisplayChange}
+      >
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='images'
+            class={toggleItemClass}
+            aria-label='Show Samples'
           >
             <TypeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Show Font Names</TooltipContent>
+          <TooltipContent>Show Samples</TooltipContent>
         </Tooltip>
-      */}
 
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant={props.showGlow ? 'default' : 'ghost'}
-          size='icon'
-          class='size-8 rounded-md shadow-none'
-          aria-pressed={props.showGlow}
-          aria-label='Glow Mode'
-          onClick={() => props.onToggleGlow()}
-        >
-          <TelescopeIcon class='size-4' />
-        </TooltipTrigger>
-        <TooltipContent>Glow Mode</TooltipContent>
-      </Tooltip>
+        {/*
+          "Show Font Names" is paused for now. The showFontNames signal and
+          onToggleFontNames handler (see GraphContent) plus the props below are
+          kept, so the feature can be restored by uncommenting this item.
+
+          <Tooltip placement='left'>
+            <TooltipTrigger
+              as={ToggleGroupItem<'button'>}
+              value='font-names'
+              class={toggleItemClass}
+              aria-label='Show Font Names'
+            >
+              <TypeIcon class='size-4' />
+            </TooltipTrigger>
+            <TooltipContent>Show Font Names</TooltipContent>
+          </Tooltip>
+        */}
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='glow'
+            class={toggleItemClass}
+            aria-label='Glow Mode'
+          >
+            <TelescopeIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>Glow Mode</TooltipContent>
+        </Tooltip>
+      </ToggleGroup>
 
       <div class='w-6 border-t' />
 
