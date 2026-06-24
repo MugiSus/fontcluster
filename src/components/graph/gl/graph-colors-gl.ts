@@ -5,7 +5,7 @@
  * DOM or CSS. Callers pass `isDark` (from the color-mode hook) to choose the
  * theme. The returned number feeds three's `Color.set()` / `setClearColor()`
  * directly; only the point buffer splits it into r/g/b floats. Keep these in
- * sync with the `--cluster-*` / `--background` values in index.css.
+ * sync with the `--cluster-*` / `--background` / `--border` values in index.css.
  */
 
 // Cluster colors for cluster ids 0..7 (indexed modulo length).
@@ -23,6 +23,9 @@ const UNCLUSTERED = 0x71717a;
 // Hex equivalents of the `--background` HSL values in index.css.
 const BACKGROUND_LIGHT = 0xfdfdfe;
 const BACKGROUND_DARK = 0x0e0f13;
+// Hex equivalents of the `--border` HSL values in index.css.
+const BORDER_LIGHT = 0xd6dee9;
+const BORDER_DARK = 0x333338;
 
 /** Returns the 0xRRGGBB color for a cluster id in the given theme. */
 export function getClusterColor({
@@ -40,4 +43,9 @@ export function getClusterColor({
 /** Returns the 0xRRGGBB clear color (matching `--background`) for the theme. */
 export function getBackgroundColor({ isDark }: { isDark?: boolean }): number {
   return isDark ? BACKGROUND_DARK : BACKGROUND_LIGHT;
+}
+
+/** Returns the 0xRRGGBB border color for the theme. */
+export function getBorderColor({ isDark }: { isDark?: boolean }): number {
+  return isDark ? BORDER_DARK : BORDER_LIGHT;
 }

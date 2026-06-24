@@ -11,6 +11,7 @@ interface GraphGlLayerProps {
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   origin: Accessor<GraphCoordinate>;
+  graphUnitsPerRawUnit: Accessor<number>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   getPointByKey: (key: string) => GraphPointData | undefined;
@@ -39,6 +40,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     size: () => props.size(),
     viewBox: () => props.viewBox(),
     origin: () => props.origin(),
+    graphUnitsPerRawUnit: () => props.graphUnitsPerRawUnit(),
     zoomFactor: () => props.zoomFactor(),
     points: () => props.points(),
     getPointByKey: (key) => props.getPointByKey(key),

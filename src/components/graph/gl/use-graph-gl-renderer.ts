@@ -20,9 +20,10 @@ import {
   type GraphPointData,
   type GraphViewBox,
 } from '../types';
-import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
+import { getBackgroundColor, getClusterColor } from './graph-colors-gl';
 import { createAxisLayer } from './axis-layer';
 import { createGlowCompositor } from './glow-compositor';
+import { createGridDotLayer } from './grid-dot-layer';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
@@ -32,13 +33,14 @@ import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
 ColorManagement.enabled = false;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
-const DIMMED_OPACITY = 0.4;
+const DIMMED_OPACITY = 0.5;
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   origin: Accessor<GraphCoordinate>;
+  graphUnitsPerRawUnit: Accessor<number>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   getPointByKey: (key: string) => GraphPointData | undefined;
@@ -86,7 +88,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // GPU.
       powerPreference: 'default',
     });
-    // We author every color as raw sRGB hex (see cluster-colors-gl) and our own
+    // We author every color as raw sRGB hex (see graph-colors-gl) and our own
     // shaders emit it directly. Built-in materials (LineMaterial) would re-encode
     // linear->sRGB on output and wash the colors out, so disable that output
     // conversion: combined with ColorManagement off, the whole pipeline is a raw
@@ -114,10 +116,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const { core, halo } = pointLayer;
       const dark = isDark();
 
-      // Glow off: draw the sharp content (core dots + rings + images + axes)
-      // straight to the screen. The halo object is only used by the bloom path.
+      // Glow off: draw the sharp content (grid + axes + core dots + rings +
+      // images) straight to the screen. The halo object is only used by the
+      // bloom path.
       if (!props.glow()) {
         halo.visible = false;
+        gridDotLayer.visible = true;
         core.visible = true;
         axisLayer.visible = true;
         ringLayer.visible = true;
@@ -130,10 +134,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // The glow's overlapping halos band when 'over'-composited straight onto an
       // 8-bit screen, so route the glow through the half-float bloom buffer where
       // the accumulation stays smooth.
+      //
+      // Grid dots are a screen backplate: hide them during the bloom pass so they
+      // don't enter the glow texture, then hide them again during the sharp pass
+      // because they were already drawn behind the composite.
 
       // 1) Glow pass: halos only, into the half-float bloom buffer (cleared to
       //    transparent black so the premultiplied halos accumulate from zero).
       halo.visible = true;
+      gridDotLayer.visible = false;
       core.visible = false;
       axisLayer.visible = false;
       ringLayer.visible = false;
@@ -143,20 +152,23 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
       renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
 
-      // 2) Background + axes to the screen. The axes are the backplate; draw them
-      //    before the composite so the glow sits above them but below the sharp
-      //    content drawn last.
+      // 2) Background + grid + axes to the screen. The grid and axes are the
+      //    backplate; draw them before the composite so the glow sits above them
+      //    but below the sharp content drawn last.
       halo.visible = false;
+      gridDotLayer.visible = true;
       axisLayer.visible = true;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
 
-      // 3) Composite the upsampled glow over the background + axes.
+      // 3) Composite the upsampled glow over the background + grid + axes.
       compositor.composite(renderer);
 
-      // 4) Sharp pass: core dots + rings + images over the composite (the axes
-      //    are already drawn). autoClear off so the glow/background isn't wiped.
+      // 4) Sharp pass: core dots + rings + images over the composite (the grid
+      //    and axes are already drawn). autoClear off so the glow/background
+      //    isn't wiped.
       core.visible = true;
+      gridDotLayer.visible = false;
       axisLayer.visible = false;
       ringLayer.visible = true;
       imageLayer.visible = true;
@@ -166,6 +178,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.autoClear = previousAutoClear;
 
       // Leave the scene in a sane default for any stray render.
+      gridDotLayer.visible = true;
       axisLayer.visible = true;
     };
     const scheduleRender = () => {
@@ -268,6 +281,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       resolution: props.size,
       requestRender: scheduleRender,
     });
+    const gridDotLayer = createGridDotLayer({
+      origin: props.origin,
+      graphUnitsPerRawUnit: props.graphUnitsPerRawUnit,
+      isLight: () => !isDark(),
+      zoom: props.zoomFactor,
+      requestRender: scheduleRender,
+    });
     const pointLayer = createPointLayer({
       points: props.points,
       isDark,
@@ -287,6 +307,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
+    scene.add(gridDotLayer);
     scene.add(axisLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);

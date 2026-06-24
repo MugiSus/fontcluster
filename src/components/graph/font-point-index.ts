@@ -22,6 +22,7 @@ interface VectorBounds {
 interface FontPointState {
   points: GraphPointData[];
   origin: GraphCoordinate;
+  graphUnitsPerRawUnit: number;
 }
 
 interface FontPointIndexes {
@@ -70,8 +71,11 @@ function getVectorBounds(fontItems: FontItem[]): VectorBounds {
 function createFontPointState(data: Record<string, FontItem>): FontPointState {
   const fontItems = Object.values(data);
   const { minX, maxX, minY, maxY } = getVectorBounds(fontItems);
-  const rangeX = maxX - minX || 1;
-  const rangeY = maxY - minY || 1;
+  const rangeX = maxX - minX;
+  const rangeY = maxY - minY;
+  const graphUnitsPerRawUnit = GRAPH_SIZE / (Math.max(rangeX, rangeY) || 1);
+  const offsetX = (GRAPH_SIZE - rangeX * graphUnitsPerRawUnit) / 2;
+  const offsetY = (GRAPH_SIZE - rangeY * graphUnitsPerRawUnit) / 2;
 
   const points: GraphPointData[] = [];
   for (const item of fontItems) {
@@ -81,17 +85,20 @@ function createFontPointState(data: Record<string, FontItem>): FontPointState {
     points.push({
       key: item.meta.safe_name,
       item,
-      x: ((position.x - minX) / rangeX) * GRAPH_SIZE,
-      y: ((maxY - position.y) / rangeY) * GRAPH_SIZE,
+      x: (position.x - minX) * graphUnitsPerRawUnit + offsetX,
+      y: (maxY - position.y) * graphUnitsPerRawUnit + offsetY,
     });
   }
 
+  const origin = {
+    x: (0 - minX) * graphUnitsPerRawUnit + offsetX,
+    y: (maxY - 0) * graphUnitsPerRawUnit + offsetY,
+  };
+
   return {
     points,
-    origin: {
-      x: ((0 - minX) / rangeX) * GRAPH_SIZE,
-      y: ((maxY - 0) / rangeY) * GRAPH_SIZE,
-    },
+    origin,
+    graphUnitsPerRawUnit,
   };
 }
 
@@ -200,6 +207,7 @@ const fontPointIndex = createRoot(() => {
   return {
     points: () => state().points,
     origin: () => state().origin,
+    graphUnitsPerRawUnit: () => state().graphUnitsPerRawUnit,
     selectablePoints,
     getPointByKey: (key: string) => indexes().byKey.get(key),
     getPointsByFamilyName: (familyName: string): readonly GraphPointData[] =>
@@ -221,6 +229,8 @@ const fontPointIndex = createRoot(() => {
 export const fontPoints = fontPointIndex.points;
 
 export const graphOrigin = fontPointIndex.origin;
+
+export const graphUnitsPerRawUnit = fontPointIndex.graphUnitsPerRawUnit;
 
 export const getGraphPointByKey = fontPointIndex.getPointByKey;
 

@@ -3,6 +3,7 @@ import { NormalBlending, type Object3D } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
+import { getBorderColor } from './graph-colors-gl';
 
 /** Half-length of each axis line — large enough to always span the viewport. */
 const AXIS_EXTENT = 100_000;
@@ -11,9 +12,6 @@ const AXIS_EXTENT = 100_000;
  *  color accurate. */
 const AXIS_WIDTH_PX = 1;
 const AXIS_OPACITY = 1;
-// 0xRRGGBB equivalents of the `--border` HSL values in index.css (light / dark).
-const BORDER_LIGHT = 0xd6dee9;
-const BORDER_DARK = 0x333338;
 
 export interface AxisLayerProps {
   /** Graph-space origin the crosshair is centered on (y is negated to world). */
@@ -53,7 +51,7 @@ export function createAxisLayer(props: AxisLayerProps): Object3D {
   ]);
 
   const material = new LineMaterial({
-    color: BORDER_DARK,
+    color: getBorderColor({ isDark: true }),
     linewidth: AXIS_WIDTH_PX,
     transparent: true,
     opacity: AXIS_OPACITY,
@@ -72,7 +70,7 @@ export function createAxisLayer(props: AxisLayerProps): Object3D {
     props.requestRender();
   });
   createEffect(() => {
-    material.color.set(props.isLight() ? BORDER_LIGHT : BORDER_DARK);
+    material.color.set(getBorderColor({ isDark: !props.isLight() }));
     props.requestRender();
   });
   createEffect(() => {

@@ -11,6 +11,7 @@ import {
   getGraphPointsByFamilyName,
   getSelectableFontPoints,
   getSelectableFontPointsInBounds,
+  graphUnitsPerRawUnit,
   graphOrigin,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
@@ -330,6 +331,7 @@ export function GraphViewer(props: GraphViewerProps) {
           size={svgSize}
           viewBox={viewport.viewBox}
           origin={graphOrigin}
+          graphUnitsPerRawUnit={graphUnitsPerRawUnit}
           zoomFactor={viewport.zoomFactor}
           points={fontPoints}
           getPointByKey={getGraphPointByKey}

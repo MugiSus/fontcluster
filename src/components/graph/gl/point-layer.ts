@@ -12,7 +12,7 @@ import {
 } from 'three';
 import { type FontWeight } from '../../../types/font';
 import { type GraphPointData } from '../types';
-import { getClusterColor } from './cluster-colors-gl';
+import { getClusterColor } from './graph-colors-gl';
 import {
   coreFragmentShader,
   coreVertexShader,
