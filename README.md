@@ -5,5 +5,6 @@ Install at [fontcluster.mugisus.me](https://fontcluster.mugisus.me)
 
 ## License
 
-Copyright © 2026 mugisus. All rights reserved.
-GPL-2.0 licensed.
+Copyright © 2026 mugisus
+
+Licensed under the GNU General Public License v2.0 or later (GPL-2.0-or-later). See [LICENSE](LICENSE) for details.

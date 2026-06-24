@@ -11,13 +11,7 @@ interface GraphPanelReopenControlsProps {
 
 export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
   return (
-    <Show
-      when={
-        !props.panelState.control ||
-        !props.panelState.list ||
-        !props.panelState.chat
-      }
-    >
+    <Show when={!props.panelState.control || !props.panelState.list}>
       <div
         class={cn(
           'pointer-events-auto absolute left-[3px] top-[3px] z-10 flex items-center gap-0 rounded-full border border-border/25 bg-background/50 shadow-inner-background backdrop-blur-md',
@@ -45,16 +39,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
             List
           </Button>
         </Show>
-        <Show when={!props.panelState.chat}>
-          <Button
-            variant='ghost'
-            size='sm'
-            class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-            onClick={() => props.onReopenPanel('chat')}
-          >
-            Chat
-          </Button>
-        </Show>
+        {/* Chat panel temporarily hidden until the feature is ready */}
       </div>
     </Show>
   );

@@ -16,7 +16,6 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
-    "figma:build": "tsc -p src-plugin-figma/tsconfig.json",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
   },
@@ -47,7 +46,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
-    "@figma/plugin-typings": "^1.126.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tauri-apps/cli": "^2.11.0",
     "@types/d3-polygon": "^3.0.2",
