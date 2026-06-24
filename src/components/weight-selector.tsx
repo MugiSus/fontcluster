@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from 'solid-js';
-import { Button } from './ui/button';
+import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 import { type FontWeight, WEIGHT_LABELS } from '../types/font';
 import { WeightIcon } from 'lucide-solid';
 import { cn } from '@/lib/utils';
@@ -30,21 +30,25 @@ export function WeightSelector(props: WeightSelectorProps) {
       ? (Object.keys(WEIGHT_LABELS).map(Number) as FontWeight[])
       : props.weights;
 
-  const handleWeightToggle = (weight: FontWeight) => {
-    const currentWeights = selectedWeights();
-    const newWeights = currentWeights.includes(weight)
-      ? currentWeights.filter((w) => w !== weight)
-      : [...currentWeights, weight];
-    setSelectedWeights(newWeights);
-    props.onChange?.(newWeights);
+  // ToggleGroup owns the selection; we mirror it into a signal so the hidden
+  // input can serialize it for form submit and so onChange can surface numbers.
+  const handleChange = (values: string[]) => {
+    const weights = values
+      .map(Number)
+      .toSorted((a, b) => a - b) as FontWeight[];
+    setSelectedWeights(weights);
+    props.onChange?.(weights);
   };
 
   return (
-    <div
+    <ToggleGroup
+      multiple
+      defaultValue={computeSelectedFromDefaults().map(String)}
+      onChange={handleChange}
       class={cn(
-        'flex items-stretch',
+        'items-stretch',
         props.isVertical ? 'flex-col' : 'flex-row',
-        props.isBare ? 'gap-0.5' : 'overflow-hidden rounded-md bg-background',
+        props.isBare ? 'gap-0.5' : 'gap-0.5 overflow-hidden bg-background',
       )}
     >
       <input
@@ -59,32 +63,29 @@ export function WeightSelector(props: WeightSelectorProps) {
       </Show>
       <For each={displayedWeights().toSorted()}>
         {(weight) => {
-          const isSelected = () => selectedWeights().includes(weight);
           const isSelectable = () => props.weights.includes(weight);
 
           return (
             <Tooltip placement={props.isVertical ? 'left' : 'bottom'}>
               <TooltipTrigger
-                as={Button<'button'>}
+                as={ToggleGroupItem<'button'>}
+                value={String(weight)}
                 type='button'
-                variant={isSelected() ? 'default' : 'ghost'}
-                size='sm'
                 class={cn(
-                  'relative size-8 shadow-none disabled:opacity-25',
-                  props.isBare ? 'rounded-full' : 'grow rounded-none px-2',
+                  'group relative size-8 pt-0.5 text-xs text-muted-foreground',
+                  props.isBare ? 'rounded-full' : 'grow rounded px-0',
                 )}
                 style={{ 'font-weight': weight }}
-                onClick={() => handleWeightToggle(weight)}
-                data-checked={isSelected()}
                 disabled={!isSelectable()}
               >
                 {WEIGHT_LABELS[weight].short}
+                <div class='absolute top-1 size-1 rounded-full bg-transparent transition-colors group-data-[pressed]:bg-foreground' />
               </TooltipTrigger>
               <TooltipContent>{WEIGHT_LABELS[weight].full}</TooltipContent>
             </Tooltip>
           );
         }}
       </For>
-    </div>
+    </ToggleGroup>
   );
 }
