@@ -1,5 +1,7 @@
 import { createMemo, createRoot } from 'solid-js';
 import { quadtree, type Quadtree, type QuadtreeLeaf } from 'd3-quadtree';
+import { scaleSymlog } from 'd3-scale';
+import { extent } from 'd3-array';
 import { appState } from '../../store';
 import { type FontItem } from '../../types/font';
 import { GRAPH_SIZE } from './constants';
@@ -12,12 +14,13 @@ import { collectVisibleImageKeys } from './lib';
 
 const MAX_NEAREST_FONT_ITEMS = 120;
 
-interface VectorBounds {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}
+/**
+ * Linear-region half-width of the symlog layout scale, in score units. The
+ * model standardises each axis to ~unit σ, so a value near the typical 95th
+ * percentile keeps the bulk (|score| < this) on a near-linear core and only
+ * compresses the genuine tail beyond it logarithmically.
+ */
+const SYMLOG_CONSTANT = 2;
 
 interface FontPointState {
   points: GraphPointData[];
@@ -38,59 +41,53 @@ function getFontVectorPosition(item: FontItem) {
   return { x, y };
 }
 
-function getVectorBounds(fontItems: FontItem[]): VectorBounds {
-  if (fontItems.length === 0) {
-    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+/**
+ * Builds an outlier-tolerant projection for one axis: a d3
+ * {@link https://d3js.org/d3-scale/symlog | symlog} scale (linear near zero,
+ * logarithmic in the tails) mapping the data's full extent onto the canvas, so
+ * a far outlier sets the edge without crushing the bulk into a central blob.
+ * A degenerate (empty or single-valued) axis parks every point at the centre.
+ */
+function createAxisProjection(values: number[]): (value: number) => number {
+  const [min, max] = extent(values);
+  if (min == null || max == null) {
+    return () => GRAPH_SIZE / 2;
   }
 
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
-  let hasPosition = false;
-
-  for (const item of fontItems) {
-    const position = getFontVectorPosition(item);
-    if (!position) continue;
-
-    hasPosition = true;
-    minX = Math.min(minX, position.x);
-    maxX = Math.max(maxX, position.x);
-    minY = Math.min(minY, position.y);
-    maxY = Math.max(maxY, position.y);
-  }
-
-  if (!hasPosition) {
-    return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
-  }
-
-  return { minX, maxX, minY, maxY };
+  const scale = scaleSymlog<number, number>()
+    .domain([min, max])
+    .range([0, GRAPH_SIZE])
+    .constant(SYMLOG_CONSTANT);
+  return (value) => scale(value);
 }
 
 function createFontPointState(data: Record<string, FontItem>): FontPointState {
-  const fontItems = Object.values(data);
-  const { minX, maxX, minY, maxY } = getVectorBounds(fontItems);
-  const rangeX = maxX - minX || 1;
-  const rangeY = maxY - minY || 1;
-
-  const points: GraphPointData[] = [];
-  for (const item of fontItems) {
+  const located = Object.values(data).flatMap((item) => {
     const position = getFontVectorPosition(item);
-    if (!position) continue;
+    return position ? [{ item, position }] : [];
+  });
 
-    points.push({
-      key: item.meta.safe_name,
-      item,
-      x: ((position.x - minX) / rangeX) * GRAPH_SIZE,
-      y: ((maxY - position.y) / rangeY) * GRAPH_SIZE,
-    });
-  }
+  // Each axis is projected independently through its own symlog scale.
+  const projectX = createAxisProjection(
+    located.map(({ position }) => position.x),
+  );
+  const projectY = createAxisProjection(
+    located.map(({ position }) => position.y),
+  );
+
+  const points: GraphPointData[] = located.map(({ item, position }) => ({
+    key: item.meta.safe_name,
+    item,
+    x: projectX(position.x),
+    // Graph space is y-down; flip so a higher score sits nearer the top.
+    y: GRAPH_SIZE - projectY(position.y),
+  }));
 
   return {
     points,
     origin: {
-      x: ((0 - minX) / rangeX) * GRAPH_SIZE,
-      y: ((maxY - 0) / rangeY) * GRAPH_SIZE,
+      x: projectX(0),
+      y: GRAPH_SIZE - projectY(0),
     },
   };
 }
