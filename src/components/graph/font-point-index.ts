@@ -12,15 +12,20 @@ import {
 } from './types';
 import { collectVisibleImageKeys } from './lib';
 
-const MAX_NEAREST_FONT_ITEMS = 120;
+const MAX_NEAREST_FONT_ITEMS = 60;
 
 /**
- * Linear-region half-width of the symlog layout scale, in score units. The
- * model standardises each axis to ~unit σ, so a value near the typical 95th
- * percentile keeps the bulk (|score| < this) on a near-linear core and only
- * compresses the genuine tail beyond it logarithmically.
+ * Soft linear→log transition scale of the symlog layout, in score units.
+ * symlog maps `y = sign(x)·log(1 + |x/C|)`, so the projection is only truly
+ * linear as `x → 0`; by `|x| = C` the local slope has already halved (to
+ * `1/2C`) and the value is ~30% below its linear extrapolation. `C` is thus
+ * the soft scale at which compression takes over, not a hard "linear up to
+ * here" cutoff. The model standardises each axis to ~unit σ, so this value
+ * places that transition near the typical bulk and only the genuine tail gets
+ * strongly compressed. Lower it to crush outliers harder; raise it to keep the
+ * layout closer to linear.
  */
-const SYMLOG_CONSTANT = 2;
+const SYMLOG_CONSTANT = 1.5;
 
 interface FontPointState {
   points: GraphPointData[];
