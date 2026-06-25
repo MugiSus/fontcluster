@@ -50,7 +50,7 @@ export function GraphContent() {
         onClearLasso={clearLassoResult}
       />
       <GraphFilterDock
-        open={isFilterOpen()}
+        isOpen={isFilterOpen()}
         weights={sessionWeights()}
         onWeightsChange={setActiveGraphWeights}
         onClose={() => setIsFilterOpen(false)}

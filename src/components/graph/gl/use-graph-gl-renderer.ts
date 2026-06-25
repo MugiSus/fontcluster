@@ -112,7 +112,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       rafId = undefined;
 
       const { core, halo } = pointLayer;
-      const dark = isDark();
+      const isDarkMode = isDark();
 
       // Glow off: draw the sharp content (core dots + rings + images + axes)
       // straight to the screen. The halo object is only used by the bloom path.
@@ -141,7 +141,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.setRenderTarget(compositor.target);
       renderer.setClearColor(0x000000, 0);
       renderer.render(scene, camera);
-      renderer.setClearColor(getBackgroundColor({ isDark: dark }), 1);
+      renderer.setClearColor(getBackgroundColor({ isDark: isDarkMode }), 1);
 
       // 2) Background + axes to the screen. The axes are the backplate; draw them
       //    before the composite so the glow sits above them but below the sharp
@@ -160,6 +160,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       axisLayer.visible = false;
       ringLayer.visible = true;
       imageLayer.visible = true;
+      // eslint-disable-next-line @typescript-eslint/naming-convention -- captures three.js renderer.autoClear to restore after render
       const previousAutoClear = renderer.autoClear;
       renderer.autoClear = false;
       renderer.render(scene, camera);
@@ -194,7 +195,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const selected = props.selectedKey();
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
-      const dark = isDark();
+      const isDarkMode = isDark();
       const predicate = activePredicate();
 
       // Dedupe per font, keeping the strongest affordance (selected > hover >
@@ -217,7 +218,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           y: -point.y,
           color: getClusterColor({
             k: point.item.computed?.clustering?.k,
-            isDark: dark,
+            isDark: isDarkMode,
           }),
           kind,
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
@@ -233,7 +234,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const selected = props.selectedKey();
       const showImages = props.showImages();
       const predicate = activePredicate();
-      const dark = isDark();
+      const isDarkMode = isDark();
 
       const wanted = new Set<string>();
       if (showImages) for (const key of imageKeys) wanted.add(key);
@@ -250,7 +251,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           y: -point.y,
           color: getClusterColor({
             k: point.item.computed?.clustering?.k,
-            isDark: dark,
+            isDark: isDarkMode,
           }),
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });

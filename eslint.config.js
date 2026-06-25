@@ -38,6 +38,23 @@ export default tseslint.config(
         },
       ],
       'prettier/prettier': 'error',
+      '@typescript-eslint/naming-convention': [
+        'error',
+        {
+          selector: ['variable', 'typeProperty'],
+          types: ['boolean'],
+          format: ['StrictPascalCase'],
+          prefix: ['is', 'should', 'has', 'can', 'did', 'will', 'show'],
+        },
+      ],
+    },
+  },
+  {
+    // Vendored solid-ui / kobalte primitives mirror upstream boolean prop
+    // names (inset, open, disabled, ...) and can't follow our convention.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/naming-convention': 'off',
     },
   },
   prettierConfig,

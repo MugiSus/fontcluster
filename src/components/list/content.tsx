@@ -149,7 +149,7 @@ export function ListContent() {
                           item={fontItem()}
                           previewText={appState.ui.listPreviewText}
                           previewFontSize={LIST_PREVIEW_FONT_SIZE}
-                          previewEnabled={canRenderListPreviews()}
+                          isPreviewEnabled={canRenderListPreviews()}
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}

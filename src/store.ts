@@ -23,8 +23,8 @@ export interface AppState {
     hoveredFontKey: string | null;
     sentFontItemKey: string | null;
     lassoResult: LassoProcessResult | null;
-    lassoProcessing: boolean;
-    sessionLoading: boolean;
+    isLassoProcessing: boolean;
+    isSessionLoading: boolean;
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
@@ -80,8 +80,8 @@ export const [appState, setAppState] = createStore<AppState>({
     hoveredFontKey: null,
     sentFontItemKey: null,
     lassoResult: null,
-    lassoProcessing: false,
-    sessionLoading: false,
+    isLassoProcessing: false,
+    isSessionLoading: false,
     get selectedFont(): FontItem | null {
       const key = this.selectedFontKey;
       return key ? appState.fonts.displayData[key] || null : null;

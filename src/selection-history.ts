@@ -29,7 +29,7 @@ const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
   batch(() => {
     setAppState('ui', 'selectedFontKey', snapshot.selectedFontKey);
     setAppState('ui', 'lassoResult', snapshot.lassoResult);
-    setAppState('ui', 'lassoProcessing', false);
+    setAppState('ui', 'isLassoProcessing', false);
   });
 };
 

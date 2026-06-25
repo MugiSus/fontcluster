@@ -18,7 +18,7 @@ interface ListFontItemProps {
   item: FontItem;
   previewText: string;
   previewFontSize: number;
-  previewEnabled?: boolean | undefined;
+  isPreviewEnabled?: boolean | undefined;
   class?: string | undefined;
   isSentFontItem?: boolean | undefined;
   onClick?: (() => void) | undefined;
@@ -31,7 +31,7 @@ export function ListFontItem(props: ListFontItemProps) {
   const clusterId = () => props.item.computed?.clustering?.k;
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
   const shouldRenderPreview = () =>
-    props.previewEnabled !== false && props.previewText !== '';
+    props.isPreviewEnabled !== false && props.previewText !== '';
 
   const defaultSampleSrc = createMemo(() =>
     convertFileSrc(

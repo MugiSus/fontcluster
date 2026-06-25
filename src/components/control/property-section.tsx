@@ -10,7 +10,7 @@ type ControlPropertySectionProps = {
   children?: JSX.Element;
   onStepRun: () => void;
   isRunnable?: boolean;
-  disabled?: boolean | undefined;
+  isDisabled?: boolean | undefined;
   class?: string | undefined;
   contentClass?: string | undefined;
 };
@@ -26,7 +26,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
               as={Button<'button'>}
               variant='ghost'
               size='icon'
-              disabled={props.disabled}
+              disabled={props.isDisabled}
               class='invisible mb-px size-4 text-xs group-hover/section:visible'
               onClick={props.onStepRun}
             >

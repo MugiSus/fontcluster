@@ -119,6 +119,7 @@ export function createGlowCompositor() {
     material.blendEquation = AddEquation;
     material.blendSrc = OneFactor;
     material.blendDst = OneMinusSrcAlphaFactor;
+    // eslint-disable-next-line @typescript-eslint/naming-convention -- captures three.js renderer.autoClear to restore after render
     const previousAutoClear = renderer.autoClear;
     renderer.autoClear = false;
     renderer.render(scene, camera);

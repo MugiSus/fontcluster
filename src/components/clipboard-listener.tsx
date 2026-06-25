@@ -5,6 +5,7 @@ import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
 import { appState } from '../store';
 
 export function ClipboardListener() {
+  // eslint-disable-next-line @typescript-eslint/naming-convention -- payload field names are fixed by the backend event contract
   const promise = listen<{ toast?: boolean; isFontName?: boolean }>(
     'copy_family_name',
     (event) => {

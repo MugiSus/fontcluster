@@ -9,7 +9,7 @@ import { useDismiss } from '../../hooks/use-dismiss';
 import { WeightSelector } from '../weight-selector';
 
 interface GraphFilterDockProps {
-  open: boolean;
+  isOpen: boolean;
   weights: FontWeight[];
   onWeightsChange: (weights: FontWeight[]) => void;
   onClose: () => void;
@@ -26,7 +26,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
   let inputElement: HTMLInputElement | undefined;
 
   const dismissRef = useDismiss({
-    enabled: () => props.open,
+    enabled: () => props.isOpen,
     onDismiss: () => props.onClose(),
     ignoreSelector: '[data-filter-toggle]',
   });
@@ -38,17 +38,17 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
 
   // Move focus into the field whenever the dock opens.
   createEffect(() => {
-    if (props.open) queueMicrotask(() => inputElement?.focus());
+    if (props.isOpen) queueMicrotask(() => inputElement?.focus());
   });
 
   return (
     <div
       ref={dismissRef}
-      inert={!props.open}
+      inert={!props.isOpen}
       onMouseDown={(event) => event.stopPropagation()}
       class={cn(
         'absolute left-0 right-0 z-20 mx-auto w-max rounded-full border border-border/25 bg-background/50 shadow-md backdrop-blur-md transition-[bottom,opacity] duration-300 ease-out',
-        props.open ? 'bottom-4 opacity-100' : 'bottom-0 opacity-0',
+        props.isOpen ? 'bottom-4 opacity-100' : 'bottom-0 opacity-0',
       )}
     >
       <div class='flex items-center gap-1 rounded-full p-1 shadow-inner-background'>

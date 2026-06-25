@@ -120,14 +120,14 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const unlisteners: Array<() => void> = [];
-  let disposed = false;
+  let isDisposed = false;
 
   const registerListener = <T,>(
     event: string,
     handler: (event: { payload: T }) => void,
   ) => {
     listen(event, handler).then((cleanup) => {
-      if (disposed) {
+      if (isDisposed) {
         cleanup();
         return;
       }
@@ -176,7 +176,7 @@ export function SessionHistory(props: SessionHistoryProps) {
   });
 
   onCleanup(() => {
-    disposed = true;
+    isDisposed = true;
     for (const unlisten of unlisteners) unlisten();
   });
 
@@ -231,10 +231,10 @@ export function SessionHistory(props: SessionHistoryProps) {
     committedDeletes.add(sessionId);
 
     try {
-      const result = await invoke<boolean>('delete_session', {
+      const isDeleted = await invoke<boolean>('delete_session', {
         sessionId,
       });
-      if (result) {
+      if (isDeleted) {
         const next = { ...seenCompletedSessions() };
         delete next[sessionId];
         setSeenCompletedSessions(next);

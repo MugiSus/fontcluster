@@ -134,9 +134,9 @@ export function ControlContent() {
     // Re-rendering is expensive, so steps past 'empty' reuse the existing
     // render and only re-cluster; a full run (or a restart from 'empty') redoes
     // both.
-    const recomputesRendering =
+    const shouldRecomputeRendering =
       options?.override == null || options.override === 'empty';
-    const algorithm: Partial<AlgorithmConfig> = recomputesRendering
+    const algorithm: Partial<AlgorithmConfig> = shouldRecomputeRendering
       ? { rendering, clustering }
       : { clustering };
 
@@ -182,7 +182,7 @@ export function ControlContent() {
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
             title='render'
-            disabled={isRunCooldown()}
+            isDisabled={isRunCooldown()}
             onStepRun={() => handleRun({ override: 'empty' })}
             isRunnable={false}
           >
@@ -224,7 +224,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='analyze'
-            disabled={
+            isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'rendered'
             }
@@ -233,7 +233,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='position'
-            disabled={
+            isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'analyzed'
             }
@@ -242,7 +242,7 @@ export function ControlContent() {
 
           <ControlPropertySection
             title='cluster'
-            disabled={
+            isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'positioned'
             }

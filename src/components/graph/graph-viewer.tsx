@@ -50,10 +50,10 @@ export function GraphViewer(props: GraphViewerProps) {
   );
   let svgElement: SVGSVGElement | undefined;
   let lassoStartPoint: { x: number; y: number } | null = null;
-  let lassoStarted = false;
+  let isLassoStarted = false;
   let zoomStartPoint: GraphCoordinate | null = null;
   let zoomStartScreenPoint: { x: number; y: number } | null = null;
-  let zoomStarted = false;
+  let isZoomStarted = false;
 
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
   const viewport = useGraphViewport({
@@ -146,14 +146,14 @@ export function GraphViewer(props: GraphViewerProps) {
 
   const clearLasso = () => {
     lassoStartPoint = null;
-    lassoStarted = false;
+    isLassoStarted = false;
     setLassoPoints([]);
   };
 
   const clearZoom = () => {
     zoomStartPoint = null;
     zoomStartScreenPoint = null;
-    zoomStarted = false;
+    isZoomStarted = false;
     setZoomBounds(null);
   };
 
@@ -175,9 +175,9 @@ export function GraphViewer(props: GraphViewerProps) {
             event.clientY - zoomStartScreenPoint.y,
           ) > POINTER_DRAG_THRESHOLD_PX
         ) {
-          zoomStarted = true;
+          isZoomStarted = true;
         }
-        if (!zoomStarted) return;
+        if (!isZoomStarted) return;
         if (!zoomStartPoint) return;
 
         const point = viewport.getGraphPointFromEvent(event);
@@ -196,7 +196,7 @@ export function GraphViewer(props: GraphViewerProps) {
         return;
       }
       if (getLassoScreenDistance(event) > POINTER_DRAG_THRESHOLD_PX) {
-        lassoStarted = true;
+        isLassoStarted = true;
       }
       appendLassoPoint(event);
     }
@@ -215,7 +215,7 @@ export function GraphViewer(props: GraphViewerProps) {
       selection.clearDraggingSelection();
       zoomStartPoint = viewport.getGraphPointFromEvent(event);
       zoomStartScreenPoint = { x: event.clientX, y: event.clientY };
-      zoomStarted = false;
+      isZoomStarted = false;
       setZoomBounds(null);
       return;
     }
@@ -229,7 +229,7 @@ export function GraphViewer(props: GraphViewerProps) {
         selection.clearDraggingSelection();
         zoomStartPoint = viewport.getGraphPointFromEvent(event);
         zoomStartScreenPoint = { x: event.clientX, y: event.clientY };
-        zoomStarted = false;
+        isZoomStarted = false;
         setZoomBounds(null);
         return;
       }
@@ -238,7 +238,7 @@ export function GraphViewer(props: GraphViewerProps) {
         return;
       }
       lassoStartPoint = { x: event.clientX, y: event.clientY };
-      lassoStarted = false;
+      isLassoStarted = false;
       setLassoPoints([]);
       appendLassoPoint(event);
     }
@@ -272,7 +272,7 @@ export function GraphViewer(props: GraphViewerProps) {
     }
     if (props.toolMode === 'zoom') {
       const bounds = zoomBounds();
-      if (zoomStarted && bounds) {
+      if (isZoomStarted && bounds) {
         viewport.zoomToBounds(bounds);
       } else if (event.button === 0 && zoomStartPoint) {
         viewport.handleZoomIn(zoomStartPoint);
@@ -288,7 +288,7 @@ export function GraphViewer(props: GraphViewerProps) {
       viewport.endPanDrag();
       return;
     }
-    if (lassoStarted) {
+    if (isLassoStarted) {
       appendLassoPoint(event);
       processLasso();
     } else if (getLassoScreenDistance(event) <= POINTER_DRAG_THRESHOLD_PX) {
@@ -320,7 +320,7 @@ export function GraphViewer(props: GraphViewerProps) {
         when={graph.allPoints().length > 0}
         fallback={
           <Show
-            when={appState.ui.sessionLoading}
+            when={appState.ui.isSessionLoading}
             fallback={
               <div class='flex size-full flex-col items-center justify-center text-sm text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />

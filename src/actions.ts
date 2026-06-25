@@ -25,7 +25,7 @@ import {
  */
 export const loadSession = async (id: string) => {
   if (!id) return;
-  setAppState('ui', 'sessionLoading', true);
+  setAppState('ui', 'isSessionLoading', true);
   try {
     const { config, directory, fonts } = await invoke<{
       config: SessionConfig;
@@ -47,7 +47,7 @@ export const loadSession = async (id: string) => {
   } catch (error) {
     console.error('Failed to load session:', error);
   } finally {
-    setAppState('ui', 'sessionLoading', false);
+    setAppState('ui', 'isSessionLoading', false);
   }
 };
 
@@ -87,7 +87,7 @@ export const setActiveGraphWeights = (weights: FontWeight[]) =>
 export const clearLassoResult = () => {
   batch(() => {
     setAppState('ui', 'lassoResult', null);
-    setAppState('ui', 'lassoProcessing', false);
+    setAppState('ui', 'isLassoProcessing', false);
   });
   selectionHistory.commit();
 };
@@ -96,7 +96,7 @@ export const setCurrentSessionId = async (id: string) => {
   const isSessionSwitch = appState.session.session_id !== id;
   batch(() => {
     setAppState('ui', 'lassoResult', null);
-    setAppState('ui', 'lassoProcessing', false);
+    setAppState('ui', 'isLassoProcessing', false);
     if (isSessionSwitch) {
       setAppState('ui', 'selectedFontKey', null);
       setAppState('ui', 'hoveredFontKey', null);
@@ -110,10 +110,10 @@ export const setCurrentSessionId = async (id: string) => {
 };
 
 export const processLassoSelection = async (safeNames: string[]) => {
-  if (safeNames.length === 0 || appState.ui.lassoProcessing) return;
+  if (safeNames.length === 0 || appState.ui.isLassoProcessing) return;
 
   const sessionId = appState.session.session_id;
-  setAppState('ui', 'lassoProcessing', true);
+  setAppState('ui', 'isLassoProcessing', true);
   try {
     const result = await invoke<LassoProcessResult>('lasso_selected_process', {
       safeNames,
@@ -137,7 +137,7 @@ export const processLassoSelection = async (safeNames: string[]) => {
     console.error('Failed to process lasso selection:', error);
     toast.error(`Lasso failed: ${error}`);
   } finally {
-    setAppState('ui', 'lassoProcessing', false);
+    setAppState('ui', 'isLassoProcessing', false);
   }
 };
 
@@ -148,7 +148,7 @@ export const runProcessingJobs = async (
 ) => {
   batch(() => {
     setAppState('ui', 'lassoResult', null);
-    setAppState('ui', 'lassoProcessing', false);
+    setAppState('ui', 'isLassoProcessing', false);
   });
   selectionHistory.reset();
   toast.info(
