@@ -24,6 +24,7 @@ export interface AppState {
     sentFontItemKey: string | null;
     lassoResult: LassoProcessResult | null;
     lassoProcessing: boolean;
+    sessionLoading: boolean;
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
@@ -80,6 +81,7 @@ export const [appState, setAppState] = createStore<AppState>({
     sentFontItemKey: null,
     lassoResult: null,
     lassoProcessing: false,
+    sessionLoading: false,
     get selectedFont(): FontItem | null {
       const key = this.selectedFontKey;
       return key ? appState.fonts.displayData[key] || null : null;

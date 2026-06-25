@@ -1,6 +1,6 @@
 import { Show, createSignal, onCleanup, onMount } from 'solid-js';
 import { polygonContains } from 'd3-polygon';
-import { CircleSlash2Icon } from 'lucide-solid';
+import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { appState } from '../../store';
 import { processLassoSelection } from '../../actions';
 import { useElementSize } from '../../hooks/use-element-size';
@@ -319,11 +319,23 @@ export function GraphViewer(props: GraphViewerProps) {
       <Show
         when={graph.allPoints().length > 0}
         fallback={
-          <div class='flex size-full flex-col items-center justify-center text-sm text-muted-foreground'>
-            <CircleSlash2Icon class='mb-4 size-6' />
-            <h2>No Results</h2>
-            <p class='text-xs'>Complete processing to see results</p>
-          </div>
+          <Show
+            when={appState.ui.sessionLoading}
+            fallback={
+              <div class='flex size-full flex-col items-center justify-center text-sm text-muted-foreground'>
+                <CircleSlash2Icon class='mb-4 size-6' />
+                <h2>No Results</h2>
+                <p class='text-xs'>Complete processing to see results</p>
+              </div>
+            }
+          >
+            <div class='flex size-full items-center justify-center'>
+              <LoaderIcon
+                class='size-8 animate-spin text-muted-foreground'
+                stroke-width={1}
+              />
+            </div>
+          </Show>
         }
       >
         <GraphGlLayer

@@ -25,6 +25,7 @@ import {
  */
 export const loadSession = async (id: string) => {
   if (!id) return;
+  setAppState('ui', 'sessionLoading', true);
   try {
     const { config, directory, fonts } = await invoke<{
       config: SessionConfig;
@@ -45,6 +46,8 @@ export const loadSession = async (id: string) => {
     });
   } catch (error) {
     console.error('Failed to load session:', error);
+  } finally {
+    setAppState('ui', 'sessionLoading', false);
   }
 };
 
