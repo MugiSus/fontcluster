@@ -1,6 +1,6 @@
 import { Show, type JSX } from 'solid-js';
 
-import { StepForwardIcon } from 'lucide-solid';
+import { RotateCwIcon } from 'lucide-solid';
 
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -30,9 +30,9 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
               class='invisible mb-px size-4 text-xs group-hover/section:visible'
               onClick={props.onStepRun}
             >
-              <StepForwardIcon class='size-3.5 max-h-3.5' />
+              <RotateCwIcon class='size-3 max-h-3' />
             </TooltipTrigger>
-            <TooltipContent>Run from this step</TooltipContent>
+            <TooltipContent>Recalculate</TooltipContent>
           </Tooltip>
         </Show>
       </div>

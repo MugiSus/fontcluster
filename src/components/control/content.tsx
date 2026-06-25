@@ -15,6 +15,8 @@ import { WeightSelector } from '../weight-selector';
 import {
   type FontWeight,
   type AlgorithmConfig,
+  type RenderingOptions,
+  type ClusteringOptions,
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
@@ -47,6 +49,50 @@ const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
   median: 'Median',
 };
 
+/** Default weight applied when the form leaves the weight selector empty. */
+const DEFAULT_WEIGHTS: FontWeight[] = [400];
+
+/**
+ * Reads the rendering inputs off the submitted form, coercing the stringly
+ * typed {@link FormData} into a {@link RenderingOptions} and falling back to
+ * the current session's config (or sensible literals) for missing fields.
+ */
+function parseRenderingConfig(formdata: FormData): RenderingOptions {
+  const weightsValue = (formdata.get('weights') as string) || '';
+  const weights = weightsValue
+    ? (weightsValue.split(',').map(Number) as FontWeight[])
+    : [];
+
+  return {
+    text: (formdata.get('rendering-text') as string) || 'A',
+    weights: weights.length > 0 ? weights : DEFAULT_WEIGHTS,
+    font_set: (formdata.get('rendering-font-set') ??
+      appState.session.config.algorithm.rendering.font_set) as FontSet,
+    font_size: Number(formdata.get('rendering-font-size')) || 224,
+  };
+}
+
+/**
+ * Reads the clustering inputs off the submitted form into a
+ * {@link ClusteringOptions}, defaulting each field the same way
+ * {@link parseRenderingConfig} does.
+ */
+function parseClusteringConfig(formdata: FormData): ClusteringOptions {
+  return {
+    method: (formdata.get('clustering-method') ??
+      appState.session.config.algorithm.clustering.method) as ClusteringMethod,
+    preprocessing_dimensions: Number(
+      formdata.get('clustering-preprocessing-dimensions') || 8,
+    ),
+    distance_threshold: Number(
+      formdata.get('clustering-distance-threshold') || 0.5,
+    ),
+    target_cluster_count: Number(
+      formdata.get('clustering-target-cluster-count') || 0,
+    ),
+  };
+}
+
 export function ControlContent() {
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
   const clearRunCooldown = debounce(() => {
@@ -57,70 +103,43 @@ export function ControlContent() {
     clearRunCooldown.clear();
   });
 
+  let formRef: HTMLFormElement | undefined;
+
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    void handleRun();
+    handleRun();
   };
 
-  const handleRun = async (targetStatus?: ProcessStatus) => {
-    if (isRunCooldown()) return;
+  const handleRun = async (options?: { override?: ProcessStatus }) => {
+    if (isRunCooldown() || !formRef) return;
 
     setIsRunCooldown(true);
     clearRunCooldown();
 
-    const form = document.querySelector('form');
-    if (!form) return;
+    const formdata = new FormData(formRef);
+    const rendering = parseRenderingConfig(formdata);
+    const clustering = parseClusteringConfig(formdata);
 
-    const isCompletedSession =
-      appState.session.config.status.process_status === 'clustered';
-    const sessionId =
-      targetStatus || !isCompletedSession
-        ? appState.session.id || undefined
-        : undefined;
+    const sessionId = (options?.override && appState.session.id) || undefined;
 
-    const formdata = new FormData(form);
-    const selectedWeightsString = formdata.get('weights') as string;
-    const selectedWeightsArray = (
-      selectedWeightsString ? selectedWeightsString.split(',').map(Number) : []
-    ) as FontWeight[];
-    const selectedWeights =
-      selectedWeightsArray.length > 0
-        ? selectedWeightsArray
-        : ([400] as FontWeight[]);
+    // Re-rendering is expensive, so steps past 'empty' reuse the existing
+    // render and only re-cluster; a full run (or a restart from 'empty') redoes
+    // both.
+    const recomputesRendering =
+      options?.override == null || options.override === 'empty';
+    const algorithm: Partial<AlgorithmConfig> = recomputesRendering
+      ? { rendering, clustering }
+      : { clustering };
 
-    const clustering = {
-      method: (formdata.get('clustering-method') ??
-        appState.session.config.algorithm.clustering
-          .method) as ClusteringMethod,
-      preprocessing_dimensions: Number(
-        formdata.get('clustering-preprocessing-dimensions') || 128,
-      ),
-      distance_threshold: Number(
-        formdata.get('clustering-distance-threshold') || 0.5,
-      ),
-      target_cluster_count: Number(
-        formdata.get('clustering-target-cluster-count') || 0,
-      ),
-    };
-
-    const rendering = {
-      text: (formdata.get('rendering-text') as string) || 'A',
-      weights: selectedWeights,
-      font_set: (formdata.get('rendering-font-set') ??
-        appState.session.config.algorithm.rendering.font_set) as FontSet,
-      font_size: Number(formdata.get('rendering-font-size')) || 224,
-    };
-
-    const algorithm: Partial<AlgorithmConfig> =
-      targetStatus && targetStatus !== 'empty'
-        ? { clustering }
-        : { rendering, clustering };
-
-    await runProcessingJobs(algorithm, sessionId, targetStatus);
+    await runProcessingJobs(algorithm, sessionId, options?.override);
   };
 
   return (
-    <form onSubmit={handleSubmit} class='flex h-full min-h-0 flex-1 flex-col'>
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      class='flex h-full min-h-0 flex-1 flex-col'
+    >
       <Show when={appState.session.config.session_id || true} keyed>
         <div class='flex flex-col gap-1 border-b p-4'>
           <TextField class='relative grid w-full items-center gap-1'>
@@ -160,7 +179,7 @@ export function ControlContent() {
           <ControlPropertySection
             title='render'
             disabled={isRunCooldown()}
-            onStepRun={() => handleRun('empty')}
+            onStepRun={() => handleRun({ override: 'empty' })}
             isRunnable={false}
           >
             <TextProperty label='source' class='mr-1 gap-0.5'>
@@ -209,7 +228,7 @@ export function ControlContent() {
               isRunCooldown() &&
               appState.session.config.status.process_status !== 'rendered'
             }
-            onStepRun={() => handleRun('rendered')}
+            onStepRun={() => handleRun({ override: 'rendered' })}
           />
 
           <ControlPropertySection
@@ -218,7 +237,7 @@ export function ControlContent() {
               isRunCooldown() &&
               appState.session.config.status.process_status !== 'analyzed'
             }
-            onStepRun={() => handleRun('analyzed')}
+            onStepRun={() => handleRun({ override: 'analyzed' })}
           />
 
           <ControlPropertySection
@@ -227,7 +246,7 @@ export function ControlContent() {
               isRunCooldown() &&
               appState.session.config.status.process_status !== 'positioned'
             }
-            onStepRun={() => handleRun('positioned')}
+            onStepRun={() => handleRun({ override: 'positioned' })}
           >
             <TextProperty label='method' class='mr-1 gap-0.5'>
               <Select
