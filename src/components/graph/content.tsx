@@ -14,8 +14,7 @@ export function GraphContent() {
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
     createSignal<ViewportZoomControls | null>(null);
-  const sessionWeights = () =>
-    appState.session.config.algorithm.rendering.weights;
+  const sessionWeights = () => appState.session.algorithm.rendering.weights;
   const activeGraphWeights = () => appState.ui.activeGraphWeights;
 
   createEffect(() => {

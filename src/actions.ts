@@ -1,12 +1,4 @@
-import {
-  batch,
-  createEffect,
-  createResource,
-  createRoot,
-  onCleanup,
-  onMount,
-  untrack,
-} from 'solid-js';
+import { batch, onCleanup, onMount } from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -23,110 +15,51 @@ import {
   type ProcessStatus,
 } from './types/font';
 
-// Resources
+// --- Session loading ---
 
-export const {
-  sessionDirectory,
-  sessionConfig,
-  fontItemRecord,
-  refetchSessionConfig,
-  refetchFontItemRecord,
-} = createRoot(() => {
-  const [sessionDirectory] = createResource(
-    () => appState.session.id,
-    async (sessionId): Promise<string> => {
-      if (!sessionId) return '';
-      try {
-        return await invoke<string>('get_session_directory', {
-          sessionId,
-        });
-      } catch (error) {
-        console.error('Failed to get session directory:', error);
-        return '';
-      }
-    },
-  );
+/**
+ * Loads a session by id: pulls its config, sample directory and font items
+ * from the backend and atomically swaps them into the store. The active
+ * session is identified by `appState.session.session_id`, so there is no
+ * separate "requested id" to keep in sync.
+ */
+export const loadSession = async (id: string) => {
+  if (!id) return;
+  try {
+    const configResponse = await invoke<string | null>('get_session_info', {
+      sessionId: id,
+    });
+    if (!configResponse) return;
+    const config = JSON.parse(configResponse) as SessionConfig;
 
-  const [sessionConfig, { refetch: refetchSessionConfig }] = createResource(
-    () => appState.session.id,
-    async (sessionId): Promise<SessionConfig | null> => {
-      if (!sessionId) return null;
-      try {
-        const response = await invoke<string | null>('get_session_info', {
-          sessionId,
-        });
-        if (!response) {
-          return null;
-        }
-        return JSON.parse(response) as SessionConfig;
-      } catch (error) {
-        console.error('Failed to get session info:', error);
-        return null;
-      }
-    },
-  );
+    const [directory, fontsResponse] = await Promise.all([
+      invoke<string>('get_session_directory', { sessionId: id }).catch(
+        () => '',
+      ),
+      invoke<string>('get_font_items', { sessionId: id }).catch(() => ''),
+    ]);
+    const data = fontsResponse
+      ? (JSON.parse(fontsResponse) as FontItemRecord)
+      : {};
 
-  const [fontItemRecord, { refetch: refetchFontItemRecord }] = createResource(
-    () => appState.session.id,
-    async (sessionId): Promise<FontItemRecord> => {
-      if (!sessionId) return {};
-      try {
-        const response = await invoke<string>('get_font_items', {
-          sessionId,
-        });
-        if (!response) {
-          return {};
-        }
-        return JSON.parse(response) as FontItemRecord;
-      } catch (error) {
-        console.error('Failed to parse font configs:', error);
-        return {};
-      }
-    },
-  );
-
-  // Sync session directory to store
-  createEffect(() => {
-    const dir = sessionDirectory();
-    if (dir !== undefined) {
-      setAppState('session', 'directory', dir);
-    }
-  });
-
-  // Sync loaded session config to store
-  createEffect(() => {
-    const config = sessionConfig();
-    if (config) {
-      setAppState('session', 'config', config);
-    }
-  });
-
-  // Sync font item map to store
-  createEffect(() => {
-    const data = fontItemRecord();
-    if (data) {
-      setAppState('session', 'config', (prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          status: {
-            ...prev.status,
-            samples_amount: Object.keys(data).length,
-          },
-        };
+    batch(() => {
+      setAppState('session', {
+        ...config,
+        status: {
+          ...config.status,
+          samples_amount: Object.keys(data).length,
+        },
       });
+      setAppState('sessionDirectory', directory || '');
       setAppState('fonts', 'data', reconcile(data));
-    }
-  });
+    });
+  } catch (error) {
+    console.error('Failed to load session:', error);
+  }
+};
 
-  return {
-    sessionDirectory,
-    sessionConfig,
-    fontItemRecord,
-    refetchSessionConfig,
-    refetchFontItemRecord,
-  };
-});
+/** Reloads the currently active session (e.g. after a job mutates it). */
+export const refreshSession = () => loadSession(appState.session.session_id);
 
 // Actions
 
@@ -166,8 +99,8 @@ export const clearLassoResult = () => {
   selectionHistory.commit();
 };
 
-export const setCurrentSessionId = (id: string) => {
-  const isSessionSwitch = appState.session.id !== id;
+export const setCurrentSessionId = async (id: string) => {
+  const isSessionSwitch = appState.session.session_id !== id;
   batch(() => {
     setAppState('ui', 'lassoResult', null);
     setAppState('ui', 'lassoProcessing', false);
@@ -175,24 +108,24 @@ export const setCurrentSessionId = (id: string) => {
       setAppState('ui', 'selectedFontKey', null);
       setAppState('ui', 'hoveredFontKey', null);
       setAppState('ui', 'sentFontItemKey', null);
-      setAppState('session', 'directory', '');
+      setAppState('sessionDirectory', '');
       setAppState('fonts', 'data', reconcile({}));
     }
-    setAppState('session', 'id', id);
   });
   selectionHistory.reset();
+  await loadSession(id);
 };
 
 export const processLassoSelection = async (safeNames: string[]) => {
   if (safeNames.length === 0 || appState.ui.lassoProcessing) return;
 
-  const sessionId = appState.session.id;
+  const sessionId = appState.session.session_id;
   setAppState('ui', 'lassoProcessing', true);
   try {
     const result = await invoke<LassoProcessResult>('lasso_selected_process', {
       safeNames,
     });
-    if (appState.session.id !== sessionId) return;
+    if (appState.session.session_id !== sessionId) return;
 
     batch(() => {
       setAppState('ui', 'lassoResult', result);
@@ -227,8 +160,7 @@ export const runProcessingJobs = async (
   selectionHistory.reset();
   toast.info(
     `Job started: '${
-      algorithm.rendering?.text ??
-      appState.session.config.algorithm.rendering.text
+      algorithm.rendering?.text ?? appState.session.algorithm.rendering.text
     }'`,
   );
 
@@ -239,9 +171,8 @@ export const runProcessingJobs = async (
       overrideStatus,
     });
     console.log('Complete pipeline result:', result);
-    if (sessionId && sessionId === appState.session.id) {
-      await refetchSessionConfig();
-      await refetchFontItemRecord();
+    if (sessionId && sessionId === appState.session.session_id) {
+      await refreshSession();
     }
   } catch (error) {
     console.error('Failed to process fonts:', error);
@@ -266,9 +197,7 @@ const loadLatestSessionId = async () => {
     );
     if (latestSessionId) {
       console.log('Setting latest session ID on startup:', latestSessionId);
-      untrack(() => {
-        setCurrentSessionId(latestSessionId);
-      });
+      await setCurrentSessionId(latestSessionId);
     }
   } catch (error) {
     console.error('Failed to get latest session ID:', error);

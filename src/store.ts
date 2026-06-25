@@ -11,11 +11,8 @@ import {
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
 
 export interface AppState {
-  session: {
-    id: string;
-    config: SessionConfig;
-    directory: string;
-  };
+  session: SessionConfig;
+  sessionDirectory: string;
   fonts: {
     data: Record<string, FontItem>;
     readonly displayData: Record<string, FontItem>;
@@ -66,11 +63,8 @@ const FUSE_OPTIONS = {
 
 // Define the store with explicit type to avoid circular inference errors
 export const [appState, setAppState] = createStore<AppState>({
-  session: {
-    id: '',
-    config: DEFAULT_SESSION_CONFIG,
-    directory: '',
-  },
+  session: DEFAULT_SESSION_CONFIG,
+  sessionDirectory: '',
   fonts: {
     data: {},
     get displayData(): FontItemRecord {

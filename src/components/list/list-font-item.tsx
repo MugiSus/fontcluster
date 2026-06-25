@@ -35,7 +35,7 @@ export function ListFontItem(props: ListFontItemProps) {
 
   const defaultSampleSrc = createMemo(() =>
     convertFileSrc(
-      `${appState.session.directory}/samples/${meta().safe_name}/sample.png`,
+      `${appState.sessionDirectory}/samples/${meta().safe_name}/sample.png`,
     ),
   );
   const [previewPath] = createResource(

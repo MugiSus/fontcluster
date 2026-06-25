@@ -105,7 +105,7 @@ export function ListContent() {
     <div class='flex h-full flex-1 flex-col'>
       <ListPreviewTextField
         value={appState.ui.listPreviewText}
-        placeholder={appState.session.config.algorithm.rendering.text || 'A'}
+        placeholder={appState.session.algorithm.rendering.text || 'A'}
         onValueChange={setListPreviewText}
       />
       <Show when={selectedItem()}>

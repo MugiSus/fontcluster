@@ -43,7 +43,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
     () =>
       appState.ui.searchQuery.length > 0 ||
       appState.ui.activeGraphWeights.length !==
-        appState.session.config.algorithm.rendering.weights.length,
+        appState.session.algorithm.rendering.weights.length,
   );
 
   // ToggleGroup (multiple) owns the display toggles; derive its value from the

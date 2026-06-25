@@ -165,7 +165,7 @@ export function SessionHistory(props: SessionHistoryProps) {
   });
 
   createEffect(() => {
-    const session = appState.session.config;
+    const session = appState.session;
     if (
       session.status.process_status !== 'clustered' ||
       runningSessionIds().has(session.session_id)
@@ -350,7 +350,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                   <SessionHistoryItem
                     session={session}
                     isCurrentSession={
-                      session.session_id === appState.session.id
+                      session.session_id === appState.session.session_id
                     }
                     isRunning={runningSessionIds().has(session.session_id)}
                     isUnread={isUnseenCompletedSession(session)}

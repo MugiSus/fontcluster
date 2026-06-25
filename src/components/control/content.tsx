@@ -127,8 +127,8 @@ export function ControlContent() {
 
     const sessionId =
       options?.override ||
-      appState.session.config.status.process_status !== 'clustered'
-        ? appState.session.id || undefined
+      appState.session.status.process_status !== 'clustered'
+        ? appState.session.session_id || undefined
         : undefined;
 
     // Re-rendering is expensive, so steps past 'empty' reuse the existing
@@ -149,7 +149,7 @@ export function ControlContent() {
       onSubmit={handleSubmit}
       class='flex h-full min-h-0 flex-1 flex-col'
     >
-      <Show when={appState.session.config.session_id || true} keyed>
+      <Show when={appState.session.session_id || true} keyed>
         <div class='flex flex-col gap-1 border-b p-4'>
           <TextField class='relative grid w-full items-center gap-1'>
             <TextFieldLabel
@@ -163,22 +163,17 @@ export function ControlContent() {
               type='text'
               name='rendering-text'
               id='rendering-text'
-              value={appState.session.config.algorithm.rendering.text || 'A'}
+              value={appState.session.algorithm.rendering.text || 'A'}
               placeholder='A'
               spellcheck='false'
               class='h-9 text-[15px]'
             />
           </TextField>
           <TextField class='grid w-full items-center gap-1'>
-            <Show
-              when={appState.session.config.session_id || 'session_id'}
-              keyed
-            >
+            <Show when={appState.session.session_id || 'session_id'} keyed>
               <WeightSelector
                 weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
-                defaultValue={
-                  appState.session.config.algorithm.rendering.weights
-                }
+                defaultValue={appState.session.algorithm.rendering.weights}
                 isCompact
               />
             </Show>
@@ -197,9 +192,7 @@ export function ControlContent() {
                 options={Object.keys(FONT_SET_LABELS) as FontSet[]}
                 optionTextValue={(fontSet) => FONT_SET_LABELS[fontSet]}
                 disallowEmptySelection
-                defaultValue={
-                  appState.session.config.algorithm.rendering.font_set
-                }
+                defaultValue={appState.session.algorithm.rendering.font_set}
                 itemComponent={(props) => (
                   <>
                     <SelectItem item={props.item}>
@@ -223,9 +216,7 @@ export function ControlContent() {
             <NumberProperty
               label='font size'
               name='rendering-font-size'
-              defaultValue={
-                appState.session.config.algorithm.rendering.font_size
-              }
+              defaultValue={appState.session.algorithm.rendering.font_size}
               step={1}
               minValue={1}
             />
@@ -235,7 +226,7 @@ export function ControlContent() {
             title='analyze'
             disabled={
               isRunCooldown() &&
-              appState.session.config.status.process_status !== 'rendered'
+              appState.session.status.process_status !== 'rendered'
             }
             onStepRun={() => handleRun({ override: 'rendered' })}
           />
@@ -244,7 +235,7 @@ export function ControlContent() {
             title='position'
             disabled={
               isRunCooldown() &&
-              appState.session.config.status.process_status !== 'analyzed'
+              appState.session.status.process_status !== 'analyzed'
             }
             onStepRun={() => handleRun({ override: 'analyzed' })}
           />
@@ -253,7 +244,7 @@ export function ControlContent() {
             title='cluster'
             disabled={
               isRunCooldown() &&
-              appState.session.config.status.process_status !== 'positioned'
+              appState.session.status.process_status !== 'positioned'
             }
             onStepRun={() => handleRun({ override: 'positioned' })}
           >
@@ -265,9 +256,7 @@ export function ControlContent() {
                 }
                 optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
                 disallowEmptySelection
-                defaultValue={
-                  appState.session.config.algorithm.clustering.method
-                }
+                defaultValue={appState.session.algorithm.clustering.method}
                 itemComponent={(props) => (
                   <SelectItem item={props.item}>
                     {CLUSTERING_METHOD_LABELS[props.item.rawValue]}
@@ -289,8 +278,7 @@ export function ControlContent() {
               label='PCA dimensions'
               name='clustering-preprocessing-dimensions'
               defaultValue={
-                appState.session.config.algorithm.clustering
-                  .preprocessing_dimensions
+                appState.session.algorithm.clustering.preprocessing_dimensions
               }
               step={1}
               minValue={1}
@@ -300,7 +288,7 @@ export function ControlContent() {
               label='distance threshold'
               name='clustering-distance-threshold'
               defaultValue={
-                appState.session.config.algorithm.clustering.distance_threshold
+                appState.session.algorithm.clustering.distance_threshold
               }
               step={0.01}
               minValue={0}
@@ -309,8 +297,7 @@ export function ControlContent() {
               label='target clusters'
               name='clustering-target-cluster-count'
               defaultValue={
-                appState.session.config.algorithm.clustering
-                  .target_cluster_count
+                appState.session.algorithm.clustering.target_cluster_count
               }
               step={1}
               minValue={0}

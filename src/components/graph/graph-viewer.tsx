@@ -342,7 +342,7 @@ export function GraphViewer(props: GraphViewerProps) {
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}
           glow={() => props.showGlow}
-          sessionDirectory={() => appState.session.directory}
+          sessionDirectory={() => appState.sessionDirectory}
         />
         <svg
           ref={(el) => {
