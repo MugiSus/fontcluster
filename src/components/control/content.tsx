@@ -23,6 +23,10 @@ import {
 } from '../../types/font';
 import { appState } from '../../store';
 import { runProcessingJobs } from '../../actions';
+import {
+  DEFAULT_CLUSTERING_CONFIG,
+  DEFAULT_RENDERING_CONFIG,
+} from '../../constants/session';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
@@ -49,26 +53,27 @@ const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
   median: 'Median',
 };
 
-/** Default weight applied when the form leaves the weight selector empty. */
-const DEFAULT_WEIGHTS: FontWeight[] = [400];
-
 /**
  * Reads the rendering inputs off the submitted form, coercing the stringly
  * typed {@link FormData} into a {@link RenderingOptions} and falling back to
- * the current session's config (or sensible literals) for missing fields.
+ * the default algorithm config for missing fields.
  */
 function parseRenderingConfig(formdata: FormData): RenderingOptions {
-  const weightsValue = (formdata.get('weights') as string) || '';
-  const weights = weightsValue
-    ? (weightsValue.split(',').map(Number) as FontWeight[])
-    : [];
+  const weights = ((formdata.get('weights') as string) || '')
+    .split(',')
+    .map(Number)
+    .filter(Boolean) as FontWeight[];
 
   return {
-    text: (formdata.get('rendering-text') as string) || 'A',
-    weights: weights.length > 0 ? weights : DEFAULT_WEIGHTS,
+    text:
+      (formdata.get('rendering-text') as string) ||
+      DEFAULT_RENDERING_CONFIG.text,
+    weights: weights.length > 0 ? weights : DEFAULT_RENDERING_CONFIG.weights,
     font_set: (formdata.get('rendering-font-set') ??
-      appState.session.config.algorithm.rendering.font_set) as FontSet,
-    font_size: Number(formdata.get('rendering-font-size')) || 224,
+      DEFAULT_RENDERING_CONFIG.font_set) as FontSet,
+    font_size:
+      Number(formdata.get('rendering-font-size')) ||
+      DEFAULT_RENDERING_CONFIG.font_size,
   };
 }
 
@@ -80,16 +85,16 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
 function parseClusteringConfig(formdata: FormData): ClusteringOptions {
   return {
     method: (formdata.get('clustering-method') ??
-      appState.session.config.algorithm.clustering.method) as ClusteringMethod,
-    preprocessing_dimensions: Number(
-      formdata.get('clustering-preprocessing-dimensions') || 8,
-    ),
-    distance_threshold: Number(
-      formdata.get('clustering-distance-threshold') || 0.5,
-    ),
-    target_cluster_count: Number(
-      formdata.get('clustering-target-cluster-count') || 0,
-    ),
+      DEFAULT_CLUSTERING_CONFIG.method) as ClusteringMethod,
+    preprocessing_dimensions:
+      Number(formdata.get('clustering-preprocessing-dimensions')) ||
+      DEFAULT_CLUSTERING_CONFIG.preprocessing_dimensions,
+    distance_threshold:
+      Number(formdata.get('clustering-distance-threshold')) ||
+      DEFAULT_CLUSTERING_CONFIG.distance_threshold,
+    target_cluster_count:
+      Number(formdata.get('clustering-target-cluster-count')) ||
+      DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
   };
 }
 
@@ -120,7 +125,11 @@ export function ControlContent() {
     const rendering = parseRenderingConfig(formdata);
     const clustering = parseClusteringConfig(formdata);
 
-    const sessionId = (options?.override && appState.session.id) || undefined;
+    const sessionId =
+      options?.override ||
+      appState.session.config.status.process_status !== 'clustered'
+        ? appState.session.id || undefined
+        : undefined;
 
     // Re-rendering is expensive, so steps past 'empty' reuse the existing
     // render and only re-cluster; a full run (or a restart from 'empty') redoes
