@@ -25,7 +25,7 @@ const MAX_NEAREST_FONT_ITEMS = 60;
  * strongly compressed. Lower it to crush outliers harder; raise it to keep the
  * layout closer to linear.
  */
-const SYMLOG_CONSTANT = 1.5;
+const SYMLOG_CONSTANT = 1.25;
 
 interface FontPointState {
   points: GraphPointData[];
