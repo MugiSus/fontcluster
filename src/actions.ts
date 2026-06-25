@@ -26,32 +26,22 @@ import {
 export const loadSession = async (id: string) => {
   if (!id) return;
   try {
-    const configResponse = await invoke<string | null>('get_session_info', {
-      sessionId: id,
-    });
-    if (!configResponse) return;
-    const config = JSON.parse(configResponse) as SessionConfig;
-
-    const [directory, fontsResponse] = await Promise.all([
-      invoke<string>('get_session_directory', { sessionId: id }).catch(
-        () => '',
-      ),
-      invoke<string>('get_font_items', { sessionId: id }).catch(() => ''),
-    ]);
-    const data = fontsResponse
-      ? (JSON.parse(fontsResponse) as FontItemRecord)
-      : {};
+    const { config, directory, fonts } = await invoke<{
+      config: SessionConfig;
+      directory: string;
+      fonts: FontItemRecord;
+    }>('load_session', { sessionId: id });
 
     batch(() => {
       setAppState('session', {
         ...config,
         status: {
           ...config.status,
-          samples_amount: Object.keys(data).length,
+          samples_amount: Object.keys(fonts).length,
         },
       });
       setAppState('sessionDirectory', directory || '');
-      setAppState('fonts', 'data', reconcile(data));
+      setAppState('fonts', 'data', reconcile(fonts));
     });
   } catch (error) {
     console.error('Failed to load session:', error);

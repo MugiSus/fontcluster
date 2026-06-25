@@ -6,7 +6,7 @@
 //! system fonts are resolved through a lazily-built index so repeated previews
 //! don't re-scan the font database.
 
-use crate::config::{FontMetadata, FontSource, RenderConfig};
+use crate::config::{FontData, FontMetadata, FontSource, RenderConfig};
 use crate::core::google_fonts_downloader::download_google_font_subset_temp;
 use crate::core::{session::load_font_data, AppState};
 use crate::error::{AppError, Result};
@@ -145,13 +145,14 @@ fn resolve_system_font(
     resolver.as_ref().unwrap().resolve(font)
 }
 
-/// Returns every font in a session as a JSON `safe_name -> FontData` map.
-#[command]
-#[allow(non_snake_case)]
-pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> Result<String> {
-    let session_dir = AppState::resolve_session_dir(&sessionId)?;
+/// Reads every font in a session as a `safe_name -> FontData` map.
+///
+/// Shared by [`crate::commands::load_session`] rather than exposed as its own
+/// command.
+pub fn read_font_items(session_id: &str) -> Result<HashMap<String, FontData>> {
+    let session_dir = AppState::resolve_session_dir(session_id)?;
     let samples_dir = session_dir.join("samples");
-    let mut map = std::collections::HashMap::new();
+    let mut map = HashMap::new();
 
     if samples_dir.exists() {
         for entry in fs::read_dir(samples_dir)? {
@@ -165,7 +166,7 @@ pub async fn get_font_items(sessionId: String, _state: State<'_, AppState>) -> R
             }
         }
     }
-    Ok(serde_json::to_string(&map)?)
+    Ok(map)
 }
 
 /// Renders (or returns a cached) preview PNG and yields its file path.

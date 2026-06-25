@@ -163,16 +163,14 @@ pub fn run() {
         })
         .on_menu_event(handle_menu)
         .invoke_handler(tauri::generate_handler![
-            crate::commands::get_session_info,
+            crate::commands::load_session,
             crate::commands::get_session_history,
             crate::commands::get_running_session_ids,
             crate::commands::get_latest_session_id,
-            crate::commands::get_session_directory,
             crate::commands::delete_session,
             crate::commands::run_jobs,
             crate::commands::stop_jobs,
             crate::commands::lasso_selected_process,
-            crate::commands::get_font_items,
             crate::commands::render_font_preview,
             crate::commands::send_font_to_plugin,
             crate::commands::get_connected_plugins,

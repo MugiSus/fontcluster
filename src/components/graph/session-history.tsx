@@ -232,7 +232,7 @@ export function SessionHistory(props: SessionHistoryProps) {
 
     try {
       const result = await invoke<boolean>('delete_session', {
-        sessionUuid: sessionId,
+        sessionId,
       });
       if (result) {
         const next = { ...seenCompletedSessions() };

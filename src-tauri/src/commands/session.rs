@@ -5,7 +5,7 @@
 //! directories; [`collect_stored_sessions`] unifies both views, de-duplicating
 //! by id so an in-progress session shadows its older packed copy.
 
-use crate::config::{ProcessStatus, SessionConfig};
+use crate::config::{FontData, ProcessStatus, SessionConfig};
 use crate::core::{
     is_session_document_path, read_session_config_from_dir, read_session_config_from_document,
     AppState,
@@ -32,21 +32,36 @@ struct StoredSession {
     location: StoredSessionLocation,
 }
 
-/// Loads `sessionId` (if given) and returns the active session as JSON.
+/// Everything the webview needs to display a session in one round-trip.
+#[derive(serde::Serialize)]
+pub struct SessionPayload {
+    config: SessionConfig,
+    directory: PathBuf,
+    fonts: HashMap<String, FontData>,
+}
+
+/// Loads a session by id (making it the active session) and returns its config,
+/// on-disk sample directory and font items together.
 #[command]
-#[allow(non_snake_case)]
-pub async fn get_session_info(
-    sessionId: Option<String>,
+pub async fn load_session(
+    session_id: String,
     state: State<'_, AppState>,
-) -> Result<String> {
-    if let Some(id) = sessionId {
-        state.load_session(&id)?;
-    }
-    let guard = state.current_session.lock().unwrap();
-    let session = guard
-        .as_ref()
-        .ok_or_else(|| crate::error::AppError::Processing("No session".into()))?;
-    Ok(serde_json::to_string(session)?)
+) -> Result<SessionPayload> {
+    state.load_session(&session_id)?;
+    let config = {
+        let guard = state.current_session.lock().unwrap();
+        guard
+            .as_ref()
+            .ok_or_else(|| crate::error::AppError::Processing("No session".into()))?
+            .clone()
+    };
+    let directory = AppState::resolve_session_dir(&session_id)?;
+    let fonts = crate::commands::font::read_font_items(&session_id)?;
+    Ok(SessionPayload {
+        config,
+        directory,
+        fonts,
+    })
 }
 
 /// Returns recent sessions newest first, pruning anything past the history cap
@@ -187,32 +202,24 @@ pub async fn get_latest_session_id(app: tauri::AppHandle) -> Result<Option<Strin
     Ok(latest)
 }
 
-/// Resolves and returns the on-disk directory for a session.
-#[command]
-#[allow(non_snake_case)]
-pub async fn get_session_directory(sessionId: String) -> Result<PathBuf> {
-    AppState::resolve_session_dir(&sessionId)
-}
-
 /// Deletes a session's document and working/view directories.
 ///
 /// Returns `true` if a document or processing directory was removed (i.e. the
 /// session actually existed).
 #[command]
-#[allow(non_snake_case)]
-pub async fn delete_session(sessionUuid: String) -> Result<bool> {
+pub async fn delete_session(session_id: String) -> Result<bool> {
     let mut deleted = false;
-    let document_path = AppState::get_session_document_path(&sessionUuid)?;
+    let document_path = AppState::get_session_document_path(&session_id)?;
     if document_path.exists() {
         fs::remove_file(&document_path)?;
         deleted = true;
     }
-    let processing_dir = AppState::get_session_processing_dir(&sessionUuid)?;
+    let processing_dir = AppState::get_session_processing_dir(&session_id)?;
     if processing_dir.exists() {
         fs::remove_dir_all(&processing_dir)?;
         deleted = true;
     }
-    let current_dir = AppState::get_session_current_dir(&sessionUuid)?;
+    let current_dir = AppState::get_session_current_dir(&session_id)?;
     if current_dir.exists() {
         fs::remove_dir_all(&current_dir)?;
     }
