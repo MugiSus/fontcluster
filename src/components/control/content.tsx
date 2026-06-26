@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '../ui/select';
 import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
-import { ArrowRightIcon, TypeIcon } from 'lucide-solid';
+import { PlusIcon, TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '../weight-selector';
 import {
   type FontWeight,
@@ -316,10 +316,10 @@ export function ControlContent() {
             size='sm'
             class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
           >
-            Run
-            <ArrowRightIcon class='absolute right-3' />
+            Generate
+            <PlusIcon class='absolute right-3' />
           </TooltipTrigger>
-          <TooltipContent>Run processing</TooltipContent>
+          <TooltipContent>Generate new</TooltipContent>
         </Tooltip>
       </div>
     </form>
