@@ -20,17 +20,18 @@ pub mod rendering;
 use crate::commands::font::FontPreviewCacheState;
 use crate::core::AppState;
 use std::sync::Arc;
+use tauri::{AppHandle, Emitter};
 #[cfg(target_os = "macos")]
-use tauri::menu::AboutMetadata;
-use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
-    AppHandle, Emitter,
-};
+use tauri::menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu};
 
-/// Builds the native application menu.
+/// Builds the native macOS application menu.
 ///
-/// The layout differs per platform: macOS gets the standard app menu with the
-/// session/update items, while other platforms fold them into the File menu.
+/// Only macOS gets a native menu: it lives in the system menu bar at the top of
+/// the screen. Windows and Linux would render the same menu as an in-window bar
+/// strip stacked under the title bar, which clashes with the app's own header —
+/// so there they get no native menu and reach these actions through the in-app
+/// controls instead (undo/redo, check-for-updates, session history).
+#[cfg(target_os = "macos")]
 fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let restore = MenuItem::with_id(
         app,
@@ -74,51 +75,28 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         ],
     )?;
 
-    #[cfg(target_os = "macos")]
-    {
-        let meta = AboutMetadata::default();
-        let app_menu = Submenu::with_items(
-            app,
-            "FontCluster",
-            true,
-            &[
-                &PredefinedMenuItem::about(app, Some("About FontCluster"), Some(meta))?,
-                &PredefinedMenuItem::separator(app)?,
-                &check_update,
-                &PredefinedMenuItem::separator(app)?,
-                &restore,
-                &refresh,
-                &PredefinedMenuItem::separator(app)?,
-                &PredefinedMenuItem::hide(app, None)?,
-                &PredefinedMenuItem::hide_others(app, None)?,
-                &PredefinedMenuItem::show_all(app, None)?,
-                &PredefinedMenuItem::separator(app)?,
-                &PredefinedMenuItem::quit(app, None)?,
-            ],
-        )?;
-        let file_menu = Submenu::with_items(app, "File", true, &[&undo_history, &redo_history])?;
-        Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu])
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        let file_menu = Submenu::with_items(
-            app,
-            "File",
-            true,
-            &[
-                &undo_history,
-                &redo_history,
-                &PredefinedMenuItem::separator(app)?,
-                &restore,
-                &refresh,
-                &check_update,
-                &PredefinedMenuItem::separator(app)?,
-                &PredefinedMenuItem::quit(app, None)?,
-            ],
-        )?;
-        Menu::with_items(app, &[&file_menu, &edit_menu])
-    }
+    let meta = AboutMetadata::default();
+    let app_menu = Submenu::with_items(
+        app,
+        "FontCluster",
+        true,
+        &[
+            &PredefinedMenuItem::about(app, Some("About FontCluster"), Some(meta))?,
+            &PredefinedMenuItem::separator(app)?,
+            &check_update,
+            &PredefinedMenuItem::separator(app)?,
+            &restore,
+            &refresh,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::hide(app, None)?,
+            &PredefinedMenuItem::hide_others(app, None)?,
+            &PredefinedMenuItem::show_all(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::quit(app, None)?,
+        ],
+    )?;
+    let file_menu = Submenu::with_items(app, "File", true, &[&undo_history, &redo_history])?;
+    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu])
 }
 
 /// Translates menu clicks into events the webview listens for.
@@ -159,7 +137,12 @@ pub fn run() {
         .manage(app_state)
         .manage(Arc::new(FontPreviewCacheState::default()))
         .setup(|app| {
+            // Only macOS uses a native menu (system menu bar). Windows/Linux
+            // would get an in-window menu bar strip, so they skip it.
+            #[cfg(target_os = "macos")]
             app.set_menu(create_menu(app.handle())?)?;
+            #[cfg(not(target_os = "macos"))]
+            let _ = app;
             Ok(())
         })
         .on_menu_event(handle_menu)

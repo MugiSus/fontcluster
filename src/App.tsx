@@ -1,5 +1,6 @@
 import { Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
+import { platform } from '@tauri-apps/plugin-os';
 import { ClipboardListener } from './components/clipboard-listener';
 import { useAppEvents } from './actions';
 import { Toaster } from './components/ui/sonner';
@@ -12,6 +13,7 @@ import { useIsFullscreen } from './hooks/use-is-fullscreen';
 
 function App() {
   const isFullscreen = useIsFullscreen();
+  const isMac = platform() === 'macos';
   const [panelState, setPanelState] = createStore<PanelState>({
     control: true,
     list: true,
@@ -34,7 +36,7 @@ function App() {
       <div class='flex h-full min-h-0'>
         <Show when={panelState.control}>
           <ControlPanel
-            isLeftInset={!isFullscreen()}
+            isLeftInset={isMac && !isFullscreen()}
             onClose={() => closePanel('control')}
           />
         </Show>
@@ -42,14 +44,17 @@ function App() {
         <Show when={panelState.list}>
           <ListPanel
             onClose={() => closePanel('list')}
-            isLeftInset={!isFullscreen() && !panelState.control}
+            isLeftInset={isMac && !isFullscreen() && !panelState.control}
           />
         </Show>
 
         <Show when={panelState.chat}>
           <ChatPanel
             isLeftInset={
-              !isFullscreen() && !panelState.control && !panelState.list
+              isMac &&
+              !isFullscreen() &&
+              !panelState.control &&
+              !panelState.list
             }
             onClose={() => closePanel('chat')}
           />
@@ -59,6 +64,7 @@ function App() {
           panelState={panelState}
           onReopenPanel={openPanel}
           isLeftInset={
+            isMac &&
             !isFullscreen() &&
             !panelState.control &&
             !panelState.list &&
