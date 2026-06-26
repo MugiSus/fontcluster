@@ -57,7 +57,7 @@ export const ja: Dictionary = {
     },
     filterDock: {
       clear: '消去',
-      searchPlaceholder: 'フォント名、デザイナー名で絞り込み...',
+      searchPlaceholder: 'フォント、デザイナー名で絞り込み',
     },
     emptyState: {
       title: 'まだ結果がありません',
@@ -127,8 +127,8 @@ export const ja: Dictionary = {
   },
   theme: {
     toggle: 'テーマを変更',
-    light: 'ライトテーマ',
-    dark: 'ダークテーマ',
+    light: 'ライト',
+    dark: 'ダーク',
     system: 'システム',
   },
   language: {

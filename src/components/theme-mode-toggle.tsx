@@ -1,7 +1,9 @@
+import { Show } from 'solid-js';
 import { useColorMode } from '@kobalte/core';
 
-import { Laptop, Sun, Moon } from 'lucide-solid';
+import { Check, Laptop, Sun, Moon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
+import { themeMode } from '@/theme';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -30,14 +32,23 @@ export function ThemeModeToggle(props: { class?: string }) {
         <DropdownMenuItem onSelect={() => setColorMode('light')}>
           <Sun class='mr-2 size-4' />
           <span>{t.theme.light()}</span>
+          <Show when={themeMode() === 'light'}>
+            <Check class='ml-auto size-4' />
+          </Show>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setColorMode('dark')}>
           <Moon class='mr-2 size-4' />
           <span>{t.theme.dark()}</span>
+          <Show when={themeMode() === 'dark'}>
+            <Check class='ml-auto size-4' />
+          </Show>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setColorMode('system')}>
           <Laptop class='mr-2 size-4' />
           <span>{t.theme.system()}</span>
+          <Show when={themeMode() === 'system'}>
+            <Check class='ml-auto size-4' />
+          </Show>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

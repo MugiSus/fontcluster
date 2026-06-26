@@ -16,6 +16,7 @@ import {
 } from 'solid-js';
 import { locale as getSystemLocale } from '@tauri-apps/plugin-os';
 import * as i18n from '@solid-primitives/i18n';
+import { makePersisted } from '@solid-primitives/storage';
 import { en } from './en';
 import { ja } from './ja';
 
@@ -25,6 +26,9 @@ export type Dictionary = typeof en;
 
 const dictionaries: Record<Locale, Dictionary> = { en, ja };
 const LANGUAGE_STORAGE_KEY = 'fontcluster:language';
+
+const isLanguageSelection = (value: unknown): value is LanguageSelection =>
+  value === 'system' || value === 'en' || value === 'ja';
 
 interface I18nContextValue {
   /** Object-shaped translator for UI call sites. */
@@ -40,30 +44,23 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue>();
 
 export function I18nProvider(props: ParentProps) {
-  let initialLanguage: LanguageSelection = 'system';
-  try {
-    const storedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (
-      storedLanguage === 'system' ||
-      storedLanguage === 'en' ||
-      storedLanguage === 'ja'
-    ) {
-      initialLanguage = storedLanguage;
-    }
-  } catch {
-    // localStorage can be unavailable; keep the default selection.
-  }
-
-  const [language, setLanguageSignal] =
-    createSignal<LanguageSelection>(initialLanguage);
-  const setLanguage = (next: LanguageSelection) => {
-    setLanguageSignal(next);
-    try {
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
-    } catch {
-      // Match the theme storage behavior: persistence must not block the UI.
-    }
-  };
+  // The selection is owned by this signal; makePersisted mirrors it to
+  // localStorage (matching the theme manager) without duplicating the source of
+  // truth. An unknown stored value falls back to `system`.
+  const [language, setLanguage] = makePersisted(
+    // makePersisted owns this signal and returns the same [get, set] tuple,
+    // which we destructure above; the rule can't see through the wrapper.
+    // eslint-disable-next-line solid/reactivity
+    createSignal<LanguageSelection>('system'),
+    {
+      name: LANGUAGE_STORAGE_KEY,
+      // Persist the bare selection string (not JSON) so values stay
+      // human-readable and compatible with the prior localStorage format.
+      serialize: (value) => value,
+      deserialize: (stored) =>
+        isLanguageSelection(stored) ? stored : 'system',
+    },
+  );
 
   const [systemLocale] = createResource<Locale>(async () => {
     const tag = await getSystemLocale().catch((error) => {

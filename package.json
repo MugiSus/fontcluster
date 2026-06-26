@@ -22,11 +22,12 @@
   "license": "GPL-2.0-or-later",
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
-    "@fontsource/noto-sans": "^5.2.10",
+    "@fontsource-variable/noto-sans-jp": "^5.2.10",
     "@kobalte/core": "^0.13.10",
     "@solid-primitives/history": "^0.2.3",
     "@solid-primitives/i18n": "^2.2.1",
     "@solid-primitives/scheduled": "^1.5.3",
+    "@solid-primitives/storage": "^4.3.4",
     "@tanstack/solid-virtual": "^3.13.18",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-os": "^2.3.2",
