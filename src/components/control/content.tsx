@@ -248,7 +248,7 @@ export function ControlContent() {
             }
             onStepRun={() => handleRun({ override: 'positioned' })}
           >
-            <TextProperty label='method' class='mr-1 gap-0.5'>
+            <TextProperty label='linkage method' class='mr-1 gap-0.5'>
               <Select
                 name='clustering-method'
                 options={
