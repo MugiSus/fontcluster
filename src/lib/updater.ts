@@ -1,13 +1,16 @@
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'solid-sonner';
-import { t } from '@/i18n';
+import type { Translate } from '@/i18n';
 
 interface CheckForUpdatesOptions {
   isManual?: boolean;
 }
 
-export async function checkForAppUpdates(options?: CheckForUpdatesOptions) {
+export async function checkForAppUpdates(
+  t: Translate,
+  options?: CheckForUpdatesOptions,
+) {
   try {
     if (options?.isManual)
       toast.info(t('updater.checking'), {

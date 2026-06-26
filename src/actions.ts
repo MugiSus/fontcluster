@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
-import { syncLocaleFromSystem, t } from '@/i18n';
+import { useI18n, type Translate } from '@/i18n';
 import { appState, setAppState } from './store';
 import { selectionHistory } from './selection-history';
 import {
@@ -57,7 +57,7 @@ export const refreshSession = () => loadSession(appState.session.session_id);
 
 // Actions
 
-const notifyJobComplete = (sessionId: string) => {
+const notifyJobComplete = (t: Translate, sessionId: string) => {
   toast.success(t('jobs.completed'), {
     id: `job-complete-${sessionId}`,
     action: {
@@ -110,7 +110,10 @@ export const setCurrentSessionId = async (id: string) => {
   await loadSession(id);
 };
 
-export const processLassoSelection = async (safeNames: string[]) => {
+export const processLassoSelection = async (
+  t: Translate,
+  safeNames: string[],
+) => {
   if (safeNames.length === 0 || appState.ui.isLassoProcessing) return;
 
   const sessionId = appState.session.session_id;
@@ -143,6 +146,7 @@ export const processLassoSelection = async (safeNames: string[]) => {
 };
 
 export const runProcessingJobs = async (
+  t: Translate,
   algorithm: Partial<AlgorithmConfig>,
   sessionId?: string,
   overrideStatus?: ProcessStatus,
@@ -200,6 +204,8 @@ const loadLatestSessionId = async () => {
 };
 
 export function useAppEvents() {
+  const { t } = useI18n();
+
   onMount(() => {
     const listenWithCleanup = <T>(
       event: string,
@@ -212,9 +218,6 @@ export function useAppEvents() {
         cleanup();
       });
     };
-
-    // Apply the system locale on startup unless the user has chosen one.
-    void syncLocaleFromSystem();
 
     // Load latest session ID on startup
     loadLatestSessionId();
@@ -232,7 +235,7 @@ export function useAppEvents() {
         'All jobs completed successfully for session:',
         event.payload,
       );
-      notifyJobComplete(event.payload);
+      notifyJobComplete(t, event.payload);
     });
 
     listenWithCleanup('refresh-requested', () => {
@@ -240,7 +243,7 @@ export function useAppEvents() {
     });
 
     listenWithCleanup('check-update-requested', () => {
-      checkForAppUpdates({ isManual: true });
+      checkForAppUpdates(t, { isManual: true });
     });
 
     listenWithCleanup('undo-history-requested', () => {
@@ -252,6 +255,6 @@ export function useAppEvents() {
     });
 
     // Check for updates automatically on startup
-    checkForAppUpdates();
+    checkForAppUpdates(t);
   });
 }
