@@ -15,7 +15,7 @@ export const ja: Dictionary = {
   controlPanel: {
     text: 'サンプル',
     generate: '生成',
-    generateNew: '新しく生成',
+    generateNew: 'グラフを新しく生成',
     recalculate: '再計算',
     fonts: 'フォント',
     textSize: 'テキストサイズ',
@@ -43,13 +43,13 @@ export const ja: Dictionary = {
   graph: {
     bottomToolbar: {
       zoomIn: '拡大',
-      resetView: '表示位置をリセット',
+      resetView: 'リセット',
       zoomOut: '縮小',
       select: '選択',
       drag: '移動',
       zoom: 'ズーム',
       showSamples: 'サンプル',
-      glowMode: 'グロー',
+      glowMode: '光彩',
       filter: '絞り込み',
     },
     lassoClearButton: {
@@ -133,6 +133,7 @@ export const ja: Dictionary = {
   },
   language: {
     toggle: '言語を変更',
+    system: 'システム',
     english: 'English',
     japanese: '日本語',
   },

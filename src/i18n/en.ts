@@ -142,6 +142,7 @@ export const en = {
   },
   language: {
     toggle: 'Change language',
+    system: 'System',
     english: 'English',
     japanese: '日本語',
   },
