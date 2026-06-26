@@ -1,6 +1,7 @@
 import { useColorMode } from '@kobalte/core';
 
 import { Laptop, Sun, Moon } from 'lucide-solid';
+import { t } from '@/i18n';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -22,20 +23,20 @@ export function ThemeModeToggle(props: { class?: string }) {
       >
         <Sun class='size-6 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0' />
         <Moon class='absolute size-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100' />
-        <span class='sr-only'>Toggle theme</span>
+        <span class='sr-only'>{t('theme.toggle')}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='rounded-lg bg-slate-50 dark:bg-zinc-900'>
         <DropdownMenuItem onSelect={() => setColorMode('light')}>
           <Sun class='mr-2 size-4' />
-          <span>Light</span>
+          <span>{t('theme.light')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setColorMode('dark')}>
           <Moon class='mr-2 size-4' />
-          <span>Dark</span>
+          <span>{t('theme.dark')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setColorMode('system')}>
           <Laptop class='mr-2 size-4' />
-          <span>System</span>
+          <span>{t('theme.system')}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

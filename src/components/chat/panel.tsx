@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { AppShellPanel } from '../app-shell-panel';
 
 import { ChatContent } from './content';
@@ -10,7 +11,7 @@ interface ChatPanelProps {
 export function ChatPanel(props: ChatPanelProps) {
   return (
     <AppShellPanel
-      title='chat'
+      title={t('panel.chat')}
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

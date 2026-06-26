@@ -1,6 +1,7 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { SwatchBookIcon, XIcon } from 'lucide-solid';
+import { t } from '@/i18n';
 import { TextField, TextFieldInput } from '@/components/ui/text-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -68,7 +69,7 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
           >
             <XIcon class='size-3.5' />
           </TooltipTrigger>
-          <TooltipContent>Clear</TooltipContent>
+          <TooltipContent>{t('common.clear')}</TooltipContent>
         </Tooltip>
       </Show>
       <TextFieldInput

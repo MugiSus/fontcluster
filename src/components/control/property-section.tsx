@@ -2,6 +2,7 @@ import { Show, type JSX } from 'solid-js';
 
 import { RotateCwIcon } from 'lucide-solid';
 
+import { t } from '@/i18n';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
@@ -32,7 +33,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
             >
               <RotateCwIcon class='size-3 max-h-3' />
             </TooltipTrigger>
-            <TooltipContent>Recalculate</TooltipContent>
+            <TooltipContent>{t('control.recalculate')}</TooltipContent>
           </Tooltip>
         </Show>
       </div>

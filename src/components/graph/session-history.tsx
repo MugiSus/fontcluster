@@ -12,6 +12,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { t } from '@/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -286,7 +287,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     sampleText: string;
   }) => (
     <div class='flex items-center justify-between rounded-sm px-3 py-4 text-xs text-muted-foreground'>
-      <span>Session deleted for '{itemProps.sampleText}'</span>
+      <span>{t('sessionHistory.deleted', { text: itemProps.sampleText })}</span>
       <Button
         type='button'
         variant='ghost'
@@ -295,7 +296,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         onClick={() => undoDeleteSession(itemProps.sessionId)}
       >
         <UndoIcon class='size-3' />
-        Undo
+        {t('common.undo')}
       </Button>
     </div>
   );
@@ -307,7 +308,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         variant='ghost'
         size='icon'
         class={cn('relative', props.class)}
-        aria-label='Open session history'
+        aria-label={t('sessionHistory.open')}
       >
         <HistoryIcon class='size-4' />
         <Show when={hasRunningSession()}>
@@ -324,14 +325,16 @@ export function SessionHistory(props: SessionHistoryProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='text-xs font-medium'>
-          Session history
+          {t('sessionHistory.title')}
         </DropdownMenuLabel>
 
         <Show
           when={sortedSessions().length > 0}
           fallback={
             <p class='px-2 py-3 text-xs text-muted-foreground'>
-              {isLoadingSessions() ? 'Loading history...' : 'No sessions yet.'}
+              {isLoadingSessions()
+                ? t('sessionHistory.loading')
+                : t('sessionHistory.empty')}
             </p>
           }
         >

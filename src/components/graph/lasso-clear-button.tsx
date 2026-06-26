@@ -1,4 +1,5 @@
 import { LassoSelectIcon, XIcon } from 'lucide-solid';
+import { t } from '@/i18n';
 import { Button } from '../ui/button';
 
 interface LassoClearButtonProps {
@@ -15,7 +16,7 @@ export function LassoClearButton(props: LassoClearButtonProps) {
         onClick={() => props.onClear()}
       >
         <XIcon class='size-4' />
-        Lasso
+        {t('graph.lasso')}
         <LassoSelectIcon class='size-4' />
       </Button>
     </div>

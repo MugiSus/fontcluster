@@ -1,5 +1,6 @@
 import { Show } from 'solid-js';
 import { cn } from '@/lib/utils';
+import { t } from '@/i18n';
 import { Button } from '../ui/button';
 import { CollapsiblePanelKey, PanelState } from '../../types/panels';
 
@@ -26,7 +27,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
             class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('control')}
           >
-            Control
+            {t('graph.openControlPanel')}
           </Button>
         </Show>
         <Show when={!props.panelState.list}>
@@ -36,7 +37,7 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
             class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('list')}
           >
-            List
+            {t('graph.openListPanel')}
           </Button>
         </Show>
         {/* Chat panel temporarily hidden until the feature is ready */}

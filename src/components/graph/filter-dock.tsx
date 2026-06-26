@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { SearchIcon, XIcon } from 'lucide-solid';
+import { t } from '@/i18n';
 import { appState } from '../../store';
 import { setSelectedFontKey } from '../../actions';
 import { cn } from '../../lib/utils';
@@ -61,7 +62,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           >
             <button
               type='button'
-              aria-label='Clear'
+              aria-label={t('common.clear')}
               onClick={() => {
                 updateQuery('');
                 inputElement?.focus();
@@ -74,7 +75,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           <input
             ref={inputElement}
             type='text'
-            placeholder='Font name, Designer, Foundry, etc...'
+            placeholder={t('graph.searchPlaceholder')}
             class='h-8 w-64 bg-transparent pl-9 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
             value={query()}
             onInput={(event) => updateQuery(event.currentTarget.value)}

@@ -11,6 +11,7 @@ import {
 } from 'lucide-solid';
 import { createMemo, Show } from 'solid-js';
 import { appState } from '../../store';
+import { t } from '@/i18n';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { dotVariants, ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
@@ -68,13 +69,13 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             variant='ghost'
             size='icon'
             class='size-8 rounded-md shadow-none'
-            aria-label='Zoom In'
+            aria-label={t('graph.zoomIn')}
             disabled={!props.onZoomIn}
             onClick={() => props.onZoomIn?.()}
           >
             <PlusIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Zoom in</TooltipContent>
+          <TooltipContent>{t('graph.zoomIn')}</TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>
@@ -83,13 +84,13 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             variant='ghost'
             size='icon'
             class='size-8 rounded-md shadow-none'
-            aria-label='Reset View'
+            aria-label={t('graph.resetView')}
             disabled={!props.onResetZoom}
             onClick={() => props.onResetZoom?.()}
           >
             <MaximizeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Reset view</TooltipContent>
+          <TooltipContent>{t('graph.resetView')}</TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>
@@ -98,13 +99,13 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             variant='ghost'
             size='icon'
             class='size-8 rounded-md shadow-none'
-            aria-label='Zoom Out'
+            aria-label={t('graph.zoomOut')}
             disabled={!props.onZoomOut}
             onClick={() => props.onZoomOut?.()}
           >
             <MinusIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Zoom out</TooltipContent>
+          <TooltipContent>{t('graph.zoomOut')}</TooltipContent>
         </Tooltip>
       </div>
 
@@ -124,11 +125,11 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             as={ToggleGroupItem<'button'>}
             value='select'
             class={toggleItemClass}
-            aria-label='Select'
+            aria-label={t('graph.select')}
           >
             <MousePointer2Icon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Select</TooltipContent>
+          <TooltipContent>{t('graph.select')}</TooltipContent>
         </Tooltip>
 
         {/*
@@ -166,11 +167,11 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             as={ToggleGroupItem<'button'>}
             value='drag'
             class={toggleItemClass}
-            aria-label='Drag'
+            aria-label={t('graph.drag')}
           >
             <HandIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Drag</TooltipContent>
+          <TooltipContent>{t('graph.drag')}</TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>
@@ -178,11 +179,11 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             as={ToggleGroupItem<'button'>}
             value='zoom'
             class={toggleItemClass}
-            aria-label='Zoom'
+            aria-label={t('graph.zoom')}
           >
             <ZoomInIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Zoom</TooltipContent>
+          <TooltipContent>{t('graph.zoom')}</TooltipContent>
         </Tooltip>
       </ToggleGroup>
 
@@ -201,11 +202,11 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             as={ToggleGroupItem<'button'>}
             value='images'
             class={toggleItemClass}
-            aria-label='Show Samples'
+            aria-label={t('graph.showSamples')}
           >
             <TypeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Show samples</TooltipContent>
+          <TooltipContent>{t('graph.showSamples')}</TooltipContent>
         </Tooltip>
 
         {/*
@@ -231,11 +232,11 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             as={ToggleGroupItem<'button'>}
             value='glow'
             class={toggleItemClass}
-            aria-label='Glow Mode'
+            aria-label={t('graph.glowMode')}
           >
             <TelescopeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Glow mode</TooltipContent>
+          <TooltipContent>{t('graph.glowMode')}</TooltipContent>
         </Tooltip>
       </ToggleGroup>
 
@@ -253,7 +254,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           )}
           data-filter-toggle
           aria-pressed={props.isFilterOpen}
-          aria-label='Filter'
+          aria-label={t('graph.filter')}
           onClick={() => props.onToggleFilter()}
         >
           <FunnelIcon class='size-4' />
@@ -266,7 +267,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             <span class={cn(dotVariants({ side: 'right' }), 'bg-foreground')} />
           </Show>
         </TooltipTrigger>
-        <TooltipContent>Filter</TooltipContent>
+        <TooltipContent>{t('graph.filter')}</TooltipContent>
       </Tooltip>
     </div>
   );

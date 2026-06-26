@@ -6,6 +6,7 @@ import {
   type FontWeight,
   WEIGHT_LABELS,
 } from '../../types/font';
+import { t } from '@/i18n';
 import { cn } from '../../lib/utils';
 import {
   getClusterBackgroundColor,
@@ -75,7 +76,10 @@ export function ListFontItem(props: ListFontItemProps) {
       onClick={props.onClick}
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
-      aria-label={`Apply ${meta().font_name} ${weightLabel()} to plugins`}
+      aria-label={t('list.applyToPlugins', {
+        name: meta().font_name,
+        weight: weightLabel(),
+      })}
     >
       <div
         class={cn(
@@ -110,7 +114,7 @@ export function ListFontItem(props: ListFontItemProps) {
             props.previewText && !previewPath() && 'opacity-25',
           )}
           src={sampleSrc()}
-          alt={`Font preview for ${meta().font_name}`}
+          alt={t('list.fontPreviewAlt', { name: meta().font_name })}
           decoding='async'
         />
       </div>

@@ -23,6 +23,7 @@ import {
 } from '../../types/font';
 import { appState } from '../../store';
 import { runProcessingJobs } from '../../actions';
+import { t } from '@/i18n';
 import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
@@ -32,17 +33,24 @@ import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
 
-const FONT_SET_LABELS = {
-  system_fonts: 'Installed Fonts',
-  google_fonts_popular100: 'Google Fonts top 100',
-  google_fonts_popular200: 'Google Fonts top 200',
-  google_fonts_popular300: 'Google Fonts top 300',
-  google_fonts_popular500: 'Google Fonts top 500',
-  google_fonts_popular1000: 'Google Fonts top 1000',
-  google_fonts_popular1500: 'Google Fonts top 1500',
-  google_fonts_all: 'All Google Fonts',
-};
+// Ordered list of selectable font sets; `system_fonts` stays first so the
+// divider after it (see itemComponent) lands in the right place. Labels are
+// resolved through the dictionary at render time via `fontSetLabel`.
+const FONT_SET_KEYS: FontSet[] = [
+  'system_fonts',
+  'google_fonts_popular100',
+  'google_fonts_popular200',
+  'google_fonts_popular300',
+  'google_fonts_popular500',
+  'google_fonts_popular1000',
+  'google_fonts_popular1500',
+  'google_fonts_all',
+];
 
+const fontSetLabel = (fontSet: FontSet) => t(`control.fontSets.${fontSet}`);
+
+// Hierarchical clustering linkage names are algorithm proper nouns; kept in
+// English across locales.
 const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
   single: 'Single',
   complete: 'Complete',
@@ -157,7 +165,7 @@ export function ControlContent() {
               class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
             >
               <TypeIcon class='mb-0.5 size-3.5' />
-              Text
+              {t('control.text')}
             </TextFieldLabel>
             <TextFieldInput
               type='text'
@@ -181,22 +189,22 @@ export function ControlContent() {
         </div>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
-            title='render'
+            title={t('control.sections.render')}
             isDisabled={isRunCooldown()}
             onStepRun={() => handleRun({ override: 'empty' })}
             isRunnable={false}
           >
-            <TextProperty label='fonts' class='mr-1 gap-0.5'>
+            <TextProperty label={t('control.fonts')} class='mr-1 gap-0.5'>
               <Select
                 name='rendering-font-set'
-                options={Object.keys(FONT_SET_LABELS) as FontSet[]}
-                optionTextValue={(fontSet) => FONT_SET_LABELS[fontSet]}
+                options={FONT_SET_KEYS}
+                optionTextValue={fontSetLabel}
                 disallowEmptySelection
                 defaultValue={appState.session.algorithm.rendering.font_set}
                 itemComponent={(props) => (
                   <>
                     <SelectItem item={props.item}>
-                      {FONT_SET_LABELS[props.item.rawValue]}
+                      {fontSetLabel(props.item.rawValue)}
                     </SelectItem>
                     <Show when={props.item.rawValue === 'system_fonts'}>
                       <div class='my-1 w-full border-t' />
@@ -207,14 +215,14 @@ export function ControlContent() {
                 <SelectHiddenSelect />
                 <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
                   <SelectValue<FontSet> class='mr-2.5 min-w-0 flex-1 text-right'>
-                    {(state) => FONT_SET_LABELS[state.selectedOption()]}
+                    {(state) => fontSetLabel(state.selectedOption())}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent />
               </Select>
             </TextProperty>
             <NumberProperty
-              label='text size'
+              label={t('control.textSize')}
               name='rendering-font-size'
               defaultValue={appState.session.algorithm.rendering.font_size}
               step={1}
@@ -223,7 +231,7 @@ export function ControlContent() {
           </ControlPropertySection>
 
           <ControlPropertySection
-            title='analyze'
+            title={t('control.sections.analyze')}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'rendered'
@@ -232,7 +240,7 @@ export function ControlContent() {
           />
 
           <ControlPropertySection
-            title='position'
+            title={t('control.sections.position')}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'analyzed'
@@ -241,14 +249,17 @@ export function ControlContent() {
           />
 
           <ControlPropertySection
-            title='cluster'
+            title={t('control.sections.cluster')}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'positioned'
             }
             onStepRun={() => handleRun({ override: 'positioned' })}
           >
-            <TextProperty label='linkage method' class='mr-1 gap-0.5'>
+            <TextProperty
+              label={t('control.linkageMethod')}
+              class='mr-1 gap-0.5'
+            >
               <Select
                 name='clustering-method'
                 options={
@@ -275,7 +286,7 @@ export function ControlContent() {
               </Select>
             </TextProperty>
             <NumberProperty
-              label='preprocess dimensions'
+              label={t('control.preprocessDimensions')}
               name='clustering-preprocessing-dimensions'
               defaultValue={
                 appState.session.algorithm.clustering.preprocessing_dimensions
@@ -285,7 +296,7 @@ export function ControlContent() {
               maxValue={384}
             />
             <NumberProperty
-              label='grouping threshold'
+              label={t('control.groupingThreshold')}
               name='clustering-distance-threshold'
               defaultValue={
                 appState.session.algorithm.clustering.distance_threshold
@@ -294,7 +305,7 @@ export function ControlContent() {
               minValue={0}
             />
             <NumberProperty
-              label='target clusters'
+              label={t('control.targetClusters')}
               name='clustering-target-cluster-count'
               defaultValue={
                 appState.session.algorithm.clustering.target_cluster_count
@@ -316,10 +327,10 @@ export function ControlContent() {
             size='sm'
             class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
           >
-            Generate
+            {t('control.generate')}
             <PlusIcon class='absolute right-3' />
           </TooltipTrigger>
-          <TooltipContent>Generate new</TooltipContent>
+          <TooltipContent>{t('control.generateNew')}</TooltipContent>
         </Tooltip>
       </div>
     </form>

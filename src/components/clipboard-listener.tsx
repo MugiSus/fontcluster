@@ -2,6 +2,7 @@ import { onCleanup, untrack, Show } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { toast } from 'solid-sonner';
 import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
+import { t } from '@/i18n';
 import { appState } from '../store';
 
 export function ClipboardListener() {
@@ -31,14 +32,13 @@ export function ClipboardListener() {
                     {"'"}
                   </div>
                   <div class='text-xs leading-5 text-muted-foreground'>
-                    Tips: Hold the Shift
+                    {t('clipboard.tips')} {t('clipboard.shiftBefore')}
                     <ArrowBigUpIcon class='mx-0.5 mb-0.5 inline size-4' />
-                    while selecting a font to copy the family name directly from
-                    the graph.{' '}
+                    {t('clipboard.shiftAfter')}{' '}
                     <Show when={!event.payload?.isFontName}>
-                      Hold the Command
+                      {t('clipboard.commandBefore')}
                       <CommandIcon class='mx-0.5 mb-0.5 inline size-4' />
-                      to copy the weight as well.
+                      {t('clipboard.commandAfter')}
                     </Show>
                   </div>
                 </div>,

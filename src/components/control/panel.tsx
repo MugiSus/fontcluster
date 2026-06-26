@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { AppShellPanel } from '../app-shell-panel';
 
 import { ControlContent } from './content';
@@ -10,7 +11,7 @@ interface ControlPanelProps {
 export function ControlPanel(props: ControlPanelProps) {
   return (
     <AppShellPanel
-      title='control'
+      title={t('panel.control')}
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

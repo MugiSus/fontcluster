@@ -15,6 +15,7 @@ import {
   type PluginConnection,
 } from '@/lib/plugin-bridge';
 import { cn } from '@/lib/utils';
+import { t } from '@/i18n';
 
 export function PluginConnectionsMenu() {
   const [open, setOpen] = createSignal(false);
@@ -61,27 +62,21 @@ export function PluginConnectionsMenu() {
                 ? 'text-muted-foreground'
                 : 'text-muted-foreground/30',
             )}
-            aria-label='Plugin connections'
+            aria-label={t('plugins.title')}
           >
             <CableIcon class='size-3.5' />
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-80 p-1'>
             <DropdownMenuLabel class='text-xs font-medium'>
-              Plugin connections
+              {t('plugins.title')}
             </DropdownMenuLabel>
             <Show
               when={plugins.length > 0}
               fallback={
                 <div class='space-y-2 p-2 text-xs font-light text-muted-foreground'>
-                  <p>No plugins connected.</p>
-                  <p>
-                    Fontcluster plugins can apply the selected font directly to
-                    your design in Figma or Illustrator.
-                  </p>
-                  <p>
-                    Install a plugin, run it in the design app, then click items
-                    in the list below.
-                  </p>
+                  <p>{t('plugins.empty')}</p>
+                  <p>{t('plugins.description')}</p>
+                  <p>{t('plugins.installHint')}</p>
                 </div>
               }
             >
@@ -112,7 +107,9 @@ export function PluginConnectionsMenu() {
                     <Show
                       when={plugin.document_name}
                       fallback={
-                        <p class='text-muted-foreground'>No document</p>
+                        <p class='text-muted-foreground'>
+                          {t('plugins.noDocument')}
+                        </p>
                       }
                     >
                       <p class='min-w-0 truncate'>{plugin.document_name}</p>
@@ -127,7 +124,7 @@ export function PluginConnectionsMenu() {
           </DropdownMenuContent>
         </DropdownMenu>
       </TooltipTrigger>
-      <TooltipContent>Plugin connections</TooltipContent>
+      <TooltipContent>{t('plugins.title')}</TooltipContent>
     </Tooltip>
   );
 }
