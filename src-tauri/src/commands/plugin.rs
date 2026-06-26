@@ -18,8 +18,15 @@ pub struct PluginConnectionsResponse {
 }
 
 /// Publishes a font for plugins to pick up, returning the change timestamp.
+///
+/// `preview_text` is the list preview text active at send time; plugins use it
+/// as the contents of a newly created text node.
 #[tauri::command]
-pub fn send_font_to_plugin(state: State<AppState>, payload: FontMetadata) -> Result<DateTime<Utc>> {
+pub fn send_font_to_plugin(
+    state: State<AppState>,
+    payload: FontMetadata,
+    preview_text: String,
+) -> Result<DateTime<Utc>> {
     let modified_date = Utc::now();
     let mut font = state
         .plugin_bridge_font
@@ -28,9 +35,13 @@ pub fn send_font_to_plugin(state: State<AppState>, payload: FontMetadata) -> Res
     let mut bridge_modified_date = state.plugin_bridge_modified_date.lock().map_err(|_| {
         AppError::Processing("Failed to lock plugin bridge modified date".to_string())
     })?;
+    let mut bridge_preview_text = state.plugin_bridge_preview_text.lock().map_err(|_| {
+        AppError::Processing("Failed to lock plugin bridge preview text".to_string())
+    })?;
 
     *font = Some(payload);
     *bridge_modified_date = Some(modified_date);
+    *bridge_preview_text = Some(preview_text);
 
     Ok(modified_date)
 }

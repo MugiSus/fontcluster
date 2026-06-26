@@ -78,6 +78,9 @@ pub struct AppState {
     /// Timestamp of the last [`plugin_bridge_font`](Self::plugin_bridge_font)
     /// update, so plugins can detect changes.
     pub plugin_bridge_modified_date: Arc<Mutex<Option<DateTime<Utc>>>>,
+    /// List preview text active when the last font was pushed, so plugins can
+    /// use it as the contents of a newly created text node.
+    pub plugin_bridge_preview_text: Arc<Mutex<Option<String>>>,
     /// Currently connected plugins, keyed by plugin id.
     pub plugin_connections: Arc<Mutex<HashMap<String, PluginConnection>>>,
 }
@@ -91,6 +94,7 @@ impl AppState {
             is_cancelled: Arc::new(AtomicBool::new(false)),
             plugin_bridge_font: Arc::new(Mutex::new(None)),
             plugin_bridge_modified_date: Arc::new(Mutex::new(None)),
+            plugin_bridge_preview_text: Arc::new(Mutex::new(None)),
             plugin_connections: Arc::new(Mutex::new(HashMap::new())),
         }
     }

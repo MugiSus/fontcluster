@@ -89,7 +89,7 @@ export function ListContent() {
 
   const sendFontItem = (item: FontItem) => {
     const key = item.meta.safe_name;
-    sendFontToPlugin(item.meta)
+    sendFontToPlugin(item.meta, appState.ui.listPreviewText)
       .then(() => setSentFontItemKey(key))
       .catch((error) => {
         console.error('Failed to send font to plugins:', error);

@@ -13,9 +13,13 @@ interface PluginConnectionsResponse {
   plugins: PluginConnection[];
 }
 
-export function sendFontToPlugin(metadata: FontMetadata): Promise<string> {
+export function sendFontToPlugin(
+  metadata: FontMetadata,
+  previewText: string,
+): Promise<string> {
   return invoke<string>('send_font_to_plugin', {
     payload: metadata,
+    previewText,
   });
 }
 
