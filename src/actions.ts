@@ -2,7 +2,8 @@ import { batch, onCleanup, onMount } from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useAppUpdater } from '@/lib/updater';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { check } from '@tauri-apps/plugin-updater';
 import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
 import { appState, setAppState } from './store';
@@ -176,7 +177,51 @@ const loadLatestSessionId = async () => {
 
 export function useAppEvents() {
   const { t } = useI18n();
-  const checkForAppUpdates = useAppUpdater();
+
+  const handleAppUpdateCheck = async (options?: { isManual?: boolean }) => {
+    try {
+      if (options?.isManual)
+        toast.info(t.updater.checking(), {
+          duration: 3000,
+        });
+
+      const update = await check();
+
+      if (update) {
+        toast.info(t.updater.available({ version: update.version }), {
+          description: t.updater.downloading(),
+          duration: 3000,
+        });
+
+        await update.downloadAndInstall();
+        toast.success(t.updater.installed(), {
+          description: t.updater.applyOnLaunch(),
+          action: {
+            label: t.updater.restart(),
+            onClick: async () => {
+              await relaunch();
+            },
+          },
+          duration: Infinity,
+        });
+
+        return;
+      }
+
+      if (options?.isManual)
+        toast.info(t.updater.upToDate(), {
+          duration: 3000,
+        });
+    } catch (error) {
+      console.error('Failed to check for updates:', error);
+
+      if (options?.isManual) {
+        toast.error(t.updater.failed(), {
+          description: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  };
 
   onMount(() => {
     const listenWithCleanup = <T>(
@@ -222,7 +267,7 @@ export function useAppEvents() {
     });
 
     listenWithCleanup('check-update-requested', () => {
-      checkForAppUpdates({ isManual: true });
+      handleAppUpdateCheck({ isManual: true });
     });
 
     listenWithCleanup('undo-history-requested', () => {
@@ -234,6 +279,6 @@ export function useAppEvents() {
     });
 
     // Check for updates automatically on startup
-    checkForAppUpdates();
+    handleAppUpdateCheck();
   });
 }

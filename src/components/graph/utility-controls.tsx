@@ -1,6 +1,5 @@
 import { emit } from '@tauri-apps/api/event';
 import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
-import { useAppUpdater } from '@/lib/updater';
 import { selectionHistory } from '@/selection-history';
 import { appState } from '@/store';
 import { useI18n } from '@/i18n';
@@ -12,7 +11,6 @@ import { SessionHistory } from './session-history';
 
 export function GraphUtilityControls() {
   const { t } = useI18n();
-  const checkForAppUpdates = useAppUpdater();
   const copyCurrentSelectedFont = (event: MouseEvent) => {
     emit('copy_family_name', {
       toast: true,
@@ -21,7 +19,7 @@ export function GraphUtilityControls() {
   };
 
   const handleManualUpdateCheck = () => {
-    checkForAppUpdates({ isManual: true });
+    emit('check-update-requested');
   };
 
   return (
