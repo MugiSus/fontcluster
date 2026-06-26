@@ -10,6 +10,7 @@ import '@fontsource/noto-sans/400.css';
 import '@fontsource-variable/geist';
 
 import App from './App';
+import { I18nProvider } from './i18n';
 import './index.css';
 
 function Root() {
@@ -20,7 +21,9 @@ function Root() {
       <ColorModeScript storageType={storageManager.type} />
       <ColorModeProvider storageManager={storageManager}>
         <div class='flex h-screen flex-col overflow-hidden overscroll-none bg-background font-sans'>
-          <App />
+          <I18nProvider>
+            <App />
+          </I18nProvider>
         </div>
       </ColorModeProvider>
     </>
