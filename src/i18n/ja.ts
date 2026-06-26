@@ -57,7 +57,7 @@ export const ja: Dictionary = {
     },
     filterDock: {
       clear: '消去',
-      searchPlaceholder: 'フォント、デザイナー名で絞り込み',
+      searchPlaceholder: 'フォント、デザイナー名など',
     },
     emptyState: {
       title: 'まだ結果がありません',

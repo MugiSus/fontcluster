@@ -21,15 +21,15 @@ export const en = {
     collapse: 'Collapse {{title}} panel',
   },
   controlPanel: {
-    text: 'Text',
+    text: 'Sample',
     generate: 'Generate',
-    generateNew: 'Generate new',
+    generateNew: 'Generate new graph',
     recalculate: 'Recalculate',
     fonts: 'fonts',
     textSize: 'text size',
     linkageMethod: 'linkage method',
     preprocessDimensions: 'preprocess dimensions',
-    groupingThreshold: 'grouping threshold',
+    groupingThreshold: 'threshold',
     targetClusters: 'target clusters',
     sections: {
       render: 'render',
@@ -38,14 +38,14 @@ export const en = {
       cluster: 'cluster',
     },
     fontSets: {
-      system_fonts: 'Installed Fonts',
+      system_fonts: 'Local Fonts',
       google_fonts_popular100: 'Google Fonts top 100',
       google_fonts_popular200: 'Google Fonts top 200',
       google_fonts_popular300: 'Google Fonts top 300',
       google_fonts_popular500: 'Google Fonts top 500',
       google_fonts_popular1000: 'Google Fonts top 1000',
       google_fonts_popular1500: 'Google Fonts top 1500',
-      google_fonts_all: 'All Google Fonts',
+      google_fonts_all: 'Google Fonts',
     },
   },
   graph: {
@@ -54,7 +54,7 @@ export const en = {
       resetView: 'Reset view',
       zoomOut: 'Zoom out',
       select: 'Select',
-      drag: 'Drag',
+      drag: 'Move',
       zoom: 'Zoom',
       showSamples: 'Show samples',
       glowMode: 'Glow mode',
@@ -65,7 +65,7 @@ export const en = {
     },
     filterDock: {
       clear: 'Clear',
-      searchPlaceholder: 'Font name, Designer, Foundry, etc...',
+      searchPlaceholder: 'Font name, Designer, Foundry, etc.',
     },
     emptyState: {
       title: 'No Results',
@@ -99,8 +99,8 @@ export const en = {
     empty: 'No sessions yet.',
     loading: 'Loading history...',
     stop: 'Stop',
-    restore: 'Restore',
-    continueProcessing: 'Continue processing',
+    restore: 'Open',
+    continueProcessing: 'Resume',
     delete: 'Delete',
     undoDelete: 'Undo',
     statusRendering: 'Rendering',
@@ -121,18 +121,17 @@ export const en = {
     fontPreviewAlt: 'Font preview for {{name}}',
   },
   plugins: {
-    title: 'Plugin connections',
+    title: 'Plugins',
     empty: 'No plugins connected.',
     description:
-      'Fontcluster plugins can apply the selected font directly to your design in Figma or Illustrator.',
+      'Connect the Fontcluster Apply plugin to change fonts directly in Figma or Illustrator.',
     installHint:
-      'Install a plugin, run it in the design app, then click items in the list below.',
+      'Launch the plugin in Figma or Illustrator, then click a font in the list to apply it automatically.',
     noDocument: 'No document',
   },
   chat: {
     title: 'FontCluster Chat',
-    description:
-      'This panel is reserved for future chat-driven font exploration tools.',
+    description: 'Coming soon...',
   },
   theme: {
     toggle: 'Toggle theme',
