@@ -186,7 +186,7 @@ export function ControlContent() {
             onStepRun={() => handleRun({ override: 'empty' })}
             isRunnable={false}
           >
-            <TextProperty label='source' class='mr-1 gap-0.5'>
+            <TextProperty label='fonts' class='mr-1 gap-0.5'>
               <Select
                 name='rendering-font-set'
                 options={Object.keys(FONT_SET_LABELS) as FontSet[]}
@@ -214,7 +214,7 @@ export function ControlContent() {
               </Select>
             </TextProperty>
             <NumberProperty
-              label='font size'
+              label='text size'
               name='rendering-font-size'
               defaultValue={appState.session.algorithm.rendering.font_size}
               step={1}
@@ -275,7 +275,7 @@ export function ControlContent() {
               </Select>
             </TextProperty>
             <NumberProperty
-              label='PCA dimensions'
+              label='preprocess dimensions'
               name='clustering-preprocessing-dimensions'
               defaultValue={
                 appState.session.algorithm.clustering.preprocessing_dimensions
@@ -285,7 +285,7 @@ export function ControlContent() {
               maxValue={384}
             />
             <NumberProperty
-              label='distance threshold'
+              label='grouping threshold'
               name='clustering-distance-threshold'
               defaultValue={
                 appState.session.algorithm.clustering.distance_threshold
