@@ -1,0 +1,146 @@
+import type { Dictionary } from './index';
+
+/**
+ * Japanese dictionary. Typed as {@link Dictionary} (derived from {@link en}),
+ * so it must mirror the English structure key-for-key — a missing key fails to
+ * compile rather than falling back to a raw key at runtime.
+ */
+export const ja: Dictionary = {
+  common: {
+    clear: 'クリア',
+    undo: '元に戻す',
+  },
+  panel: {
+    control: 'コントロール',
+    list: 'リスト',
+    chat: 'チャット',
+    collapse: '{{title}}パネルを閉じる',
+  },
+  control: {
+    text: 'テキスト',
+    generate: '生成',
+    generateNew: '新規生成',
+    recalculate: '再計算',
+    fonts: 'フォント',
+    textSize: '文字サイズ',
+    linkageMethod: '連結法',
+    preprocessDimensions: '前処理次元数',
+    groupingThreshold: 'グループ化しきい値',
+    targetClusters: '目標クラスタ数',
+    sections: {
+      render: 'レンダリング',
+      analyze: '解析',
+      position: '配置',
+      cluster: 'クラスタリング',
+    },
+    fontSets: {
+      system_fonts: 'インストール済みフォント',
+      google_fonts_popular100: 'Google Fonts 上位100',
+      google_fonts_popular200: 'Google Fonts 上位200',
+      google_fonts_popular300: 'Google Fonts 上位300',
+      google_fonts_popular500: 'Google Fonts 上位500',
+      google_fonts_popular1000: 'Google Fonts 上位1000',
+      google_fonts_popular1500: 'Google Fonts 上位1500',
+      google_fonts_all: 'すべての Google Fonts',
+    },
+  },
+  graph: {
+    zoomIn: '拡大',
+    resetView: '表示をリセット',
+    zoomOut: '縮小',
+    select: '選択',
+    drag: 'ドラッグ',
+    zoom: 'ズーム',
+    showSamples: 'サンプルを表示',
+    glowMode: 'グローモード',
+    filter: 'フィルター',
+    undo: '元に戻す',
+    redo: 'やり直す',
+    checkForUpdates: 'アップデートを確認',
+    copyFamilyName: 'ファミリー名をコピー',
+    theme: 'テーマ',
+    language: '言語',
+    lasso: '投げ縄',
+    searchPlaceholder: 'フォント名、デザイナー、ファウンダリーなど...',
+    openControlPanel: 'コントロール',
+    openListPanel: 'リスト',
+    noResults: '結果がありません',
+    noResultsHint: '結果を表示するには処理を完了してください',
+  },
+  sessionHistory: {
+    title: 'セッション履歴',
+    open: 'セッション履歴を開く',
+    empty: 'セッションはまだありません。',
+    loading: '履歴を読み込み中...',
+    stop: '停止',
+    restore: '復元',
+    continueProcessing: '処理を続行',
+    delete: '削除',
+    statusRendering: 'レンダリング中',
+    statusAnalyzing: '解析中',
+    statusPositioning: '配置中',
+    statusClustering: 'クラスタリング中',
+    statusStopped: '停止しました',
+    processing: '処理中',
+    progress: '進捗',
+    summary:
+      'ウェイト{{weights}}個 · サンプル{{samples}}個 · クラスタ{{clusters}}個',
+    deleted: "'{{text}}' のセッションを削除しました",
+  },
+  list: {
+    selectPrompt: '類似フォントを表示するにはフォントを選択してください',
+    applyToPlugins: '{{name}} {{weight}} をプラグインに適用',
+    fontPreviewAlt: '{{name}} のフォントプレビュー',
+  },
+  plugins: {
+    title: 'プラグイン接続',
+    empty: '接続中のプラグインはありません。',
+    description:
+      'Fontcluster プラグインを使うと、選択したフォントを Figma や Illustrator のデザインに直接適用できます。',
+    installHint:
+      'プラグインをインストールし、デザインアプリで実行してから、下のリストの項目をクリックしてください。',
+    noDocument: 'ドキュメントなし',
+  },
+  chat: {
+    title: 'FontCluster Chat',
+    description:
+      'このパネルは、今後のチャット駆動型フォント探索ツール用に予約されています。',
+  },
+  clipboard: {
+    tips: 'ヒント:',
+    shiftBefore: 'Shift',
+    shiftAfter:
+      'を押しながらフォントを選択すると、グラフから直接ファミリー名をコピーできます。',
+    commandBefore: 'Command',
+    commandAfter: 'も押すとウェイトも一緒にコピーします。',
+  },
+  theme: {
+    toggle: 'テーマを切り替え',
+    light: 'ライト',
+    dark: 'ダーク',
+    system: 'システム',
+  },
+  language: {
+    toggle: '言語を変更',
+    english: 'English',
+    japanese: '日本語',
+    system: 'システム',
+  },
+  jobs: {
+    started: "ジョブを開始しました: '{{text}}'",
+    completed: 'ジョブが正常に完了しました！',
+    view: '表示',
+    failed: 'ジョブが失敗しました: {{error}}',
+    lassoFailed: '投げ縄選択が失敗しました: {{error}}',
+  },
+  updater: {
+    checking: 'アップデートを確認中...',
+    available: '新しいバージョン {{version}} が利用可能です！',
+    downloading: 'アップデートをダウンロードしてインストール中...',
+    installed: 'アップデートをインストールしました！',
+    applyOnLaunch: 'アップデートは次回の起動時に適用されます。',
+    restart: '再起動',
+    upToDate: '最新バージョンを使用しています。問題ありません！',
+    failed: 'アップデートの確認に失敗しました',
+  },
+};
