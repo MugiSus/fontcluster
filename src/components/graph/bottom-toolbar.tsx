@@ -74,7 +74,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           >
             <PlusIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Zoom In</TooltipContent>
+          <TooltipContent>Zoom in</TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>
@@ -89,7 +89,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           >
             <MaximizeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Reset View</TooltipContent>
+          <TooltipContent>Reset view</TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>
@@ -104,7 +104,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           >
             <MinusIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Zoom Out</TooltipContent>
+          <TooltipContent>Zoom out</TooltipContent>
         </Tooltip>
       </div>
 
@@ -205,7 +205,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           >
             <TypeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Show Samples</TooltipContent>
+          <TooltipContent>Show samples</TooltipContent>
         </Tooltip>
 
         {/*
@@ -222,7 +222,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             >
               <TypeIcon class='size-4' />
             </TooltipTrigger>
-            <TooltipContent>Show Font Names</TooltipContent>
+            <TooltipContent>Show font names</TooltipContent>
           </Tooltip>
         */}
 
@@ -235,7 +235,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           >
             <TelescopeIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>Glow Mode</TooltipContent>
+          <TooltipContent>Glow mode</TooltipContent>
         </Tooltip>
       </ToggleGroup>
 

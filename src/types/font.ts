@@ -5,13 +5,13 @@ export const WEIGHT_LABELS: Record<
   { short: string; full: string }
 > = {
   100: { short: 'Th', full: 'Thin' },
-  200: { short: 'El', full: 'ExtraLight' },
+  200: { short: 'El', full: 'Extralight' },
   300: { short: 'L', full: 'Light' },
   400: { short: 'R', full: 'Regular' },
   500: { short: 'M', full: 'Medium' },
-  600: { short: 'S', full: 'SemiBold' },
+  600: { short: 'S', full: 'Semibold' },
   700: { short: 'B', full: 'Bold' },
-  800: { short: 'Eb', full: 'ExtraBold' },
+  800: { short: 'Eb', full: 'Extrabold' },
   900: { short: 'Bl', full: 'Black' },
 };
 
