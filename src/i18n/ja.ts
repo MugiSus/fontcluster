@@ -23,7 +23,7 @@ export const ja: Dictionary = {
     recalculate: '再計算',
     fonts: 'フォント',
     textSize: 'テキストサイズ',
-    linkageMethod: '連結方法',
+    linkageMethod: '連結法',
     preprocessDimensions: '前処理次元数',
     groupingThreshold: '閾値',
     targetClusters: '目標クラスタ数',
