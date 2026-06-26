@@ -1,11 +1,14 @@
 import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
-import { CableIcon, PenToolIcon } from 'lucide-solid';
+import { CableIcon, ExternalLinkIcon, PenToolIcon } from 'lucide-solid';
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -16,6 +19,9 @@ import {
 } from '@/lib/plugin-bridge';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
+
+const FIGMA_PLUGIN_URL =
+  'https://www.figma.com/community/plugin/1637936965422808307/fontcluster-apply';
 
 export function PluginConnectionsMenu() {
   const { t } = useI18n();
@@ -122,6 +128,17 @@ export function PluginConnectionsMenu() {
                 )}
               </For>
             </Show>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              class='cursor-pointer gap-2 text-xs text-muted-foreground'
+              onSelect={() => openUrl(FIGMA_PLUGIN_URL)}
+            >
+              <ExternalLinkIcon class='size-3.5' />
+              <span class='min-w-0 truncate'>{t.plugins.getPlugin()}</span>
+            </DropdownMenuItem>
+            <p class='px-2 pb-1 pt-0.5 text-xs font-normal text-muted-foreground/60'>
+              {t.plugins.illustratorSoon()}
+            </p>
           </DropdownMenuContent>
         </DropdownMenu>
       </TooltipTrigger>

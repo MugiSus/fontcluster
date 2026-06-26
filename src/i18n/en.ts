@@ -124,10 +124,12 @@ export const en = {
     title: 'Plugins',
     empty: 'No plugins connected.',
     description:
-      'Connect the Fontcluster Apply plugin to change fonts directly in Figma or Illustrator.',
+      'Connect the Fontcluster Apply plugin to change fonts directly in Figma.',
     installHint:
-      'Launch the plugin in Figma or Illustrator, then click a font in the list to apply it automatically.',
+      'Launch the plugin in Figma, then click a font in the list to apply it automatically.',
     noDocument: 'No document',
+    getPlugin: 'Get Fontcluster Apply on Figma',
+    illustratorSoon: 'Illustrator support is coming soon.',
   },
   chat: {
     title: 'FontCluster Chat',
