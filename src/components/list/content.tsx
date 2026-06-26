@@ -97,7 +97,7 @@ export function ListContent() {
   };
 
   const NoResultsFound = () => (
-    <div class='flex h-full flex-col items-center justify-center gap-1 pb-10 text-center text-sm text-muted-foreground'>
+    <div class='flex h-full flex-col items-center justify-center gap-2 pb-10 text-center text-sm text-muted-foreground'>
       <MousePointerClickIcon />
       <p class='text-xs'>{t.list.selectPrompt()}</p>
     </div>
