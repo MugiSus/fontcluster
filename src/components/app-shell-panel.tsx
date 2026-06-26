@@ -2,6 +2,7 @@ import { type JSX, Show } from 'solid-js';
 import { MinusIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface AppShellPanelProps {
@@ -34,15 +35,22 @@ export function AppShellPanel(props: AppShellPanelProps) {
         </div>
         <Show when={props.actions}>{props.actions}</Show>
         <Show when={props.onClose}>
-          <Button
-            variant='ghost'
-            size='icon'
-            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-            onClick={() => props.onClose?.()}
-            aria-label={t.panels.collapse({ title: props.title })}
-          >
-            <MinusIcon class='size-3.5' />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger as='div' class='rounded-full'>
+              <Button
+                variant='ghost'
+                size='icon'
+                class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                onClick={() => props.onClose?.()}
+                aria-label={t.panels.collapse({ title: props.title })}
+              >
+                <MinusIcon class='size-3.5' />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {t.panels.collapse({ title: props.title })}
+            </TooltipContent>
+          </Tooltip>
         </Show>
       </div>
       <div class='min-h-0 flex-1'>{props.children}</div>
