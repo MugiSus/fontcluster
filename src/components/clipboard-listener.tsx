@@ -34,13 +34,14 @@ export function ClipboardListener() {
                     {"'"}
                   </div>
                   <div class='text-xs leading-5 text-muted-foreground'>
-                    {t('clipboard.tips')} {t('clipboard.shiftBefore')}
+                    {t.utility.clipboard.tips()}{' '}
+                    {t.utility.clipboard.shiftBefore()}
                     <ArrowBigUpIcon class='mx-0.5 mb-0.5 inline size-4' />
-                    {t('clipboard.shiftAfter')}{' '}
+                    {t.utility.clipboard.shiftAfter()}{' '}
                     <Show when={!event.payload?.isFontName}>
-                      {t('clipboard.commandBefore')}
+                      {t.utility.clipboard.commandBefore()}
                       <CommandIcon class='mx-0.5 mb-0.5 inline size-4' />
-                      {t('clipboard.commandAfter')}
+                      {t.utility.clipboard.commandAfter()}
                     </Show>
                   </div>
                 </div>,

@@ -14,17 +14,13 @@
  * - `{{name}}` placeholders are resolved at call time via `resolveTemplate`.
  */
 export const en = {
-  common: {
-    clear: 'Clear',
-    undo: 'Undo',
-  },
-  panel: {
+  panels: {
     control: 'control',
     list: 'list',
     chat: 'chat',
     collapse: 'Collapse {{title}} panel',
   },
-  control: {
+  controlPanel: {
     text: 'Text',
     generate: 'Generate',
     generateNew: 'Generate new',
@@ -53,27 +49,49 @@ export const en = {
     },
   },
   graph: {
-    zoomIn: 'Zoom in',
-    resetView: 'Reset view',
-    zoomOut: 'Zoom out',
-    select: 'Select',
-    drag: 'Drag',
-    zoom: 'Zoom',
-    showSamples: 'Show samples',
-    glowMode: 'Glow mode',
-    filter: 'Filter',
-    undo: 'Undo',
-    redo: 'Redo',
-    checkForUpdates: 'Check for updates',
-    copyFamilyName: 'Copy family name',
-    theme: 'Theme',
-    language: 'Language',
-    lasso: 'Lasso',
-    searchPlaceholder: 'Font name, Designer, Foundry, etc...',
-    openControlPanel: 'Control',
-    openListPanel: 'List',
-    noResults: 'No Results',
-    noResultsHint: 'Complete processing to see results',
+    bottomToolbar: {
+      zoomIn: 'Zoom in',
+      resetView: 'Reset view',
+      zoomOut: 'Zoom out',
+      select: 'Select',
+      drag: 'Drag',
+      zoom: 'Zoom',
+      showSamples: 'Show samples',
+      glowMode: 'Glow mode',
+      filter: 'Filter',
+    },
+    lassoClearButton: {
+      label: 'Lasso',
+    },
+    filterDock: {
+      clear: 'Clear',
+      searchPlaceholder: 'Font name, Designer, Foundry, etc...',
+    },
+    emptyState: {
+      title: 'No Results',
+      hint: 'Complete processing to see results',
+    },
+  },
+  utility: {
+    controls: {
+      undo: 'Undo',
+      redo: 'Redo',
+      checkForUpdates: 'Check for updates',
+      copy: 'Copy family name',
+      theme: 'Theme',
+      language: 'Language',
+    },
+    sessionHistory: {
+      open: 'Session history',
+    },
+    clipboard: {
+      tips: 'Tips:',
+      shiftBefore: 'Hold the Shift',
+      shiftAfter:
+        'while selecting a font to copy the family name directly from the graph.',
+      commandBefore: 'Hold the Command',
+      commandAfter: 'to copy the weight as well.',
+    },
   },
   sessionHistory: {
     title: 'Session history',
@@ -84,6 +102,7 @@ export const en = {
     restore: 'Restore',
     continueProcessing: 'Continue processing',
     delete: 'Delete',
+    undoDelete: 'Undo',
     statusRendering: 'Rendering',
     statusAnalyzing: 'Analyzing',
     statusPositioning: 'Positioning',
@@ -97,6 +116,7 @@ export const en = {
   },
   list: {
     selectPrompt: 'Select a font to see similar fonts',
+    clearPreviewText: 'Clear',
     applyToPlugins: 'Apply {{name}} {{weight}} to plugins',
     fontPreviewAlt: 'Font preview for {{name}}',
   },
@@ -114,14 +134,6 @@ export const en = {
     description:
       'This panel is reserved for future chat-driven font exploration tools.',
   },
-  clipboard: {
-    tips: 'Tips:',
-    shiftBefore: 'Hold the Shift',
-    shiftAfter:
-      'while selecting a font to copy the family name directly from the graph.',
-    commandBefore: 'Hold the Command',
-    commandAfter: 'to copy the weight as well.',
-  },
   theme: {
     toggle: 'Toggle theme',
     light: 'Light',
@@ -132,7 +144,6 @@ export const en = {
     toggle: 'Change language',
     english: 'English',
     japanese: '日本語',
-    system: 'System',
   },
   jobs: {
     started: "Job started: '{{text}}'",

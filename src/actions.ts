@@ -2,9 +2,9 @@ import { batch, onCleanup, onMount } from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { checkForAppUpdates } from '@/lib/updater';
+import { useAppUpdater } from '@/lib/updater';
 import { toast } from 'solid-sonner';
-import { useI18n, type Translate } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { appState, setAppState } from './store';
 import { selectionHistory } from './selection-history';
 import {
@@ -57,17 +57,6 @@ export const refreshSession = () => loadSession(appState.session.session_id);
 
 // Actions
 
-const notifyJobComplete = (t: Translate, sessionId: string) => {
-  toast.success(t('jobs.completed'), {
-    id: `job-complete-${sessionId}`,
-    action: {
-      label: t('jobs.view'),
-      onClick: () => setCurrentSessionId(sessionId),
-    },
-    duration: 20000,
-  });
-};
-
 export const setSelectedFontKey = (key: string | null) => {
   setAppState('ui', 'selectedFontKey', key);
   selectionHistory.commitDebounced();
@@ -110,10 +99,7 @@ export const setCurrentSessionId = async (id: string) => {
   await loadSession(id);
 };
 
-export const processLassoSelection = async (
-  t: Translate,
-  safeNames: string[],
-) => {
+export const processLassoSelection = async (safeNames: string[]) => {
   if (safeNames.length === 0 || appState.ui.isLassoProcessing) return;
 
   const sessionId = appState.session.session_id;
@@ -137,16 +123,12 @@ export const processLassoSelection = async (
       );
     });
     selectionHistory.commit();
-  } catch (error) {
-    console.error('Failed to process lasso selection:', error);
-    toast.error(t('jobs.lassoFailed', { error: String(error) }));
   } finally {
     setAppState('ui', 'isLassoProcessing', false);
   }
 };
 
 export const runProcessingJobs = async (
-  t: Translate,
   algorithm: Partial<AlgorithmConfig>,
   sessionId?: string,
   overrideStatus?: ProcessStatus,
@@ -156,26 +138,15 @@ export const runProcessingJobs = async (
     setAppState('ui', 'isLassoProcessing', false);
   });
   selectionHistory.reset();
-  toast.info(
-    t('jobs.started', {
-      text:
-        algorithm.rendering?.text ?? appState.session.algorithm.rendering.text,
-    }),
-  );
 
-  try {
-    const result = await invoke<string>('run_jobs', {
-      algorithm,
-      sessionId,
-      overrideStatus,
-    });
-    console.log('Complete pipeline result:', result);
-    if (sessionId && sessionId === appState.session.session_id) {
-      await refreshSession();
-    }
-  } catch (error) {
-    console.error('Failed to process fonts:', error);
-    toast.error(t('jobs.failed', { error: String(error) }));
+  const result = await invoke<string>('run_jobs', {
+    algorithm,
+    sessionId,
+    overrideStatus,
+  });
+  console.log('Complete pipeline result:', result);
+  if (sessionId && sessionId === appState.session.session_id) {
+    await refreshSession();
   }
 };
 
@@ -205,6 +176,7 @@ const loadLatestSessionId = async () => {
 
 export function useAppEvents() {
   const { t } = useI18n();
+  const checkForAppUpdates = useAppUpdater();
 
   onMount(() => {
     const listenWithCleanup = <T>(
@@ -235,7 +207,14 @@ export function useAppEvents() {
         'All jobs completed successfully for session:',
         event.payload,
       );
-      notifyJobComplete(t, event.payload);
+      toast.success(t.jobs.completed(), {
+        id: `job-complete-${event.payload}`,
+        action: {
+          label: t.jobs.view(),
+          onClick: () => setCurrentSessionId(event.payload),
+        },
+        duration: 20000,
+      });
     });
 
     listenWithCleanup('refresh-requested', () => {
@@ -243,7 +222,7 @@ export function useAppEvents() {
     });
 
     listenWithCleanup('check-update-requested', () => {
-      checkForAppUpdates(t, { isManual: true });
+      checkForAppUpdates({ isManual: true });
     });
 
     listenWithCleanup('undo-history-requested', () => {
@@ -255,6 +234,6 @@ export function useAppEvents() {
     });
 
     // Check for updates automatically on startup
-    checkForAppUpdates(t);
+    checkForAppUpdates();
   });
 }

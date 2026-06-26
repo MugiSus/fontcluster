@@ -63,21 +63,21 @@ export function PluginConnectionsMenu() {
                 ? 'text-muted-foreground'
                 : 'text-muted-foreground/30',
             )}
-            aria-label={t('plugins.title')}
+            aria-label={t.plugins.title()}
           >
             <CableIcon class='size-3.5' />
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-80 p-1'>
             <DropdownMenuLabel class='text-xs font-medium'>
-              {t('plugins.title')}
+              {t.plugins.title()}
             </DropdownMenuLabel>
             <Show
               when={plugins.length > 0}
               fallback={
                 <div class='space-y-2 p-2 text-xs font-light text-muted-foreground'>
-                  <p>{t('plugins.empty')}</p>
-                  <p>{t('plugins.description')}</p>
-                  <p>{t('plugins.installHint')}</p>
+                  <p>{t.plugins.empty()}</p>
+                  <p>{t.plugins.description()}</p>
+                  <p>{t.plugins.installHint()}</p>
                 </div>
               }
             >
@@ -109,7 +109,7 @@ export function PluginConnectionsMenu() {
                       when={plugin.document_name}
                       fallback={
                         <p class='text-muted-foreground'>
-                          {t('plugins.noDocument')}
+                          {t.plugins.noDocument()}
                         </p>
                       }
                     >
@@ -125,7 +125,7 @@ export function PluginConnectionsMenu() {
           </DropdownMenuContent>
         </DropdownMenu>
       </TooltipTrigger>
-      <TooltipContent>{t('plugins.title')}</TooltipContent>
+      <TooltipContent>{t.plugins.title()}</TooltipContent>
     </Tooltip>
   );
 }

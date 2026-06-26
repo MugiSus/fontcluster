@@ -25,20 +25,20 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
           <Button
             variant='ghost'
             size='sm'
-            class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='h-8 rounded-full px-3 text-xs capitalize text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('control')}
           >
-            {t('graph.openControlPanel')}
+            {t.panels.control()}
           </Button>
         </Show>
         <Show when={!props.panelState.list}>
           <Button
             variant='ghost'
             size='sm'
-            class='h-8 rounded-full px-3 text-xs text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+            class='h-8 rounded-full px-3 text-xs capitalize text-muted-foreground hover:bg-accent/80 hover:text-foreground'
             onClick={() => props.onReopenPanel('list')}
           >
-            {t('graph.openListPanel')}
+            {t.panels.list()}
           </Button>
         </Show>
         {/* Chat panel temporarily hidden until the feature is ready */}

@@ -9,7 +9,7 @@ import {
 } from './ui/dropdown-menu';
 
 export function LanguageToggle(props: { class?: string }) {
-  const { t, setLocale, useSystemLocale } = useI18n();
+  const { t, setLocale } = useI18n();
 
   return (
     <DropdownMenu>
@@ -20,17 +20,14 @@ export function LanguageToggle(props: { class?: string }) {
         class={props.class}
       >
         <LanguagesIcon class='size-6 transition-all' />
-        <span class='sr-only'>{t('language.toggle')}</span>
+        <span class='sr-only'>{t.language.toggle()}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='rounded-lg bg-slate-50 dark:bg-zinc-900'>
         <DropdownMenuItem onSelect={() => setLocale('en')}>
-          <span>{t('language.english')}</span>
+          <span>{t.language.english()}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => setLocale('ja')}>
-          <span>{t('language.japanese')}</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => void useSystemLocale()}>
-          <span>{t('language.system')}</span>
+          <span>{t.language.japanese()}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

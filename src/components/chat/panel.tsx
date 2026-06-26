@@ -12,7 +12,7 @@ export function ChatPanel(props: ChatPanelProps) {
   const { t } = useI18n();
   return (
     <AppShellPanel
-      title={t('panel.chat')}
+      title={t.panels.chat()}
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

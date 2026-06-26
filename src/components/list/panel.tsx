@@ -12,7 +12,7 @@ export function ListPanel(props: ListPanelProps) {
   const { t } = useI18n();
   return (
     <AppShellPanel
-      title={t('panel.list')}
+      title={t.panels.list()}
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       actions={<PluginConnectionsMenu />}

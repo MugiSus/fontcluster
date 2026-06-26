@@ -12,7 +12,7 @@ export function ControlPanel(props: ControlPanelProps) {
   const { t } = useI18n();
   return (
     <AppShellPanel
-      title={t('panel.control')}
+      title={t.panels.control()}
       class='w-[300px] shrink-0'
       isLeftInset={props.isLeftInset}
       onClose={props.onClose}

@@ -1,6 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
 import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
-import { checkForAppUpdates } from '@/lib/updater';
+import { useAppUpdater } from '@/lib/updater';
 import { selectionHistory } from '@/selection-history';
 import { appState } from '@/store';
 import { useI18n } from '@/i18n';
@@ -12,6 +12,7 @@ import { SessionHistory } from './session-history';
 
 export function GraphUtilityControls() {
   const { t } = useI18n();
+  const checkForAppUpdates = useAppUpdater();
   const copyCurrentSelectedFont = (event: MouseEvent) => {
     emit('copy_family_name', {
       toast: true,
@@ -20,7 +21,7 @@ export function GraphUtilityControls() {
   };
 
   const handleManualUpdateCheck = () => {
-    checkForAppUpdates(t, { isManual: true });
+    checkForAppUpdates({ isManual: true });
   };
 
   return (
@@ -40,7 +41,7 @@ export function GraphUtilityControls() {
             <Undo2Icon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t('graph.undo')}</TooltipContent>
+        <TooltipContent>{t.utility.controls.undo()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -55,7 +56,7 @@ export function GraphUtilityControls() {
             <Redo2Icon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t('graph.redo')}</TooltipContent>
+        <TooltipContent>{t.utility.controls.redo()}</TooltipContent>
       </Tooltip>
 
       <div class='pointer-events-none mx-1 h-4 border-l' />
@@ -71,7 +72,7 @@ export function GraphUtilityControls() {
             <SparklesIcon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t('graph.checkForUpdates')}</TooltipContent>
+        <TooltipContent>{t.utility.controls.checkForUpdates()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -86,28 +87,28 @@ export function GraphUtilityControls() {
             <CopyIcon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t('graph.copyFamilyName')}</TooltipContent>
+        <TooltipContent>{t.utility.controls.copy()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <SessionHistory class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>{t('sessionHistory.title')}</TooltipContent>
+        <TooltipContent>{t.utility.sessionHistory.open()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <LanguageToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>{t('graph.language')}</TooltipContent>
+        <TooltipContent>{t.utility.controls.language()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <ThemeModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>{t('graph.theme')}</TooltipContent>
+        <TooltipContent>{t.utility.controls.theme()}</TooltipContent>
       </Tooltip>
     </div>
   );

@@ -34,7 +34,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
             >
               <RotateCwIcon class='size-3 max-h-3' />
             </TooltipTrigger>
-            <TooltipContent>{t('control.recalculate')}</TooltipContent>
+            <TooltipContent>{t.controlPanel.recalculate()}</TooltipContent>
           </Tooltip>
         </Show>
       </div>

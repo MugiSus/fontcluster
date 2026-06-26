@@ -1,6 +1,7 @@
 import { Show, createSignal, onCleanup, onMount } from 'solid-js';
 import { polygonContains } from 'd3-polygon';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
+import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
 import { appState } from '../../store';
 import { processLassoSelection } from '../../actions';
@@ -142,7 +143,10 @@ export function GraphViewer(props: GraphViewerProps) {
         : selectedPoints.map((point) => point.key);
 
     if (safeNames.length > 0) {
-      void processLassoSelection(t, safeNames);
+      processLassoSelection(safeNames).catch((error) => {
+        console.error('Failed to process lasso selection:', error);
+        toast.error(t.jobs.lassoFailed({ error: String(error) }));
+      });
     }
   };
 
@@ -326,8 +330,8 @@ export function GraphViewer(props: GraphViewerProps) {
             fallback={
               <div class='flex size-full flex-col items-center justify-center text-sm text-muted-foreground'>
                 <CircleSlash2Icon class='mb-4 size-6' />
-                <h2>{t('graph.noResults')}</h2>
-                <p class='text-xs'>{t('graph.noResultsHint')}</p>
+                <h2>{t.graph.emptyState.title()}</h2>
+                <p class='text-xs'>{t.graph.emptyState.hint()}</p>
               </div>
             }
           >

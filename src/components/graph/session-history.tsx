@@ -10,6 +10,7 @@ import { createStore, reconcile } from 'solid-js/store';
 import { HistoryIcon, UndoIcon } from 'lucide-solid';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { toast } from 'solid-sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
@@ -139,19 +140,19 @@ export function SessionHistory(props: SessionHistoryProps) {
 
   registerListener('show_session_selection', () => {
     setOpen(true);
-    void refetchSessions();
+    refetchSessions();
   });
 
   registerListener<string>('session_started', () => {
-    void refetchSessions();
+    refetchSessions();
   });
 
   registerListener<string>('all_jobs_complete', () => {
-    void refetchSessions();
+    refetchSessions();
   });
 
   registerListener<string | null>('jobs_cancelled', () => {
-    void refetchSessions();
+    refetchSessions();
   });
 
   createEffect(() => {
@@ -160,7 +161,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
 
     const intervalId = window.setInterval(() => {
-      void refetchSessions();
+      refetchSessions();
     }, 1000);
 
     onCleanup(() => window.clearInterval(intervalId));
@@ -182,18 +183,18 @@ export function SessionHistory(props: SessionHistoryProps) {
     for (const unlisten of unlisteners) unlisten();
   });
 
-  void refetchSessions();
+  refetchSessions();
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       const pendingDeletes = pendingDeletedSessionIds();
       setPendingDeletedSessionIds(new Set<string>());
-      void commitPendingDeletes(pendingDeletes);
+      commitPendingDeletes(pendingDeletes);
     }
 
     setOpen(nextOpen);
     if (nextOpen) {
-      void refetchSessions();
+      refetchSessions();
     }
   };
 
@@ -220,7 +221,11 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const continueSessionProcessing = (session: SessionConfig) => {
-    void runProcessingJobs(t, session.algorithm, session.session_id);
+    toast.info(t.jobs.started({ text: session.algorithm.rendering.text }));
+    runProcessingJobs(session.algorithm, session.session_id).catch((error) => {
+      console.error('Failed to process fonts:', error);
+      toast.error(t.jobs.failed({ error: String(error) }));
+    });
   };
 
   const stopCurrentRun = async (sessionId: string) => {
@@ -288,7 +293,7 @@ export function SessionHistory(props: SessionHistoryProps) {
     sampleText: string;
   }) => (
     <div class='flex items-center justify-between rounded-sm px-3 py-4 text-xs text-muted-foreground'>
-      <span>{t('sessionHistory.deleted', { text: itemProps.sampleText })}</span>
+      <span>{t.sessionHistory.deleted({ text: itemProps.sampleText })}</span>
       <Button
         type='button'
         variant='ghost'
@@ -297,7 +302,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         onClick={() => undoDeleteSession(itemProps.sessionId)}
       >
         <UndoIcon class='size-3' />
-        {t('common.undo')}
+        {t.sessionHistory.undoDelete()}
       </Button>
     </div>
   );
@@ -309,7 +314,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         variant='ghost'
         size='icon'
         class={cn('relative', props.class)}
-        aria-label={t('sessionHistory.open')}
+        aria-label={t.sessionHistory.open()}
       >
         <HistoryIcon class='size-4' />
         <Show when={hasRunningSession()}>
@@ -326,7 +331,7 @@ export function SessionHistory(props: SessionHistoryProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='text-xs font-medium'>
-          {t('sessionHistory.title')}
+          {t.sessionHistory.title()}
         </DropdownMenuLabel>
 
         <Show
@@ -334,8 +339,8 @@ export function SessionHistory(props: SessionHistoryProps) {
           fallback={
             <p class='px-2 py-3 text-xs text-muted-foreground'>
               {isLoadingSessions()
-                ? t('sessionHistory.loading')
-                : t('sessionHistory.empty')}
+                ? t.sessionHistory.loading()
+                : t.sessionHistory.empty()}
             </p>
           }
         >
@@ -366,7 +371,7 @@ export function SessionHistory(props: SessionHistoryProps) {
                     onSelectSession={() => {
                       selectSession(session.session_id);
                     }}
-                    onStopRun={() => void stopCurrentRun(session.session_id)}
+                    onStopRun={() => stopCurrentRun(session.session_id)}
                   />
                 </Show>
               )}

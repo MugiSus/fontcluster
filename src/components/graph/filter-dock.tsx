@@ -63,7 +63,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           >
             <button
               type='button'
-              aria-label={t('common.clear')}
+              aria-label={t.graph.filterDock.clear()}
               onClick={() => {
                 updateQuery('');
                 inputElement?.focus();
@@ -76,7 +76,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           <input
             ref={inputElement}
             type='text'
-            placeholder={t('graph.searchPlaceholder')}
+            placeholder={t.graph.filterDock.searchPlaceholder()}
             class='h-8 w-64 bg-transparent pl-9 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
             value={query()}
             onInput={(event) => updateQuery(event.currentTarget.value)}

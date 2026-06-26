@@ -6,17 +6,13 @@ import type { Dictionary } from './index';
  * compile rather than falling back to a raw key at runtime.
  */
 export const ja: Dictionary = {
-  common: {
-    clear: '消去',
-    undo: '取り消す',
-  },
-  panel: {
+  panels: {
     control: '制御',
     list: 'リスト',
     chat: 'チャット',
     collapse: '{{title}}を閉じる',
   },
-  control: {
+  controlPanel: {
     text: 'サンプル',
     generate: '生成',
     generateNew: '新しく生成',
@@ -45,27 +41,49 @@ export const ja: Dictionary = {
     },
   },
   graph: {
-    zoomIn: '拡大',
-    resetView: '表示位置をリセット',
-    zoomOut: '縮小',
-    select: '選択',
-    drag: '移動',
-    zoom: 'ズーム',
-    showSamples: 'サンプル',
-    glowMode: 'グロー',
-    filter: '絞り込み',
-    undo: '取り消す',
-    redo: 'やり直す',
-    checkForUpdates: 'アップデートを確認',
-    copyFamilyName: 'コピー',
-    theme: 'テーマ',
-    language: '言語',
-    lasso: '投げ縄',
-    searchPlaceholder: 'フォント名、デザイナー名で絞り込み...',
-    openControlPanel: '制御',
-    openListPanel: 'リスト',
-    noResults: 'まだ結果がありません',
-    noResultsHint: '処理が完了すると結果が表示されます。',
+    bottomToolbar: {
+      zoomIn: '拡大',
+      resetView: '表示位置をリセット',
+      zoomOut: '縮小',
+      select: '選択',
+      drag: '移動',
+      zoom: 'ズーム',
+      showSamples: 'サンプル',
+      glowMode: 'グロー',
+      filter: '絞り込み',
+    },
+    lassoClearButton: {
+      label: '投げ縄',
+    },
+    filterDock: {
+      clear: '消去',
+      searchPlaceholder: 'フォント名、デザイナー名で絞り込み...',
+    },
+    emptyState: {
+      title: 'まだ結果がありません',
+      hint: '処理が完了すると結果が表示されます。',
+    },
+  },
+  utility: {
+    controls: {
+      undo: '取り消す',
+      redo: 'やり直す',
+      checkForUpdates: 'アップデートを確認',
+      copy: 'コピー',
+      theme: 'テーマ',
+      language: '言語',
+    },
+    sessionHistory: {
+      open: '履歴',
+    },
+    clipboard: {
+      tips: 'Tips:',
+      shiftBefore: 'Shift',
+      shiftAfter:
+        'を押してフォントを選択すると自動でファミリー名をコピーします。',
+      commandBefore: 'Command',
+      commandAfter: 'を押すとウェイト名も同時にコピーできます。',
+    },
   },
   sessionHistory: {
     title: '履歴',
@@ -76,6 +94,7 @@ export const ja: Dictionary = {
     restore: '開く',
     continueProcessing: '再開',
     delete: '削除',
+    undoDelete: '取り消す',
     statusRendering: 'レンダリング中',
     statusAnalyzing: '解析中',
     statusPositioning: '配置中',
@@ -89,6 +108,7 @@ export const ja: Dictionary = {
   },
   list: {
     selectPrompt: 'フォントを選択してください',
+    clearPreviewText: '消去',
     applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
     fontPreviewAlt: '{{name}} のプレビュー',
   },
@@ -105,14 +125,6 @@ export const ja: Dictionary = {
     title: 'FontCluster Chat',
     description: '今後実装予定..',
   },
-  clipboard: {
-    tips: 'Tips:',
-    shiftBefore: 'Shift',
-    shiftAfter:
-      'を押してフォントを選択すると自動でファミリー名をコピーします。',
-    commandBefore: 'Command',
-    commandAfter: 'を押すとウェイトも同時にコピーできます。',
-  },
   theme: {
     toggle: 'テーマを変更',
     light: 'ライトテーマ',
@@ -123,7 +135,6 @@ export const ja: Dictionary = {
     toggle: '言語を変更',
     english: 'English',
     japanese: '日本語',
-    system: 'システム',
   },
   jobs: {
     started: 'ジョブを開始しました（{{text}}）',

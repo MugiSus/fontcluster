@@ -17,7 +17,7 @@ export function LassoClearButton(props: LassoClearButtonProps) {
         onClick={() => props.onClear()}
       >
         <XIcon class='size-4' />
-        {t('graph.lasso')}
+        {t.graph.lassoClearButton.label()}
         <LassoSelectIcon class='size-4' />
       </Button>
     </div>

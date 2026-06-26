@@ -70,7 +70,7 @@ export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
           >
             <XIcon class='size-3.5' />
           </TooltipTrigger>
-          <TooltipContent>{t('common.clear')}</TooltipContent>
+          <TooltipContent>{t.list.clearPreviewText()}</TooltipContent>
         </Tooltip>
       </Show>
       <TextFieldInput

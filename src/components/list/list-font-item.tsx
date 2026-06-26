@@ -77,7 +77,7 @@ export function ListFontItem(props: ListFontItemProps) {
       onClick={props.onClick}
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
-      aria-label={t('list.applyToPlugins', {
+      aria-label={t.list.applyToPlugins({
         name: meta().font_name,
         weight: weightLabel(),
       })}
@@ -115,7 +115,7 @@ export function ListFontItem(props: ListFontItemProps) {
             props.previewText && !previewPath() && 'opacity-25',
           )}
           src={sampleSrc()}
-          alt={t('list.fontPreviewAlt', { name: meta().font_name })}
+          alt={t.list.fontPreviewAlt({ name: meta().font_name })}
           decoding='async'
         />
       </div>

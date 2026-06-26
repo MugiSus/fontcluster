@@ -1,5 +1,6 @@
 import { createSignal, onCleanup, Show } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
+import { toast } from 'solid-sonner';
 import { Button } from '../ui/button';
 import {
   Select,
@@ -106,7 +107,7 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
 
 export function ControlContent() {
   const { t } = useI18n();
-  const fontSetLabel = (fontSet: FontSet) => t(`control.fontSets.${fontSet}`);
+  const fontSetLabel = (fontSet: FontSet) => t.controlPanel.fontSets[fontSet]();
 
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
   const clearRunCooldown = debounce(() => {
@@ -149,7 +150,14 @@ export function ControlContent() {
       ? { rendering, clustering }
       : { clustering };
 
-    await runProcessingJobs(t, algorithm, sessionId, options?.override);
+    toast.info(t.jobs.started({ text: rendering.text }));
+
+    try {
+      await runProcessingJobs(algorithm, sessionId, options?.override);
+    } catch (error) {
+      console.error('Failed to process fonts:', error);
+      toast.error(t.jobs.failed({ error: String(error) }));
+    }
   };
 
   return (
@@ -166,7 +174,7 @@ export function ControlContent() {
               class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
             >
               <TypeIcon class='mb-0.5 size-3.5' />
-              {t('control.text')}
+              {t.controlPanel.text()}
             </TextFieldLabel>
             <TextFieldInput
               type='text'
@@ -190,12 +198,12 @@ export function ControlContent() {
         </div>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
           <ControlPropertySection
-            title={t('control.sections.render')}
+            title={t.controlPanel.sections.render()}
             isDisabled={isRunCooldown()}
             onStepRun={() => handleRun({ override: 'empty' })}
             isRunnable={false}
           >
-            <TextProperty label={t('control.fonts')} class='mr-1 gap-0.5'>
+            <TextProperty label={t.controlPanel.fonts()} class='mr-1 gap-0.5'>
               <Select
                 name='rendering-font-set'
                 options={FONT_SET_KEYS}
@@ -223,7 +231,7 @@ export function ControlContent() {
               </Select>
             </TextProperty>
             <NumberProperty
-              label={t('control.textSize')}
+              label={t.controlPanel.textSize()}
               name='rendering-font-size'
               defaultValue={appState.session.algorithm.rendering.font_size}
               step={1}
@@ -232,7 +240,7 @@ export function ControlContent() {
           </ControlPropertySection>
 
           <ControlPropertySection
-            title={t('control.sections.analyze')}
+            title={t.controlPanel.sections.analyze()}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'rendered'
@@ -241,7 +249,7 @@ export function ControlContent() {
           />
 
           <ControlPropertySection
-            title={t('control.sections.position')}
+            title={t.controlPanel.sections.position()}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'analyzed'
@@ -250,7 +258,7 @@ export function ControlContent() {
           />
 
           <ControlPropertySection
-            title={t('control.sections.cluster')}
+            title={t.controlPanel.sections.cluster()}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'positioned'
@@ -258,7 +266,7 @@ export function ControlContent() {
             onStepRun={() => handleRun({ override: 'positioned' })}
           >
             <TextProperty
-              label={t('control.linkageMethod')}
+              label={t.controlPanel.linkageMethod()}
               class='mr-1 gap-0.5'
             >
               <Select
@@ -287,7 +295,7 @@ export function ControlContent() {
               </Select>
             </TextProperty>
             <NumberProperty
-              label={t('control.preprocessDimensions')}
+              label={t.controlPanel.preprocessDimensions()}
               name='clustering-preprocessing-dimensions'
               defaultValue={
                 appState.session.algorithm.clustering.preprocessing_dimensions
@@ -297,7 +305,7 @@ export function ControlContent() {
               maxValue={384}
             />
             <NumberProperty
-              label={t('control.groupingThreshold')}
+              label={t.controlPanel.groupingThreshold()}
               name='clustering-distance-threshold'
               defaultValue={
                 appState.session.algorithm.clustering.distance_threshold
@@ -306,7 +314,7 @@ export function ControlContent() {
               minValue={0}
             />
             <NumberProperty
-              label={t('control.targetClusters')}
+              label={t.controlPanel.targetClusters()}
               name='clustering-target-cluster-count'
               defaultValue={
                 appState.session.algorithm.clustering.target_cluster_count
@@ -328,10 +336,10 @@ export function ControlContent() {
             size='sm'
             class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
           >
-            {t('control.generate')}
+            {t.controlPanel.generate()}
             <PlusIcon class='absolute right-3' />
           </TooltipTrigger>
-          <TooltipContent>{t('control.generateNew')}</TooltipContent>
+          <TooltipContent>{t.controlPanel.generateNew()}</TooltipContent>
         </Tooltip>
       </div>
     </form>
