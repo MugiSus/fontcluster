@@ -18,7 +18,7 @@ export const en = {
     control: 'control',
     list: 'list',
     chat: 'chat',
-    collapse: 'Collapse {{title}} panel',
+    close: 'Close {{title}} panel',
   },
   controlPanel: {
     text: 'Sample',

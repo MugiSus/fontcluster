@@ -42,13 +42,13 @@ export function AppShellPanel(props: AppShellPanelProps) {
                 size='icon'
                 class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
                 onClick={() => props.onClose?.()}
-                aria-label={t.panels.collapse({ title: props.title })}
+                aria-label={t.panels.close({ title: props.title })}
               >
                 <MinusIcon class='size-3.5' />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {t.panels.collapse({ title: props.title })}
+              {t.panels.close({ title: props.title })}
             </TooltipContent>
           </Tooltip>
         </Show>

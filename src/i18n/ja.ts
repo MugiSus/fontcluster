@@ -10,7 +10,7 @@ export const ja: Dictionary = {
     control: '制御',
     list: 'リスト',
     chat: 'チャット',
-    collapse: '{{title}}を閉じる',
+    close: '{{title}}を閉じる',
   },
   controlPanel: {
     text: 'サンプル',
