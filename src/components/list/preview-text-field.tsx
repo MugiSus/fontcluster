@@ -1,7 +1,7 @@
 import { createEffect, createSignal, onCleanup, Show } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { SwatchBookIcon, XIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { TextField, TextFieldInput } from '@/components/ui/text-field';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ interface ListPreviewTextFieldProps {
 const LIST_PREVIEW_TEXT_DEBOUNCE = 500;
 
 export function ListPreviewTextField(props: ListPreviewTextFieldProps) {
+  const { t } = useI18n();
   const [inputValue, setInputValue] = createSignal('');
   let onValueChange: (value: string) => void = () => {};
   const updateValue = debounce((value: string) => {

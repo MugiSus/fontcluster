@@ -1,5 +1,5 @@
 import { LassoSelectIcon, XIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { Button } from '../ui/button';
 
 interface LassoClearButtonProps {
@@ -7,6 +7,7 @@ interface LassoClearButtonProps {
 }
 
 export function LassoClearButton(props: LassoClearButtonProps) {
+  const { t } = useI18n();
   return (
     <div class='flex flex-col overflow-hidden rounded-full border bg-background text-muted-foreground'>
       <Button

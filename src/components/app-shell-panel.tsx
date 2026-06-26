@@ -1,6 +1,6 @@
 import { type JSX, Show } from 'solid-js';
 import { MinusIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +14,7 @@ interface AppShellPanelProps {
 }
 
 export function AppShellPanel(props: AppShellPanelProps) {
+  const { t } = useI18n();
   return (
     <section
       class={cn(

@@ -12,7 +12,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +43,7 @@ const saveSeenCompletedSessions = (sessions: SeenCompletedSessions) => {
 };
 
 export function SessionHistory(props: SessionHistoryProps) {
+  const { t } = useI18n();
   const [open, setOpen] = createSignal(false);
   const [isRestoring, setIsRestoring] = createSignal(false);
   const [pendingDeletedSessionIds, setPendingDeletedSessionIds] = createSignal<
@@ -219,7 +220,7 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const continueSessionProcessing = (session: SessionConfig) => {
-    void runProcessingJobs(session.algorithm, session.session_id);
+    void runProcessingJobs(t, session.algorithm, session.session_id);
   };
 
   const stopCurrentRun = async (sessionId: string) => {

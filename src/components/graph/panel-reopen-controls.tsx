@@ -1,6 +1,6 @@
 import { Show } from 'solid-js';
 import { cn } from '@/lib/utils';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { Button } from '../ui/button';
 import { CollapsiblePanelKey, PanelState } from '../../types/panels';
 
@@ -11,6 +11,7 @@ interface GraphPanelReopenControlsProps {
 }
 
 export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
+  const { t } = useI18n();
   return (
     <Show when={!props.panelState.control || !props.panelState.list}>
       <div

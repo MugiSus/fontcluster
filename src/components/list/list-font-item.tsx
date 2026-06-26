@@ -6,7 +6,7 @@ import {
   type FontWeight,
   WEIGHT_LABELS,
 } from '../../types/font';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { cn } from '../../lib/utils';
 import {
   getClusterBackgroundColor,
@@ -28,6 +28,7 @@ interface ListFontItemProps {
 }
 
 export function ListFontItem(props: ListFontItemProps) {
+  const { t } = useI18n();
   const meta = () => props.item.meta;
   const clusterId = () => props.item.computed?.clustering?.k;
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;

@@ -3,7 +3,7 @@ import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { selectionHistory } from '@/selection-history';
 import { appState } from '@/store';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { LanguageToggle } from '../language-toggle';
 import { ThemeModeToggle } from '../theme-mode-toggle';
 import { Button } from '../ui/button';
@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { SessionHistory } from './session-history';
 
 export function GraphUtilityControls() {
+  const { t } = useI18n();
   const copyCurrentSelectedFont = (event: MouseEvent) => {
     emit('copy_family_name', {
       toast: true,
@@ -19,7 +20,7 @@ export function GraphUtilityControls() {
   };
 
   const handleManualUpdateCheck = () => {
-    checkForAppUpdates({ isManual: true });
+    checkForAppUpdates(t, { isManual: true });
   };
 
   return (

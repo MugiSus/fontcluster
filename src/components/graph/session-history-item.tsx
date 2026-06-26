@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { type SessionConfig, type SessionProgressSection } from '@/types/font';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 
 interface SessionHistoryItemProps {
   session: SessionConfig;
@@ -22,6 +22,7 @@ interface SessionHistoryItemProps {
 }
 
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
+  const { t } = useI18n();
   const session = () => props.session;
   const isRunning = () => props.isRunning;
 

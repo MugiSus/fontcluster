@@ -8,7 +8,7 @@ import {
 import { debounce } from '@solid-primitives/scheduled';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { MousePointerClickIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
 import {
@@ -27,6 +27,7 @@ const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;
 
 export function ListContent() {
+  const { t } = useI18n();
   const [selectedItem, setSelectedItem] = createSignal<FontItem | null>(null);
   const [nearestItems, setNearestItems] = createSignal<FontItem[]>([]);
   const [canRenderListPreviews, setCanRenderListPreviews] = createSignal(true);

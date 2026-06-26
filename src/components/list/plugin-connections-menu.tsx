@@ -15,9 +15,10 @@ import {
   type PluginConnection,
 } from '@/lib/plugin-bridge';
 import { cn } from '@/lib/utils';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 
 export function PluginConnectionsMenu() {
+  const { t } = useI18n();
   const [open, setOpen] = createSignal(false);
   const [plugins, setPlugins] = createStore<PluginConnection[]>([]);
 

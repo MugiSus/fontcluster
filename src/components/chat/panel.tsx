@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { AppShellPanel } from '../app-shell-panel';
 
 import { ChatContent } from './content';
@@ -9,6 +9,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel(props: ChatPanelProps) {
+  const { t } = useI18n();
   return (
     <AppShellPanel
       title={t('panel.chat')}

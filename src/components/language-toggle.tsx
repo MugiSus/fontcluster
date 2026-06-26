@@ -1,5 +1,5 @@
 import { LanguagesIcon } from 'lucide-solid';
-import { setLocale, t, useSystemLocale } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { Button } from './ui/button';
 import {
   DropdownMenu,
@@ -9,6 +9,8 @@ import {
 } from './ui/dropdown-menu';
 
 export function LanguageToggle(props: { class?: string }) {
+  const { t, setLocale, useSystemLocale } = useI18n();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger

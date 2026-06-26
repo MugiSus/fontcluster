@@ -1,7 +1,7 @@
 import { Show, createSignal, onCleanup, onMount } from 'solid-js';
 import { polygonContains } from 'd3-polygon';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { appState } from '../../store';
 import { processLassoSelection } from '../../actions';
 import { useElementSize } from '../../hooks/use-element-size';
@@ -45,6 +45,7 @@ interface GraphViewerProps {
 }
 
 export function GraphViewer(props: GraphViewerProps) {
+  const { t } = useI18n();
   const [lassoPoints, setLassoPoints] = createSignal<GraphCoordinate[]>([]);
   const [zoomBounds, setZoomBounds] = createSignal<GraphVisibleBounds | null>(
     null,
@@ -141,7 +142,7 @@ export function GraphViewer(props: GraphViewerProps) {
         : selectedPoints.map((point) => point.key);
 
     if (safeNames.length > 0) {
-      void processLassoSelection(safeNames);
+      void processLassoSelection(t, safeNames);
     }
   };
 

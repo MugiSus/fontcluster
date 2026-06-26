@@ -23,7 +23,7 @@ import {
 } from '../../types/font';
 import { appState } from '../../store';
 import { runProcessingJobs } from '../../actions';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
@@ -46,8 +46,6 @@ const FONT_SET_KEYS: FontSet[] = [
   'google_fonts_popular1500',
   'google_fonts_all',
 ];
-
-const fontSetLabel = (fontSet: FontSet) => t(`control.fontSets.${fontSet}`);
 
 // Hierarchical clustering linkage names are algorithm proper nouns; kept in
 // English across locales.
@@ -107,6 +105,9 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
 }
 
 export function ControlContent() {
+  const { t } = useI18n();
+  const fontSetLabel = (fontSet: FontSet) => t(`control.fontSets.${fontSet}`);
+
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
   const clearRunCooldown = debounce(() => {
     setIsRunCooldown(false);
@@ -148,7 +149,7 @@ export function ControlContent() {
       ? { rendering, clustering }
       : { clustering };
 
-    await runProcessingJobs(algorithm, sessionId, options?.override);
+    await runProcessingJobs(t, algorithm, sessionId, options?.override);
   };
 
   return (

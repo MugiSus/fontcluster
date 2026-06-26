@@ -2,7 +2,7 @@ import { Show, type JSX } from 'solid-js';
 
 import { RotateCwIcon } from 'lucide-solid';
 
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
@@ -17,6 +17,7 @@ type ControlPropertySectionProps = {
 };
 
 export function ControlPropertySection(props: ControlPropertySectionProps) {
+  const { t } = useI18n();
   return (
     <div class={props.class ?? 'group/section flex flex-col gap-2'}>
       <div class='flex items-center gap-1'>

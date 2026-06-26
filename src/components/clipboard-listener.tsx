@@ -2,10 +2,12 @@ import { onCleanup, untrack, Show } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
 import { toast } from 'solid-sonner';
 import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { appState } from '../store';
 
 export function ClipboardListener() {
+  const { t } = useI18n();
+
   // eslint-disable-next-line @typescript-eslint/naming-convention -- payload field names are fixed by the backend event contract
   const promise = listen<{ toast?: boolean; isFontName?: boolean }>(
     'copy_family_name',

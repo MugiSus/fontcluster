@@ -11,7 +11,7 @@ import {
 } from 'lucide-solid';
 import { createMemo, Show } from 'solid-js';
 import { appState } from '../../store';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { dotVariants, ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
@@ -40,6 +40,7 @@ interface GraphBottomToolbarProps {
 const toggleItemClass = 'size-8 px-0';
 
 export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
+  const { t } = useI18n();
   const isFilterActive = createMemo(
     () =>
       appState.ui.searchQuery.length > 0 ||

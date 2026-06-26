@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { SearchIcon, XIcon } from 'lucide-solid';
-import { t } from '@/i18n';
+import { useI18n } from '@/i18n';
 import { appState } from '../../store';
 import { setSelectedFontKey } from '../../actions';
 import { cn } from '../../lib/utils';
@@ -17,6 +17,7 @@ interface GraphFilterDockProps {
 }
 
 export function GraphFilterDock(props: GraphFilterDockProps) {
+  const { t } = useI18n();
   const { onQueryChange } = useFilteredFontMetadataKeys({
     onFontSelect: (key) => setSelectedFontKey(key),
   });
