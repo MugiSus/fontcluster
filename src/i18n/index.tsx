@@ -64,6 +64,7 @@ export function I18nProvider(props: ParentProps) {
       // Match the theme storage behavior: persistence must not block the UI.
     }
   };
+
   const [systemLocale] = createResource<Locale>(async () => {
     const tag = await getSystemLocale().catch((error) => {
       console.error('Failed to get system locale:', error);
@@ -72,11 +73,14 @@ export function I18nProvider(props: ParentProps) {
 
     return tag?.toLowerCase().startsWith('ja') ? 'ja' : 'en';
   });
+
   const locale = createMemo<Locale>(() => {
     const selected = language();
     return selected === 'system' ? (systemLocale() ?? 'en') : selected;
   });
+
   const dictionary = createMemo(() => i18n.flatten(dictionaries[locale()]));
+
   // translator() stores this accessor and calls it lazily; reactivity is
   // preserved at each t() call site (which reads the memo inside its own
   // tracking scope), so the rule's "used outside a tracked scope" check is a
