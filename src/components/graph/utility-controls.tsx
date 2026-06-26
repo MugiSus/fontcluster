@@ -3,6 +3,8 @@ import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
 import { checkForAppUpdates } from '@/lib/updater';
 import { selectionHistory } from '@/selection-history';
 import { appState } from '@/store';
+import { t } from '@/i18n';
+import { LanguageToggle } from '../language-toggle';
 import { ThemeModeToggle } from '../theme-mode-toggle';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -37,7 +39,7 @@ export function GraphUtilityControls() {
             <Undo2Icon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Undo</TooltipContent>
+        <TooltipContent>{t('graph.undo')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -52,7 +54,7 @@ export function GraphUtilityControls() {
             <Redo2Icon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Redo</TooltipContent>
+        <TooltipContent>{t('graph.redo')}</TooltipContent>
       </Tooltip>
 
       <div class='pointer-events-none mx-1 h-4 border-l' />
@@ -68,7 +70,7 @@ export function GraphUtilityControls() {
             <SparklesIcon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Check for updates</TooltipContent>
+        <TooltipContent>{t('graph.checkForUpdates')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -83,21 +85,28 @@ export function GraphUtilityControls() {
             <CopyIcon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>Copy family name</TooltipContent>
+        <TooltipContent>{t('graph.copyFamilyName')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <SessionHistory class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>Session history</TooltipContent>
+        <TooltipContent>{t('sessionHistory.title')}</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger as='div' class='rounded-full'>
+          <LanguageToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+        </TooltipTrigger>
+        <TooltipContent>{t('graph.language')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <ThemeModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>Theme</TooltipContent>
+        <TooltipContent>{t('graph.theme')}</TooltipContent>
       </Tooltip>
     </div>
   );

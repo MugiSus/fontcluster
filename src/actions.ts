@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { checkForAppUpdates } from '@/lib/updater';
 import { toast } from 'solid-sonner';
+import { syncLocaleFromSystem, t } from '@/i18n';
 import { appState, setAppState } from './store';
 import { selectionHistory } from './selection-history';
 import {
@@ -57,10 +58,10 @@ export const refreshSession = () => loadSession(appState.session.session_id);
 // Actions
 
 const notifyJobComplete = (sessionId: string) => {
-  toast.success('Job completed successfully!', {
+  toast.success(t('jobs.completed'), {
     id: `job-complete-${sessionId}`,
     action: {
-      label: 'View',
+      label: t('jobs.view'),
       onClick: () => setCurrentSessionId(sessionId),
     },
     duration: 20000,
@@ -135,7 +136,7 @@ export const processLassoSelection = async (safeNames: string[]) => {
     selectionHistory.commit();
   } catch (error) {
     console.error('Failed to process lasso selection:', error);
-    toast.error(`Lasso failed: ${error}`);
+    toast.error(t('jobs.lassoFailed', { error: String(error) }));
   } finally {
     setAppState('ui', 'isLassoProcessing', false);
   }
@@ -152,9 +153,10 @@ export const runProcessingJobs = async (
   });
   selectionHistory.reset();
   toast.info(
-    `Job started: '${
-      algorithm.rendering?.text ?? appState.session.algorithm.rendering.text
-    }'`,
+    t('jobs.started', {
+      text:
+        algorithm.rendering?.text ?? appState.session.algorithm.rendering.text,
+    }),
   );
 
   try {
@@ -169,7 +171,7 @@ export const runProcessingJobs = async (
     }
   } catch (error) {
     console.error('Failed to process fonts:', error);
-    toast.error(`Job failed: ${error}`);
+    toast.error(t('jobs.failed', { error: String(error) }));
   }
 };
 
@@ -210,6 +212,9 @@ export function useAppEvents() {
         cleanup();
       });
     };
+
+    // Apply the system locale on startup unless the user has chosen one.
+    void syncLocaleFromSystem();
 
     // Load latest session ID on startup
     loadLatestSessionId();
