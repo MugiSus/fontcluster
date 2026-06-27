@@ -112,7 +112,7 @@ export const en = {
     progress: 'Progress',
     summary:
       '{{weights}} weights · {{samples}} samples · {{clusters}} clusters',
-    deleted: "Session deleted for '{{text}}'",
+    deleted: 'Session deleted for "{{text}}"',
   },
   list: {
     selectPrompt: 'Select a font to see similar fonts',
@@ -148,7 +148,7 @@ export const en = {
     japanese: '日本語',
   },
   jobs: {
-    started: "Job started: '{{text}}'",
+    started: 'Job started: "{{text}}"',
     completed: 'Job completed successfully!',
     view: 'View',
     failed: 'Job failed: {{error}}',

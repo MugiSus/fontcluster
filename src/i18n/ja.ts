@@ -104,7 +104,7 @@ export const ja: Dictionary = {
     progress: '進捗',
     summary:
       'ウェイト {{weights}} 種・サンプル {{samples}} 個・クラスタ {{clusters}} 個',
-    deleted: 'セッションを削除しました（{{text}}）',
+    deleted: 'セッションを削除しました（"{{text}}"）',
   },
   list: {
     selectPrompt: 'フォントを選択してください',
@@ -140,7 +140,7 @@ export const ja: Dictionary = {
     japanese: '日本語',
   },
   jobs: {
-    started: 'ジョブを開始しました（{{text}}）',
+    started: 'ジョブを開始しました（"{{text}}"）',
     completed: '処理が完了しました',
     view: '表示',
     failed: 'ジョブが失敗しました: {{error}}',
