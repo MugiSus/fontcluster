@@ -12,15 +12,13 @@ type ControlPropertySectionProps = {
   onStepRun: () => void;
   isRunnable?: boolean;
   isDisabled?: boolean | undefined;
-  class?: string | undefined;
-  contentClass?: string | undefined;
 };
 
 export function ControlPropertySection(props: ControlPropertySectionProps) {
   const { t } = useI18n();
   return (
-    <div class={props.class ?? 'group/section flex flex-col gap-2'}>
-      <div class='flex items-center gap-1'>
+    <div class='group/section flex flex-col'>
+      <div class='flex items-center gap-2 py-1.5'>
         <div class='text-xs font-semibold capitalize'>{props.title}</div>
         <Show when={props.isRunnable !== false}>
           <Tooltip>
@@ -29,18 +27,16 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
               variant='ghost'
               size='icon'
               disabled={props.isDisabled}
-              class='invisible mb-px size-4 text-xs group-hover/section:visible'
+              class='invisible mb-px size-5 text-xs group-hover/section:visible'
               onClick={props.onStepRun}
             >
-              <RotateCwIcon class='size-3 max-h-3' />
+              <RotateCwIcon class='size-3.5 max-h-3.5' />
             </TooltipTrigger>
             <TooltipContent>{t.controlPanel.recalculate()}</TooltipContent>
           </Tooltip>
         </Show>
       </div>
-      <div class={props.contentClass ?? 'flex flex-col gap-0.5'}>
-        {props.children}
-      </div>
+      <div class='flex flex-col gap-0.5'>{props.children}</div>
     </div>
   );
 }

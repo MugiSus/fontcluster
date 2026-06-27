@@ -196,7 +196,7 @@ export function ControlContent() {
             </Show>
           </TextField>
         </div>
-        <div class='flex min-h-0 flex-1 grow flex-col gap-1 space-y-3 overflow-y-scroll p-4'>
+        <div class='flex min-h-0 flex-1 grow flex-col gap-1 overflow-y-scroll px-4 py-3'>
           <ControlPropertySection
             title={t.controlPanel.sections.render()}
             isDisabled={isRunCooldown()}
