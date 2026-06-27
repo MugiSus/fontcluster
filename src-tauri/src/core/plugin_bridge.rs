@@ -27,9 +27,9 @@ struct PluginDataResponse {
     session: Option<SessionConfig>,
     font: Option<FontMetadata>,
     modified_date: Option<DateTime<Utc>>,
-    /// List preview text the user typed when the font was pushed; plugins use
-    /// it as the contents of a newly created text node.
-    list_preview_text: Option<String>,
+    /// Preview text the user typed when the font was pushed; plugins use it as
+    /// the contents of a newly created text node.
+    preview_text: Option<String>,
 }
 
 /// A connected plugin as last reported by its heartbeat.
@@ -116,7 +116,7 @@ fn handle_stream(mut stream: TcpStream, state: &AppState) {
             .lock()
             .map(|modified_date| *modified_date)
             .unwrap_or(None);
-        let list_preview_text = state
+        let preview_text = state
             .plugin_bridge_preview_text
             .lock()
             .map(|preview_text| preview_text.clone())
@@ -125,10 +125,10 @@ fn handle_stream(mut stream: TcpStream, state: &AppState) {
             session,
             font,
             modified_date,
-            list_preview_text,
+            preview_text,
         })
         .unwrap_or_else(|_| {
-            "{\"session\":null,\"font\":null,\"modified_date\":null,\"list_preview_text\":null}"
+            "{\"session\":null,\"font\":null,\"modified_date\":null,\"preview_text\":null}"
                 .to_string()
         });
 
