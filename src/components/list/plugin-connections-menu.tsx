@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from 'solid-js';
-import { CableIcon, ExternalLinkIcon, PenToolIcon } from 'lucide-solid';
+import { ExternalLinkIcon, PenToolIcon, Plug2Icon } from 'lucide-solid';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 import {
@@ -49,7 +49,7 @@ export function PluginConnectionsMenu() {
             )}
             aria-label={t.plugins.title()}
           >
-            <CableIcon class='size-3.5' />
+            <Plug2Icon class='size-3.5' />
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-80 p-1'>
             <DropdownMenuLabel class='text-xs font-medium'>
