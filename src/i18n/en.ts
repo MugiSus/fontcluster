@@ -129,7 +129,7 @@ export const en = {
       'Launch the plugin in Figma, then click a font in the list to apply it automatically.',
     noDocument: 'No document',
     getPlugin: 'Get Fontcluster Apply on Figma',
-    illustratorSoon: 'Illustrator support is coming soon.',
+    illustratorSoon: 'Adobe Illustrator support is coming soon.',
   },
   chat: {
     title: 'FontCluster Chat',

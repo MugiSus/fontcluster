@@ -121,7 +121,7 @@ export const ja: Dictionary = {
       'Figma でプラグインを起動し、"リスト"のフォントをクリックすると自動で適用されます。',
     noDocument: 'ドキュメントなし',
     getPlugin: 'Figma で Fontcluster Apply を入手',
-    illustratorSoon: 'Illustrator プラグインは現在開発中です',
+    illustratorSoon: 'Adobe Illustrator プラグインは現在開発中です',
   },
   chat: {
     title: 'FontCluster Chat',
