@@ -7,6 +7,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
 import { appState, setAppState } from './store';
+import { getConnectedPlugins } from './lib/plugin-bridge';
 import { selectionHistory } from './selection-history';
 import {
   type FontItemRecord,
@@ -71,6 +72,26 @@ export const setSentFontItemKey = (key: string | null) =>
 
 export const setListPreviewText = (text: string) =>
   setAppState('ui', 'listPreviewText', text);
+
+/**
+ * Syncs the connected-plugin list from the backend into the store. This store
+ * slice is the single source of truth for plugin connectivity; the connections
+ * menu and the list icons both read from it. Polling is owned by the app root
+ * (see `useAppEvents`), never by a UI component.
+ */
+export const refreshPluginConnections = async () => {
+  try {
+    const { plugins } = await getConnectedPlugins();
+    setAppState(
+      'plugins',
+      'connections',
+      reconcile(plugins, { key: 'plugin_id' }),
+    );
+  } catch (error) {
+    console.error('Failed to load plugin connections:', error);
+    setAppState('plugins', 'connections', []);
+  }
+};
 
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
@@ -238,6 +259,11 @@ export function useAppEvents() {
 
     // Load latest session ID on startup
     loadLatestSessionId();
+
+    // Poll connected plugins (single owner of plugin connectivity state)
+    refreshPluginConnections();
+    const pluginPollId = window.setInterval(refreshPluginConnections, 1000);
+    onCleanup(() => window.clearInterval(pluginPollId));
 
     listenWithCleanup<string>('clustering_complete', (event) => {
       console.log('Clustering completed for session:', event.payload);

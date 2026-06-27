@@ -1,5 +1,4 @@
-import { createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
-import { createStore, reconcile } from 'solid-js/store';
+import { createSignal, For, Show } from 'solid-js';
 import { CableIcon, ExternalLinkIcon, PenToolIcon } from 'lucide-solid';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
@@ -13,10 +12,8 @@ import {
 } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Button } from '../ui/button';
-import {
-  getConnectedPlugins,
-  type PluginConnection,
-} from '@/lib/plugin-bridge';
+import { appState } from '@/store';
+import { refreshPluginConnections } from '@/actions';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 
@@ -26,31 +23,12 @@ const FIGMA_PLUGIN_URL =
 export function PluginConnectionsMenu() {
   const { t } = useI18n();
   const [open, setOpen] = createSignal(false);
-  const [plugins, setPlugins] = createStore<PluginConnection[]>([]);
-
-  async function loadConnections() {
-    try {
-      const response = await getConnectedPlugins();
-      setPlugins(reconcile(response.plugins, { key: 'plugin_id' }));
-    } catch (error) {
-      console.error('Failed to load plugin connections:', error);
-      setPlugins([]);
-    }
-  }
-
-  createEffect(() => {
-    loadConnections();
-    const intervalId = window.setInterval(() => {
-      loadConnections();
-    }, 1000);
-
-    onCleanup(() => window.clearInterval(intervalId));
-  });
+  const plugins = () => appState.plugins.connections;
 
   function handleOpenChange(isOpen: boolean) {
     setOpen(isOpen);
     if (isOpen) {
-      loadConnections();
+      refreshPluginConnections();
     }
   }
 
@@ -65,7 +43,7 @@ export function PluginConnectionsMenu() {
             size='icon'
             class={cn(
               'relative size-8 rounded-full hover:bg-accent/80 hover:text-muted-foreground',
-              plugins.length > 0
+              appState.plugins.isConnected
                 ? 'text-muted-foreground'
                 : 'text-muted-foreground/30',
             )}
@@ -78,7 +56,7 @@ export function PluginConnectionsMenu() {
               {t.plugins.title()}
             </DropdownMenuLabel>
             <Show
-              when={plugins.length > 0}
+              when={appState.plugins.isConnected}
               fallback={
                 <div class='space-y-2 p-2 text-xs font-light text-muted-foreground'>
                   <p>{t.plugins.empty()}</p>
@@ -87,7 +65,7 @@ export function PluginConnectionsMenu() {
                 </div>
               }
             >
-              <For each={plugins}>
+              <For each={plugins()}>
                 {(plugin) => (
                   <article class='flex items-center justify-between gap-2 rounded-sm p-2 text-xs transition-colors hover:bg-muted/60'>
                     <span class='pointer-events-none relative size-1.5 rounded-full bg-blue-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-blue-500 after:content-[""]' />

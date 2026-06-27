@@ -9,6 +9,7 @@ import {
   type SessionConfig,
 } from './types/font';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
+import type { PluginConnection } from './lib/plugin-bridge';
 
 export interface AppState {
   session: SessionConfig;
@@ -30,6 +31,10 @@ export interface AppState {
     searchQuery: string;
     listPreviewText: string;
     activeGraphWeights: FontWeight[];
+  };
+  plugins: {
+    connections: PluginConnection[];
+    readonly isConnected: boolean;
   };
 }
 
@@ -92,6 +97,12 @@ export const [appState, setAppState] = createStore<AppState>({
     searchQuery: '',
     listPreviewText: '',
     activeGraphWeights: [400],
+  },
+  plugins: {
+    connections: [],
+    get isConnected(): boolean {
+      return this.connections.length > 0;
+    },
   },
 });
 

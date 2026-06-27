@@ -1,6 +1,6 @@
 import { createMemo, createResource } from 'solid-js';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import { ArrowRightIcon, CheckIcon } from 'lucide-solid';
+import { ArrowUpRightIcon, CheckIcon } from 'lucide-solid';
 import {
   type FontItem,
   type FontWeight,
@@ -34,6 +34,7 @@ export function ListFontItem(props: ListFontItemProps) {
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
   const shouldRenderPreview = () =>
     props.isPreviewEnabled !== false && props.previewText !== '';
+  const isPluginConnected = () => appState.plugins.isConnected;
 
   const defaultSampleSrc = createMemo(() =>
     convertFileSrc(
@@ -119,17 +120,17 @@ export function ListFontItem(props: ListFontItemProps) {
           decoding='async'
         />
       </div>
-      <ArrowRightIcon
+      <ArrowUpRightIcon
         class={cn(
-          'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground opacity-0',
-          !props.isSentFontItem && 'transition-opacity group-hover:opacity-100',
+          'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity',
+          isPluginConnected() && !props.isSentFontItem && 'opacity-100',
         )}
         stroke-width={1.5}
       />
       <CheckIcon
         class={cn(
-          'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground',
-          props.isSentFontItem ? 'opacity-100' : 'opacity-0 transition-opacity',
+          'absolute right-3 top-1/2 !size-5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity',
+          isPluginConnected() && props.isSentFontItem && 'opacity-100',
           getClusterTextColor(clusterId()),
         )}
         stroke-width={2}
