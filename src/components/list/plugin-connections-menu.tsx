@@ -58,7 +58,7 @@ export function PluginConnectionsMenu() {
             <Show
               when={appState.plugins.isConnected}
               fallback={
-                <div class='space-y-2 p-2 text-xs font-light text-muted-foreground'>
+                <div class='flex flex-col gap-1 px-2 py-1 text-xs font-light leading-relaxed text-muted-foreground'>
                   <p>{t.plugins.empty()}</p>
                   <p>{t.plugins.description()}</p>
                   <p>{t.plugins.installHint()}</p>
