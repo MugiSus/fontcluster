@@ -42,14 +42,17 @@ export function PluginConnectionsMenu() {
             variant='ghost'
             size='icon'
             class={cn(
-              'relative size-8 rounded-full hover:bg-accent/80 hover:text-muted-foreground',
+              'relative size-8 rounded-full hover:bg-accent/80 hover:opacity-100',
               appState.plugins.isConnected
-                ? 'text-muted-foreground'
-                : 'text-muted-foreground/30',
+                ? 'text-foreground'
+                : 'text-muted-foreground',
             )}
             aria-label={t.plugins.title()}
           >
             <Plug2Icon class='size-3.5' />
+            <Show when={appState.plugins.isConnected}>
+              <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-green-500' />
+            </Show>
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-80 p-1'>
             <DropdownMenuLabel class='text-xs font-medium'>
@@ -68,7 +71,7 @@ export function PluginConnectionsMenu() {
               <For each={plugins()}>
                 {(plugin) => (
                   <article class='flex items-center justify-between gap-2 rounded-sm p-2 text-xs transition-colors hover:bg-muted/60'>
-                    <span class='pointer-events-none relative size-1.5 rounded-full bg-blue-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-blue-500 after:content-[""]' />
+                    <span class='pointer-events-none relative size-1.5 rounded-full bg-green-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-green-500 after:content-[""]' />
                     <Show
                       when={plugin.host === 'figma'}
                       fallback={
