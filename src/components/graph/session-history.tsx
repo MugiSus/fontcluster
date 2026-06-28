@@ -313,20 +313,23 @@ export function SessionHistory(props: SessionHistoryProps) {
         as={Button<'button'>}
         variant='ghost'
         size='icon'
-        class={cn('relative', props.class)}
+        class={cn(
+          'relative',
+          props.class,
+          sessionHistory.some(isUnseenCompletedSession) && 'text-foreground',
+        )}
         aria-label={t.sessionHistory.open()}
       >
         <HistoryIcon class='size-4' />
-        <Show when={hasRunningSession()}>
-          <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
-        </Show>
         <Show
-          when={
-            !hasRunningSession() &&
-            sessionHistory.some(isUnseenCompletedSession)
+          when={hasRunningSession()}
+          fallback={
+            <Show when={sessionHistory.some(isUnseenCompletedSession)}>
+              <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-blue-500' />
+            </Show>
           }
         >
-          <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-blue-500' />
+          <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
         </Show>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
