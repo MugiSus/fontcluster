@@ -2,10 +2,11 @@ import { emit } from '@tauri-apps/api/event';
 import { Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
 import { selectionHistory } from '@/selection-history';
 import { useI18n } from '@/i18n';
-import { LanguageToggle } from '../language-toggle';
-import { ThemeModeToggle } from '../theme-mode-toggle';
-import { Button } from '../ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { LanguageToggle } from './language-toggle';
+import { ThemeModeToggle } from './theme-mode-toggle';
+import { PluginConnectionsMenu } from './plugin-connections-menu';
+import { Button } from '../../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { SessionHistory } from './session-history';
 
 export function GraphUtilityControls() {
@@ -49,6 +50,10 @@ export function GraphUtilityControls() {
         </TooltipTrigger>
         <TooltipContent>{t.utility.controls.redo()}</TooltipContent>
       </Tooltip>
+
+      <div class='pointer-events-none mx-1 h-4 border-l' />
+
+      <PluginConnectionsMenu />
 
       <div class='pointer-events-none mx-1 h-4 border-l' />
 

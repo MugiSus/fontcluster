@@ -9,12 +9,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { Button } from '../ui/button';
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
 import { appState } from '@/store';
 import { refreshPluginConnections } from '@/actions';
-import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 
 const FIGMA_PLUGIN_URL =
@@ -41,12 +44,7 @@ export function PluginConnectionsMenu() {
             type='button'
             variant='ghost'
             size='icon'
-            class={cn(
-              'relative size-8 rounded-full hover:bg-accent/80 hover:opacity-100',
-              appState.plugins.isConnected
-                ? 'text-foreground'
-                : 'text-muted-foreground',
-            )}
+            class='relative size-8 rounded-full text-muted-foreground'
             aria-label={t.plugins.title()}
           >
             <Plug2Icon class='size-3.5' />

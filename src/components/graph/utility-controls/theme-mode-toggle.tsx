@@ -4,13 +4,13 @@ import { useColorMode } from '@kobalte/core';
 import { Check, Laptop, Sun, Moon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { themeMode } from '@/theme';
-import { Button } from './ui/button';
+import { Button } from '../../ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu';
+} from '../../ui/dropdown-menu';
 
 export function ThemeModeToggle(props: { class?: string }) {
   const { t } = useI18n();
