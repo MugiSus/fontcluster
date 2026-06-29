@@ -38,6 +38,8 @@ export interface PointLayerProps {
   isDark: Accessor<boolean>;
   /** Marks a point active (full) vs dimmed (filtered-out / inactive weight). */
   activePredicate: Accessor<(point: GraphPointData) => boolean>;
+  /** Keys whose sample image is drawn; their core dot is hidden (glow stays). */
+  imageShownKeys: Accessor<Set<string>>;
   /** Device pixel ratio; sprite size = CSS px × this. */
   pixelRatio: Accessor<number>;
   /** The glow buffer's resolution scale (applied to the halo sprite in-shader). */
@@ -53,10 +55,12 @@ export interface PointLayerProps {
  * - {@link PointLayer.halo} — the soft glow (premultiplied, accumulated into the
  *   bloom buffer). Only rendered when the glow is on.
  *
- * Two per-vertex attributes drive appearance:
+ * Three per-vertex attributes drive appearance:
  * - `aColor` — the cluster color (rebuilt with the point set / theme).
  * - `aState` — 0 for active points, 1 for dimmed (filtered-out / inactive
  *   weight) points.
+ * - `aHideCore` — 1 for points whose sample image is drawn (the core dot is
+ *   suppressed there; only the core program reads it, so the glow still shows).
  *
  * Everything follows the accessors via effects; the render loop simply shows the
  * core or halo object per pass, so there is no imperative per-frame API.
@@ -147,6 +151,10 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
       'aState',
       new Float32BufferAttribute(new Float32Array(count), 1),
     );
+    geometry.setAttribute(
+      'aHideCore',
+      new Float32BufferAttribute(new Float32Array(count), 1),
+    );
     geometry.setDrawRange(0, count);
   };
 
@@ -185,6 +193,22 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     attribute.needsUpdate = true;
   };
 
+  /** Flags points whose image is shown so the core shader drops their dot. */
+  const setHiddenCores = (
+    pointData: GraphPointData[],
+    imageShownKeys: Set<string>,
+  ) => {
+    const attribute = geometry.getAttribute('aHideCore');
+    // Guard against running before the matching geometry has been built.
+    if (!attribute || attribute.count !== pointData.length) return;
+
+    const flags = attribute.array as Float32Array;
+    for (const [index, point] of pointData.entries()) {
+      flags[index] = imageShownKeys.has(point.key) ? 1 : 0;
+    }
+    attribute.needsUpdate = true;
+  };
+
   // Geometry (point set changed). setPoints reallocates the color/state buffers
   // to zero, so re-apply both right here from the *same* points array —
   // otherwise a rebuilt buffer can be left at the zero (black) default if the
@@ -197,6 +221,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     untrack(() => {
       setColors(pointData, props.isDark());
       setActiveState(pointData, props.activePredicate());
+      setHiddenCores(pointData, props.imageShownKeys());
     });
     props.requestRender();
   });
@@ -212,6 +237,13 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
   // Active/dimmed state (filter / active weights).
   createEffect(() => {
     setActiveState(props.points(), props.activePredicate());
+    props.requestRender();
+  });
+
+  // Core visibility: hide the data dot for samples whose image is drawn (the
+  // glow keeps showing — only the core program reads aHideCore).
+  createEffect(() => {
+    setHiddenCores(props.points(), props.imageShownKeys());
     props.requestRender();
   });
 

@@ -4,16 +4,19 @@
 //     bloom buffer (see GlowCompositor). The halo sprite scales by uGlowScale so
 //     it keeps its on-screen size when the glow buffer is downscaled.
 //
-// Both programs read the same geometry (position / aColor / aState); the
-// orchestrator shows the core or halo points per render pass (visibility),
-// rather than switching a uPass uniform — so each shader stays branch-free.
+// Both programs share the same geometry (position / aColor / aState); the core
+// additionally reads aHideCore to drop the dot where a sample image is drawn
+// (the halo ignores it, so the glow stays). The orchestrator shows the core or
+// halo points per render pass (visibility), rather than switching a uPass
+// uniform — so each shader stays branch-free.
 //
 // `position` / projection uniforms are injected by three's ShaderMaterial, so
 // only the custom attributes are declared here.
 
 export const coreVertexShader = /* glsl */ `
 attribute vec3 aColor;
-attribute float aState; // 0 = active, 1 = dimmed (filtered out / inactive weight)
+attribute float aState;    // 0 = active, 1 = dimmed (filtered out / inactive weight)
+attribute float aHideCore; // 1 = core hidden (this sample's image is drawn)
 
 uniform float uPixelRatio;
 uniform float uCore; // solid core diameter (CSS px)
@@ -29,7 +32,9 @@ void main() {
   vAlpha = dimmed ? 0.2 : 1.0;
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = uCore * scale * uPixelRatio;
+  // Hide the dot where the sample's image is shown — a zero point size skips
+  // rasterization. The glow (halo program) ignores aHideCore, so it stays.
+  gl_PointSize = aHideCore > 0.5 ? 0.0 : uCore * scale * uPixelRatio;
 }
 `;
 

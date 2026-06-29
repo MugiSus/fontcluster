@@ -259,6 +259,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return specs;
     });
 
+    // Keys whose image is actually drawn; the point layer hides their core dot
+    // (the glow stays). Derived from imageSpecs so "core hidden" tracks "image
+    // shown" exactly.
+    const imageShownKeys = createMemo(
+      () => new Set(imageSpecs().map((spec) => spec.key)),
+    );
+
     // --- layers (one scene; render order keeps images over rings over dots) -
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
@@ -273,6 +280,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       points: props.points,
       isDark,
       activePredicate,
+      imageShownKeys,
       pixelRatio,
       glowScale: compositor.glowScale,
       requestRender: scheduleRender,
