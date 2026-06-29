@@ -113,6 +113,9 @@ export const ja: Dictionary = {
     selectPrompt: 'フォントを選択してください',
     clearPreviewText: '消去',
     applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
+    copyFontName: '{{name}} をコピー',
+    copied: '"{{name}}" をコピーしました',
+    copyFailed: 'コピーに失敗しました',
     fontPreviewAlt: '{{name}} のプレビュー',
   },
   plugins: {

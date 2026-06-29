@@ -97,6 +97,20 @@ export function ListContent() {
         toast.error(t.plugins.applyFailed());
       });
 
+  const handleCopy = (item: FontItem) =>
+    navigator.clipboard
+      .writeText(item.meta.font_name)
+      .then(() => toast.success(t.list.copied({ name: item.meta.font_name })))
+      .catch((error) => {
+        console.error('Failed to copy font name:', error);
+        toast.error(t.list.copyFailed());
+      });
+
+  // When no plugin is connected, clicking falls back to copying the font name
+  // to the clipboard instead of applying it to a design tool.
+  const handleSelect = (item: FontItem) =>
+    appState.plugins.isConnected ? handleApply(item) : handleCopy(item);
+
   const NoResultsFound = () => (
     <div class='flex h-full flex-col items-center justify-center gap-2 pb-10 text-center text-sm text-muted-foreground'>
       <MousePointerClickIcon />
@@ -119,7 +133,7 @@ export function ListContent() {
             previewFontSize={LIST_PREVIEW_FONT_SIZE}
             class='animate-fade-in border-b'
             isSentFontItem={isSentFontItem(item().meta.safe_name)}
-            onClick={() => handleApply(item())}
+            onClick={() => handleSelect(item())}
             onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
             onMouseLeave={() => setHoveredFontKey(null)}
           />
@@ -156,7 +170,7 @@ export function ListContent() {
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}
-                          onClick={() => handleApply(fontItem())}
+                          onClick={() => handleSelect(fontItem())}
                           onMouseEnter={() =>
                             setHoveredFontKey(fontItem().meta.safe_name)
                           }

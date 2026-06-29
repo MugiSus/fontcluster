@@ -1,6 +1,6 @@
 import { createMemo, createResource, Show } from 'solid-js';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import { CheckIcon, Plug2Icon } from 'lucide-solid';
+import { CheckIcon, CopyIcon, Plug2Icon } from 'lucide-solid';
 import {
   type FontItem,
   type FontWeight,
@@ -78,10 +78,14 @@ export function ListFontItem(props: ListFontItemProps) {
       onClick={props.onClick}
       onMouseEnter={props.onMouseEnter}
       onMouseLeave={props.onMouseLeave}
-      aria-label={t.list.applyToPlugins({
-        name: meta().font_name,
-        weight: weightLabel(),
-      })}
+      aria-label={
+        isPluginConnected()
+          ? t.list.applyToPlugins({
+              name: meta().font_name,
+              weight: weightLabel(),
+            })
+          : t.list.copyFontName({ name: meta().font_name })
+      }
     >
       <div
         class={cn(
@@ -120,6 +124,12 @@ export function ListFontItem(props: ListFontItemProps) {
           decoding='async'
         />
       </div>
+      <Show when={!isPluginConnected()}>
+        <CopyIcon
+          class='absolute right-3 top-1/2 !size-4 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100'
+          stroke-width={2}
+        />
+      </Show>
       <Show when={isPluginConnected()}>
         <Plug2Icon
           class={cn(

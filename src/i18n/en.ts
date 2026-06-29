@@ -121,6 +121,9 @@ export const en = {
     selectPrompt: 'Select a font to see similar fonts',
     clearPreviewText: 'Clear',
     applyToPlugins: 'Apply {{name}} {{weight}} to plugins',
+    copyFontName: 'Copy {{name}}',
+    copied: 'Copied "{{name}}"',
+    copyFailed: 'Failed to copy',
     fontPreviewAlt: 'Font preview for {{name}}',
   },
   plugins: {
