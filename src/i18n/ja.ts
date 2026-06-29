@@ -83,9 +83,9 @@ export const ja: Dictionary = {
       tips: 'Tips:',
       shiftBefore: 'Shift',
       shiftAfter:
-        'を押してフォントを選択すると自動でファミリー名をコピーします。',
+        'を押しながらフォントを選択するとグラフから直接ファミリー名をコピーできます。',
       commandBefore: 'Command',
-      commandAfter: 'を押すとウェイト名も同時にコピーできます。',
+      commandAfter: 'を押すとウェイトも同時にコピーできます。',
     },
   },
   sessionHistory: {

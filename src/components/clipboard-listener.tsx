@@ -24,7 +24,7 @@ export function ClipboardListener() {
             () =>
               event.payload?.toast &&
               toast(
-                <div class='flex flex-col gap-1'>
+                <div class='flex flex-col gap-2'>
                   <div class='flex items-center gap-1 font-semibold'>
                     <CopyCheckIcon class='mx-0.5 size-4' />
                     Copied to clipboard: &quot;
@@ -33,14 +33,14 @@ export function ClipboardListener() {
                       : nearest.meta.family_name}
                     &quot;
                   </div>
-                  <div class='text-xs leading-5 text-muted-foreground'>
+                  <div class='text-xs leading-relaxed text-muted-foreground'>
                     {t.utility.clipboard.tips()}{' '}
                     {t.utility.clipboard.shiftBefore()}
-                    <ArrowBigUpIcon class='mx-0.5 mb-0.5 inline size-4' />
+                    <ArrowBigUpIcon class='mx-0.5 inline size-4 -translate-y-px' />
                     {t.utility.clipboard.shiftAfter()}{' '}
                     <Show when={!event.payload?.isFontName}>
                       {t.utility.clipboard.commandBefore()}
-                      <CommandIcon class='mx-0.5 mb-0.5 inline size-4' />
+                      <CommandIcon class='mx-0.5 inline size-4 -translate-y-px' />
                       {t.utility.clipboard.commandAfter()}
                     </Show>
                   </div>
