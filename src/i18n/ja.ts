@@ -65,7 +65,7 @@ export const ja: Dictionary = {
     },
     selectedFontActions: {
       copy: 'コピー',
-      applyToPlugins: 'プラグインに適用',
+      applyToPlugins: 'プラグインへ適用',
     },
   },
   utility: {
