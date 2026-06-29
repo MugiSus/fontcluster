@@ -85,7 +85,7 @@ export const en = {
       language: 'Language',
     },
     sessionHistory: {
-      open: 'Session history',
+      open: 'History',
     },
     clipboard: {
       tips: 'Tips:',
@@ -97,8 +97,8 @@ export const en = {
     },
   },
   sessionHistory: {
-    title: 'Session history',
-    open: 'Open session history',
+    title: 'History',
+    open: 'Open history',
     empty: 'No sessions yet.',
     loading: 'Loading history...',
     stop: 'Stop',
