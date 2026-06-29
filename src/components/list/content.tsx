@@ -7,6 +7,7 @@ import {
 } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { createVirtualizer } from '@tanstack/solid-virtual';
+import { toast } from 'solid-sonner';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '../../store';
@@ -86,6 +87,16 @@ export function ListContent() {
     enableListPreviews();
   };
 
+  const handleApply = (item: FontItem) =>
+    applyFontToPlugins(item)
+      .then(() =>
+        toast.success(t.plugins.applied({ name: item.meta.font_name })),
+      )
+      .catch((error) => {
+        console.error('Failed to send font to plugins:', error);
+        toast.error(t.plugins.applyFailed());
+      });
+
   const NoResultsFound = () => (
     <div class='flex h-full flex-col items-center justify-center gap-2 pb-10 text-center text-sm text-muted-foreground'>
       <MousePointerClickIcon />
@@ -108,7 +119,7 @@ export function ListContent() {
             previewFontSize={LIST_PREVIEW_FONT_SIZE}
             class='animate-fade-in border-b'
             isSentFontItem={isSentFontItem(item().meta.safe_name)}
-            onClick={() => applyFontToPlugins(item())}
+            onClick={() => handleApply(item())}
             onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
             onMouseLeave={() => setHoveredFontKey(null)}
           />
@@ -145,7 +156,7 @@ export function ListContent() {
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}
-                          onClick={() => applyFontToPlugins(fontItem())}
+                          onClick={() => handleApply(fontItem())}
                           onMouseEnter={() =>
                             setHoveredFontKey(fontItem().meta.safe_name)
                           }

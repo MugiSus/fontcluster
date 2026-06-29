@@ -133,6 +133,8 @@ export const en = {
     noDocument: 'No document',
     getPlugin: 'Get Fontcluster Apply on Figma',
     illustratorSoon: 'Adobe Illustrator support is coming soon.',
+    applied: 'Applied "{{name}}" to Figma',
+    applyFailed: 'Failed to apply font to Figma',
   },
   chat: {
     title: 'FontCluster Chat',

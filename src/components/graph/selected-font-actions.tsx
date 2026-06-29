@@ -8,10 +8,12 @@ import {
 } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { emit } from '@tauri-apps/api/event';
+import { toast } from 'solid-sonner';
 import { CopyIcon, Plug2Icon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '../../store';
 import { applyFontToPlugins } from '../../actions';
+import { type FontItem } from '../../types/font';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { type GraphPointData, type GraphViewBox } from './types';
@@ -87,6 +89,16 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
     });
   };
 
+  const handleApply = (item: FontItem) =>
+    applyFontToPlugins(item)
+      .then(() =>
+        toast.success(t.plugins.applied({ name: item.meta.font_name })),
+      )
+      .catch((error) => {
+        console.error('Failed to send font to plugins:', error);
+        toast.error(t.plugins.applyFailed());
+      });
+
   return (
     <Show when={isReady() && projected()}>
       {(state) => (
@@ -127,7 +139,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
                     <Button
                       variant='ghost'
                       size='icon'
-                      onClick={() => applyFontToPlugins(state().item)}
+                      onClick={() => handleApply(state().item)}
                       class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
                     >
                       <Plug2Icon class='size-4' />

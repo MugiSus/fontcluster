@@ -125,6 +125,8 @@ export const ja: Dictionary = {
     noDocument: 'ドキュメントなし',
     getPlugin: 'Figma で Fontcluster Apply を入手',
     illustratorSoon: 'Adobe Illustrator プラグインは現在開発中です',
+    applied: 'Figma で "{{name}}" を適用しました',
+    applyFailed: 'Figma への適用に失敗しました',
   },
   chat: {
     title: 'FontCluster Chat',

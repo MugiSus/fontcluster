@@ -75,18 +75,17 @@ export const setSentFontItemKey = (key: string | null) =>
  * Sends a font to the connected plugins and records it as the last sent item.
  * The preview text falls back through the list field, the session render text,
  * then a constant. Shared by the list and the graph's selected-font actions so
- * both surfaces apply fonts identically.
+ * both surfaces apply fonts identically. Resolves on success / rejects on
+ * failure so the calling surface can show its own localized feedback toast.
  */
 export const applyFontToPlugins = (item: FontItem) => {
   const previewText =
     appState.ui.listPreviewText ||
     appState.session.algorithm.rendering.text ||
     'FontCluster';
-  return sendFontToPlugin(item.meta, previewText)
-    .then(() => setSentFontItemKey(item.meta.safe_name))
-    .catch((error) => {
-      console.error('Failed to send font to plugins:', error);
-    });
+  return sendFontToPlugin(item.meta, previewText).then(() =>
+    setSentFontItemKey(item.meta.safe_name),
+  );
 };
 
 export const setListPreviewText = (text: string) =>
