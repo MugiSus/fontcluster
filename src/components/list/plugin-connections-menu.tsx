@@ -64,7 +64,14 @@ export function PluginConnectionsMenu() {
                 <div class='flex flex-col gap-1 px-2 py-1 text-xs font-light leading-relaxed text-muted-foreground'>
                   <p>{t.plugins.empty()}</p>
                   <p>{t.plugins.description()}</p>
-                  <p>{t.plugins.installHint()}</p>
+                  <p>
+                    {t.plugins.installHintBeforePlug()}
+                    <Plug2Icon
+                      class='mx-0.5 inline size-3.5 -translate-y-px'
+                      aria-label={t.plugins.plugIcon()}
+                    />
+                    {t.plugins.installHintAfterPlug()}
+                  </p>
                 </div>
               }
             >

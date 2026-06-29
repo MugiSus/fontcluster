@@ -119,14 +119,17 @@ export const ja: Dictionary = {
     title: 'プラグイン',
     empty: '接続中のプラグインはありません。',
     description:
-      'Fontcluster Apply プラグインと連携することで、Figma のフォントを直接変更することができます。',
-    installHint:
-      'Figma でプラグインを起動し、"リスト"のフォントをクリックすると自動で適用されます。',
+      'Fontcluster Apply プラグインと連携することで、デザインツールのテキストのフォントを直接変更することができます。',
+    installHintBeforePlug:
+      'Figma もしくは Adobe Illustrator で Fontcluster Apply プラグインを起動し、',
+    installHintAfterPlug:
+      'アイコンをクリックすると選択したフォントが自動的に適用されます。',
+    plugIcon: 'プラグアイコン',
     noDocument: 'ドキュメントなし',
     getPlugin: 'Figma で Fontcluster Apply を入手',
     illustratorSoon: 'Adobe Illustrator プラグインは現在開発中です',
-    applied: 'Figma で "{{name}}" を適用しました',
-    applyFailed: 'Figma への適用に失敗しました',
+    applied: 'プラグインで "{{name}}" を適用しました',
+    applyFailed: 'プラグインへの適用に失敗しました',
   },
   chat: {
     title: 'FontCluster Chat',
