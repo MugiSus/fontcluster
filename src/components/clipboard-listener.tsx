@@ -27,11 +27,9 @@ export function ClipboardListener() {
                 <div class='flex flex-col gap-2'>
                   <div class='flex items-center gap-1 font-semibold'>
                     <CopyCheckIcon class='mx-0.5 size-4' />
-                    Copied to clipboard: &quot;
                     {event.payload?.isFontName
                       ? nearest.meta.font_name
                       : nearest.meta.family_name}
-                    &quot;
                   </div>
                   <div class='text-xs leading-relaxed text-muted-foreground'>
                     {t.utility.clipboard.tips()}{' '}
