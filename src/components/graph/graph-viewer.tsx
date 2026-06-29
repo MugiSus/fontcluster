@@ -16,6 +16,7 @@ import {
   graphOrigin,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
+import { SelectedFontActions } from './selected-font-actions';
 import {
   type GraphCoordinate,
   type GraphToolMode,
@@ -419,6 +420,14 @@ export function GraphViewer(props: GraphViewerProps) {
           </Show>
         </svg>
       </Show>
+
+      <SelectedFontActions
+        selectedKey={selection.selectedKey}
+        isSelecting={selection.isSelecting}
+        viewBox={viewport.viewBox}
+        size={svgSize}
+        getPointByKey={getGraphPointByKey}
+      />
     </div>
   );
 }

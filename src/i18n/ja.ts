@@ -70,6 +70,7 @@ export const ja: Dictionary = {
       redo: 'やり直す',
       checkForUpdates: 'アップデートを確認',
       copy: 'コピー',
+      applyToPlugins: 'プラグインに適用',
       theme: 'テーマ',
       language: '言語',
     },

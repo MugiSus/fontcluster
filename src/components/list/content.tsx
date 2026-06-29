@@ -9,12 +9,11 @@ import { debounce } from '@solid-primitives/scheduled';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
-import { sendFontToPlugin } from '../../lib/plugin-bridge';
 import { appState } from '../../store';
 import {
+  applyFontToPlugins,
   setHoveredFontKey,
   setListPreviewText,
-  setSentFontItemKey,
 } from '../../actions';
 import { type FontItem } from '../../types/font';
 import { getNearestSelectableFontItems } from '../graph/font-point-index';
@@ -87,20 +86,6 @@ export function ListContent() {
     enableListPreviews();
   };
 
-  const sendFontItem = (item: FontItem) => {
-    const key = item.meta.safe_name;
-    sendFontToPlugin(
-      item.meta,
-      appState.ui.listPreviewText ||
-        appState.session.algorithm.rendering.text ||
-        'FontCluster',
-    )
-      .then(() => setSentFontItemKey(key))
-      .catch((error) => {
-        console.error('Failed to send font to plugins:', error);
-      });
-  };
-
   const NoResultsFound = () => (
     <div class='flex h-full flex-col items-center justify-center gap-2 pb-10 text-center text-sm text-muted-foreground'>
       <MousePointerClickIcon />
@@ -123,7 +108,7 @@ export function ListContent() {
             previewFontSize={LIST_PREVIEW_FONT_SIZE}
             class='animate-fade-in border-b'
             isSentFontItem={isSentFontItem(item().meta.safe_name)}
-            onClick={() => sendFontItem(item())}
+            onClick={() => applyFontToPlugins(item())}
             onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
             onMouseLeave={() => setHoveredFontKey(null)}
           />
@@ -160,7 +145,7 @@ export function ListContent() {
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}
-                          onClick={() => sendFontItem(fontItem())}
+                          onClick={() => applyFontToPlugins(fontItem())}
                           onMouseEnter={() =>
                             setHoveredFontKey(fontItem().meta.safe_name)
                           }

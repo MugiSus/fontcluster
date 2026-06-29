@@ -78,6 +78,7 @@ export const en = {
       redo: 'Redo',
       checkForUpdates: 'Check for updates',
       copy: 'Copy family name',
+      applyToPlugins: 'Apply to plugins',
       theme: 'Theme',
       language: 'Language',
     },

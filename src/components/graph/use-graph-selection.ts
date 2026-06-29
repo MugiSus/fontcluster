@@ -22,6 +22,11 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
   const selectedFontKey = () =>
     draggingSelectedFontKey() ?? appState.ui.selectedFontKey;
 
+  // True while the pointer is actively resolving a selection (press/drag in
+  // select mode), before it commits on mouse-up. The graph's selected-font
+  // actions stay hidden during this window.
+  const isSelecting = () => draggingSelectedFontKey() !== null;
+
   const selectedFontFamily = () => {
     const key = selectedFontKey();
     return key
@@ -79,6 +84,7 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
   return {
     selectedKey: selectedFontKey,
     selectedFamilyName: selectedFontFamily,
+    isSelecting,
     isSelectedFontKey,
     isSelectedFamily,
     trackDraggingSelection,
