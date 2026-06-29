@@ -10,7 +10,7 @@ const Toaster: Component<ToasterProps> = (props) => {
       // 'toaster' is solid-sonner's required marker class, targeted by the
       // `group-[.toaster]:` variants in toastOptions below — not a Tailwind utility.
       // eslint-disable-next-line tailwindcss/no-custom-classname
-      class='toaster group'
+      class='toaster group font-sans'
       // Sonner sizes every toast with `width: var(--width)` (default 356px);
       // widen all toasts by raising the variable on the toaster container.
       style={{ '--width': '480px' }}
