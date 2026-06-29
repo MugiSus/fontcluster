@@ -150,13 +150,13 @@ export function ControlContent() {
       ? { rendering, clustering }
       : { clustering };
 
-    toast.info(t.jobs.started({ text: rendering.text }));
+    toast.info(t.jobs.toasts.started({ text: rendering.text }));
 
     try {
       await runProcessingJobs(algorithm, sessionId, options?.override);
     } catch (error) {
       console.error('Failed to process fonts:', error);
-      toast.error(t.jobs.failed({ error: String(error) }));
+      toast.error(t.jobs.toasts.failed({ error: String(error) }));
     }
   };
 

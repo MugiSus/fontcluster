@@ -32,14 +32,14 @@ export function ClipboardListener() {
                       : nearest.meta.family_name}
                   </div>
                   <div class='text-xs leading-relaxed text-muted-foreground'>
-                    {t.utility.clipboard.tips()}{' '}
-                    {t.utility.clipboard.shiftBefore()}
+                    {t.clipboard.toasts.tips()}{' '}
+                    {t.clipboard.toasts.shiftBefore()}
                     <ArrowBigUpIcon class='mx-0.5 inline size-4 -translate-y-px' />
-                    {t.utility.clipboard.shiftAfter()}{' '}
+                    {t.clipboard.toasts.shiftAfter()}{' '}
                     <Show when={!event.payload?.isFontName}>
-                      {t.utility.clipboard.commandBefore()}
+                      {t.clipboard.toasts.commandBefore()}
                       <CommandIcon class='mx-0.5 inline size-4 -translate-y-px' />
-                      {t.utility.clipboard.commandAfter()}
+                      {t.clipboard.toasts.commandAfter()}
                     </Show>
                   </div>
                 </div>,

@@ -90,20 +90,22 @@ export function ListContent() {
   const handleApply = (item: FontItem) =>
     applyFontToPlugins(item)
       .then(() =>
-        toast.success(t.plugins.applied({ name: item.meta.font_name })),
+        toast.success(t.plugins.toasts.applied({ name: item.meta.font_name })),
       )
       .catch((error) => {
         console.error('Failed to send font to plugins:', error);
-        toast.error(t.plugins.applyFailed());
+        toast.error(t.plugins.toasts.applyFailed());
       });
 
   const handleCopy = (item: FontItem) =>
     navigator.clipboard
       .writeText(item.meta.font_name)
-      .then(() => toast.success(t.list.copied({ name: item.meta.font_name })))
+      .then(() =>
+        toast.success(t.list.toasts.copied({ name: item.meta.font_name })),
+      )
       .catch((error) => {
         console.error('Failed to copy font name:', error);
-        toast.error(t.list.copyFailed());
+        toast.error(t.list.toasts.copyFailed());
       });
 
   // When no plugin is connected, clicking falls back to copying the font name

@@ -33,7 +33,7 @@ export function GraphUtilityControls() {
             <Undo2Icon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t.utility.controls.undo()}</TooltipContent>
+        <TooltipContent>{t.graph.utilityControls.undo.title()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -48,7 +48,7 @@ export function GraphUtilityControls() {
             <Redo2Icon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t.utility.controls.redo()}</TooltipContent>
+        <TooltipContent>{t.graph.utilityControls.redo.title()}</TooltipContent>
       </Tooltip>
 
       <div class='pointer-events-none mx-1 h-4 border-l' />
@@ -68,28 +68,34 @@ export function GraphUtilityControls() {
             <SparklesIcon class='size-4' />
           </Button>
         </TooltipTrigger>
-        <TooltipContent>{t.utility.controls.checkForUpdates()}</TooltipContent>
+        <TooltipContent>
+          {t.graph.utilityControls.checkForUpdates.title()}
+        </TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <SessionHistory class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>{t.utility.sessionHistory.open()}</TooltipContent>
+        <TooltipContent>
+          {t.graph.utilityControls.sessionHistory.title()}
+        </TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <LanguageToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>{t.utility.controls.language()}</TooltipContent>
+        <TooltipContent>
+          {t.graph.utilityControls.language.title()}
+        </TooltipContent>
       </Tooltip>
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <ThemeModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
         </TooltipTrigger>
-        <TooltipContent>{t.utility.controls.theme()}</TooltipContent>
+        <TooltipContent>{t.graph.utilityControls.theme.title()}</TooltipContent>
       </Tooltip>
     </div>
   );

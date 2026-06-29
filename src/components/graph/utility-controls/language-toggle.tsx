@@ -13,9 +13,9 @@ export function LanguageToggle(props: { class?: string }) {
   const { t, language, setLanguage } = useI18n();
 
   const options: { value: LanguageSelection; label: () => string }[] = [
-    { value: 'en', label: () => t.language.english() },
-    { value: 'ja', label: () => t.language.japanese() },
-    { value: 'system', label: () => t.language.system() },
+    { value: 'en', label: () => t.graph.utilityControls.language.english() },
+    { value: 'ja', label: () => t.graph.utilityControls.language.japanese() },
+    { value: 'system', label: () => t.graph.utilityControls.language.system() },
   ];
 
   return (
@@ -27,7 +27,7 @@ export function LanguageToggle(props: { class?: string }) {
         class={props.class}
       >
         <Globe class='size-6 transition-all' />
-        <span class='sr-only'>{t.language.toggle()}</span>
+        <span class='sr-only'>{t.graph.utilityControls.language.toggle()}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='rounded-lg bg-slate-50 dark:bg-zinc-900'>
         <For each={options}>

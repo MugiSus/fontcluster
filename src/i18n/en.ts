@@ -5,6 +5,10 @@
  * (e.g. {@link ja}) is typed against it, so a missing or misspelt key is a
  * compile error rather than a raw key leaking into the UI.
  *
+ * Structure mirrors the component tree and feature ownership. Toast copy lives
+ * under the feature that emits it, e.g. `list.toasts.copyFailed`, because
+ * `toast()` is the delivery surface rather than the owner of the message.
+ *
  * Notes on intentionally untranslated strings:
  * - Font weight names (`WEIGHT_LABELS`) and hierarchical clustering linkage
  *   names (`CLUSTERING_METHOD_LABELS`) stay in English as typography/algorithm
@@ -19,6 +23,7 @@ export const en = {
     list: 'list',
     chat: 'chat',
     close: 'Close {{title}} panel',
+    open: 'Open {{title}} panel',
   },
   controlPanel: {
     text: 'Sample',
@@ -75,19 +80,86 @@ export const en = {
       copy: 'Copy family name',
       applyToPlugins: 'Apply to plugins',
     },
+    toasts: {
+      lassoFailed: 'Lasso failed: {{error}}',
+    },
+    utilityControls: {
+      undo: {
+        title: 'Undo',
+      },
+      redo: {
+        title: 'Redo',
+      },
+      checkForUpdates: {
+        title: 'Check for updates',
+      },
+      theme: {
+        title: 'Theme',
+        toggle: 'Toggle theme',
+        light: 'Light',
+        dark: 'Dark',
+        system: 'System',
+      },
+      language: {
+        title: 'Language',
+        toggle: 'Change language',
+        system: 'System',
+        english: 'English',
+        japanese: '日本語',
+      },
+      sessionHistory: {
+        title: 'History',
+        open: 'Open history',
+        empty: 'No sessions yet.',
+        loading: 'Loading history...',
+        stop: 'Stop',
+        restore: 'Open',
+        continueProcessing: 'Resume',
+        delete: 'Delete',
+        undoDelete: 'Undo',
+        statusRendering: 'Rendering',
+        statusAnalyzing: 'Analyzing',
+        statusPositioning: 'Positioning',
+        statusClustering: 'Clustering',
+        statusStopped: 'Stopped',
+        processing: 'Processing',
+        progress: 'Progress',
+        summary:
+          '{{weights}} weights · {{samples}} samples · {{clusters}} clusters',
+        deleted: 'Session deleted for "{{text}}"',
+      },
+      plugins: {
+        title: 'Plugins',
+        empty: 'No plugins connected.',
+        description:
+          'Connect the Fontcluster Apply plugin to change fonts directly in design tools.',
+        installHintBeforePlug:
+          'Launch the Fontcluster Apply plugin in Figma or Adobe Illustrator, then click',
+        installHintAfterPlug: 'icon to apply the selected font.',
+        plugIcon: 'plug icon',
+        noDocument: 'No document',
+        getPlugin: 'Get Fontcluster Apply on Figma',
+        illustratorSoon: 'Adobe Illustrator support is coming soon.',
+      },
+    },
   },
-  utility: {
-    controls: {
-      undo: 'Undo',
-      redo: 'Redo',
-      checkForUpdates: 'Check for updates',
-      theme: 'Theme',
-      language: 'Language',
+  list: {
+    selectPrompt: 'Select a font to see similar fonts',
+    clearPreviewText: 'Clear',
+    applyToPlugins: 'Apply {{name}} {{weight}} to plugins',
+    copyFontName: 'Copy {{name}}',
+    fontPreviewAlt: 'Font preview for {{name}}',
+    toasts: {
+      copied: 'Copied "{{name}}"',
+      copyFailed: 'Failed to copy',
     },
-    sessionHistory: {
-      open: 'History',
-    },
-    clipboard: {
+  },
+  chat: {
+    title: 'FontCluster Chat',
+    description: 'Coming soon...',
+  },
+  clipboard: {
+    toasts: {
       tips: 'Tips:',
       shiftBefore: 'Hold the Shift',
       shiftAfter:
@@ -96,82 +168,30 @@ export const en = {
       commandAfter: 'to copy the weight as well.',
     },
   },
-  sessionHistory: {
-    title: 'History',
-    open: 'Open history',
-    empty: 'No sessions yet.',
-    loading: 'Loading history...',
-    stop: 'Stop',
-    restore: 'Open',
-    continueProcessing: 'Resume',
-    delete: 'Delete',
-    undoDelete: 'Undo',
-    statusRendering: 'Rendering',
-    statusAnalyzing: 'Analyzing',
-    statusPositioning: 'Positioning',
-    statusClustering: 'Clustering',
-    statusStopped: 'Stopped',
-    processing: 'Processing',
-    progress: 'Progress',
-    summary:
-      '{{weights}} weights · {{samples}} samples · {{clusters}} clusters',
-    deleted: 'Session deleted for "{{text}}"',
-  },
-  list: {
-    selectPrompt: 'Select a font to see similar fonts',
-    clearPreviewText: 'Clear',
-    applyToPlugins: 'Apply {{name}} {{weight}} to plugins',
-    copyFontName: 'Copy {{name}}',
-    copied: 'Copied "{{name}}"',
-    copyFailed: 'Failed to copy',
-    fontPreviewAlt: 'Font preview for {{name}}',
-  },
   plugins: {
-    title: 'Plugins',
-    empty: 'No plugins connected.',
-    description:
-      'Connect the Fontcluster Apply plugin to change fonts directly in design tools.',
-    installHintBeforePlug:
-      'Launch the Fontcluster Apply plugin in Figma or Adobe Illustrator, then click',
-    installHintAfterPlug: 'icon to apply the selected font.',
-    plugIcon: 'plug icon',
-    noDocument: 'No document',
-    getPlugin: 'Get Fontcluster Apply on Figma',
-    illustratorSoon: 'Adobe Illustrator support is coming soon.',
-    applied: 'Applied "{{name}}" to plugin',
-    applyFailed: 'Failed to apply font to plugin',
-  },
-  chat: {
-    title: 'FontCluster Chat',
-    description: 'Coming soon...',
-  },
-  theme: {
-    toggle: 'Toggle theme',
-    light: 'Light',
-    dark: 'Dark',
-    system: 'System',
-  },
-  language: {
-    toggle: 'Change language',
-    system: 'System',
-    english: 'English',
-    japanese: '日本語',
+    toasts: {
+      applied: 'Applied "{{name}}" to plugin',
+      applyFailed: 'Failed to apply font to plugin',
+    },
   },
   jobs: {
-    started: 'Job started: "{{text}}"',
-    completed: 'Job completed successfully!',
-    view: 'View',
-    failed: 'Job failed: {{error}}',
-    lassoFailed: 'Lasso failed: {{error}}',
+    toasts: {
+      started: 'Job started: "{{text}}"',
+      completed: 'Job completed successfully!',
+      view: 'View',
+      failed: 'Job failed: {{error}}',
+    },
   },
   updater: {
-    checking: 'Checking for updates...',
-    available: 'New version {{version}} is available!',
-    downloading: 'Downloading and installing update...',
-    installed: 'Update installed!',
-    applyOnLaunch: 'Update will be applied on the next launch.',
-    restart: 'Restart',
-    upToDate: "You're using the latest version. All set!",
-    failed: 'Failed to check for updates',
+    toasts: {
+      checking: 'Checking for updates...',
+      available: 'New version {{version}} is available!',
+      downloading: 'Downloading and installing update...',
+      installed: 'Update installed!',
+      applyOnLaunch: 'Update will be applied on the next launch.',
+      restart: 'Restart',
+      upToDate: "You're using the latest version. All set!",
+      failed: 'Failed to check for updates',
+    },
   },
 };

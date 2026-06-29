@@ -45,7 +45,7 @@ export function PluginConnectionsMenu() {
             variant='ghost'
             size='icon'
             class='relative size-8 rounded-full text-muted-foreground'
-            aria-label={t.plugins.title()}
+            aria-label={t.graph.utilityControls.plugins.title()}
           >
             <Plug2Icon class='size-3.5' />
             <Show when={appState.plugins.isConnected}>
@@ -54,21 +54,21 @@ export function PluginConnectionsMenu() {
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-80 p-1'>
             <DropdownMenuLabel class='text-xs font-medium'>
-              {t.plugins.title()}
+              {t.graph.utilityControls.plugins.title()}
             </DropdownMenuLabel>
             <Show
               when={appState.plugins.isConnected}
               fallback={
                 <div class='flex flex-col gap-1 px-2 py-1 text-xs font-light leading-relaxed text-muted-foreground'>
-                  <p>{t.plugins.empty()}</p>
-                  <p>{t.plugins.description()}</p>
+                  <p>{t.graph.utilityControls.plugins.empty()}</p>
+                  <p>{t.graph.utilityControls.plugins.description()}</p>
                   <p>
-                    {t.plugins.installHintBeforePlug()}
+                    {t.graph.utilityControls.plugins.installHintBeforePlug()}
                     <Plug2Icon
                       class='mx-0.5 inline size-3.5 -translate-y-px'
-                      aria-label={t.plugins.plugIcon()}
+                      aria-label={t.graph.utilityControls.plugins.plugIcon()}
                     />
-                    {t.plugins.installHintAfterPlug()}
+                    {t.graph.utilityControls.plugins.installHintAfterPlug()}
                   </p>
                 </div>
               }
@@ -101,7 +101,7 @@ export function PluginConnectionsMenu() {
                       when={plugin.document_name}
                       fallback={
                         <p class='text-muted-foreground'>
-                          {t.plugins.noDocument()}
+                          {t.graph.utilityControls.plugins.noDocument()}
                         </p>
                       }
                     >
@@ -120,15 +120,17 @@ export function PluginConnectionsMenu() {
               onSelect={() => openUrl(FIGMA_PLUGIN_URL)}
             >
               <ExternalLinkIcon class='size-3.5' />
-              <span class='min-w-0 truncate'>{t.plugins.getPlugin()}</span>
+              <span class='min-w-0 truncate'>
+                {t.graph.utilityControls.plugins.getPlugin()}
+              </span>
             </DropdownMenuItem>
             <p class='px-2 pb-1 pt-0.5 text-xs font-normal text-muted-foreground/60'>
-              {t.plugins.illustratorSoon()}
+              {t.graph.utilityControls.plugins.illustratorSoon()}
             </p>
           </DropdownMenuContent>
         </DropdownMenu>
       </TooltipTrigger>
-      <TooltipContent>{t.plugins.title()}</TooltipContent>
+      <TooltipContent>{t.graph.utilityControls.plugins.title()}</TooltipContent>
     </Tooltip>
   );
 }

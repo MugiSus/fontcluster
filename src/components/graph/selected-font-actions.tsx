@@ -92,11 +92,11 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
   const handleApply = (item: FontItem) =>
     applyFontToPlugins(item)
       .then(() =>
-        toast.success(t.plugins.applied({ name: item.meta.font_name })),
+        toast.success(t.plugins.toasts.applied({ name: item.meta.font_name })),
       )
       .catch((error) => {
         console.error('Failed to send font to plugins:', error);
-        toast.error(t.plugins.applyFailed());
+        toast.error(t.plugins.toasts.applyFailed());
       });
 
   return (

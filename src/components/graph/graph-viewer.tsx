@@ -146,7 +146,7 @@ export function GraphViewer(props: GraphViewerProps) {
     if (safeNames.length > 0) {
       processLassoSelection(safeNames).catch((error) => {
         console.error('Failed to process lasso selection:', error);
-        toast.error(t.jobs.lassoFailed({ error: String(error) }));
+        toast.error(t.graph.toasts.lassoFailed({ error: String(error) }));
       });
     }
   };

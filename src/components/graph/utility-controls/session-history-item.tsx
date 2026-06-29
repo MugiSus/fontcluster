@@ -57,13 +57,13 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               <span class='font-bold capitalize text-muted-foreground'>
                 {isRunning()
                   ? session().status.process_status === 'empty'
-                    ? t.sessionHistory.statusRendering()
+                    ? t.graph.utilityControls.sessionHistory.statusRendering()
                     : session().status.process_status === 'rendered'
-                      ? t.sessionHistory.statusAnalyzing()
+                      ? t.graph.utilityControls.sessionHistory.statusAnalyzing()
                       : session().status.process_status === 'analyzed'
-                        ? t.sessionHistory.statusPositioning()
-                        : t.sessionHistory.statusClustering()
-                  : t.sessionHistory.statusStopped()}
+                        ? t.graph.utilityControls.sessionHistory.statusPositioning()
+                        : t.graph.utilityControls.sessionHistory.statusClustering()
+                  : t.graph.utilityControls.sessionHistory.statusStopped()}
               </span>
             </Show>
             <time class='truncate text-muted-foreground'>
@@ -82,7 +82,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           </p>
           <Show when={isComplete()}>
             <p class='truncate text-muted-foreground'>
-              {t.sessionHistory.summary({
+              {t.graph.utilityControls.sessionHistory.summary({
                 weights: session().algorithm.rendering.weights.length,
                 samples: session().status.samples_amount,
                 clusters: session().status.clusters_amount,
@@ -102,7 +102,9 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               >
                 <SquareIcon class='size-3' />
               </TooltipTrigger>
-              <TooltipContent>{t.sessionHistory.stop()}</TooltipContent>
+              <TooltipContent>
+                {t.graph.utilityControls.sessionHistory.stop()}
+              </TooltipContent>
             </Tooltip>
           </Show>
 
@@ -118,7 +120,9 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               >
                 <RotateCcwIcon class='size-3.5' />
               </TooltipTrigger>
-              <TooltipContent>{t.sessionHistory.restore()}</TooltipContent>
+              <TooltipContent>
+                {t.graph.utilityControls.sessionHistory.restore()}
+              </TooltipContent>
             </Tooltip>
           </Show>
 
@@ -134,7 +138,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
                 <PlayIcon class='size-3.5' />
               </TooltipTrigger>
               <TooltipContent>
-                {t.sessionHistory.continueProcessing()}
+                {t.graph.utilityControls.sessionHistory.continueProcessing()}
               </TooltipContent>
             </Tooltip>
           </Show>
@@ -150,7 +154,9 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             >
               <Trash2Icon class='size-3.5' />
             </TooltipTrigger>
-            <TooltipContent>{t.sessionHistory.delete()}</TooltipContent>
+            <TooltipContent>
+              {t.graph.utilityControls.sessionHistory.delete()}
+            </TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -168,8 +174,8 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
           <div class='flex justify-between gap-2 text-muted-foreground'>
             <p class='truncate'>
               {isRunning()
-                ? t.sessionHistory.processing()
-                : t.sessionHistory.progress()}
+                ? t.graph.utilityControls.sessionHistory.processing()
+                : t.graph.utilityControls.sessionHistory.progress()}
             </p>
             <p class='shrink-0 tabular-nums'>
               {Math.round(progressValue() * 100)}%

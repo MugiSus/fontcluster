@@ -11,6 +11,7 @@ export const ja: Dictionary = {
     list: 'リスト',
     chat: 'チャット',
     close: '{{title}}を閉じる',
+    open: '{{title}}を開く',
   },
   controlPanel: {
     text: 'サンプル',
@@ -67,19 +68,87 @@ export const ja: Dictionary = {
       copy: 'コピー',
       applyToPlugins: 'プラグインへ適用',
     },
+    toasts: {
+      lassoFailed: '投げ縄選択に失敗しました: {{error}}',
+    },
+    utilityControls: {
+      undo: {
+        title: '取り消す',
+      },
+      redo: {
+        title: 'やり直す',
+      },
+      checkForUpdates: {
+        title: 'アップデートを確認',
+      },
+      theme: {
+        title: 'テーマ',
+        toggle: 'テーマを変更',
+        light: 'ライト',
+        dark: 'ダーク',
+        system: 'システム',
+      },
+      language: {
+        title: '言語',
+        toggle: '言語を変更',
+        system: 'システム',
+        english: 'English',
+        japanese: '日本語',
+      },
+      sessionHistory: {
+        title: '履歴',
+        open: '履歴を開く',
+        empty: '履歴がありません',
+        loading: '履歴を読み込んでいます...',
+        stop: '中止',
+        restore: '開く',
+        continueProcessing: '再開',
+        delete: '削除',
+        undoDelete: '取り消す',
+        statusRendering: 'レンダリング中',
+        statusAnalyzing: '解析中',
+        statusPositioning: '配置中',
+        statusClustering: 'クラスタリング中',
+        statusStopped: '中断',
+        processing: '処理中',
+        progress: '進捗',
+        summary:
+          'ウェイト {{weights}} 種・サンプル {{samples}} 個・クラスタ {{clusters}} 個',
+        deleted: 'セッションを削除しました（"{{text}}"）',
+      },
+      plugins: {
+        title: 'プラグイン',
+        empty: '接続中のプラグインはありません。',
+        description:
+          'Fontcluster Apply プラグインと連携することで、デザインツールのテキストのフォントを直接変更することができます。',
+        installHintBeforePlug:
+          'Figma もしくは Adobe Illustrator で Fontcluster Apply プラグインを起動し、',
+        installHintAfterPlug:
+          'アイコンをクリックすると選択したフォントが自動的に適用されます。',
+        plugIcon: 'プラグアイコン',
+        noDocument: 'ドキュメントなし',
+        getPlugin: 'Figma で Fontcluster Apply を入手',
+        illustratorSoon: 'Adobe Illustrator プラグインは現在開発中です',
+      },
+    },
   },
-  utility: {
-    controls: {
-      undo: '取り消す',
-      redo: 'やり直す',
-      checkForUpdates: 'アップデートを確認',
-      theme: 'テーマ',
-      language: '言語',
+  list: {
+    selectPrompt: 'フォントを選択してください',
+    clearPreviewText: '消去',
+    applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
+    copyFontName: '{{name}} をコピー',
+    fontPreviewAlt: '{{name}} のプレビュー',
+    toasts: {
+      copied: '"{{name}}" をコピーしました',
+      copyFailed: 'コピーに失敗しました',
     },
-    sessionHistory: {
-      open: '履歴',
-    },
-    clipboard: {
+  },
+  chat: {
+    title: 'FontCluster Chat',
+    description: '今後実装予定..',
+  },
+  clipboard: {
+    toasts: {
       tips: 'Tips:',
       shiftBefore: 'Shift',
       shiftAfter:
@@ -88,83 +157,30 @@ export const ja: Dictionary = {
       commandAfter: 'を押すとウェイトも同時にコピーできます。',
     },
   },
-  sessionHistory: {
-    title: '履歴',
-    open: '履歴を開く',
-    empty: '履歴がありません',
-    loading: '履歴を読み込んでいます...',
-    stop: '中止',
-    restore: '開く',
-    continueProcessing: '再開',
-    delete: '削除',
-    undoDelete: '取り消す',
-    statusRendering: 'レンダリング中',
-    statusAnalyzing: '解析中',
-    statusPositioning: '配置中',
-    statusClustering: 'クラスタリング中',
-    statusStopped: '中断',
-    processing: '処理中',
-    progress: '進捗',
-    summary:
-      'ウェイト {{weights}} 種・サンプル {{samples}} 個・クラスタ {{clusters}} 個',
-    deleted: 'セッションを削除しました（"{{text}}"）',
-  },
-  list: {
-    selectPrompt: 'フォントを選択してください',
-    clearPreviewText: '消去',
-    applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
-    copyFontName: '{{name}} をコピー',
-    copied: '"{{name}}" をコピーしました',
-    copyFailed: 'コピーに失敗しました',
-    fontPreviewAlt: '{{name}} のプレビュー',
-  },
   plugins: {
-    title: 'プラグイン',
-    empty: '接続中のプラグインはありません。',
-    description:
-      'Fontcluster Apply プラグインと連携することで、デザインツールのテキストのフォントを直接変更することができます。',
-    installHintBeforePlug:
-      'Figma もしくは Adobe Illustrator で Fontcluster Apply プラグインを起動し、',
-    installHintAfterPlug:
-      'アイコンをクリックすると選択したフォントが自動的に適用されます。',
-    plugIcon: 'プラグアイコン',
-    noDocument: 'ドキュメントなし',
-    getPlugin: 'Figma で Fontcluster Apply を入手',
-    illustratorSoon: 'Adobe Illustrator プラグインは現在開発中です',
-    applied: 'プラグインで "{{name}}" を適用しました',
-    applyFailed: 'プラグインへの適用に失敗しました',
-  },
-  chat: {
-    title: 'FontCluster Chat',
-    description: '今後実装予定..',
-  },
-  theme: {
-    toggle: 'テーマを変更',
-    light: 'ライト',
-    dark: 'ダーク',
-    system: 'システム',
-  },
-  language: {
-    toggle: '言語を変更',
-    system: 'システム',
-    english: 'English',
-    japanese: '日本語',
+    toasts: {
+      applied: 'プラグインで "{{name}}" を適用しました',
+      applyFailed: 'プラグインへの適用に失敗しました',
+    },
   },
   jobs: {
-    started: 'ジョブを開始しました（"{{text}}"）',
-    completed: '処理が完了しました',
-    view: '表示',
-    failed: 'ジョブが失敗しました: {{error}}',
-    lassoFailed: '投げ縄選択に失敗しました: {{error}}',
+    toasts: {
+      started: 'ジョブを開始しました（"{{text}}"）',
+      completed: '処理が完了しました',
+      view: '表示',
+      failed: 'ジョブが失敗しました: {{error}}',
+    },
   },
   updater: {
-    checking: 'アップデートを確認しています...',
-    available: '新しいバージョン {{version}} を利用できます！',
-    downloading: 'アップデートをインストールしています...',
-    installed: 'アップデートをインストールしました',
-    applyOnLaunch: 'アップデートは次回の起動時に適用されます。',
-    restart: '再起動',
-    upToDate: '最新バージョンを使用しています。',
-    failed: 'アップデートを確認できませんでした',
+    toasts: {
+      checking: 'アップデートを確認しています...',
+      available: '新しいバージョン {{version}} を利用できます！',
+      downloading: 'アップデートをインストールしています...',
+      installed: 'アップデートをインストールしました',
+      applyOnLaunch: 'アップデートは次回の起動時に適用されます。',
+      restart: '再起動',
+      upToDate: '最新バージョンを使用しています。',
+      failed: 'アップデートを確認できませんでした',
+    },
   },
 };

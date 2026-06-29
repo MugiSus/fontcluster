@@ -220,23 +220,23 @@ export function useAppEvents() {
   const handleAppUpdateCheck = async (options?: { isManual?: boolean }) => {
     try {
       if (options?.isManual)
-        toast.info(t.updater.checking(), {
+        toast.info(t.updater.toasts.checking(), {
           duration: 3000,
         });
 
       const update = await check();
 
       if (update) {
-        toast.info(t.updater.available({ version: update.version }), {
-          description: t.updater.downloading(),
+        toast.info(t.updater.toasts.available({ version: update.version }), {
+          description: t.updater.toasts.downloading(),
           duration: 3000,
         });
 
         await update.downloadAndInstall();
-        toast.success(t.updater.installed(), {
-          description: t.updater.applyOnLaunch(),
+        toast.success(t.updater.toasts.installed(), {
+          description: t.updater.toasts.applyOnLaunch(),
           action: {
-            label: t.updater.restart(),
+            label: t.updater.toasts.restart(),
             onClick: async () => {
               await relaunch();
             },
@@ -248,14 +248,14 @@ export function useAppEvents() {
       }
 
       if (options?.isManual)
-        toast.info(t.updater.upToDate(), {
+        toast.info(t.updater.toasts.upToDate(), {
           duration: 3000,
         });
     } catch (error) {
       console.error('Failed to check for updates:', error);
 
       if (options?.isManual) {
-        toast.error(t.updater.failed(), {
+        toast.error(t.updater.toasts.failed(), {
           description: error instanceof Error ? error.message : String(error),
         });
       }
@@ -296,10 +296,10 @@ export function useAppEvents() {
         'All jobs completed successfully for session:',
         event.payload,
       );
-      toast.success(t.jobs.completed(), {
+      toast.success(t.jobs.toasts.completed(), {
         id: `job-complete-${event.payload}`,
         action: {
-          label: t.jobs.view(),
+          label: t.jobs.toasts.view(),
           onClick: () => setCurrentSessionId(event.payload),
         },
         duration: 20000,

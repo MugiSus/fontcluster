@@ -2,6 +2,7 @@ import { Show } from 'solid-js';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
 import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { CollapsiblePanelKey, PanelState } from '../../types/panels';
 
 interface GraphPanelReopenControlsProps {
@@ -22,24 +23,40 @@ export function GraphPanelReopenControls(props: GraphPanelReopenControlsProps) {
         data-tauri-drag-region
       >
         <Show when={!props.panelState.control}>
-          <Button
-            variant='ghost'
-            size='sm'
-            class='h-8 rounded-full px-3 text-xs capitalize text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-            onClick={() => props.onReopenPanel('control')}
-          >
-            {t.panels.control()}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger as='div' class='rounded-full'>
+              <Button
+                variant='ghost'
+                size='sm'
+                class='h-8 rounded-full px-3 text-xs capitalize text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                onClick={() => props.onReopenPanel('control')}
+                aria-label={t.panels.open({ title: t.panels.control() })}
+              >
+                {t.panels.control()}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {t.panels.open({ title: t.panels.control() })}
+            </TooltipContent>
+          </Tooltip>
         </Show>
         <Show when={!props.panelState.list}>
-          <Button
-            variant='ghost'
-            size='sm'
-            class='h-8 rounded-full px-3 text-xs capitalize text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-            onClick={() => props.onReopenPanel('list')}
-          >
-            {t.panels.list()}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger as='div' class='rounded-full'>
+              <Button
+                variant='ghost'
+                size='sm'
+                class='h-8 rounded-full px-3 text-xs capitalize text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                onClick={() => props.onReopenPanel('list')}
+                aria-label={t.panels.open({ title: t.panels.list() })}
+              >
+                {t.panels.list()}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {t.panels.open({ title: t.panels.list() })}
+            </TooltipContent>
+          </Tooltip>
         </Show>
         {/* Chat panel temporarily hidden until the feature is ready */}
       </div>

@@ -221,10 +221,12 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const continueSessionProcessing = (session: SessionConfig) => {
-    toast.info(t.jobs.started({ text: session.algorithm.rendering.text }));
+    toast.info(
+      t.jobs.toasts.started({ text: session.algorithm.rendering.text }),
+    );
     runProcessingJobs(session.algorithm, session.session_id).catch((error) => {
       console.error('Failed to process fonts:', error);
-      toast.error(t.jobs.failed({ error: String(error) }));
+      toast.error(t.jobs.toasts.failed({ error: String(error) }));
     });
   };
 
@@ -293,7 +295,11 @@ export function SessionHistory(props: SessionHistoryProps) {
     sampleText: string;
   }) => (
     <div class='flex items-center justify-between rounded-sm px-3 py-4 text-xs text-muted-foreground'>
-      <span>{t.sessionHistory.deleted({ text: itemProps.sampleText })}</span>
+      <span>
+        {t.graph.utilityControls.sessionHistory.deleted({
+          text: itemProps.sampleText,
+        })}
+      </span>
       <Button
         type='button'
         variant='ghost'
@@ -302,7 +308,7 @@ export function SessionHistory(props: SessionHistoryProps) {
         onClick={() => undoDeleteSession(itemProps.sessionId)}
       >
         <UndoIcon class='size-3' />
-        {t.sessionHistory.undoDelete()}
+        {t.graph.utilityControls.sessionHistory.undoDelete()}
       </Button>
     </div>
   );
@@ -318,7 +324,7 @@ export function SessionHistory(props: SessionHistoryProps) {
           props.class,
           sessionHistory.some(isUnseenCompletedSession) && 'text-foreground',
         )}
-        aria-label={t.sessionHistory.open()}
+        aria-label={t.graph.utilityControls.sessionHistory.open()}
       >
         <HistoryIcon class='size-4' />
         <Show
@@ -334,7 +340,7 @@ export function SessionHistory(props: SessionHistoryProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='text-xs font-medium'>
-          {t.sessionHistory.title()}
+          {t.graph.utilityControls.sessionHistory.title()}
         </DropdownMenuLabel>
 
         <Show
@@ -342,8 +348,8 @@ export function SessionHistory(props: SessionHistoryProps) {
           fallback={
             <p class='px-2 py-3 text-xs text-muted-foreground'>
               {isLoadingSessions()
-                ? t.sessionHistory.loading()
-                : t.sessionHistory.empty()}
+                ? t.graph.utilityControls.sessionHistory.loading()
+                : t.graph.utilityControls.sessionHistory.empty()}
             </p>
           }
         >
