@@ -71,14 +71,16 @@ export const en = {
       title: 'No Results',
       hint: 'Complete processing to see results',
     },
+    selectedFontActions: {
+      copy: 'Copy family name',
+      applyToPlugins: 'Apply to plugins',
+    },
   },
   utility: {
     controls: {
       undo: 'Undo',
       redo: 'Redo',
       checkForUpdates: 'Check for updates',
-      copy: 'Copy family name',
-      applyToPlugins: 'Apply to plugins',
       theme: 'Theme',
       language: 'Language',
     },

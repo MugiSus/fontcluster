@@ -102,6 +102,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
             <div
               class='pointer-events-auto flex origin-top items-center justify-center gap-0 rounded-full border border-border/50 bg-background/50 shadow-inner-background backdrop-blur-md animate-in fade-in-0 zoom-in-95 slide-in-from-top-1'
               onMouseDown={(event) => event.stopPropagation()}
+              onMouseMove={(event) => event.stopPropagation()}
               onMouseUp={(event) => event.stopPropagation()}
             >
               <Tooltip>
@@ -115,7 +116,9 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
                     <CopyIcon class='size-4' />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t.utility.controls.copy()}</TooltipContent>
+                <TooltipContent>
+                  {t.graph.selectedFontActions.copy()}
+                </TooltipContent>
               </Tooltip>
 
               <Show when={appState.plugins.isConnected}>
@@ -131,7 +134,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {t.utility.controls.applyToPlugins()}
+                    {t.graph.selectedFontActions.applyToPlugins()}
                   </TooltipContent>
                 </Tooltip>
               </Show>

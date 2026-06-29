@@ -63,14 +63,16 @@ export const ja: Dictionary = {
       title: 'まだ結果がありません',
       hint: '処理が完了すると結果が表示されます。',
     },
+    selectedFontActions: {
+      copy: 'コピー',
+      applyToPlugins: 'プラグインに適用',
+    },
   },
   utility: {
     controls: {
       undo: '取り消す',
       redo: 'やり直す',
       checkForUpdates: 'アップデートを確認',
-      copy: 'コピー',
-      applyToPlugins: 'プラグインに適用',
       theme: 'テーマ',
       language: '言語',
     },

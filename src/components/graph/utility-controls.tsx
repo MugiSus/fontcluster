@@ -1,7 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
-import { CopyIcon, Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
+import { Redo2Icon, SparklesIcon, Undo2Icon } from 'lucide-solid';
 import { selectionHistory } from '@/selection-history';
-import { appState } from '@/store';
 import { useI18n } from '@/i18n';
 import { LanguageToggle } from '../language-toggle';
 import { ThemeModeToggle } from '../theme-mode-toggle';
@@ -11,12 +10,6 @@ import { SessionHistory } from './session-history';
 
 export function GraphUtilityControls() {
   const { t } = useI18n();
-  const copyCurrentSelectedFont = (event: MouseEvent) => {
-    emit('copy_family_name', {
-      toast: true,
-      isFontName: event.ctrlKey || event.metaKey,
-    });
-  };
 
   const handleManualUpdateCheck = () => {
     emit('check-update-requested');
@@ -71,21 +64,6 @@ export function GraphUtilityControls() {
           </Button>
         </TooltipTrigger>
         <TooltipContent>{t.utility.controls.checkForUpdates()}</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger as='div' class='rounded-full'>
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={copyCurrentSelectedFont}
-            class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-            disabled={!appState.ui.selectedFontKey}
-          >
-            <CopyIcon class='size-4' />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>{t.utility.controls.copy()}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
