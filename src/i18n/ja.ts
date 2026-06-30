@@ -61,8 +61,8 @@ export const ja: Dictionary = {
       searchPlaceholder: 'フォント、デザイナー名など',
     },
     emptyState: {
-      title: 'まだ結果がありません',
-      hint: '処理が完了すると結果が表示されます。',
+      title: 'データがありません',
+      hint: '処理が完了すると表示されます。',
     },
     selectedFontActions: {
       copy: 'コピー',
