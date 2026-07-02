@@ -3,7 +3,7 @@ import type {
   ClusteringOptions,
   RenderingOptions,
   SessionConfig,
-} from '@/types/font';
+} from '@/types/session';
 
 export const DEFAULT_RENDERING_CONFIG: RenderingOptions = {
   text: 'A',

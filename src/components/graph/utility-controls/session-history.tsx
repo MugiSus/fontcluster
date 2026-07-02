@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { appState } from '@/store';
 import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
-import { type SessionConfig } from '@/types/font';
+import { type SessionConfig } from '@/types/session';
 import { SessionHistoryItem } from './session-history-item';
 
 interface SessionHistoryProps {

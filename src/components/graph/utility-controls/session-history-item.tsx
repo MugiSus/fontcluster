@@ -6,7 +6,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { type SessionConfig, type SessionProgressSection } from '@/types/font';
+import {
+  type SessionConfig,
+  type SessionProgressSection,
+} from '@/types/session';
 import { useI18n } from '@/i18n';
 
 interface SessionHistoryItemProps {

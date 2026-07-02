@@ -13,15 +13,15 @@ import {
 import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
 import { PlusIcon, TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '../weight-selector';
+import { type FontWeight } from '../../types/font';
 import {
-  type FontWeight,
   type AlgorithmConfig,
   type RenderingOptions,
   type ClusteringOptions,
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
-} from '../../types/font';
+} from '../../types/session';
 import { appState } from '../../store';
 import { runProcessingJobs } from '../../actions';
 import { useI18n } from '@/i18n';

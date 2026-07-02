@@ -6,8 +6,8 @@ import {
   type FontWeight,
   type FontItemRecord,
   type LassoProcessResult,
-  type SessionConfig,
 } from './types/font';
+import { type SessionConfig } from './types/session';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
 import type { PluginConnection } from './lib/plugin-bridge';
 

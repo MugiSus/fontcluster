@@ -14,10 +14,12 @@ import {
   type FontItemRecord,
   type FontWeight,
   type LassoProcessResult,
+} from './types/font';
+import {
   type SessionConfig,
   type AlgorithmConfig,
   type ProcessStatus,
-} from './types/font';
+} from './types/session';
 
 // --- Session loading ---
 
