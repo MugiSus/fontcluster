@@ -159,7 +159,45 @@ pub struct ProcessingStatus {
     pub clusters_amount: usize,
     /// Number of samples that took part in the last clustering run.
     pub samples_amount: usize,
+    /// Free statistics captured by the last clustering run. Empty until a run
+    /// completes; `#[serde(default)]` keeps `config.json` files written before
+    /// this field existed loadable.
+    #[serde(default)]
+    pub clustering_stats: ClusteringStats,
     pub progress: ProcessingProgress,
+}
+
+/// By-product statistics of a single clustering run, persisted alongside the
+/// cluster/sample counts on [`ProcessingStatus`].
+///
+/// Every field is something the clustering stage already computes and would
+/// otherwise discard, recorded so the UI (and future auto-tuning) can inspect
+/// run quality without re-clustering. Centroids and heights live in the
+/// **normalised PCA space** the clustering ran in — not the 2-D layout space
+/// drawn on the graph.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ClusteringStats {
+    /// Per-cluster statistics, ordered by cluster id (matching each font's
+    /// [`ClusteringData::k`]).
+    pub clusters: Vec<ClusterStat>,
+    /// Linkage height of the last merge applied before the dendrogram was cut;
+    /// `0.0` when no merges were applied.
+    pub cut_height: f32,
+    /// Dissimilarity of every merge in the full dendrogram, in linkage order.
+    /// Lets the UI inspect the gap/elbow around the cut without re-clustering.
+    pub merge_heights: Vec<f32>,
+}
+
+/// Free per-cluster facts recorded for each cluster a run produces.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClusterStat {
+    /// Number of fonts assigned to this cluster.
+    pub size: usize,
+    /// Cluster centroid in the normalised PCA space the clustering ran in.
+    pub centroid: Vec<f32>,
+    /// Largest internal merge height within this cluster (its dendrogram
+    /// diameter); `0.0` for singletons.
+    pub diameter: f32,
 }
 
 /// Progress fractions for each pipeline stage, persisted so the UI can render
@@ -224,11 +262,21 @@ pub struct PositioningData {
     pub position: [f32; 2],
 }
 
-/// Cluster label assigned to a font by the clustering stage.
+/// Per-font results assigned by the clustering stage.
+///
+/// Everything here is a free by-product of the dendrogram replay that derives
+/// `k`; `#[serde(default)]` keeps `computed.json` files written before a field
+/// existed loadable.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusteringData {
     /// Zero-based cluster index, or `-1` if the font was left unclustered.
     pub k: i32,
+    /// Linkage height at which this font first merged into a larger node in
+    /// the full dendrogram — its isolation in the normalised PCA space the
+    /// clustering ran in. Higher means more of an outlier; `0.0` for a lone
+    /// point.
+    #[serde(default)]
+    pub join_height: f32,
 }
 
 /// Descriptive metadata extracted from a single font face.

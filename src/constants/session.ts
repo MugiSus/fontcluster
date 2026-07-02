@@ -34,6 +34,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
     process_status: 'empty',
     clusters_amount: 0,
     samples_amount: 0,
+    clustering_stats: { clusters: [], cut_height: 0, merge_heights: [] },
     progress: {
       rendering: { numerator: 0, denominator: 1 },
       analysis: { numerator: 0, denominator: 1 },

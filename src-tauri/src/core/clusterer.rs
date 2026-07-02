@@ -7,7 +7,8 @@
 
 use crate::commands::progress::progress_events;
 use crate::config::{
-    ClusteringConfig, ClusteringData, ClusteringMethod, ComputedData, ProgressStage,
+    ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
+    ProgressStage,
 };
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
@@ -15,7 +16,7 @@ use crate::core::session::{
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use kodama::{linkage, Method as KodamaMethod};
-use ndarray::Array2;
+use ndarray::{Array2, Axis};
 use petal_decomposition::PcaBuilder;
 
 /// Clusters every analysed font in the active session and persists the labels.
@@ -71,7 +72,8 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     }
 
     let n_samples = points.nrows();
-    let (labels, cluster_count) = agglomerative_clustering(points, &config)?;
+    let (labels, join_heights, stats) = agglomerative_clustering(points, &config)?;
+    let n_clusters = stats.clusters.len();
 
     progress_events::reset_progress(events, state, ProgressStage::Clustering);
     progress_events::set_progress_denominator(
@@ -84,7 +86,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     let session_dir_for_second = session_dir.clone();
     let events = events.clone();
     let state_clone = state.clone();
-    let n_clusters = tokio::task::spawn_blocking(move || -> Result<usize> {
+    tokio::task::spawn_blocking(move || -> Result<()> {
         for (i, id) in ids.iter().enumerate() {
             let meta = load_font_metadata(&session_dir_for_second, id)?;
             let mut computed =
@@ -93,7 +95,10 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
                     positioning: None,
                     clustering: None,
                 });
-            computed.clustering = Some(ClusteringData { k: labels[i] });
+            computed.clustering = Some(ClusteringData {
+                k: labels[i],
+                join_height: join_heights[i],
+            });
             save_computed_data(&session_dir_for_second, &meta.safe_name, &computed)?;
             progress_events::increase_numerator(
                 &events,
@@ -102,7 +107,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
                 1,
             );
         }
-        Ok(cluster_count)
+        Ok(())
     })
     .await
     .map_err(|e| AppError::Processing(e.to_string()))??;
@@ -111,6 +116,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
         s.process_status = crate::config::ProcessStatus::Clustered;
         s.clusters_amount = n_clusters;
         s.samples_amount = n_samples;
+        s.clustering_stats = stats;
     })?;
 
     Ok(())
@@ -141,7 +147,9 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
         .map_err(|e| AppError::Processing(e.to_string()))
 }
 
-/// Runs agglomerative clustering and returns a `(labels, cluster_count)` pair.
+/// Runs agglomerative clustering and returns the per-point `labels`, the
+/// per-point join heights (each font's first-merge dissimilarity, an isolation
+/// score), and the [`ClusteringStats`] captured for the run.
 ///
 /// Points are min-max normalised, all pairwise Euclidean distances are fed to
 /// [`kodama::linkage`], and the resulting dendrogram is replayed merge by
@@ -153,14 +161,28 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
 /// - otherwise no merges are applied (every point is its own cluster).
 ///
 /// `labels[i]` is the cluster index of point `i`; clusters are numbered by
-/// their smallest member index for stable, deterministic ids.
+/// their smallest member index for stable, deterministic ids. The stats are a
+/// free by-product of the replay (per-cluster size/centroid/diameter, the cut
+/// height, and the full merge-height sequence).
 fn agglomerative_clustering(
     points: Array2<f32>,
     config: &ClusteringConfig,
-) -> Result<(Vec<i32>, usize)> {
+) -> Result<(Vec<i32>, Vec<f32>, ClusteringStats)> {
     let n = points.nrows();
     if n == 1 {
-        return Ok((vec![0], 1));
+        // A lone point is its own cluster, never merges (join height 0), and a
+        // single min-max normalised row is all zeros, so its centroid is the
+        // zero vector.
+        let stats = ClusteringStats {
+            clusters: vec![ClusterStat {
+                size: 1,
+                centroid: vec![0.0; points.ncols()],
+                diameter: 0.0,
+            }],
+            cut_height: 0.0,
+            merge_heights: Vec::new(),
+        };
+        return Ok((vec![0], vec![0.0], stats));
     }
 
     let normalized = normalize_points(&points);
@@ -173,6 +195,20 @@ fn agglomerative_clustering(
     }
 
     let dendrogram = linkage(&mut condensed, n, kodama_method(config.method));
+    // Every merge height (full tree), plus per-leaf the height at which each
+    // point is first absorbed — its isolation. A leaf is a direct operand of
+    // exactly one merge, so this fills every entry in one pass.
+    let mut merge_heights = Vec::with_capacity(dendrogram.steps().len());
+    let mut join_heights = vec![0.0f32; n];
+    for step in dendrogram.steps() {
+        merge_heights.push(step.dissimilarity);
+        if step.cluster1 < n {
+            join_heights[step.cluster1] = step.dissimilarity;
+        }
+        if step.cluster2 < n {
+            join_heights[step.cluster2] = step.dissimilarity;
+        }
+    }
     let mut active_count = n;
     let target_cluster_count =
         (config.target_cluster_count > 0).then(|| config.target_cluster_count.clamp(1, n));
@@ -180,6 +216,9 @@ fn agglomerative_clustering(
 
     let mut clusters = vec![Vec::new(); (2 * n) - 1];
     let mut active = vec![false; (2 * n) - 1];
+    // Linkage height at which each internal node formed; leaves stay 0.
+    let mut node_height = vec![0.0f32; (2 * n) - 1];
+    let mut cut_height = 0.0f32;
     for i in 0..n {
         clusters[i].push(i);
         active[i] = true;
@@ -206,6 +245,10 @@ fn agglomerative_clustering(
         members.extend_from_slice(&clusters[left]);
         members.extend_from_slice(&clusters[right]);
         clusters[new_label] = members;
+        // Merges replay in ascending dissimilarity, so the last applied merge
+        // is both this node's height and the overall cut height.
+        node_height[new_label] = step.dissimilarity;
+        cut_height = step.dissimilarity;
         active[left] = false;
         active[right] = false;
         active[new_label] = true;
@@ -216,18 +259,40 @@ fn agglomerative_clustering(
         .iter()
         .enumerate()
         .filter(|(_, is_active)| **is_active)
-        .map(|(cluster_index, _)| clusters[cluster_index].clone())
+        .map(|(node, _)| (node, clusters[node].clone()))
         .collect::<Vec<_>>();
-    active_clusters.sort_by_key(|members| members.iter().copied().min().unwrap_or(usize::MAX));
+    active_clusters
+        .sort_by_key(|(_, members)| members.iter().copied().min().unwrap_or(usize::MAX));
 
     let mut labels = vec![-1; n];
-    for (cluster_id, members) in active_clusters.iter().enumerate() {
+    for (cluster_id, (_, members)) in active_clusters.iter().enumerate() {
         for point_index in members {
             labels[*point_index] = cluster_id as i32;
         }
     }
 
-    Ok((labels, active_clusters.len()))
+    let cluster_stats = active_clusters
+        .iter()
+        .map(|(node, members)| ClusterStat {
+            size: members.len(),
+            centroid: normalized
+                .select(Axis(0), members)
+                .mean_axis(Axis(0))
+                .map(|centroid| centroid.to_vec())
+                .unwrap_or_default(),
+            diameter: node_height[*node],
+        })
+        .collect();
+
+    Ok((
+        labels,
+        join_heights,
+        ClusteringStats {
+            clusters: cluster_stats,
+            cut_height,
+            merge_heights,
+        },
+    ))
 }
 
 /// Min-max normalises each column (feature) into `[0, 1]`, mapping

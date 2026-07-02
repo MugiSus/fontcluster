@@ -60,10 +60,28 @@ export type ProcessStatus =
   | 'positioned'
   | 'clustered';
 
+export interface ClusterStat {
+  size: number;
+  /** Centroid in the normalized PCA space the clustering ran in. */
+  centroid: number[];
+  /** Largest internal merge height within this cluster; 0 for singletons. */
+  diameter: number;
+}
+
+export interface ClusteringStats {
+  /** Per-cluster stats, ordered by cluster id (matches ClusteringData.k). */
+  clusters: ClusterStat[];
+  /** Linkage height at which the dendrogram was cut; 0 if no merges applied. */
+  cut_height: number;
+  /** Dissimilarity of every merge in the full dendrogram, in linkage order. */
+  merge_heights: number[];
+}
+
 export interface ProcessingStatus {
   process_status: ProcessStatus;
   clusters_amount: number;
   samples_amount: number;
+  clustering_stats: ClusteringStats;
   progress: SessionProgress;
 }
 
@@ -96,6 +114,11 @@ export interface PositioningData {
 
 export interface ClusteringData {
   k: number;
+  /**
+   * Linkage height at which this font first merged into a larger node, in the
+   * normalized PCA space the clustering ran in. Higher = more of an outlier.
+   */
+  join_height: number;
 }
 
 export interface ComputedData {
