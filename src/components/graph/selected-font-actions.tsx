@@ -117,23 +117,26 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
               onMouseMove={(event) => event.stopPropagation()}
               onMouseUp={(event) => event.stopPropagation()}
             >
-              <Tooltip>
-                <TooltipTrigger as='div' class='rounded-full'>
-                  <Button
-                    variant='ghost'
-                    size='icon'
-                    onClick={handleCopy}
-                    class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
-                  >
-                    <CopyIcon class='size-4' />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t.graph.selectedFontActions.copy()}
-                </TooltipContent>
-              </Tooltip>
-
-              <Show when={appState.plugins.isConnected}>
+              <Show
+                when={appState.plugins.isConnected}
+                fallback={
+                  <Tooltip>
+                    <TooltipTrigger as='div' class='rounded-full'>
+                      <Button
+                        variant='ghost'
+                        size='icon'
+                        onClick={handleCopy}
+                        class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground'
+                      >
+                        <CopyIcon class='size-4' />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {t.graph.selectedFontActions.copy()}
+                    </TooltipContent>
+                  </Tooltip>
+                }
+              >
                 <Tooltip>
                   <TooltipTrigger as='div' class='rounded-full'>
                     <Button
