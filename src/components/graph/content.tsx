@@ -1,9 +1,13 @@
-import { createEffect, createSignal } from 'solid-js';
+import { batch, createEffect, createSignal } from 'solid-js';
 import { GraphBottomControls } from './bottom-controls';
 import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
 import { appState } from '@/store';
-import { clearLassoResult, setActiveGraphWeights } from '@/actions';
+import {
+  clearLassoResult,
+  setActiveGraphWeights,
+  setVisibleGraphClusters,
+} from '@/actions';
 import { type GraphToolMode } from './types';
 
 export function GraphContent() {
@@ -20,7 +24,10 @@ export function GraphContent() {
   createEffect(() => {
     const weights = sessionWeights();
     if (weights.length > 0) {
-      setActiveGraphWeights(weights);
+      batch(() => {
+        setActiveGraphWeights(weights);
+        setVisibleGraphClusters([]);
+      });
     }
   });
 
