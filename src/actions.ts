@@ -116,6 +116,9 @@ export const refreshPluginConnections = async () => {
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
+export const setVisibleGraphClusters = (clusterIds: number[]) =>
+  setAppState('ui', 'visibleGraphClusters', clusterIds);
+
 export const clearLassoResult = () => {
   batch(() => {
     setAppState('ui', 'lassoResult', null);

@@ -31,6 +31,7 @@ export interface AppState {
     searchQuery: string;
     listPreviewText: string;
     activeGraphWeights: FontWeight[];
+    visibleGraphClusters: number[];
   };
   plugins: {
     connections: PluginConnection[];
@@ -97,6 +98,7 @@ export const [appState, setAppState] = createStore<AppState>({
     searchQuery: '',
     listPreviewText: '',
     activeGraphWeights: [400],
+    visibleGraphClusters: [],
   },
   plugins: {
     connections: [],
@@ -143,6 +145,7 @@ export const filteredKeysMemo = createRoot(() => {
     const q = appState.ui.searchQuery;
     const data = appState.fonts.displayData;
     const activeWeights = new Set(appState.ui.activeGraphWeights);
+    const visibleClusters = new Set(appState.ui.visibleGraphClusters);
     const keys = Object.keys(data);
     if (keys.length === 0) return new Set<string>();
     if (activeWeights.size === 0) return new Set<string>();
@@ -156,7 +159,17 @@ export const filteredKeysMemo = createRoot(() => {
     return new Set(
       queryMatchedKeys.filter((key) => {
         const item = data[key];
-        return item ? activeWeights.has(item.meta.weight as FontWeight) : false;
+        if (!item) return false;
+        if (!activeWeights.has(item.meta.weight as FontWeight)) return false;
+        // No selection means "show every cluster"; otherwise keep only the
+        // fonts whose cluster is one of the selected ones.
+        if (visibleClusters.size > 0) {
+          const clusterId = item.computed?.clustering?.k;
+          if (clusterId === undefined || !visibleClusters.has(clusterId)) {
+            return false;
+          }
+        }
+        return true;
       }),
     );
   });

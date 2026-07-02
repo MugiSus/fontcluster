@@ -2,12 +2,16 @@ import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { SearchIcon, XIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
-import { setSelectedFontKey } from '@/actions';
+import { setSelectedFontKey, setVisibleGraphClusters } from '@/actions';
 import { cn } from '@/lib/utils';
 import { type FontWeight } from '@/types/font';
 import { useFilteredFontMetadataKeys } from '@/hooks/use-filtered-font-metadata-keys';
 import { useDismiss } from '@/hooks/use-dismiss';
 import { WeightSelector } from '@/components/weight-selector';
+import { ClusterSelector } from '@/components/cluster-selector';
+
+/** How many of the largest clusters get a visibility toggle, for now. */
+const MAX_CLUSTER_TOGGLES = 9;
 
 interface GraphFilterDockProps {
   isOpen: boolean;
@@ -24,6 +28,17 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
 
   const [query, setQuery] = createSignal(appState.ui.searchQuery);
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
+
+  // The largest clusters get a visibility toggle. Pick the top ids by size,
+  // then order them by id so the swatch colors stay in a stable sequence.
+  const topClusterIds = createMemo(() =>
+    appState.session.status.clustering_stats.clusters
+      .map((stat, id) => ({ id, size: stat.size }))
+      .toSorted((a, b) => b.size - a.size)
+      .slice(0, MAX_CLUSTER_TOGGLES)
+      .map(({ id }) => id)
+      .toSorted((a, b) => a - b),
+  );
 
   let inputElement: HTMLInputElement | undefined;
 
@@ -96,6 +111,17 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
                 weights.length > 0 ? weights : props.weights,
               )
             }
+          />
+        </Show>
+
+        <Show
+          when={topClusterIds().length > 0 && topClusterIds().join(',')}
+          keyed
+        >
+          <div class='mx-0.5 h-5 w-px bg-border/60' />
+          <ClusterSelector
+            clusterIds={topClusterIds()}
+            onChange={setVisibleGraphClusters}
           />
         </Show>
       </div>
