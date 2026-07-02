@@ -10,12 +10,20 @@ import {
   ZoomInIcon,
 } from 'lucide-solid';
 import { createMemo, Show } from 'solid-js';
-import { appState } from '../../store';
+import { appState } from '@/store';
 import { useI18n } from '@/i18n';
-import { cn } from '../../lib/utils';
-import { Button } from '../ui/button';
-import { dotVariants, ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  dotVariants,
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@/components/ui/toggle-group';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { type GraphToolMode } from './types';
 
 interface GraphBottomToolbarProps {

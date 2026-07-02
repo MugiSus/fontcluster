@@ -6,6 +6,7 @@ import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
 import tailwindcss from 'eslint-plugin-tailwindcss';
 import unusedImports from 'eslint-plugin-unused-imports';
+import noRelativeImportPaths from 'eslint-plugin-no-relative-import-paths';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -18,6 +19,7 @@ export default tseslint.config(
       ...solid.plugins,
       'prettier': prettierPlugin,
       'unused-imports': unusedImports,
+      'no-relative-import-paths': noRelativeImportPaths,
     },
     languageOptions: {
       parserOptions: {
@@ -38,6 +40,13 @@ export default tseslint.config(
         },
       ],
       'prettier/prettier': 'error',
+      // Forbid parent-relative imports entirely (no `allowedDepth`); the
+      // auto-fix rewrites `../…` to the `@/` alias (rootDir `src`). Same-folder
+      // `./…` imports stay relative.
+      'no-relative-import-paths/no-relative-import-paths': [
+        'error',
+        { allowSameFolder: true, rootDir: 'src', prefix: '@' },
+      ],
       '@typescript-eslint/naming-convention': [
         'error',
         {

@@ -1,6 +1,6 @@
 import { createEffect, on } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
-import { appState, setAppState } from '../store';
+import { appState, setAppState } from '@/store';
 
 interface useFilteredFontMetadataKeysProps {
   onFontSelect: (key: string) => void;

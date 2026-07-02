@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { toast } from 'solid-sonner';
 import { ArrowBigUpIcon, CommandIcon, CopyCheckIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
-import { appState } from '../store';
+import { appState } from '@/store';
 
 export function ClipboardListener() {
   const { t } = useI18n();

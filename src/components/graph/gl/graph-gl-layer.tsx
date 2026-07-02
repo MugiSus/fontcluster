@@ -1,10 +1,10 @@
 import { type Accessor } from 'solid-js';
-import { type FontWeight } from '../../../types/font';
+import { type FontWeight } from '@/types/font';
 import {
   type GraphCoordinate,
   type GraphPointData,
   type GraphViewBox,
-} from '../types';
+} from '@/components/graph/types';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
 
 interface GraphGlLayerProps {

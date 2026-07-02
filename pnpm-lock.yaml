@@ -126,6 +126,9 @@ importers:
       eslint-config-prettier:
         specifier: ^10.1.5
         version: 10.1.5(eslint@9.29.0(jiti@2.4.2))
+      eslint-plugin-no-relative-import-paths:
+        specifier: ^1.6.1
+        version: 1.6.1
       eslint-plugin-prettier:
         specifier: ^5.5.0
         version: 5.5.0(eslint-config-prettier@10.1.5(eslint@9.29.0(jiti@2.4.2)))(eslint@9.29.0(jiti@2.4.2))(prettier@3.6.0)
@@ -1162,6 +1165,9 @@ packages:
     hasBin: true
     peerDependencies:
       eslint: '>=7.0.0'
+
+  eslint-plugin-no-relative-import-paths@1.6.1:
+    resolution: {integrity: sha512-YZNeOnsOrJcwhFw0X29MXjIzu2P/f5X2BZDPWw1R3VUYBRFxNIh77lyoL/XrMU9ewZNQPcEvAgL/cBOT1P330A==}
 
   eslint-plugin-prettier@5.5.0:
     resolution: {integrity: sha512-8qsOYwkkGrahrgoUv76NZi23koqXOGiiEzXMrT8Q7VcYaUISR+5MorIUxfWqYXN0fN/31WbSrxCxFkVQ43wwrA==}
@@ -3008,6 +3014,8 @@ snapshots:
   eslint-config-prettier@10.1.5(eslint@9.29.0(jiti@2.4.2)):
     dependencies:
       eslint: 9.29.0(jiti@2.4.2)
+
+  eslint-plugin-no-relative-import-paths@1.6.1: {}
 
   eslint-plugin-prettier@5.5.0(eslint-config-prettier@10.1.5(eslint@9.29.0(jiti@2.4.2)))(eslint@9.29.0(jiti@2.4.2))(prettier@3.6.0):
     dependencies:

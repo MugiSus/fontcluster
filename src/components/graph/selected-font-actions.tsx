@@ -11,11 +11,15 @@ import { emit } from '@tauri-apps/api/event';
 import { toast } from 'solid-sonner';
 import { CopyIcon, Plug2Icon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
-import { appState } from '../../store';
-import { applyFontToPlugins } from '../../actions';
-import { type FontItem } from '../../types/font';
-import { Button } from '../ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { appState } from '@/store';
+import { applyFontToPlugins } from '@/actions';
+import { type FontItem } from '@/types/font';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { type GraphPointData, type GraphViewBox } from './types';
 
 /** Delay before the actions fade in once the selection settles. */

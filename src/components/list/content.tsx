@@ -10,14 +10,14 @@ import { createVirtualizer } from '@tanstack/solid-virtual';
 import { toast } from 'solid-sonner';
 import { MousePointerClickIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
-import { appState } from '../../store';
+import { appState } from '@/store';
 import {
   applyFontToPlugins,
   setHoveredFontKey,
   setListPreviewText,
-} from '../../actions';
-import { type FontItem } from '../../types/font';
-import { getNearestSelectableFontItems } from '../graph/font-point-index';
+} from '@/actions';
+import { type FontItem } from '@/types/font';
+import { getNearestSelectableFontItems } from '@/components/graph/font-point-index';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 

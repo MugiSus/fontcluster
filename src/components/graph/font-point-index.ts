@@ -2,8 +2,8 @@ import { createMemo, createRoot } from 'solid-js';
 import { quadtree, type Quadtree, type QuadtreeLeaf } from 'd3-quadtree';
 import { scaleSymlog } from 'd3-scale';
 import { extent } from 'd3-array';
-import { appState } from '../../store';
-import { type FontItem } from '../../types/font';
+import { appState } from '@/store';
+import { type FontItem } from '@/types/font';
 import { GRAPH_SIZE } from './constants';
 import {
   type GraphCoordinate,

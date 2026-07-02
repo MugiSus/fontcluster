@@ -14,12 +14,12 @@ import {
   WebGLRenderer,
 } from 'three';
 import { useColorMode } from '@kobalte/core';
-import { type FontWeight } from '../../../types/font';
+import { type FontWeight } from '@/types/font';
 import {
   type GraphCoordinate,
   type GraphPointData,
   type GraphViewBox,
-} from '../types';
+} from '@/components/graph/types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
 import { createGlowCompositor } from './glow-compositor';

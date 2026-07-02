@@ -1,7 +1,7 @@
 import { createSignal, onCleanup, Show } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { toast } from 'solid-sonner';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -9,11 +9,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../ui/select';
-import { TextField, TextFieldInput, TextFieldLabel } from '../ui/text-field';
+} from '@/components/ui/select';
+import {
+  TextField,
+  TextFieldInput,
+  TextFieldLabel,
+} from '@/components/ui/text-field';
 import { PlusIcon, TypeIcon } from 'lucide-solid';
-import { WeightSelector } from '../weight-selector';
-import { type FontWeight } from '../../types/font';
+import { WeightSelector } from '@/components/weight-selector';
+import { type FontWeight } from '@/types/font';
 import {
   type AlgorithmConfig,
   type RenderingOptions,
@@ -21,15 +25,19 @@ import {
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
-} from '../../types/session';
-import { appState } from '../../store';
-import { runProcessingJobs } from '../../actions';
+} from '@/types/session';
+import { appState } from '@/store';
+import { runProcessingJobs } from '@/actions';
 import { useI18n } from '@/i18n';
 import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
-} from '../../constants/session';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+} from '@/constants/session';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';

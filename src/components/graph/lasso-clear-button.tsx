@@ -1,6 +1,6 @@
 import { LassoSelectIcon, XIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
-import { Button } from '../ui/button';
+import { Button } from '@/components/ui/button';
 
 interface LassoClearButtonProps {
   onClear: () => void;

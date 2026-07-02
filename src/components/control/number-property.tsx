@@ -8,7 +8,7 @@ import {
   NumberFieldIncrementTrigger,
   NumberFieldInput,
   NumberFieldLabel,
-} from '../ui/number-field';
+} from '@/components/ui/number-field';
 
 type NumberPropertyProps = {
   label: string;

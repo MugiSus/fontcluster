@@ -1,4 +1,4 @@
-import { type FontItem } from '../../types/font';
+import { type FontItem } from '@/types/font';
 
 export interface GraphViewBox {
   x: number;

@@ -1,9 +1,13 @@
 import { Show } from 'solid-js';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n';
-import { Button } from '../ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { CollapsiblePanelKey, PanelState } from '../../types/panels';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { CollapsiblePanelKey, PanelState } from '@/types/panels';
 
 interface GraphPanelReopenControlsProps {
   panelState: PanelState;

@@ -5,8 +5,8 @@ import {
   createSelector,
   createSignal,
 } from 'solid-js';
-import { appState } from '../../store';
-import { type FontWeight } from '../../types/font';
+import { appState } from '@/store';
+import { type FontWeight } from '@/types/font';
 import {
   findSelectableFontPoint,
   fontPoints,

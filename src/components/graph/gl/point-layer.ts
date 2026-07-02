@@ -10,8 +10,8 @@ import {
   Points,
   ShaderMaterial,
 } from 'three';
-import { type FontWeight } from '../../../types/font';
-import { type GraphPointData } from '../types';
+import { type FontWeight } from '@/types/font';
+import { type GraphPointData } from '@/components/graph/types';
 import { getClusterColor } from './cluster-colors-gl';
 import {
   coreFragmentShader,

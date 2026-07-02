@@ -1,13 +1,13 @@
 import { For, Show } from 'solid-js';
 import { Check, Globe } from 'lucide-solid';
 import { useI18n, type LanguageSelection } from '@/i18n';
-import { Button } from '../../ui/button';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../../ui/dropdown-menu';
+} from '@/components/ui/dropdown-menu';
 
 export function LanguageToggle(props: { class?: string }) {
   const { t, language, setLanguage } = useI18n();

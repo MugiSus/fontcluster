@@ -1,4 +1,4 @@
-import { type FontWeight } from '../../types/font';
+import { type FontWeight } from '@/types/font';
 import {
   type GraphPointData,
   type GraphPointSearchTree,

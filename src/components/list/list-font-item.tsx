@@ -1,19 +1,15 @@
 import { createMemo, createResource, Show } from 'solid-js';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { CheckIcon, CopyIcon, Plug2Icon } from 'lucide-solid';
-import {
-  type FontItem,
-  type FontWeight,
-  WEIGHT_LABELS,
-} from '../../types/font';
+import { type FontItem, type FontWeight, WEIGHT_LABELS } from '@/types/font';
 import { useI18n } from '@/i18n';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 import {
   getClusterBackgroundColor,
   getClusterTextColor,
-} from '../../lib/cluster-colors';
-import { appState } from '../../store';
-import { Button } from '../ui/button';
+} from '@/lib/cluster-colors';
+import { appState } from '@/store';
+import { Button } from '@/components/ui/button';
 
 interface ListFontItemProps {
   item: FontItem;

@@ -5,8 +5,12 @@ import { useI18n } from '@/i18n';
 import { LanguageToggle } from './language-toggle';
 import { ThemeModeToggle } from './theme-mode-toggle';
 import { PluginConnectionsMenu } from './plugin-connections-menu';
-import { Button } from '../../ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { SessionHistory } from './session-history';
 
 export function GraphUtilityControls() {

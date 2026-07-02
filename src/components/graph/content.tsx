@@ -2,8 +2,8 @@ import { createEffect, createSignal } from 'solid-js';
 import { GraphBottomControls } from './bottom-controls';
 import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
-import { appState } from '../../store';
-import { clearLassoResult, setActiveGraphWeights } from '../../actions';
+import { appState } from '@/store';
+import { clearLassoResult, setActiveGraphWeights } from '@/actions';
 import { type GraphToolMode } from './types';
 
 export function GraphContent() {

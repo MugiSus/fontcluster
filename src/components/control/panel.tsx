@@ -1,5 +1,5 @@
 import { useI18n } from '@/i18n';
-import { AppShellPanel } from '../app-shell-panel';
+import { AppShellPanel } from '@/components/app-shell-panel';
 
 import { ControlContent } from './content';
 

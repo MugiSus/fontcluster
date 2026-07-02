@@ -3,8 +3,12 @@ import { Show, type JSX } from 'solid-js';
 import { RotateCwIcon } from 'lucide-solid';
 
 import { useI18n } from '@/i18n';
-import { Button } from '../ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 type ControlPropertySectionProps = {
   title: string;

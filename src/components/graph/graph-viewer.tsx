@@ -3,10 +3,10 @@ import { polygonContains } from 'd3-polygon';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
-import { appState } from '../../store';
-import { processLassoSelection } from '../../actions';
-import { useElementSize } from '../../hooks/use-element-size';
-import { type FontWeight } from '../../types/font';
+import { appState } from '@/store';
+import { processLassoSelection } from '@/actions';
+import { useElementSize } from '@/hooks/use-element-size';
+import { type FontWeight } from '@/types/font';
 import {
   fontPoints,
   getGraphPointByKey,
@@ -25,7 +25,7 @@ import {
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
-import { cn } from '../../lib/utils';
+import { cn } from '@/lib/utils';
 
 const POINTER_DRAG_THRESHOLD_PX = 4;
 

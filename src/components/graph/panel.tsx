@@ -1,7 +1,7 @@
 import { GraphContent } from './content';
 import { GraphPanelReopenControls } from './panel-reopen-controls';
 import { GraphUtilityControls } from './utility-controls';
-import { CollapsiblePanelKey, PanelState } from '../../types/panels';
+import { CollapsiblePanelKey, PanelState } from '@/types/panels';
 
 interface GraphPanelProps {
   panelState: PanelState;

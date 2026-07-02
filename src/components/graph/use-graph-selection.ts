@@ -1,7 +1,7 @@
 import { createSelector, createSignal } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
-import { setSelectedFontKey as setCommittedSelectedFontKey } from '../../actions';
-import { appState } from '../../store';
+import { setSelectedFontKey as setCommittedSelectedFontKey } from '@/actions';
+import { appState } from '@/store';
 import { type GraphCoordinate, type GraphPointData } from './types';
 
 interface UseGraphSelectionProps {

@@ -1,6 +1,6 @@
 import { useI18n } from '@/i18n';
 import { ListContent } from './content';
-import { AppShellPanel } from '../app-shell-panel';
+import { AppShellPanel } from '@/components/app-shell-panel';
 
 interface ListPanelProps {
   onClose: () => void;

@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from 'solid-js';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
-import { type FontWeight, WEIGHT_LABELS } from '../types/font';
+import { type FontWeight, WEIGHT_LABELS } from '@/types/font';
 import { WeightIcon } from 'lucide-solid';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
