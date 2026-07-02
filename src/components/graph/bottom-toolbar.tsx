@@ -49,12 +49,19 @@ const toggleItemClass = 'size-8 px-0';
 
 export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   const { t } = useI18n();
-  const isFilterActive = createMemo(
-    () =>
+  // The filter dot lights up whenever the graph shows less than everything:
+  // a search query, a weight subset (any session weight not currently active),
+  // or a cluster narrowed down. Checking "some weight is excluded" avoids the
+  // false positive the old length compare hit while a session was still loading.
+  const isFilterActive = createMemo(() => {
+    const activeWeights = new Set(appState.ui.activeGraphWeights);
+    const sessionWeights = appState.session.algorithm.rendering.weights;
+    return (
       appState.ui.searchQuery.length > 0 ||
-      appState.ui.activeGraphWeights.length !==
-        appState.session.algorithm.rendering.weights.length,
-  );
+      sessionWeights.some((weight) => !activeWeights.has(weight)) ||
+      appState.ui.visibleGraphClusters.length > 0
+    );
+  });
 
   // ToggleGroup (multiple) owns the display toggles; derive its value from the
   // booleans and translate changes back into the individual toggle handlers.

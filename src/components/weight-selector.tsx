@@ -13,6 +13,8 @@ interface WeightSelectorProps {
   isVertical?: boolean;
   isCompact?: boolean;
   isBare?: boolean;
+  /** Allow a multi-weight subset; defaults to single-select (0 or 1). */
+  isMultiple?: boolean;
   showUnavailableWeights?: boolean;
 }
 
@@ -32,27 +34,30 @@ export function WeightSelector(props: WeightSelectorProps) {
 
   // ToggleGroup owns the selection; we mirror it into a signal so the hidden
   // input can serialize it for form submit and so onChange can surface numbers.
-  const handleChange = (values: string[]) => {
-    const weights = values
-      .map(Number)
-      .toSorted((a, b) => a - b) as FontWeight[];
+  const applySelection = (weights: FontWeight[]) => {
     setSelectedWeights(weights);
     props.onChange?.(weights);
   };
+  // Single mode fires string|null, multiple fires string[]; normalize both.
+  const handleChange = (value: string | string[] | null) =>
+    applySelection(
+      (Array.isArray(value) ? value : value ? [value] : [])
+        .map(Number)
+        .toSorted((a, b) => a - b) as FontWeight[],
+    );
 
-  return (
-    <ToggleGroup
-      multiple
-      showDot
-      dotSide={props.isVertical ? 'right' : 'top'}
-      defaultValue={computeSelectedFromDefaults().map(String)}
-      onChange={handleChange}
-      class={cn(
-        'items-stretch',
-        props.isVertical ? 'flex-col' : 'flex-row',
-        props.isBare ? 'gap-0.5' : 'gap-0.5 overflow-hidden bg-background',
-      )}
-    >
+  const groupClass = () =>
+    cn(
+      'items-stretch',
+      props.isVertical ? 'flex-col' : 'flex-row',
+      props.isBare ? 'gap-0.5' : 'gap-0.5 overflow-hidden bg-background',
+    );
+
+  // The toggles are identical in both modes; only ToggleGroup's value shape
+  // (single string|null vs multiple string[]) differs, so we branch just the
+  // group wrapper and share this item list.
+  const items = () => (
+    <>
       <input
         type='hidden'
         name={props.name || 'weights'}
@@ -87,6 +92,34 @@ export function WeightSelector(props: WeightSelectorProps) {
           );
         }}
       </For>
-    </ToggleGroup>
+    </>
+  );
+
+  return (
+    <Show
+      when={props.isMultiple}
+      fallback={
+        // Single mode is a start-empty filter, so it takes no defaultValue.
+        <ToggleGroup
+          showDot
+          dotSide={props.isVertical ? 'right' : 'top'}
+          onChange={handleChange}
+          class={groupClass()}
+        >
+          {items()}
+        </ToggleGroup>
+      }
+    >
+      <ToggleGroup
+        multiple
+        showDot
+        dotSide={props.isVertical ? 'right' : 'top'}
+        defaultValue={computeSelectedFromDefaults().map(String)}
+        onChange={handleChange}
+        class={groupClass()}
+      >
+        {items()}
+      </ToggleGroup>
+    </Show>
   );
 }

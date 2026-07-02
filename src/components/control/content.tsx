@@ -197,6 +197,7 @@ export function ControlContent() {
           <TextField class='grid w-full items-center gap-1'>
             <Show when={appState.session.session_id || 'session_id'} keyed>
               <WeightSelector
+                isMultiple
                 weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
                 defaultValue={appState.session.algorithm.rendering.weights}
                 isCompact
