@@ -1,21 +1,27 @@
 import { type Accessor, createEffect, onCleanup } from 'solid-js';
-import { Group, NormalBlending, type Object3D } from 'three';
+import { Color, Group, NormalBlending, type Object3D } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
+import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 
 /** Stroke width in CSS px; fat lines keep a solid core (see axis-layer). */
 const EDGE_WIDTH_PX = 1;
-/** Neutral zinc-500 — readable on both themes without competing with points. */
-const EDGE_COLOR = 0x71717a;
-/** Many edges overlap near cluster centres; a translucent stroke keeps the
- *  points readable underneath the tree. */
-const EDGE_OPACITY = 0.35;
+/** Uniform opacity on top of the per-segment fade, so crossing segments blend
+ *  instead of the later (coarser) one occluding the finer one. */
+const EDGE_OPACITY = 0.8;
+/** Per-segment fade: the finest merge draws at NEAR, the coarsest at FAR. The
+ *  fade is baked into the vertex colors as a lerp towards the background, so
+ *  the tree recedes with depth without needing per-vertex alpha. */
+const FADE_NEAR = 0.75;
+const FADE_FAR = 0.12;
 
 export interface DendrogramLayerProps {
-  /** The edges to draw, in graph space (y-down). */
+  /** The edges to draw, in graph space (y-down), ordered by merge rank. */
   edges: Accessor<DendrogramEdge[]>;
+  /** Whether the active theme is dark (picks cluster/background colors). */
+  isDark: Accessor<boolean>;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
   resolution: Accessor<{ width: number; height: number }>;
   /** Schedules a repaint of the (on-demand) render loop. */
@@ -23,20 +29,27 @@ export interface DendrogramLayerProps {
 }
 
 /**
- * The dendrogram edges: one line segment per merge of the clustering
- * dendrogram, connecting a representative point of each merged cluster (see
- * `dendrogram-edges.ts`). Rendered between the origin axes and the points
- * (renderOrder -0.5) so the tree reads as a backplate under the content.
+ * The dendrogram centroid tree: one line segment per child-to-parent link of
+ * the clustering dendrogram (see `dendrogram-edges.ts`). Rendered between the
+ * origin axes and the points (renderOrder -0.5) so the tree reads as a
+ * backplate under the content.
  *
- * The segment set follows its accessor: `LineSegmentsGeometry` has no in-place
- * resize, so each change swaps in a freshly built geometry and disposes the old
- * one. The render loop owns the group's visibility (the mode toggle and the
- * glow passes); this layer only keeps its child in sync with the data.
+ * Two visual encodings are baked into per-segment vertex colors:
+ * - merges whose subtree lies inside one final cluster take that cluster's
+ *   color; merges spanning clusters fall back to the neutral gray that
+ *   `getClusterColor` returns for `k = -1`;
+ * - color fades towards the background with merge rank, so fine structure is
+ *   vivid and the coarse trunks recede.
+ *
+ * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
+ * swaps in a freshly built geometry and disposes the old one. The render loop
+ * owns the group's visibility (the mode toggle and the glow passes).
  */
 export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const material = new LineMaterial({
-    color: EDGE_COLOR,
+    color: 0xffffff,
     linewidth: EDGE_WIDTH_PX,
+    vertexColors: true,
     transparent: true,
     opacity: EDGE_OPACITY,
     depthTest: false,
@@ -48,12 +61,17 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   createEffect(() => {
     const edges = props.edges();
+    const isDark = props.isDark();
     if (lines) {
       group.remove(lines);
       lines.geometry.dispose();
       lines = null;
     }
     if (edges.length > 0) {
+      const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
+      const background = new Color(getBackgroundColor({ isDark }));
+      const segmentColor = new Color();
+
       // World Y is the negated graph Y (graph space is y-down).
       const positions = edges.flatMap(({ x1, y1, x2, y2 }) => [
         x1,
@@ -63,8 +81,18 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         -y2,
         0,
       ]);
+      const colors = edges.flatMap(({ mergeIndex, k }) => {
+        const fade =
+          FADE_NEAR - (FADE_NEAR - FADE_FAR) * (mergeIndex / lastMergeIndex);
+        segmentColor.set(getClusterColor({ k, isDark }));
+        segmentColor.lerpColors(background, segmentColor, fade);
+        const { r, g, b } = segmentColor;
+        return [r, g, b, r, g, b];
+      });
+
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
+      geometry.setColors(colors);
       lines = new LineSegments2(geometry, material);
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;

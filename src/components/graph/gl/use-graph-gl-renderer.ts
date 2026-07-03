@@ -291,6 +291,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
+      isDark,
       resolution: props.size,
       requestRender: scheduleRender,
     });

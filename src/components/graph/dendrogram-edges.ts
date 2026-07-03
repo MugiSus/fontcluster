@@ -4,48 +4,56 @@ import { getGraphPointByKey } from './font-point-index';
 import { type GraphCoordinate } from './types';
 
 /**
- * Derives the line segments of the dendrogram mode from the session's full
- * merge tree (`appState.dendrogram`) and the current graph layout
- * (`font-point-index`).
+ * Derives the dendrogram-mode geometry from the session's full merge tree
+ * (`appState.dendrogram`) and the current graph layout (`font-point-index`).
  *
- * Every merge of the dendrogram becomes one segment connecting a
- * representative point of each merged cluster, so the n-1 segments form a
- * spanning tree over the actual font points. A cluster's representative is
- * maintained incrementally: when two clusters merge, the merged cluster keeps
- * whichever child representative lies closer to the merged cluster's 2-D
- * centroid, so representatives drift toward each cluster's visual centre
- * without materialising member lists.
+ * The tree is drawn as a centroid tree: every dendrogram node sits at the 2-D
+ * centroid of its member points (a leaf sits on its point), and each merge
+ * contributes one segment per child, from the child's centroid to the merged
+ * node's centroid. Fine merges become short local links and coarse merges
+ * become trunks between cluster centres, so the hierarchy reads as a tree
+ * instead of a hairball of point-to-point chords.
  *
  * Leaves missing from the layout (not analysed, or hidden by a lasso result)
- * have no representative; merges touching such a cluster contribute no segment
- * and pass the surviving representative through.
+ * simply don't contribute to centroids; a merge only draws its segments when
+ * both children have visible members.
  */
 
-/** One dendrogram edge: a segment between two font points, in graph space. */
+/** One drawn segment of the centroid tree, in graph space (y-down). */
 export interface DendrogramEdge {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
+  /** Zero-based rank of the merge this edge belongs to, in linkage order
+   *  (ascending dissimilarity). Edges are emitted in this order. */
+  mergeIndex: number;
+  /** Final cluster id shared by every visible point under the merged node, or
+   *  `-1` when the merge spans clusters (or contains unclustered points). */
+  k: number;
 }
 
 /** Running state of one dendrogram node during the merge replay. */
 interface ClusterNode {
-  representative: GraphCoordinate | null;
+  center: GraphCoordinate | null;
   sumX: number;
   sumY: number;
   count: number;
+  k: number;
 }
 
-function distanceSquared(a: GraphCoordinate, x: number, y: number): number {
-  const dx = a.x - x;
-  const dy = a.y - y;
-  return dx * dx + dy * dy;
+/** Cluster id of a node whose children have ids `left`/`right`; mixing two
+ *  different ids (or anything unclustered) yields `-1`. */
+function combineClusterIds(left: ClusterNode, right: ClusterNode): number {
+  if (left.count === 0) return right.k;
+  if (right.count === 0) return left.k;
+  return left.k === right.k ? left.k : -1;
 }
 
 /**
- * One edge per drawable dendrogram merge, in graph space (y-down). Empty when
- * the session has no recorded dendrogram.
+ * One edge per drawable child-to-parent link of the centroid tree, in graph
+ * space (y-down), ordered by merge rank. Empty when the session has no
+ * recorded dendrogram.
  */
 export const dendrogramEdges = createRoot(() => {
   const memo = createMemo<DendrogramEdge[]>(() => {
@@ -56,43 +64,55 @@ export const dendrogramEdges = createRoot(() => {
     const nodes: ClusterNode[] = dendrogram.ids.map((id) => {
       const point = getGraphPointByKey(id);
       return point
-        ? { representative: point, sumX: point.x, sumY: point.y, count: 1 }
-        : { representative: null, sumX: 0, sumY: 0, count: 0 };
+        ? {
+            center: point,
+            sumX: point.x,
+            sumY: point.y,
+            count: 1,
+            k: point.item.computed?.clustering?.k ?? -1,
+          }
+        : { center: null, sumX: 0, sumY: 0, count: 0, k: -1 };
     });
 
     const edges: DendrogramEdge[] = [];
-    for (const merge of dendrogram.merges) {
+    for (const [mergeIndex, merge] of dendrogram.merges.entries()) {
       const left = nodes[merge.left];
       const right = nodes[merge.right];
       if (!left || !right) {
         // Malformed indices; keep the node list aligned with the merge list.
-        nodes.push({ representative: null, sumX: 0, sumY: 0, count: 0 });
+        nodes.push({ center: null, sumX: 0, sumY: 0, count: 0, k: -1 });
         continue;
-      }
-
-      if (left.representative && right.representative) {
-        edges.push({
-          x1: left.representative.x,
-          y1: left.representative.y,
-          x2: right.representative.x,
-          y2: right.representative.y,
-        });
       }
 
       const sumX = left.sumX + right.sumX;
       const sumY = left.sumY + right.sumY;
       const count = left.count + right.count;
-      let representative = left.representative ?? right.representative;
-      if (left.representative && right.representative) {
-        const centroidX = sumX / count;
-        const centroidY = sumY / count;
-        representative =
-          distanceSquared(left.representative, centroidX, centroidY) <=
-          distanceSquared(right.representative, centroidX, centroidY)
-            ? left.representative
-            : right.representative;
+      const k = combineClusterIds(left, right);
+      const center: GraphCoordinate | null =
+        count > 0 ? { x: sumX / count, y: sumY / count } : null;
+
+      if (left.center && right.center && center) {
+        edges.push(
+          {
+            x1: left.center.x,
+            y1: left.center.y,
+            x2: center.x,
+            y2: center.y,
+            mergeIndex,
+            k,
+          },
+          {
+            x1: right.center.x,
+            y1: right.center.y,
+            x2: center.x,
+            y2: center.y,
+            mergeIndex,
+            k,
+          },
+        );
       }
-      nodes.push({ representative, sumX, sumY, count });
+
+      nodes.push({ center, sumX, sumY, count, k });
     }
 
     return edges;
