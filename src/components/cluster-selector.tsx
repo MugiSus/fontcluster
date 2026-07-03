@@ -1,6 +1,6 @@
 import { For, onMount } from 'solid-js';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
-import { getClusterBackgroundColor } from '@/lib/cluster-colors';
+import { getClusterTextColor } from '@/lib/cluster-colors';
 import { cn } from '@/lib/utils';
 
 interface ClusterSelectorProps {
@@ -34,12 +34,9 @@ export function ClusterSelector(props: ClusterSelectorProps) {
             type='button'
             class='flex size-8 items-center justify-center rounded-full px-0'
           >
-            <div
-              class={cn(
-                'size-3 rounded-full',
-                getClusterBackgroundColor(clusterId),
-              )}
-            />
+            <div class={cn('font-bold', getClusterTextColor(clusterId))}>
+              あ
+            </div>
           </ToggleGroupItem>
         )}
       </For>
