@@ -18,6 +18,7 @@ import {
 import {
   type SessionConfig,
   type AlgorithmConfig,
+  type DendrogramData,
   type ProcessStatus,
 } from './types/session';
 
@@ -33,10 +34,11 @@ export const loadSession = async (id: string) => {
   if (!id) return;
   setAppState('ui', 'isSessionLoading', true);
   try {
-    const { config, directory, fonts } = await invoke<{
+    const { config, directory, fonts, dendrogram } = await invoke<{
       config: SessionConfig;
       directory: string;
       fonts: FontItemRecord;
+      dendrogram: DendrogramData | null;
     }>('load_session', { sessionId: id });
 
     batch(() => {
@@ -48,6 +50,7 @@ export const loadSession = async (id: string) => {
         },
       });
       setAppState('sessionDirectory', directory || '');
+      setAppState('dendrogram', dendrogram ?? null);
       setAppState('fonts', 'data', reconcile(fonts));
     });
   } catch (error) {
@@ -137,6 +140,7 @@ export const setCurrentSessionId = async (id: string) => {
       setAppState('ui', 'hoveredFontKey', null);
       setAppState('ui', 'sentFontItemKey', null);
       setAppState('sessionDirectory', '');
+      setAppState('dendrogram', null);
       setAppState('fonts', 'data', reconcile({}));
     }
   });

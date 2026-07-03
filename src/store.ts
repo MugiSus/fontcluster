@@ -7,13 +7,16 @@ import {
   type FontItemRecord,
   type LassoProcessResult,
 } from './types/font';
-import { type SessionConfig } from './types/session';
+import { type DendrogramData, type SessionConfig } from './types/session';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
 import type { PluginConnection } from './lib/plugin-bridge';
 
 export interface AppState {
   session: SessionConfig;
   sessionDirectory: string;
+  /** Full clustering dendrogram of the active session; null when the session
+   *  predates dendrogram recording. */
+  dendrogram: DendrogramData | null;
   fonts: {
     data: Record<string, FontItem>;
     readonly displayData: Record<string, FontItem>;
@@ -72,6 +75,7 @@ const FUSE_OPTIONS = {
 export const [appState, setAppState] = createStore<AppState>({
   session: DEFAULT_SESSION_CONFIG,
   sessionDirectory: '',
+  dendrogram: null,
   fonts: {
     data: {},
     get displayData(): FontItemRecord {

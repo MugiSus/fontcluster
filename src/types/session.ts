@@ -62,6 +62,32 @@ export interface ClusteringStats {
   merge_heights: number[];
 }
 
+/**
+ * One merge step of the full clustering dendrogram.
+ *
+ * `left`/`right` follow the usual linkage-matrix convention: an index below
+ * the leaf count refers to a leaf of {@link DendrogramData.ids}; an index at
+ * or above it refers to the cluster created by merge step `index - leaf count`.
+ */
+export interface DendrogramMerge {
+  left: number;
+  right: number;
+  /** Dissimilarity at which the two clusters merged, in the normalized PCA
+   *  space the clustering ran in. */
+  height: number;
+}
+
+/**
+ * The full dendrogram of a clustering run (`dendrogram.json` in the session
+ * directory), delivered alongside the session payload.
+ */
+export interface DendrogramData {
+  /** Font safe names in leaf order; leaf `i` of the merge tree is `ids[i]`. */
+  ids: string[];
+  /** Every merge in linkage order (ascending dissimilarity). */
+  merges: DendrogramMerge[];
+}
+
 export interface SessionProgressSection {
   numerator: number;
   denominator: number;
