@@ -20,8 +20,8 @@
 
 use crate::commands::jobs::AlgorithmConfigPatch;
 use crate::config::{
-    AlgorithmConfig, ComputedData, FontData, FontMetadata, ProcessStatus, ProcessingProgress,
-    ProcessingStatus, ProgressSection, ProgressStage, SessionConfig,
+    AlgorithmConfig, ComputedData, DendrogramData, FontData, FontMetadata, ProcessStatus,
+    ProcessingProgress, ProcessingStatus, ProgressSection, ProgressStage, SessionConfig,
 };
 use crate::error::Result;
 use chrono::{DateTime, Utc};
@@ -45,6 +45,8 @@ pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
 const MIN_SUPPORTED_SESSION_VERSION: &str = "0.15.0";
 /// Name of the JSON config file inside a session directory/document.
 const SESSION_CONFIG_FILE: &str = "config.json";
+/// Name of the JSON file recording the full clustering dendrogram.
+const DENDROGRAM_FILE: &str = "dendrogram.json";
 
 static SESSION_VIEW_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -890,6 +892,37 @@ pub fn load_font_data(session_dir: &Path, safe_name: &str) -> Result<FontData> {
     let meta = load_font_metadata(session_dir, safe_name)?;
     let computed = load_computed_data(session_dir, safe_name).ok();
     Ok(FontData { meta, computed })
+}
+
+/// Writes the full dendrogram of a clustering run as `dendrogram.json`.
+///
+/// Serialised compactly (not pretty-printed): the file holds one merge per
+/// sample and is machine-read only.
+pub fn save_dendrogram(session_dir: &Path, dendrogram: &DendrogramData) -> Result<()> {
+    let path = session_dir.join(DENDROGRAM_FILE);
+    fs::write(&path, serde_json::to_string(dendrogram)?).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to save dendrogram {}: {}",
+            path.display(),
+            e
+        ))
+    })?;
+    Ok(())
+}
+
+/// Reads a session's `dendrogram.json`. Errors when the session has none
+/// (e.g. it was clustered by an app version that did not record it).
+pub fn load_dendrogram(session_dir: &Path) -> Result<DendrogramData> {
+    let path = session_dir.join(DENDROGRAM_FILE);
+    Ok(serde_json::from_str(&fs::read_to_string(&path).map_err(
+        |e| {
+            crate::error::AppError::Io(format!(
+                "Failed to load dendrogram {}: {}",
+                path.display(),
+                e
+            ))
+        },
+    )?)?)
 }
 
 /// Loads every persisted embedding under the session's `samples/` directory.

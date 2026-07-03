@@ -188,6 +188,35 @@ pub struct ClusteringStats {
     pub merge_heights: Vec<f32>,
 }
 
+/// One merge step of the full clustering dendrogram.
+///
+/// `left`/`right` follow the usual linkage-matrix convention: an index below
+/// the leaf count refers to a leaf of [`DendrogramData::ids`]; an index at or
+/// above it refers to the cluster created by merge step `index - leaf count`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DendrogramMerge {
+    pub left: usize,
+    pub right: usize,
+    /// Dissimilarity at which the two clusters merged, in the normalised PCA
+    /// space the clustering ran in.
+    pub height: f32,
+}
+
+/// The full dendrogram of a clustering run, persisted as `dendrogram.json`
+/// next to `config.json` inside the session directory.
+///
+/// Unlike [`ClusteringStats::merge_heights`] (heights only, kept on the
+/// session status for run inspection), this records the complete merge tree so
+/// the UI can draw the parent-child structure over the graph.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DendrogramData {
+    /// Font ids (sample directory names) in leaf order; leaf `i` of the merge
+    /// tree is `ids[i]`.
+    pub ids: Vec<String>,
+    /// Every merge in linkage order (ascending dissimilarity).
+    pub merges: Vec<DendrogramMerge>,
+}
+
 /// Free per-cluster facts recorded for each cluster a run produces.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusterStat {

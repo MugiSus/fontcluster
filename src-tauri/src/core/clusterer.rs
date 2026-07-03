@@ -8,10 +8,11 @@
 use crate::commands::progress::progress_events;
 use crate::config::{
     ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
-    ProgressStage,
+    DendrogramData, DendrogramMerge, ProgressStage,
 };
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
+    save_dendrogram,
 };
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
@@ -72,7 +73,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     }
 
     let n_samples = points.nrows();
-    let (labels, join_heights, stats) = agglomerative_clustering(points, &config)?;
+    let (labels, join_heights, merges, stats) = agglomerative_clustering(points, &config)?;
     let n_clusters = stats.clusters.len();
 
     progress_events::reset_progress(events, state, ProgressStage::Clustering);
@@ -83,11 +84,16 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
         ids.len() as i32,
     );
 
+    // The full merge tree over the sample ids, persisted so the UI can draw
+    // the dendrogram over the graph without re-clustering.
+    let dendrogram = DendrogramData { ids, merges };
+
     let session_dir_for_second = session_dir.clone();
     let events = events.clone();
     let state_clone = state.clone();
     tokio::task::spawn_blocking(move || -> Result<()> {
-        for (i, id) in ids.iter().enumerate() {
+        save_dendrogram(&session_dir_for_second, &dendrogram)?;
+        for (i, id) in dendrogram.ids.iter().enumerate() {
             let meta = load_font_metadata(&session_dir_for_second, id)?;
             let mut computed =
                 load_computed_data(&session_dir_for_second, id).unwrap_or(ComputedData {
@@ -149,7 +155,8 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
 
 /// Runs agglomerative clustering and returns the per-point `labels`, the
 /// per-point join heights (each font's first-merge dissimilarity, an isolation
-/// score), and the [`ClusteringStats`] captured for the run.
+/// score), the full merge tree (see [`DendrogramMerge`]), and the
+/// [`ClusteringStats`] captured for the run.
 ///
 /// Points are min-max normalised, all pairwise Euclidean distances are fed to
 /// [`kodama::linkage`], and the resulting dendrogram is replayed merge by
@@ -167,7 +174,7 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
 fn agglomerative_clustering(
     points: Array2<f32>,
     config: &ClusteringConfig,
-) -> Result<(Vec<i32>, Vec<f32>, ClusteringStats)> {
+) -> Result<(Vec<i32>, Vec<f32>, Vec<DendrogramMerge>, ClusteringStats)> {
     let n = points.nrows();
     if n == 1 {
         // A lone point is its own cluster, never merges (join height 0), and a
@@ -182,7 +189,7 @@ fn agglomerative_clustering(
             cut_height: 0.0,
             merge_heights: Vec::new(),
         };
-        return Ok((vec![0], vec![0.0], stats));
+        return Ok((vec![0], vec![0.0], Vec::new(), stats));
     }
 
     let normalized = normalize_points(&points);
@@ -195,13 +202,19 @@ fn agglomerative_clustering(
     }
 
     let dendrogram = linkage(&mut condensed, n, kodama_method(config.method));
-    // Every merge height (full tree), plus per-leaf the height at which each
-    // point is first absorbed — its isolation. A leaf is a direct operand of
-    // exactly one merge, so this fills every entry in one pass.
+    // Every merge (full tree), plus per-leaf the height at which each point is
+    // first absorbed — its isolation. A leaf is a direct operand of exactly
+    // one merge, so this fills every entry in one pass.
     let mut merge_heights = Vec::with_capacity(dendrogram.steps().len());
+    let mut merges = Vec::with_capacity(dendrogram.steps().len());
     let mut join_heights = vec![0.0f32; n];
     for step in dendrogram.steps() {
         merge_heights.push(step.dissimilarity);
+        merges.push(DendrogramMerge {
+            left: step.cluster1,
+            right: step.cluster2,
+            height: step.dissimilarity,
+        });
         if step.cluster1 < n {
             join_heights[step.cluster1] = step.dissimilarity;
         }
@@ -287,6 +300,7 @@ fn agglomerative_clustering(
     Ok((
         labels,
         join_heights,
+        merges,
         ClusteringStats {
             clusters: cluster_stats,
             cut_height,

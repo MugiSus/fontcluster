@@ -5,10 +5,10 @@
 //! directories; [`collect_stored_sessions`] unifies both views, de-duplicating
 //! by id so an in-progress session shadows its older packed copy.
 
-use crate::config::{FontData, ProcessStatus, SessionConfig};
+use crate::config::{DendrogramData, FontData, ProcessStatus, SessionConfig};
 use crate::core::{
-    is_session_document_path, read_session_config_from_dir, read_session_config_from_document,
-    AppState,
+    is_session_document_path, load_dendrogram, read_session_config_from_dir,
+    read_session_config_from_document, AppState,
 };
 use crate::error::Result;
 use std::collections::{HashMap, HashSet};
@@ -38,10 +38,13 @@ pub struct SessionPayload {
     config: SessionConfig,
     directory: PathBuf,
     fonts: HashMap<String, FontData>,
+    /// Full merge tree of the clustering run; `None` for sessions clustered by
+    /// an app version that did not record it.
+    dendrogram: Option<DendrogramData>,
 }
 
 /// Loads a session by id (making it the active session) and returns its config,
-/// on-disk sample directory and font items together.
+/// on-disk sample directory, font items and dendrogram together.
 #[command]
 pub async fn load_session(
     session_id: String,
@@ -57,10 +60,12 @@ pub async fn load_session(
     };
     let directory = AppState::resolve_session_dir(&session_id)?;
     let fonts = crate::commands::font::read_font_items(&session_id)?;
+    let dendrogram = load_dendrogram(&directory).ok();
     Ok(SessionPayload {
         config,
         directory,
         fonts,
+        dendrogram,
     })
 }
 
