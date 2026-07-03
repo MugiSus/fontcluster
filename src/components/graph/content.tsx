@@ -15,6 +15,7 @@ export function GraphContent() {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [showGlow, setShowGlow] = createSignal(true);
+  const [showDendrogram, setShowDendrogram] = createSignal(false);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
     createSignal<ViewportZoomControls | null>(null);
@@ -38,6 +39,7 @@ export function GraphContent() {
         showImages={showImages()}
         showFontNames={showFontNames()}
         showGlow={showGlow()}
+        showDendrogram={showDendrogram()}
         activeGraphWeights={activeGraphWeights()}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
@@ -46,6 +48,7 @@ export function GraphContent() {
         showImages={showImages()}
         showFontNames={showFontNames()}
         showGlow={showGlow()}
+        showDendrogram={showDendrogram()}
         isFilterOpen={isFilterOpen()}
         zoomControls={viewportZoomControls()}
         hasLassoResult={!!appState.ui.lassoResult}
@@ -53,6 +56,7 @@ export function GraphContent() {
         onToggleImages={() => setShowImages((shown) => !shown)}
         onToggleFontNames={() => setShowFontNames((shown) => !shown)}
         onToggleGlow={() => setShowGlow((shown) => !shown)}
+        onToggleDendrogram={() => setShowDendrogram((shown) => !shown)}
         onToggleFilter={() => setIsFilterOpen((open) => !open)}
         onClearLasso={clearLassoResult}
       />

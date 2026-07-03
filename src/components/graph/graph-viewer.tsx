@@ -7,6 +7,7 @@ import { appState } from '@/store';
 import { processLassoSelection } from '@/actions';
 import { useElementSize } from '@/hooks/use-element-size';
 import { type FontWeight } from '@/types/font';
+import { dendrogramEdges } from './dendrogram-edges';
 import {
   fontPoints,
   getGraphPointByKey,
@@ -40,6 +41,7 @@ interface GraphViewerProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showDendrogram: boolean;
   activeGraphWeights: FontWeight[];
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
@@ -361,6 +363,8 @@ export function GraphViewer(props: GraphViewerProps) {
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}
           glow={() => props.showGlow}
+          dendrogramEdges={dendrogramEdges}
+          showDendrogram={() => props.showDendrogram}
           sessionDirectory={() => appState.sessionDirectory}
         />
         <svg

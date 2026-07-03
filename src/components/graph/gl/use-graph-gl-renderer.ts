@@ -20,8 +20,10 @@ import {
   type GraphPointData,
   type GraphViewBox,
 } from '@/components/graph/types';
+import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
+import { createDendrogramLayer } from './dendrogram-layer';
 import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
@@ -51,6 +53,8 @@ export interface UseGraphGlRendererProps {
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
   glow: Accessor<boolean>;
+  dendrogramEdges: Accessor<DendrogramEdge[]>;
+  showDendrogram: Accessor<boolean>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -113,6 +117,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
+      // The mode toggle is folded into every per-pass visibility switch below,
+      // so the dendrogram only ever draws where the axes backplate draws.
+      const showDendrogram = props.showDendrogram();
 
       // Glow off: draw the sharp content (core dots + rings + images + axes)
       // straight to the screen. The halo object is only used by the bloom path.
@@ -120,6 +127,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         halo.visible = false;
         core.visible = true;
         axisLayer.visible = true;
+        dendrogramLayer.visible = showDendrogram;
         ringLayer.visible = true;
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
@@ -136,6 +144,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = true;
       core.visible = false;
       axisLayer.visible = false;
+      dendrogramLayer.visible = false;
       ringLayer.visible = false;
       imageLayer.visible = false;
       renderer.setRenderTarget(compositor.target);
@@ -143,11 +152,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
       renderer.setClearColor(getBackgroundColor({ isDark: isDarkMode }), 1);
 
-      // 2) Background + axes to the screen. The axes are the backplate; draw them
-      //    before the composite so the glow sits above them but below the sharp
-      //    content drawn last.
+      // 2) Background + axes (+ dendrogram edges) to the screen. These are the
+      //    backplate; draw them before the composite so the glow sits above
+      //    them but below the sharp content drawn last.
       halo.visible = false;
       axisLayer.visible = true;
+      dendrogramLayer.visible = showDendrogram;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
 
@@ -155,9 +165,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       compositor.composite(renderer);
 
       // 4) Sharp pass: core dots + rings + images over the composite (the axes
-      //    are already drawn). autoClear off so the glow/background isn't wiped.
+      //    and dendrogram edges are already drawn). autoClear off so the
+      //    glow/background isn't wiped.
       core.visible = true;
       axisLayer.visible = false;
+      dendrogramLayer.visible = false;
       ringLayer.visible = true;
       imageLayer.visible = true;
       // eslint-disable-next-line @typescript-eslint/naming-convention -- captures three.js renderer.autoClear to restore after render
@@ -168,6 +180,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       // Leave the scene in a sane default for any stray render.
       axisLayer.visible = true;
+      dendrogramLayer.visible = showDendrogram;
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
@@ -276,6 +289,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       resolution: props.size,
       requestRender: scheduleRender,
     });
+    const dendrogramLayer = createDendrogramLayer({
+      edges: props.dendrogramEdges,
+      resolution: props.size,
+      requestRender: scheduleRender,
+    });
     const pointLayer = createPointLayer({
       points: props.points,
       isDark,
@@ -297,6 +315,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     scene.add(axisLayer);
+    scene.add(dendrogramLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);
     scene.add(ringLayer);
@@ -310,11 +329,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       scheduleRender();
     });
 
-    // --- effect: glow on/off ---------------------------------------------
-    // `renderFrame` switches between the bloom and straight paths on `glow`, but
-    // it reads it untracked (it runs in rAF), so subscribe here to repaint.
+    // --- effect: glow / dendrogram on/off ---------------------------------
+    // `renderFrame` switches between the bloom and straight paths on `glow` and
+    // gates the dendrogram backplate on `showDendrogram`, but it reads them
+    // untracked (it runs in rAF), so subscribe here to repaint.
     createEffect(() => {
       props.glow();
+      props.showDendrogram();
       scheduleRender();
     });
 
