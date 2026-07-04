@@ -58,7 +58,6 @@ export interface UseGraphGlRendererProps {
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   showDendrogram: Accessor<boolean>;
-  dendrogramVisibleMerges: Accessor<number>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -313,7 +312,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
-      visibleMerges: props.dendrogramVisibleMerges,
       highlight: dendrogramHighlight,
       isDark,
       resolution: props.size,

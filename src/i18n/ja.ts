@@ -57,10 +57,6 @@ export const ja: Dictionary = {
     lassoClearButton: {
       label: '投げ縄',
     },
-    dendrogramDock: {
-      label: '結合の深さ',
-      clusters: '{{count}} クラスタ',
-    },
     filterDock: {
       clear: '消去',
       searchPlaceholder: 'フォント、デザイナー名など',

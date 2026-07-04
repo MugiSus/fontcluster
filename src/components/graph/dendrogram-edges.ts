@@ -49,7 +49,6 @@ interface DendrogramTree {
   edges: DendrogramEdge[];
   nodes: ClusterNode[];
   leafIndexByKey: Map<string, number>;
-  leafCount: number;
 }
 
 const NO_ANCESTRY: GraphCoordinate[] = [];
@@ -145,7 +144,7 @@ const dendrogramTree = createRoot(() => {
       dendrogram.ids.map((id, index) => [id, index]),
     );
 
-    return { edges, nodes, leafIndexByKey, leafCount: dendrogram.ids.length };
+    return { edges, nodes, leafIndexByKey };
   });
   return memo;
 });
@@ -160,14 +159,10 @@ export const dendrogramEdges = (): DendrogramEdge[] =>
 
 /**
  * The polyline of a font's merge ancestry, in graph space: its point followed
- * by the centroid of every successive merge that absorbed it, up to (not
- * including) merge rank `maxMerges` — so the path never runs past the depth
- * slider. Empty when the font or the dendrogram is absent.
+ * by the centre of every successive merge that absorbed it, up to the root.
+ * Empty when the font or the dendrogram is absent.
  */
-export function getDendrogramAncestry(
-  key: string | null,
-  maxMerges: number,
-): GraphCoordinate[] {
+export function getDendrogramAncestry(key: string | null): GraphCoordinate[] {
   const tree = dendrogramTree();
   if (!tree || !key) return NO_ANCESTRY;
   const leafIndex = tree.leafIndexByKey.get(key);
@@ -176,7 +171,7 @@ export function getDendrogramAncestry(
 
   const points: GraphCoordinate[] = [leaf.center];
   let node = leaf;
-  while (node.parent !== -1 && node.parent - tree.leafCount < maxMerges) {
+  while (node.parent !== -1) {
     const parent = tree.nodes[node.parent];
     if (!parent?.center) break;
     points.push(parent.center);

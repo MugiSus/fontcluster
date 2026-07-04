@@ -42,7 +42,6 @@ interface GraphViewerProps {
   showFontNames: boolean;
   showGlow: boolean;
   showDendrogram: boolean;
-  dendrogramVisibleMerges: number;
   activeGraphWeights: FontWeight[];
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
@@ -80,15 +79,9 @@ export function GraphViewer(props: GraphViewerProps) {
     findSelectablePoint: graph.findSelectablePoint,
   });
 
-  // The selected font's merge ancestry for the dendrogram mode, clipped to the
-  // depth slider.
+  // The selected font's merge ancestry for the dendrogram mode.
   const dendrogramAncestry = createMemo(() =>
-    props.showDendrogram
-      ? getDendrogramAncestry(
-          selection.selectedKey(),
-          props.dendrogramVisibleMerges,
-        )
-      : [],
+    props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
   );
 
   onMount(() => {
@@ -377,7 +370,6 @@ export function GraphViewer(props: GraphViewerProps) {
           glow={() => props.showGlow}
           dendrogramEdges={dendrogramEdges}
           showDendrogram={() => props.showDendrogram}
-          dendrogramVisibleMerges={() => props.dendrogramVisibleMerges}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />

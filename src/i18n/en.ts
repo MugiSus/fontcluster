@@ -69,10 +69,6 @@ export const en = {
     lassoClearButton: {
       label: 'Lasso',
     },
-    dendrogramDock: {
-      label: 'Merge depth',
-      clusters: '{{count}} clusters',
-    },
     filterDock: {
       clear: 'Clear',
       searchPlaceholder: 'Font name, Designer, Foundry, etc.',

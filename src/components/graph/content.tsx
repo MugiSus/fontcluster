@@ -16,7 +16,6 @@ export function GraphContent() {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [showGlow, setShowGlow] = createSignal(true);
-  const [dendrogramVisibleMerges, setDendrogramVisibleMerges] = createSignal(0);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   // Owned by the ui store (the point layout derivation switches on it); this
   // component only renders and toggles it.
@@ -36,12 +35,6 @@ export function GraphContent() {
     }
   });
 
-  // Reset the dendrogram depth to the full tree whenever the session's
-  // dendrogram changes (session switch or re-cluster).
-  createEffect(() => {
-    setDendrogramVisibleMerges(appState.dendrogram?.merges.length ?? 0);
-  });
-
   return (
     <div class='relative isolate size-full bg-background'>
       <GraphViewer
@@ -50,7 +43,6 @@ export function GraphContent() {
         showFontNames={showFontNames()}
         showGlow={showGlow()}
         showDendrogram={showDendrogram()}
-        dendrogramVisibleMerges={dendrogramVisibleMerges()}
         activeGraphWeights={activeGraphWeights()}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
@@ -60,8 +52,6 @@ export function GraphContent() {
         showFontNames={showFontNames()}
         showGlow={showGlow()}
         showDendrogram={showDendrogram()}
-        dendrogramVisibleMerges={dendrogramVisibleMerges()}
-        onDendrogramVisibleMergesChange={setDendrogramVisibleMerges}
         isFilterOpen={isFilterOpen()}
         zoomControls={viewportZoomControls()}
         hasLassoResult={!!appState.ui.lassoResult}
