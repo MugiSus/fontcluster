@@ -33,14 +33,26 @@ export interface DendrogramEdge {
   k: number;
 }
 
-/** Running state of one dendrogram node during the merge replay. */
+/** Resolved state of one dendrogram node (leaves first, then one per merge). */
 interface ClusterNode {
   center: GraphCoordinate | null;
   sumX: number;
   sumY: number;
   count: number;
   k: number;
+  /** Node index of the merge that absorbed this node; `-1` for the root. */
+  parent: number;
 }
+
+interface DendrogramTree {
+  edges: DendrogramEdge[];
+  nodes: ClusterNode[];
+  leafIndexByKey: Map<string, number>;
+  leafCount: number;
+}
+
+const NO_ANCESTRY: GraphCoordinate[] = [];
+const NO_EDGES: DendrogramEdge[] = [];
 
 /** Cluster id of a node whose children have ids `left`/`right`; mixing two
  *  different ids (or anything unclustered) yields `-1`. */
@@ -50,15 +62,10 @@ function combineClusterIds(left: ClusterNode, right: ClusterNode): number {
   return left.k === right.k ? left.k : -1;
 }
 
-/**
- * One edge per drawable child-to-parent link of the centroid tree, in graph
- * space (y-down), ordered by merge rank. Empty when the session has no
- * recorded dendrogram.
- */
-export const dendrogramEdges = createRoot(() => {
-  const memo = createMemo<DendrogramEdge[]>(() => {
+const dendrogramTree = createRoot(() => {
+  const memo = createMemo<DendrogramTree | null>(() => {
     const dendrogram = appState.dendrogram;
-    if (!dendrogram) return [];
+    if (!dendrogram) return null;
 
     // Nodes are indexed like the merges: leaves first, then one node per merge.
     const nodes: ClusterNode[] = dendrogram.ids.map((id) => {
@@ -70,17 +77,26 @@ export const dendrogramEdges = createRoot(() => {
             sumY: point.y,
             count: 1,
             k: point.item.computed?.clustering?.k ?? -1,
+            parent: -1,
           }
-        : { center: null, sumX: 0, sumY: 0, count: 0, k: -1 };
+        : { center: null, sumX: 0, sumY: 0, count: 0, k: -1, parent: -1 };
     });
 
     const edges: DendrogramEdge[] = [];
     for (const [mergeIndex, merge] of dendrogram.merges.entries()) {
+      const nodeIndex = nodes.length;
       const left = nodes[merge.left];
       const right = nodes[merge.right];
       if (!left || !right) {
         // Malformed indices; keep the node list aligned with the merge list.
-        nodes.push({ center: null, sumX: 0, sumY: 0, count: 0, k: -1 });
+        nodes.push({
+          center: null,
+          sumX: 0,
+          sumY: 0,
+          count: 0,
+          k: -1,
+          parent: -1,
+        });
         continue;
       }
 
@@ -112,10 +128,51 @@ export const dendrogramEdges = createRoot(() => {
         );
       }
 
-      nodes.push({ center, sumX, sumY, count, k });
+      left.parent = nodeIndex;
+      right.parent = nodeIndex;
+      nodes.push({ center, sumX, sumY, count, k, parent: -1 });
     }
 
-    return edges;
+    const leafIndexByKey = new Map(
+      dendrogram.ids.map((id, index) => [id, index]),
+    );
+
+    return { edges, nodes, leafIndexByKey, leafCount: dendrogram.ids.length };
   });
   return memo;
 });
+
+/**
+ * One edge per drawable child-to-parent link of the centroid tree, in graph
+ * space (y-down), ordered by merge rank. Empty when the session has no
+ * recorded dendrogram.
+ */
+export const dendrogramEdges = (): DendrogramEdge[] =>
+  dendrogramTree()?.edges ?? NO_EDGES;
+
+/**
+ * The polyline of a font's merge ancestry, in graph space: its point followed
+ * by the centroid of every successive merge that absorbed it, up to (not
+ * including) merge rank `maxMerges` — so the path never runs past the depth
+ * slider. Empty when the font or the dendrogram is absent.
+ */
+export function getDendrogramAncestry(
+  key: string | null,
+  maxMerges: number,
+): GraphCoordinate[] {
+  const tree = dendrogramTree();
+  if (!tree || !key) return NO_ANCESTRY;
+  const leafIndex = tree.leafIndexByKey.get(key);
+  const leaf = leafIndex === undefined ? undefined : tree.nodes[leafIndex];
+  if (!leaf?.center) return NO_ANCESTRY;
+
+  const points: GraphCoordinate[] = [leaf.center];
+  let node = leaf;
+  while (node.parent !== -1 && node.parent - tree.leafCount < maxMerges) {
+    const parent = tree.nodes[node.parent];
+    if (!parent?.center) break;
+    points.push(parent.center);
+    node = parent;
+  }
+  return points;
+}

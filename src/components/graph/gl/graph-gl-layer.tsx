@@ -27,6 +27,7 @@ interface GraphGlLayerProps {
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramVisibleMerges: Accessor<number>;
+  dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -59,6 +60,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramEdges: () => props.dendrogramEdges(),
     showDendrogram: () => props.showDendrogram(),
     dendrogramVisibleMerges: () => props.dendrogramVisibleMerges(),
+    dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });
 

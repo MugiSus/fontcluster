@@ -23,7 +23,10 @@ import {
 import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
-import { createDendrogramLayer } from './dendrogram-layer';
+import {
+  createDendrogramLayer,
+  type DendrogramHighlight,
+} from './dendrogram-layer';
 import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
@@ -56,6 +59,7 @@ export interface UseGraphGlRendererProps {
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramVisibleMerges: Accessor<number>;
+  dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -280,6 +284,21 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       () => new Set(imageSpecs().map((spec) => spec.key)),
     );
 
+    // The selected font's merge ancestry, stroked in its cluster color.
+    const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
+      const points = props.dendrogramAncestry();
+      if (points.length < 2) return null;
+      const selected = props.selectedKey();
+      const point = selected ? props.getPointByKey(selected) : undefined;
+      return {
+        points,
+        color: getClusterColor({
+          k: point?.item.computed?.clustering?.k,
+          isDark: isDark(),
+        }),
+      };
+    });
+
     // --- layers (one scene; render order keeps images over rings over dots) -
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
@@ -293,6 +312,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
       visibleMerges: props.dendrogramVisibleMerges,
+      highlight: dendrogramHighlight,
       isDark,
       resolution: props.size,
       requestRender: scheduleRender,

@@ -1,4 +1,4 @@
-import { Show, createSignal, onCleanup, onMount } from 'solid-js';
+import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { polygonContains } from 'd3-polygon';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { toast } from 'solid-sonner';
@@ -7,7 +7,7 @@ import { appState } from '@/store';
 import { processLassoSelection } from '@/actions';
 import { useElementSize } from '@/hooks/use-element-size';
 import { type FontWeight } from '@/types/font';
-import { dendrogramEdges } from './dendrogram-edges';
+import { dendrogramEdges, getDendrogramAncestry } from './dendrogram-edges';
 import {
   fontPoints,
   getGraphPointByKey,
@@ -79,6 +79,17 @@ export function GraphViewer(props: GraphViewerProps) {
     getSelectionRadius: () => 40 * viewport.zoomFactor(),
     findSelectablePoint: graph.findSelectablePoint,
   });
+
+  // The selected font's merge ancestry for the dendrogram mode, clipped to the
+  // depth slider.
+  const dendrogramAncestry = createMemo(() =>
+    props.showDendrogram
+      ? getDendrogramAncestry(
+          selection.selectedKey(),
+          props.dendrogramVisibleMerges,
+        )
+      : [],
+  );
 
   onMount(() => {
     props.onViewportZoomControlsChange?.({
@@ -367,6 +378,7 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramEdges={dendrogramEdges}
           showDendrogram={() => props.showDendrogram}
           dendrogramVisibleMerges={() => props.dendrogramVisibleMerges}
+          dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />
         <svg

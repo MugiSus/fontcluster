@@ -1,9 +1,12 @@
 import { type Accessor, createEffect, createSignal, onCleanup } from 'solid-js';
 import { Color, Group, NormalBlending, type Object3D } from 'three';
+import { Line2 } from 'three/examples/jsm/lines/Line2.js';
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
+import { type GraphCoordinate } from '@/components/graph/types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 
 /** Stroke width in CSS px; fat lines keep a solid core (see axis-layer). */
@@ -16,12 +19,25 @@ const EDGE_OPACITY = 0.8;
  *  the tree recedes with depth without needing per-vertex alpha. */
 const FADE_NEAR = 0.75;
 const FADE_FAR = 0.12;
+/** The ancestry highlight is the mode's focal line: slightly wider and near
+ *  opaque so it stands out of the faded tree. */
+const HIGHLIGHT_WIDTH_PX = 1.5;
+const HIGHLIGHT_OPACITY = 0.9;
+
+/** The selected font's merge-ancestry polyline and its stroke color. */
+export interface DendrogramHighlight {
+  /** Graph-space (y-down) polyline: the point, then successive merge centroids. */
+  points: GraphCoordinate[];
+  color: number;
+}
 
 export interface DendrogramLayerProps {
   /** The edges to draw, in graph space (y-down), ordered by merge rank. */
   edges: Accessor<DendrogramEdge[]>;
   /** Merges to show: edges of merge ranks at or past this are hidden. */
   visibleMerges: Accessor<number>;
+  /** The selected font's ancestry to emphasize, if any. */
+  highlight: Accessor<DendrogramHighlight | null>;
   /** Whether the active theme is dark (picks cluster/background colors). */
   isDark: Accessor<boolean>;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
@@ -59,9 +75,17 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     depthTest: false,
     blending: NormalBlending,
   });
+  const highlightMaterial = new LineMaterial({
+    linewidth: HIGHLIGHT_WIDTH_PX,
+    transparent: true,
+    opacity: HIGHLIGHT_OPACITY,
+    depthTest: false,
+    blending: NormalBlending,
+  });
 
   const group = new Group();
   let lines: LineSegments2 | null = null;
+  let highlightLine: Line2 | null = null;
   // Downstream notification that the geometry was swapped, so the prefix
   // effect below re-applies the depth cap to the fresh (full) geometry.
   const [built, setBuilt] = createSignal<{
@@ -123,15 +147,44 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
+  // The selected font's ancestry, drawn as a continuous polyline over the
+  // tree. `LineGeometry` has no in-place resize either, so it is rebuilt per
+  // selection change (the path is only ever tree-depth long).
+  createEffect(() => {
+    const highlight = props.highlight();
+    if (highlightLine) {
+      group.remove(highlightLine);
+      highlightLine.geometry.dispose();
+      highlightLine = null;
+    }
+    if (highlight && highlight.points.length >= 2) {
+      // World Y is the negated graph Y (graph space is y-down).
+      const positions = highlight.points.flatMap(({ x, y }) => [x, -y, 0]);
+      const geometry = new LineGeometry();
+      geometry.setPositions(positions);
+      highlightMaterial.color.set(highlight.color);
+      highlightLine = new Line2(geometry, highlightMaterial);
+      highlightLine.frustumCulled = false;
+      highlightLine.renderOrder = -0.4;
+      group.add(highlightLine);
+    }
+    props.requestRender();
+  });
+
   createEffect(() => {
     const { width, height } = props.resolution();
-    if (width > 0 && height > 0) material.resolution.set(width, height);
+    if (width > 0 && height > 0) {
+      material.resolution.set(width, height);
+      highlightMaterial.resolution.set(width, height);
+    }
     props.requestRender();
   });
 
   onCleanup(() => {
     lines?.geometry.dispose();
+    highlightLine?.geometry.dispose();
     material.dispose();
+    highlightMaterial.dispose();
   });
 
   return group;
