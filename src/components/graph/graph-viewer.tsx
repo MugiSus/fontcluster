@@ -13,6 +13,7 @@ import {
   dendrogramImageAnchors,
   dendrogramNodeDots,
   getDendrogramAncestry,
+  getDendrogramSubtreeMergeIndexes,
 } from './dendrogram-edges';
 import {
   fontPoints,
@@ -123,9 +124,20 @@ export function GraphViewer(props: GraphViewerProps) {
     findDendrogramPoint,
   });
 
-  // The selected font's merge ancestry for the dendrogram mode.
+  // The selected font or merge node's parent ancestry for the dendrogram mode.
   const dendrogramAncestry = createMemo(() =>
-    props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
+    props.showDendrogram
+      ? getDendrogramAncestry(
+          selection.selectedKey(),
+          selection.selectedDendrogramNode(),
+        )
+      : [],
+  );
+
+  const dendrogramSubtreeMergeIndexes = createMemo(() =>
+    props.showDendrogram
+      ? getDendrogramSubtreeMergeIndexes(selection.selectedDendrogramNode())
+      : new Set<number>(),
   );
 
   const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
@@ -461,6 +473,7 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           showDendrogram={() => props.showDendrogram}
           dendrogramAncestry={dendrogramAncestry}
+          dendrogramSubtreeMergeIndexes={dendrogramSubtreeMergeIndexes}
           sessionDirectory={() => appState.sessionDirectory}
         />
         <svg

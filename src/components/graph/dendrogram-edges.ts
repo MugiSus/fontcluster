@@ -1,5 +1,6 @@
 import { createMemo, createRoot } from 'solid-js';
 import { appState } from '@/store';
+import { type DendrogramMerge } from '@/types/session';
 import {
   arcPoints,
   polarPoint,
@@ -78,12 +79,15 @@ interface DendrogramTree {
   dots: DendrogramNodeDot[];
   /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
   ids: string[];
+  /** Merge steps, retained so selected merge nodes can resolve descendants. */
+  merges: DendrogramMerge[];
 }
 
-const NO_ANCESTRY: GraphCoordinate[] = [];
+const NO_ANCESTRY: DendrogramEdge[] = [];
 const NO_EDGES: DendrogramEdge[] = [];
 const NO_ANCHORS: DendrogramImageAnchor[] = [];
 const NO_DOTS: DendrogramNodeDot[] = [];
+const NO_MERGE_INDEXES = new Set<number>();
 
 /** Two points closer than this (in graph units) count as coincident. */
 const COINCIDENT_EPSILON = 1e-6;
@@ -276,6 +280,7 @@ const dendrogramTree = createRoot(() => {
       imageAnchors,
       dots,
       ids: dendrogram.ids,
+      merges: dendrogram.merges,
     };
   });
   return memo;
@@ -306,38 +311,99 @@ export const dendrogramNodeDots = (): DendrogramNodeDot[] =>
   dendrogramTree()?.dots ?? NO_DOTS;
 
 /**
- * The polyline of a font's merge ancestry, in graph space, following the same
- * brackets the tree draws: from the font's point radially in to each
- * absorbing merge's radius, then along that merge's arc to its angle, up to
- * the root at the centre. Empty when the font or the dendrogram is absent.
+ * The polyline of a font's or merge node's parent ancestry, in graph space,
+ * following the same brackets the tree draws: from the start point radially in
+ * to each absorbing merge's radius, then along that merge's arc to its angle,
+ * up to the root at the centre. Empty when the start point or dendrogram is
+ * absent.
  */
-export function getDendrogramAncestry(key: string | null): GraphCoordinate[] {
+export function getDendrogramAncestry(
+  key: string | null,
+  nodeIndex: number | null = null,
+): DendrogramEdge[] {
   const tree = dendrogramTree();
-  if (!tree || !key) return NO_ANCESTRY;
-  const leafIndex = tree.leafIndexByKey.get(key);
-  const leaf = leafIndex === undefined ? undefined : tree.nodes[leafIndex];
-  if (!leaf?.center) return NO_ANCESTRY;
+  if (!tree) return NO_ANCESTRY;
+  let startNode: ClusterNode | undefined;
+  if (nodeIndex === null) {
+    const leafIndex = key ? tree.leafIndexByKey.get(key) : undefined;
+    startNode = leafIndex === undefined ? undefined : tree.nodes[leafIndex];
+  } else {
+    startNode = tree.nodes[nodeIndex];
+  }
+  if (!startNode?.center) return NO_ANCESTRY;
 
-  const points: GraphCoordinate[] = [leaf.center];
+  const edges: DendrogramEdge[] = [];
   // Coincident joints (a merge at the same radius or angle) would put
   // zero-length links into the fat-line strip; drop them as they appear.
-  const pushPoint = (point: GraphCoordinate) => {
-    const last = points[points.length - 1];
-    if (last && isCoincident(last, point)) return;
-    points.push(point);
+  const pushPolyline = (
+    points: GraphCoordinate[],
+    mergeIndex: number,
+    k: number,
+  ) => {
+    for (const [index, point] of points.entries()) {
+      if (index === 0) continue;
+      const previous = points[index - 1]!;
+      if (isCoincident(previous, point)) continue;
+      edges.push({
+        x1: previous.x,
+        y1: previous.y,
+        x2: point.x,
+        y2: point.y,
+        mergeIndex,
+        k,
+      });
+    }
   };
 
-  let angle = leaf.angle;
-  let node = leaf;
+  let angle = startNode.angle;
+  let node = startNode;
+  let center = startNode.center;
   while (node.parent !== -1) {
     const parent = tree.nodes[node.parent];
     if (!parent?.center) break;
-    pushPoint(polarPoint(angle, parent.radius));
-    for (const point of arcPoints(angle, parent.angle, parent.radius)) {
-      pushPoint(point);
-    }
+    const mergeIndex = node.parent - tree.ids.length;
+    const elbow = polarPoint(angle, parent.radius);
+    pushPolyline([center, elbow], mergeIndex, parent.k);
+    pushPolyline(
+      [elbow, ...arcPoints(angle, parent.angle, parent.radius)],
+      mergeIndex,
+      parent.k,
+    );
     angle = parent.angle;
     node = parent;
+    center = parent.center;
   }
-  return points;
+  return edges;
+}
+
+/**
+ * Merge indexes in the selected merge node's descendant subtree, including the
+ * selected merge itself.
+ */
+export function getDendrogramSubtreeMergeIndexes(
+  nodeIndex: number | null,
+): ReadonlySet<number> {
+  const tree = dendrogramTree();
+  if (!tree || nodeIndex === null) return NO_MERGE_INDEXES;
+
+  const leafCount = tree.ids.length;
+  if (nodeIndex < leafCount || nodeIndex >= leafCount + tree.merges.length) {
+    return NO_MERGE_INDEXES;
+  }
+
+  const mergeIndexes = new Set<number>();
+  const stack = [nodeIndex];
+  while (stack.length > 0) {
+    const node = stack.pop()!;
+    if (node < leafCount) continue;
+
+    const mergeIndex = node - leafCount;
+    const merge = tree.merges[mergeIndex];
+    if (!merge) continue;
+
+    mergeIndexes.add(mergeIndex);
+    stack.push(merge.left, merge.right);
+  }
+
+  return mergeIndexes;
 }

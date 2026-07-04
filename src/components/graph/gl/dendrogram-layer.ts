@@ -9,8 +9,6 @@ import {
   Points,
   ShaderMaterial,
 } from 'three';
-import { Line2 } from 'three/examples/jsm/lines/Line2.js';
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -18,7 +16,6 @@ import {
   type DendrogramEdge,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
-import { type GraphCoordinate } from '@/components/graph/types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
@@ -124,11 +121,9 @@ function antialiasLineMaterial(material: LineMaterial): void {
   };
 }
 
-/** The selected font's merge-ancestry polyline and its stroke color. */
+/** The selected font or merge node's parent-ancestry edges. */
 export interface DendrogramHighlight {
-  /** Graph-space (y-down) polyline: the point, then successive merge centroids. */
-  points: GraphCoordinate[];
-  color: number;
+  edges: DendrogramEdge[];
 }
 
 export interface DendrogramLayerProps {
@@ -139,8 +134,10 @@ export interface DendrogramLayerProps {
   /** Node indexes whose exemplar image is drawn; their dot is hidden (the
    *  image replaces it, like the point layer's `aHideCore`). */
   imageNodeIndexes: Accessor<Set<number>>;
-  /** The selected font's ancestry to emphasize, if any. */
+  /** The selected font or merge node's parent ancestry to emphasize, if any. */
   highlight: Accessor<DendrogramHighlight | null>;
+  /** Merge indexes in the selected merge node's descendant subtree. */
+  subtreeMergeIndexes: Accessor<ReadonlySet<number>>;
   /** Representative font keys that are currently active/selectable. */
   activeKeys: Accessor<Set<string>>;
   /** Whether the active theme is dark (picks cluster/background colors). */
@@ -184,6 +181,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   });
   const highlightMaterial = new LineMaterial({
     linewidth: HIGHLIGHT_WIDTH_PX,
+    vertexColors: true,
     transparent: true,
     opacity: HIGHLIGHT_OPACITY,
     depthTest: false,
@@ -212,7 +210,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   const group = new Group();
   let lines: LineSegments2 | null = null;
-  let highlightLine: Line2 | null = null;
+  let highlightLines: LineSegments2 | null = null;
 
   const dots = new Points(dotGeometry, dotMaterial);
   dots.frustumCulled = false;
@@ -222,17 +220,12 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   createEffect(() => {
     const edges = props.edges();
-    const isDark = props.isDark();
     if (lines) {
       group.remove(lines);
       lines.geometry.dispose();
       lines = null;
     }
     if (edges.length > 0) {
-      const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
-      const background = new Color(getBackgroundColor({ isDark }));
-      const segmentColor = new Color();
-
       // World Y is the negated graph Y (graph space is y-down).
       const positions = edges.flatMap(({ x1, y1, x2, y2 }) => [
         x1,
@@ -242,22 +235,37 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         -y2,
         0,
       ]);
-      const colors = edges.flatMap(({ mergeIndex, k }) => {
-        const fade = fadeForRank(mergeIndex, lastMergeIndex);
-        segmentColor.set(getClusterColor({ k, isDark }));
-        segmentColor.lerpColors(background, segmentColor, fade);
-        const { r, g, b } = segmentColor;
-        return [r, g, b, r, g, b];
-      });
 
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
-      geometry.setColors(colors);
       lines = new LineSegments2(geometry, material);
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;
       group.add(lines);
     }
+    props.requestRender();
+  });
+
+  createEffect(() => {
+    const edges = props.edges();
+    const isDark = props.isDark();
+    const subtreeMergeIndexes = props.subtreeMergeIndexes();
+    if (!lines || edges.length === 0) return;
+
+    const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
+    const background = new Color(getBackgroundColor({ isDark }));
+    const segmentColor = new Color();
+    const colors = edges.flatMap(({ mergeIndex, k }) => {
+      const fade = subtreeMergeIndexes.has(mergeIndex)
+        ? 1
+        : fadeForRank(mergeIndex, lastMergeIndex);
+      segmentColor.set(getClusterColor({ k, isDark }));
+      segmentColor.lerpColors(background, segmentColor, fade);
+      const { r, g, b } = segmentColor;
+      return [r, g, b, r, g, b];
+    });
+
+    lines.geometry.setColors(colors);
     props.requestRender();
   });
 
@@ -339,26 +347,38 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
-  // The selected font's ancestry, drawn as a continuous polyline over the
-  // tree. `LineGeometry` has no in-place resize either, so it is rebuilt per
-  // selection change (the path is only ever tree-depth long).
+  // A plain font selection uses its parent ancestry. A merge-node selection
+  // keeps that parent path while the base edge colors emphasize descendants.
   createEffect(() => {
     const highlight = props.highlight();
-    if (highlightLine) {
-      group.remove(highlightLine);
-      highlightLine.geometry.dispose();
-      highlightLine = null;
+    const isDark = props.isDark();
+    if (highlightLines) {
+      group.remove(highlightLines);
+      highlightLines.geometry.dispose();
+      highlightLines = null;
     }
-    if (highlight && highlight.points.length >= 2) {
-      // World Y is the negated graph Y (graph space is y-down).
-      const positions = highlight.points.flatMap(({ x, y }) => [x, -y, 0]);
-      const geometry = new LineGeometry();
+    if (highlight && highlight.edges.length > 0) {
+      const segmentColor = new Color();
+      const positions = highlight.edges.flatMap(({ x1, y1, x2, y2 }) => [
+        x1,
+        -y1,
+        0,
+        x2,
+        -y2,
+        0,
+      ]);
+      const colors = highlight.edges.flatMap(({ k }) => {
+        segmentColor.set(getClusterColor({ k, isDark }));
+        const { r, g, b } = segmentColor;
+        return [r, g, b, r, g, b];
+      });
+      const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
-      highlightMaterial.color.set(highlight.color);
-      highlightLine = new Line2(geometry, highlightMaterial);
-      highlightLine.frustumCulled = false;
-      highlightLine.renderOrder = -0.4;
-      group.add(highlightLine);
+      geometry.setColors(colors);
+      highlightLines = new LineSegments2(geometry, highlightMaterial);
+      highlightLines.frustumCulled = false;
+      highlightLines.renderOrder = -0.4;
+      group.add(highlightLines);
     }
     props.requestRender();
   });
@@ -380,7 +400,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   onCleanup(() => {
     lines?.geometry.dispose();
-    highlightLine?.geometry.dispose();
+    highlightLines?.geometry.dispose();
     material.dispose();
     highlightMaterial.dispose();
     dotGeometry.dispose();

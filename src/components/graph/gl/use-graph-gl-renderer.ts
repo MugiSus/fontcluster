@@ -67,7 +67,8 @@ export interface UseGraphGlRendererProps {
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
-  dendrogramAncestry: Accessor<GraphCoordinate[]>;
+  dendrogramAncestry: Accessor<DendrogramEdge[]>;
+  dendrogramSubtreeMergeIndexes: Accessor<ReadonlySet<number>>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -369,19 +370,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return nodeIndexes;
     });
 
-    // The selected font's merge ancestry, stroked in its cluster color.
+    // The selected font or merge node's parent ancestry, preserving each edge's
+    // cluster color.
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
-      const points = props.dendrogramAncestry();
-      if (points.length < 2) return null;
-      const selected = props.selectedKey();
-      const point = selected ? props.getPointByKey(selected) : undefined;
-      return {
-        points,
-        color: getClusterColor({
-          k: point?.item.computed?.clustering?.k,
-          isDark: isDark(),
-        }),
-      };
+      const edges = props.dendrogramAncestry();
+      if (edges.length === 0) return null;
+      return { edges };
     });
 
     // --- layers (one scene; render order keeps images over rings over dots) -
@@ -399,6 +393,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dots: props.dendrogramNodeDots,
       imageNodeIndexes: anchoredNodeIndexes,
       highlight: dendrogramHighlight,
+      subtreeMergeIndexes: props.dendrogramSubtreeMergeIndexes,
       activeKeys: props.filteredKeys,
       isDark,
       resolution: props.size,
