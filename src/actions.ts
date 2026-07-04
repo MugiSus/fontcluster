@@ -122,6 +122,9 @@ export const setActiveGraphWeights = (weights: FontWeight[]) =>
 export const setVisibleGraphClusters = (clusterIds: number[]) =>
   setAppState('ui', 'visibleGraphClusters', clusterIds);
 
+export const setShowDendrogram = (shown: boolean) =>
+  setAppState('ui', 'showDendrogram', shown);
+
 export const clearLassoResult = () => {
   batch(() => {
     setAppState('ui', 'lassoResult', null);

@@ -35,6 +35,10 @@ export interface AppState {
     listPreviewText: string;
     activeGraphWeights: FontWeight[];
     visibleGraphClusters: number[];
+    /** Whether the graph shows the dendrogram (radial tree) mode. Lives in
+     *  the store rather than the graph component because the point layout
+     *  derivation (font-point-index) switches on it. */
+    showDendrogram: boolean;
   };
   plugins: {
     connections: PluginConnection[];
@@ -103,6 +107,7 @@ export const [appState, setAppState] = createStore<AppState>({
     listPreviewText: '',
     activeGraphWeights: [400],
     visibleGraphClusters: [],
+    showDendrogram: false,
   },
   plugins: {
     connections: [],
