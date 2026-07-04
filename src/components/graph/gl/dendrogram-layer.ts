@@ -1,13 +1,26 @@
 import { type Accessor, createEffect, onCleanup } from 'solid-js';
-import { Color, Group, NormalBlending, type Object3D } from 'three';
+import {
+  BufferGeometry,
+  Color,
+  Float32BufferAttribute,
+  Group,
+  NormalBlending,
+  type Object3D,
+  Points,
+  ShaderMaterial,
+} from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
-import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
+import {
+  type DendrogramEdge,
+  type DendrogramNodeDot,
+} from '@/components/graph/dendrogram-edges';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
+import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
 /** Stroke width in CSS px; fat lines keep a solid core (see axis-layer). */
 const EDGE_WIDTH_PX = 1;
@@ -23,6 +36,14 @@ const FADE_FAR = 0.3;
  *  opaque so it stands out of the faded tree. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
 const HIGHLIGHT_OPACITY = 0.9;
+/** Merge-node dot diameter (CSS px); matches the point layer's core dots so
+ *  branch points read like the leaf points. */
+const NODE_DOT_PX = 3.5;
+
+/** Depth fade of a merge's color towards the background (shared by the edges
+ *  and the node dots so a dot sits tonally on its own bracket). */
+const fadeForRank = (mergeIndex: number, lastMergeIndex: number) =>
+  FADE_NEAR - (FADE_NEAR - FADE_FAR) * (mergeIndex / lastMergeIndex);
 
 /**
  * Analytic edge anti-aliasing for three's `LineMaterial`.
@@ -74,21 +95,28 @@ export interface DendrogramHighlight {
 export interface DendrogramLayerProps {
   /** The edges to draw, in graph space (y-down), ordered by merge rank. */
   edges: Accessor<DendrogramEdge[]>;
+  /** The merge-node dots to draw, in merge order. */
+  dots: Accessor<DendrogramNodeDot[]>;
+  /** Node indexes whose exemplar image is drawn; their dot is hidden (the
+   *  image replaces it, like the point layer's `aHideCore`). */
+  imageNodeIndexes: Accessor<Set<number>>;
   /** The selected font's ancestry to emphasize, if any. */
   highlight: Accessor<DendrogramHighlight | null>;
   /** Whether the active theme is dark (picks cluster/background colors). */
   isDark: Accessor<boolean>;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
   resolution: Accessor<{ width: number; height: number }>;
+  /** Device pixel ratio; the node dot sprite sizes to it. */
+  pixelRatio: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
 }
 
 /**
  * The radial dendrogram tree: the bracket chords of every merge — arcs plus
- * radial spokes (see `dendrogram-edges.ts`). Rendered between the origin axes
- * and the points (renderOrder -0.5) so the tree reads as a backplate under
- * the content.
+ * radial spokes (see `dendrogram-edges.ts`) — and a data dot at every merge
+ * node. Rendered between the origin axes and the points (renderOrder -0.5)
+ * so the tree reads as a backplate under the content.
  *
  * Two visual encodings are baked into per-segment vertex colors:
  * - merges whose subtree lies inside one final cluster take that cluster's
@@ -121,9 +149,33 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   antialiasLineMaterial(material);
   antialiasLineMaterial(highlightMaterial);
 
+  // The merge-node dots reuse the point layer's core sprite program: aColor
+  // carries the depth-faded merge color, aState stays active, and aHideCore
+  // suppresses the dot where the node's exemplar image is drawn — exactly the
+  // leaf points' image behaviour.
+  const dotGeometry = new BufferGeometry();
+  const dotMaterial = new ShaderMaterial({
+    uniforms: {
+      uPixelRatio: { value: 1 },
+      uCore: { value: NODE_DOT_PX },
+    },
+    vertexShader: coreVertexShader,
+    fragmentShader: coreFragmentShader,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+    blending: NormalBlending,
+  });
+
   const group = new Group();
   let lines: LineSegments2 | null = null;
   let highlightLine: Line2 | null = null;
+
+  const dots = new Points(dotGeometry, dotMaterial);
+  dots.frustumCulled = false;
+  // Above the edges and the ancestry highlight, below the leaf points.
+  dots.renderOrder = -0.3;
+  group.add(dots);
 
   createEffect(() => {
     const edges = props.edges();
@@ -148,8 +200,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         0,
       ]);
       const colors = edges.flatMap(({ mergeIndex, k }) => {
-        const fade =
-          FADE_NEAR - (FADE_NEAR - FADE_FAR) * (mergeIndex / lastMergeIndex);
+        const fade = fadeForRank(mergeIndex, lastMergeIndex);
         segmentColor.set(getClusterColor({ k, isDark }));
         segmentColor.lerpColors(background, segmentColor, fade);
         const { r, g, b } = segmentColor;
@@ -164,6 +215,66 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       lines.renderOrder = -0.5;
       group.add(lines);
     }
+    props.requestRender();
+  });
+
+  // Node dot positions + colors (rebuilt with the dot set / theme, like the
+  // edges above). aHideCore is owned by the effect below.
+  createEffect(() => {
+    const nodeDots = props.dots();
+    const isDark = props.isDark();
+    const count = nodeDots.length;
+    const lastMergeIndex = nodeDots[count - 1]?.mergeIndex || 1;
+    const background = new Color(getBackgroundColor({ isDark }));
+    const dotColor = new Color();
+
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    for (const [index, dot] of nodeDots.entries()) {
+      positions[index * 3] = dot.x;
+      // World Y is the negated graph Y (graph space is y-down).
+      positions[index * 3 + 1] = -dot.y;
+      positions[index * 3 + 2] = 0;
+      dotColor.set(getClusterColor({ k: dot.k, isDark }));
+      dotColor.lerpColors(
+        background,
+        dotColor,
+        fadeForRank(dot.mergeIndex, lastMergeIndex),
+      );
+      colors[index * 3] = dotColor.r;
+      colors[index * 3 + 1] = dotColor.g;
+      colors[index * 3 + 2] = dotColor.b;
+    }
+    dotGeometry.setAttribute(
+      'position',
+      new Float32BufferAttribute(positions, 3),
+    );
+    dotGeometry.setAttribute('aColor', new Float32BufferAttribute(colors, 3));
+    dotGeometry.setAttribute(
+      'aState',
+      new Float32BufferAttribute(new Float32Array(count), 1),
+    );
+    dotGeometry.setAttribute(
+      'aHideCore',
+      new Float32BufferAttribute(new Float32Array(count), 1),
+    );
+    dotGeometry.setDrawRange(0, count);
+    props.requestRender();
+  });
+
+  // Hide the dot where the node's exemplar image is drawn (cheap in-place
+  // flag update; the geometry effect above reallocates it to all-shown).
+  createEffect(() => {
+    const shownImages = props.imageNodeIndexes();
+    const nodeDots = props.dots();
+    const attribute = dotGeometry.getAttribute('aHideCore');
+    if (!attribute || attribute.count !== nodeDots.length) return;
+
+    const flags = attribute.array as Float32Array;
+    for (const [index, dot] of nodeDots.entries()) {
+      flags[index] = shownImages.has(dot.nodeIndex) ? 1 : 0;
+    }
+    attribute.needsUpdate = true;
     props.requestRender();
   });
 
@@ -200,11 +311,19 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
+  // Device pixel ratio (dot sprite size = CSS px × dpr), like the point layer.
+  createEffect(() => {
+    dotMaterial.uniforms['uPixelRatio']!.value = props.pixelRatio();
+    props.requestRender();
+  });
+
   onCleanup(() => {
     lines?.geometry.dispose();
     highlightLine?.geometry.dispose();
     material.dispose();
     highlightMaterial.dispose();
+    dotGeometry.dispose();
+    dotMaterial.dispose();
   });
 
   return group;

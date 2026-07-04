@@ -23,6 +23,7 @@ import {
 import {
   type DendrogramEdge,
   type DendrogramImageAnchor,
+  type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
@@ -31,7 +32,7 @@ import {
   type DendrogramHighlight,
 } from './dendrogram-layer';
 import { createGlowCompositor } from './glow-compositor';
-import { BOX_HEIGHT_PX, createImageLayer, type ImageSpec } from './image-layer';
+import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
 
@@ -60,6 +61,7 @@ export interface UseGraphGlRendererProps {
   showImages: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
+  dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
@@ -280,17 +282,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         });
       }
 
-      // Dendrogram mode: the merge nodes' exemplar samples. An anchor only
-      // shows once its radial gap to the absorbing parent fits the image box
-      // at the current zoom, so zooming in reveals finer merge stages. Node
-      // keys live in their own `dendrogram:` namespace: the same font may
-      // represent several nodes (and its own leaf) at once, and the pooled
-      // meshes must not collide — the texture cache still dedupes by safe
-      // name, so no extra loads happen.
+      // Dendrogram mode: the merge nodes' exemplar samples (already gated on
+      // the zoom-dependent span fit upstream — see the viewer's visible-anchor
+      // memo, which is also the click hit-test source). Node keys live in
+      // their own `dendrogram:` namespace: the same font may represent several
+      // nodes (and its own leaf) at once, and the pooled meshes must not
+      // collide — the texture cache still dedupes by safe name, so no extra
+      // loads happen.
       if (props.showDendrogram()) {
-        const minSpan = BOX_HEIGHT_PX * props.zoomFactor();
         for (const anchor of props.dendrogramImageAnchors()) {
-          if (anchor.span < minSpan) continue;
           specs.push({
             key: `dendrogram:${anchor.nodeIndex}`,
             safeName: anchor.safeName,
@@ -309,6 +309,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // shown" exactly.
     const imageShownKeys = createMemo(
       () => new Set(imageSpecs().map((spec) => spec.key)),
+    );
+
+    // Merge nodes whose exemplar image is drawn; the dendrogram layer hides
+    // their node dot the same way.
+    const anchoredNodeIndexes = createMemo(
+      () =>
+        new Set(
+          props.dendrogramImageAnchors().map((anchor) => anchor.nodeIndex),
+        ),
     );
 
     // The selected font's merge ancestry, stroked in its cluster color.
@@ -338,9 +347,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
+      dots: props.dendrogramNodeDots,
+      imageNodeIndexes: anchoredNodeIndexes,
       highlight: dendrogramHighlight,
       isDark,
       resolution: props.size,
+      pixelRatio,
       requestRender: scheduleRender,
     });
     const pointLayer = createPointLayer({

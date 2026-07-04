@@ -3,6 +3,7 @@ import { type FontWeight } from '@/types/font';
 import {
   type DendrogramEdge,
   type DendrogramImageAnchor,
+  type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import {
   type GraphCoordinate,
@@ -28,6 +29,7 @@ interface GraphGlLayerProps {
   showImages: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
+  dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
@@ -61,6 +63,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     showImages: () => props.showImages(),
     glow: () => props.glow(),
     dendrogramEdges: () => props.dendrogramEdges(),
+    dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     showDendrogram: () => props.showDendrogram(),
     dendrogramAncestry: () => props.dendrogramAncestry(),

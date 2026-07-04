@@ -54,6 +54,20 @@ interface ClusterNode {
   dominantCount: number;
 }
 
+/** One merge node of the radial tree, drawn as a data dot. */
+export interface DendrogramNodeDot {
+  /** Dendrogram node index of the merge (leaf count + merge rank). */
+  nodeIndex: number;
+  /** Graph-space (y-down) merge point. */
+  x: number;
+  y: number;
+  /** Cluster id shared by every visible point under the node, or `-1` when it
+   *  spans clusters — the same encoding the node's edges use. */
+  k: number;
+  /** Zero-based rank of the node's merge, for the depth fade. */
+  mergeIndex: number;
+}
+
 /** A merge node that carries its representative's sample image. */
 export interface DendrogramImageAnchor {
   /** Dendrogram node index of the merge (leaf count + merge rank). */
@@ -79,6 +93,8 @@ interface DendrogramTree {
   /** Anchors at every representative's reign end: the innermost merge still
    *  represented by that font (its rep loses at the parent, or the root). */
   imageAnchors: DendrogramImageAnchor[];
+  /** One dot per visible merge node, in merge order. */
+  dots: DendrogramNodeDot[];
   /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
   ids: string[];
 }
@@ -86,6 +102,7 @@ interface DendrogramTree {
 const NO_ANCESTRY: GraphCoordinate[] = [];
 const NO_EDGES: DendrogramEdge[] = [];
 const NO_ANCHORS: DendrogramImageAnchor[] = [];
+const NO_DOTS: DendrogramNodeDot[] = [];
 
 /** Two points closer than this (in graph units) count as coincident. */
 const COINCIDENT_EPSILON = 1e-6;
@@ -244,9 +261,20 @@ const dendrogramTree = createRoot(() => {
 
     // One anchor per representative, at its reign end: the innermost merge it
     // still represents (its rep is not the parent's, or the node is a root).
+    // And one dot per visible merge node, sample or not, so every branch
+    // point reads as an actual point.
     const imageAnchors: DendrogramImageAnchor[] = [];
+    const dots: DendrogramNodeDot[] = [];
     for (const [nodeIndex, node] of nodes.entries()) {
-      if (nodeIndex < leafCount || !node.center || node.rep < 0) continue;
+      if (nodeIndex < leafCount || !node.center) continue;
+      dots.push({
+        nodeIndex,
+        x: node.center.x,
+        y: node.center.y,
+        k: node.k,
+        mergeIndex: nodeIndex - leafCount,
+      });
+      if (node.rep < 0) continue;
       const parent = node.parent === -1 ? null : nodes[node.parent];
       if (parent && parent.rep === node.rep) continue;
       const safeName = dendrogram.ids[node.rep];
@@ -265,7 +293,14 @@ const dendrogramTree = createRoot(() => {
       dendrogram.ids.map((id, index) => [id, index]),
     );
 
-    return { edges, nodes, leafIndexByKey, imageAnchors, ids: dendrogram.ids };
+    return {
+      edges,
+      nodes,
+      leafIndexByKey,
+      imageAnchors,
+      dots,
+      ids: dendrogram.ids,
+    };
   });
   return memo;
 });
@@ -285,6 +320,14 @@ export const dendrogramEdges = (): DendrogramEdge[] =>
  */
 export const dendrogramImageAnchors = (): DendrogramImageAnchor[] =>
   dendrogramTree()?.imageAnchors ?? NO_ANCHORS;
+
+/**
+ * One dot per visible merge node (see {@link DendrogramNodeDot}), in merge
+ * order. Empty when the dendrogram mode is inactive or the session has no
+ * recorded dendrogram.
+ */
+export const dendrogramNodeDots = (): DendrogramNodeDot[] =>
+  dendrogramTree()?.dots ?? NO_DOTS;
 
 /**
  * The representative handovers along a font's merge ancestry: an anchor at

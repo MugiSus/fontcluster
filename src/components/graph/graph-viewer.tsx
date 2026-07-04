@@ -11,6 +11,7 @@ import {
   type DendrogramImageAnchor,
   dendrogramEdges,
   dendrogramImageAnchors,
+  dendrogramNodeDots,
   getDendrogramAncestry,
   getDendrogramAncestryImageAnchors,
 } from './dendrogram-edges';
@@ -23,6 +24,7 @@ import {
   graphOrigin,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
+import { BOX_HEIGHT_PX } from './gl/image-layer';
 import { SelectedFontActions } from './selected-font-actions';
 import {
   type GraphCoordinate,
@@ -93,7 +95,11 @@ export function GraphViewer(props: GraphViewerProps) {
   // Merge-node exemplar images for the dendrogram mode: the always-on reign
   // ends follow the images toggle, the selected font's ancestry handovers
   // show regardless (like the selected font's own image). Deduped by node,
-  // ancestry last so its unconditional span wins.
+  // ancestry last so its unconditional span wins. An anchor only survives
+  // once its radial gap to the absorbing parent fits the image box at the
+  // current zoom, so zooming in reveals finer merge stages — this memo is the
+  // single source of the *visible* anchors: the GL image layer draws exactly
+  // these, and the click hit-test resolves against the same set.
   const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
     if (!props.showDendrogram) return [];
     const byNode = new Map<number, DendrogramImageAnchor>();
@@ -107,7 +113,8 @@ export function GraphViewer(props: GraphViewerProps) {
     )) {
       byNode.set(anchor.nodeIndex, anchor);
     }
-    return [...byNode.values()];
+    const minSpan = BOX_HEIGHT_PX * viewport.zoomFactor();
+    return [...byNode.values()].filter((anchor) => anchor.span >= minSpan);
   });
 
   onMount(() => {
@@ -395,6 +402,7 @@ export function GraphViewer(props: GraphViewerProps) {
           showImages={() => props.showImages}
           glow={() => props.showGlow}
           dendrogramEdges={dendrogramEdges}
+          dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           showDendrogram={() => props.showDendrogram}
           dendrogramAncestry={dendrogramAncestry}
