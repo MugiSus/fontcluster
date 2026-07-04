@@ -90,8 +90,8 @@ interface DendrogramTree {
   edges: DendrogramEdge[];
   nodes: ClusterNode[];
   leafIndexByKey: Map<string, number>;
-  /** Anchors at every representative's reign end: the innermost merge still
-   *  represented by that font (its rep loses at the parent, or the root). */
+  /** Anchors at every visible merge node, carrying the node's
+   *  representative's sample. */
   imageAnchors: DendrogramImageAnchor[];
   /** One dot per visible merge node, in merge order. */
   dots: DendrogramNodeDot[];
@@ -259,10 +259,10 @@ const dendrogramTree = createRoot(() => {
       );
     }
 
-    // One anchor per representative, at its reign end: the innermost merge it
-    // still represents (its rep is not the parent's, or the node is a root).
-    // And one dot per visible merge node, sample or not, so every branch
-    // point reads as an actual point.
+    // An anchor at every visible merge node carrying its representative's
+    // sample — the same font deliberately repeats along the chain of merges
+    // it keeps representing. And one dot per visible merge node, sample or
+    // not, so every branch point reads as an actual point.
     const imageAnchors: DendrogramImageAnchor[] = [];
     const dots: DendrogramNodeDot[] = [];
     for (const [nodeIndex, node] of nodes.entries()) {
@@ -276,7 +276,6 @@ const dendrogramTree = createRoot(() => {
       });
       if (node.rep < 0) continue;
       const parent = node.parent === -1 ? null : nodes[node.parent];
-      if (parent && parent.rep === node.rep) continue;
       const safeName = dendrogram.ids[node.rep];
       if (!safeName) continue;
       imageAnchors.push({
@@ -314,7 +313,7 @@ export const dendrogramEdges = (): DendrogramEdge[] =>
   dendrogramTree()?.edges ?? NO_EDGES;
 
 /**
- * One image anchor per representative's reign end (see
+ * One image anchor per visible merge node (see
  * {@link DendrogramImageAnchor}), in node order. Empty when the dendrogram
  * mode is inactive or the session has no recorded dendrogram.
  */

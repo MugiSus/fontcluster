@@ -118,12 +118,12 @@ export function GraphViewer(props: GraphViewerProps) {
     props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
   );
 
-  // Merge-node exemplar images for the dendrogram mode: the representatives'
-  // reign ends, following the images toggle. An anchor only survives once its
-  // radial gap to the absorbing parent fits the image box at the current
-  // zoom, so zooming in reveals finer merge stages — this memo is the single
-  // source of the *visible* anchors: the GL image layer draws exactly these,
-  // and the click hit-test resolves against the same set.
+  // Merge-node exemplar images for the dendrogram mode, following the images
+  // toggle. An anchor only survives once its radial gap to the absorbing
+  // parent fits the image box at the current zoom, so zooming in reveals
+  // finer merge stages — this memo is the single source of the *visible*
+  // anchors: the GL image layer draws exactly these, and the click hit-test
+  // resolves against the same set.
   const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
     if (!props.showDendrogram || !props.showImages) return [];
     const minSpan = BOX_HEIGHT_PX * viewport.zoomFactor();
