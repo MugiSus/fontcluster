@@ -23,6 +23,10 @@ export interface RadialDendrogramLayout {
   /** Position of every dendrogram node (leaves first, then one per merge);
    *  null for nodes without a visible member. */
   nodeCenters: (GraphCoordinate | null)[];
+  /** Polar angle of every node; NaN for nodes without a visible member. */
+  nodeAngles: number[];
+  /** Polar radius of every node (leaves on the ring, merges sinking inward). */
+  nodeRadii: number[];
 }
 
 const CENTER = GRAPH_SIZE / 2;
@@ -30,6 +34,34 @@ const CENTER = GRAPH_SIZE / 2;
 const LEAF_RADIUS = GRAPH_SIZE / 2;
 /** The first leaf sits at the top of the ring. */
 const START_ANGLE = -Math.PI / 2;
+/** Longest chord used when tessellating arcs; short enough (a few px at the
+ *  default zoom) that the polyline reads as a smooth circle. */
+const MAX_ARC_CHORD = 3;
+
+/** Graph-space point at a polar angle/radius around the ring centre. */
+export function polarPoint(angle: number, radius: number): GraphCoordinate {
+  return {
+    x: CENTER + radius * Math.cos(angle),
+    y: CENTER + radius * Math.sin(angle),
+  };
+}
+
+/** The arc from `angleFrom` to `angleTo` at `radius`, as successive chord
+ *  destinations: excludes the start point, includes the end. */
+export function arcPoints(
+  angleFrom: number,
+  angleTo: number,
+  radius: number,
+): GraphCoordinate[] {
+  const span = angleTo - angleFrom;
+  const steps = Math.max(
+    1,
+    Math.ceil((Math.abs(span) * radius) / MAX_ARC_CHORD),
+  );
+  return Array.from({ length: steps }, (_, step) =>
+    polarPoint(angleFrom + (span * (step + 1)) / steps, radius),
+  );
+}
 
 export const radialDendrogramLayout = createRoot(() => {
   const memo = createMemo<RadialDendrogramLayout | null>(() => {
@@ -113,14 +145,10 @@ export const radialDendrogramLayout = createRoot(() => {
       return LEAF_RADIUS * (1 - height / maxHeight);
     };
 
-    const nodeCenters = angles.map((angle, node) => {
-      if (Number.isNaN(angle)) return null;
-      const radius = radiusOf(node);
-      return {
-        x: CENTER + radius * Math.cos(angle),
-        y: CENTER + radius * Math.sin(angle),
-      };
-    });
+    const nodeRadii = angles.map((_, node) => radiusOf(node));
+    const nodeCenters = angles.map((angle, node) =>
+      Number.isNaN(angle) ? null : polarPoint(angle, nodeRadii[node]!),
+    );
 
     const positionByKey = new Map<string, GraphCoordinate>();
     for (const [index, id] of ids.entries()) {
@@ -128,7 +156,7 @@ export const radialDendrogramLayout = createRoot(() => {
       if (center) positionByKey.set(id, center);
     }
 
-    return { positionByKey, nodeCenters };
+    return { positionByKey, nodeCenters, nodeAngles: angles, nodeRadii };
   });
   return memo;
 });

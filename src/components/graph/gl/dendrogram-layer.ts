@@ -45,10 +45,10 @@ export interface DendrogramLayerProps {
 }
 
 /**
- * The dendrogram centroid tree: one line segment per child-to-parent link of
- * the clustering dendrogram (see `dendrogram-edges.ts`). Rendered between the
- * origin axes and the points (renderOrder -0.5) so the tree reads as a
- * backplate under the content.
+ * The radial dendrogram tree: the bracket chords of every merge — arcs plus
+ * radial spokes (see `dendrogram-edges.ts`). Rendered between the origin axes
+ * and the points (renderOrder -0.5) so the tree reads as a backplate under
+ * the content.
  *
  * Two visual encodings are baked into per-segment vertex colors:
  * - merges whose subtree lies inside one final cluster take that cluster's
