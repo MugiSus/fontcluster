@@ -27,7 +27,6 @@ export const ja: Dictionary = {
     sections: {
       render: '描画',
       analyze: '解析',
-      position: '配置',
       cluster: 'クラスタリング',
     },
     fontSets: {
@@ -51,11 +50,7 @@ export const ja: Dictionary = {
       zoom: 'ズーム',
       showSamples: 'サンプル',
       glowMode: '光彩',
-      dendrogramMode: 'デンドログラム（β版）',
       filter: '絞り込み',
-    },
-    lassoClearButton: {
-      label: '投げ縄',
     },
     filterDock: {
       clear: '消去',
@@ -68,9 +63,6 @@ export const ja: Dictionary = {
     selectedFontActions: {
       copy: 'コピー',
       applyToPlugins: 'プラグインへ適用',
-    },
-    toasts: {
-      lassoFailed: '投げ縄選択に失敗しました: {{error}}',
     },
     utilityControls: {
       undo: {
@@ -108,7 +100,6 @@ export const ja: Dictionary = {
         undoDelete: '取り消す',
         statusRendering: 'レンダリング中',
         statusAnalyzing: '解析中',
-        statusPositioning: '配置中',
         statusClustering: 'クラスタリング中',
         statusStopped: '中断',
         processing: '処理中',

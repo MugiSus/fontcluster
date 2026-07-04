@@ -1,12 +1,10 @@
 import { type Accessor } from 'solid-js';
-import { type FontWeight } from '@/types/font';
 import {
   type DendrogramEdge,
   type DendrogramImageAnchor,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import {
-  type GraphCoordinate,
   type GraphPointData,
   type GraphViewBox,
 } from '@/components/graph/types';
@@ -15,13 +13,11 @@ import { useGraphGlRenderer } from './use-graph-gl-renderer';
 interface GraphGlLayerProps {
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
-  origin: Accessor<GraphCoordinate>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   getPointByKey: (key: string) => GraphPointData | undefined;
   getPointsByFamilyName: (familyName: string) => readonly GraphPointData[];
   filteredKeys: Accessor<Set<string>>;
-  activeWeights: Accessor<FontWeight[]>;
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   hoveredKey: Accessor<string | null>;
@@ -32,15 +28,14 @@ interface GraphGlLayerProps {
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
-  showDendrogram: Accessor<boolean>;
-  dendrogramAncestry: Accessor<GraphCoordinate[]>;
+  dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
 
 /**
- * GPU-rendered graph: the origin axes, points + glow, selection/hover/family
- * rings and the cluster-tinted sample images. Sits behind the SVG, which now
- * only owns interaction, coordinate transforms and the lasso / zoom overlays.
+ * GPU-rendered graph: dendrogram edges, points + glow, selection/hover/family
+ * rings and the cluster-tinted sample images. Sits behind the SVG, which owns
+ * interaction, coordinate transforms and the zoom overlay.
  */
 export function GraphGlLayer(props: GraphGlLayerProps) {
   let canvas: HTMLCanvasElement | undefined;
@@ -49,14 +44,12 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     getCanvas: () => canvas,
     size: () => props.size(),
     viewBox: () => props.viewBox(),
-    origin: () => props.origin(),
     zoomFactor: () => props.zoomFactor(),
     points: () => props.points(),
     getPointByKey: (key) => props.getPointByKey(key),
     getPointsByFamilyName: (familyName) =>
       props.getPointsByFamilyName(familyName),
     filteredKeys: () => props.filteredKeys(),
-    activeWeights: () => props.activeWeights(),
     selectedKey: () => props.selectedKey(),
     selectedDendrogramAnchor: () => props.selectedDendrogramAnchor(),
     hoveredKey: () => props.hoveredKey(),
@@ -67,7 +60,6 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramEdges: () => props.dendrogramEdges(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
-    showDendrogram: () => props.showDendrogram(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

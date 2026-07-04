@@ -5,26 +5,20 @@ import {
   createRoot,
   createSignal,
 } from 'solid-js';
-import { unwrap } from 'solid-js/store';
 import { createUndoHistory } from '@solid-primitives/history';
 import { debounce } from '@solid-primitives/scheduled';
 import { appState, setAppState } from './store';
-import { type LassoProcessResult } from './types/font';
 
 const SELECTION_HISTORY_DEBOUNCE = 250;
 
 type SelectionHistorySnapshot = {
   selectedFontKey: string | null;
   selectedDendrogramNode: number | null;
-  lassoResult: LassoProcessResult | null;
 };
 
 const getSnapshot = (): SelectionHistorySnapshot => ({
   selectedFontKey: appState.ui.selectedFontKey,
   selectedDendrogramNode: appState.ui.selectedDendrogramNode,
-  lassoResult: appState.ui.lassoResult
-    ? structuredClone(unwrap(appState.ui.lassoResult))
-    : null,
 });
 
 const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
@@ -35,8 +29,6 @@ const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
       'selectedDendrogramNode',
       snapshot.selectedDendrogramNode,
     );
-    setAppState('ui', 'lassoResult', snapshot.lassoResult);
-    setAppState('ui', 'isLassoProcessing', false);
   });
 };
 
@@ -48,16 +40,7 @@ const snapshotsEqual = (
   if (left.selectedDendrogramNode !== right.selectedDendrogramNode) {
     return false;
   }
-  if (left.lassoResult === right.lassoResult) return true;
-  if (!left.lassoResult || !right.lassoResult) return false;
-  if (
-    left.lassoResult.safeNames.length !== right.lassoResult.safeNames.length
-  ) {
-    return false;
-  }
-  return left.lassoResult.safeNames.every(
-    (safeName, index) => safeName === right.lassoResult?.safeNames[index],
-  );
+  return true;
 };
 
 export const selectionHistory = createRoot(() => {

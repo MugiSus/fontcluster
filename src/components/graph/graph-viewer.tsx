@@ -1,12 +1,8 @@
 import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
-import { polygonContains } from 'd3-polygon';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
-import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
-import { processLassoSelection } from '@/actions';
 import { useElementSize } from '@/hooks/use-element-size';
-import { type FontWeight } from '@/types/font';
 import {
   type DendrogramImageAnchor,
   dendrogramEdges,
@@ -18,9 +14,6 @@ import {
   fontPoints,
   getGraphPointByKey,
   getGraphPointsByFamilyName,
-  getSelectableFontPoints,
-  getSelectableFontPointsInBounds,
-  graphOrigin,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './gl/image-layer';
@@ -33,7 +26,6 @@ import {
 import { useGraphPoints } from './use-graph-points';
 import { useGraphSelection } from './use-graph-selection';
 import { useGraphViewport } from './use-graph-viewport';
-import { cn } from '@/lib/utils';
 
 const POINTER_DRAG_THRESHOLD_PX = 4;
 
@@ -46,10 +38,7 @@ export interface ViewportZoomControls {
 interface GraphViewerProps {
   toolMode: GraphToolMode;
   showImages: boolean;
-  showFontNames: boolean;
   showGlow: boolean;
-  showDendrogram: boolean;
-  activeGraphWeights: FontWeight[];
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
   ) => void;
@@ -57,13 +46,10 @@ interface GraphViewerProps {
 
 export function GraphViewer(props: GraphViewerProps) {
   const { t } = useI18n();
-  const [lassoPoints, setLassoPoints] = createSignal<GraphCoordinate[]>([]);
   const [zoomBounds, setZoomBounds] = createSignal<GraphVisibleBounds | null>(
     null,
   );
   let svgElement: SVGSVGElement | undefined;
-  let lassoStartPoint: { x: number; y: number } | null = null;
-  let isLassoStarted = false;
   let zoomStartPoint: GraphCoordinate | null = null;
   let zoomStartScreenPoint: { x: number; y: number } | null = null;
   let isZoomStarted = false;
@@ -78,7 +64,6 @@ export function GraphViewer(props: GraphViewerProps) {
     viewBox: viewport.viewBox,
     zoomFactor: viewport.zoomFactor,
     isMoving: viewport.isMoving,
-    activeGraphWeights: () => props.activeGraphWeights,
   });
   // Hit-test for the merge-node samples: the image box around each visible
   // anchor (the same set the GL layer draws — see the memo below), nearest
@@ -111,7 +96,6 @@ export function GraphViewer(props: GraphViewerProps) {
     y: number,
     radius: number,
   ): DendrogramImageAnchor | null => {
-    if (!props.showDendrogram) return null;
     return graph.findSelectableDendrogramPoint(x, y, radius);
   };
 
@@ -123,15 +107,14 @@ export function GraphViewer(props: GraphViewerProps) {
     findDendrogramPoint,
   });
 
-  // The selected font's merge ancestry for the dendrogram mode.
   const dendrogramAncestry = createMemo(() =>
-    props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
+    getDendrogramAncestry(selection.selectedKey()),
   );
 
   const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
     () => {
       const nodeIndex = selection.selectedDendrogramNode();
-      if (nodeIndex === null || !props.showDendrogram) return null;
+      if (nodeIndex === null) return null;
       return (
         dendrogramImageAnchors().find(
           (candidate) => candidate.nodeIndex === nodeIndex,
@@ -148,7 +131,6 @@ export function GraphViewer(props: GraphViewerProps) {
   // graph point. Dot hit-testing is independent so image-hidden nodes still
   // behave like selectable graph points.
   const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
-    if (!props.showDendrogram) return [];
     const anchors = new Map<string, DendrogramImageAnchor>();
     if (props.showImages) {
       const keys = graph.visibleDendrogramImageKeys();
@@ -182,74 +164,6 @@ export function GraphViewer(props: GraphViewerProps) {
   onCleanup(() => {
     props.onViewportZoomControlsChange?.(null);
   });
-
-  const appendLassoPoint = (event: MouseEvent) => {
-    const point = viewport.getGraphPointFromEvent(event);
-    if (!point) return;
-
-    setLassoPoints((points) => {
-      const previous = points[points.length - 1];
-      if (previous && previous.x === point.x && previous.y === point.y) {
-        return points;
-      }
-      return [...points, point];
-    });
-  };
-
-  const getLassoScreenDistance = (event: MouseEvent) => {
-    if (!lassoStartPoint) return 0;
-    return Math.hypot(
-      event.clientX - lassoStartPoint.x,
-      event.clientY - lassoStartPoint.y,
-    );
-  };
-
-  const processLasso = () => {
-    const points = lassoPoints();
-    if (points.length < 3) return;
-
-    const bounds = points.reduce(
-      (acc, point) => ({
-        minX: Math.min(acc.minX, point.x),
-        maxX: Math.max(acc.maxX, point.x),
-        minY: Math.min(acc.minY, point.y),
-        maxY: Math.max(acc.maxY, point.y),
-      }),
-      {
-        minX: Infinity,
-        maxX: -Infinity,
-        minY: Infinity,
-        maxY: -Infinity,
-      },
-    );
-    const polygon = points.map(
-      (point) => [point.x, point.y] as [number, number],
-    );
-    const selectedPoints = getSelectableFontPointsInBounds(bounds).filter(
-      (point) => polygonContains(polygon, [point.x, point.y]),
-    );
-    if (selectedPoints.length === 0) return;
-
-    const safeNames =
-      props.toolMode === 'lasso-exclude'
-        ? getSelectableFontPoints()
-            .filter((point) => !polygonContains(polygon, [point.x, point.y]))
-            .map((point) => point.key)
-        : selectedPoints.map((point) => point.key);
-
-    if (safeNames.length > 0) {
-      processLassoSelection(safeNames).catch((error) => {
-        console.error('Failed to process lasso selection:', error);
-        toast.error(t.graph.toasts.lassoFailed({ error: String(error) }));
-      });
-    }
-  };
-
-  const clearLasso = () => {
-    lassoStartPoint = null;
-    isLassoStarted = false;
-    setLassoPoints([]);
-  };
 
   const clearZoom = () => {
     zoomStartPoint = null;
@@ -296,10 +210,6 @@ export function GraphViewer(props: GraphViewerProps) {
         selection.trackDraggingSelection(event);
         return;
       }
-      if (getLassoScreenDistance(event) > POINTER_DRAG_THRESHOLD_PX) {
-        isLassoStarted = true;
-      }
-      appendLassoPoint(event);
     }
   };
 
@@ -336,12 +246,7 @@ export function GraphViewer(props: GraphViewerProps) {
       }
       if (props.toolMode === 'select') {
         selection.trackDraggingSelection(event);
-        return;
       }
-      lassoStartPoint = { x: event.clientX, y: event.clientY };
-      isLassoStarted = false;
-      setLassoPoints([]);
-      appendLassoPoint(event);
     }
   };
 
@@ -389,13 +294,6 @@ export function GraphViewer(props: GraphViewerProps) {
       viewport.endPanDrag();
       return;
     }
-    if (isLassoStarted) {
-      appendLassoPoint(event);
-      processLasso();
-    } else if (getLassoScreenDistance(event) <= POINTER_DRAG_THRESHOLD_PX) {
-      selection.selectFromMouseEvent(event);
-    }
-    clearLasso();
     viewport.endPanDrag();
   };
 
@@ -406,7 +304,6 @@ export function GraphViewer(props: GraphViewerProps) {
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={() => {
-        clearLasso();
         clearZoom();
         selection.clearDraggingSelection();
         viewport.endPanDrag();
@@ -442,13 +339,11 @@ export function GraphViewer(props: GraphViewerProps) {
         <GraphGlLayer
           size={svgSize}
           viewBox={viewport.viewBox}
-          origin={graphOrigin}
           zoomFactor={viewport.zoomFactor}
           points={fontPoints}
           getPointByKey={getGraphPointByKey}
           getPointsByFamilyName={getGraphPointsByFamilyName}
           filteredKeys={() => appState.fonts.filteredKeys}
-          activeWeights={() => props.activeGraphWeights}
           selectedKey={selection.selectedKey}
           selectedDendrogramAnchor={selectedDendrogramAnchor}
           hoveredKey={() => appState.ui.hoveredFontKey}
@@ -459,7 +354,6 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramEdges={dendrogramEdges}
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
-          showDendrogram={() => props.showDendrogram}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />
@@ -472,38 +366,16 @@ export function GraphViewer(props: GraphViewerProps) {
           style={{
             cursor: viewport.isDragging()
               ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
-              : props.toolMode === 'lasso-select'
-                ? "url('/cursors/lasso-select.svg') 14 12, crosshair"
-                : props.toolMode === 'lasso-exclude'
-                  ? "url('/cursors/lasso-select-x.svg') 14 12, crosshair"
-                  : props.toolMode === 'drag'
-                    ? "url('/cursors/hand.svg') 12 12, grab"
-                    : props.toolMode === 'zoom'
-                      ? "url('/cursors/zoom-in.svg') 11 11, zoom-in"
-                      : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
+              : props.toolMode === 'drag'
+                ? "url('/cursors/hand.svg') 12 12, grab"
+                : props.toolMode === 'zoom'
+                  ? "url('/cursors/zoom-in.svg') 11 11, zoom-in"
+                  : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
           }}
           viewBox={`${viewport.viewBox().x} ${viewport.viewBox().y} ${viewport.viewBox().width} ${viewport.viewBox().height}`}
           xmlns='http://www.w3.org/2000/svg'
           text-rendering='optimizeSpeed'
         >
-          <Show when={lassoPoints().length > 1}>
-            <path
-              d={`M ${lassoPoints()
-                .map((point) => `${point.x} ${point.y}`)
-                .join(' L ')}`}
-              stroke='currentColor'
-              stroke-width={1 * viewport.zoomFactor()}
-              stroke-dasharray={`${6 * viewport.zoomFactor()} ${5 * viewport.zoomFactor()}`}
-              fill-rule='evenodd'
-              class={cn(
-                'pointer-events-none',
-                props.toolMode === 'lasso-exclude'
-                  ? 'fill-destructive/5 stroke-destructive'
-                  : 'fill-foreground/5 stroke-foreground',
-              )}
-            />
-          </Show>
-
           <Show when={zoomBounds()}>
             {(bounds) => (
               <rect

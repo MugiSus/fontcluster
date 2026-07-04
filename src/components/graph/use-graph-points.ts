@@ -7,7 +7,6 @@ import {
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { appState } from '@/store';
-import { type FontWeight } from '@/types/font';
 import {
   type DendrogramImageAnchor,
   dendrogramImageAnchors,
@@ -17,11 +16,7 @@ import {
   fontPoints,
   getVisibleImageKeys,
 } from './font-point-index';
-import {
-  collectVisibleImageKeys,
-  getVisibleBounds,
-  partitionVisiblePoints,
-} from './lib';
+import { collectVisibleImageKeys, getVisibleBounds } from './lib';
 import { type GraphViewBox, type GraphVisibleBounds } from './types';
 
 interface UseGraphPointsProps {
@@ -29,7 +24,6 @@ interface UseGraphPointsProps {
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
   isMoving: Accessor<boolean>;
-  activeGraphWeights: Accessor<FontWeight[]>;
 }
 
 export function useGraphPoints(props: UseGraphPointsProps) {
@@ -50,15 +44,6 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     setImageVisibleBounds(visibleBounds());
     setImageZoomFactor(props.zoomFactor());
   });
-
-  const visiblePoints = createMemo(() =>
-    partitionVisiblePoints(
-      fontPoints(),
-      appState.fonts.filteredKeys,
-      props.activeGraphWeights(),
-      visibleBounds(),
-    ),
-  );
 
   const visibleImageKeys = createMemo(() => {
     const bounds = imageVisibleBounds();
@@ -105,7 +90,6 @@ export function useGraphPoints(props: UseGraphPointsProps) {
 
   return {
     allPoints: fontPoints,
-    visiblePoints,
     visibleImageKeys,
     visibleDendrogramImageKeys,
     isImageVisible,

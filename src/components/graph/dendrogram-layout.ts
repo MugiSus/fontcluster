@@ -70,7 +70,6 @@ export function arcPoints(
 
 export const radialDendrogramLayout = createRoot(() => {
   const memo = createMemo<RadialDendrogramLayout | null>(() => {
-    if (!appState.ui.showDendrogram) return null;
     const dendrogram = appState.dendrogram;
     if (!dendrogram) return null;
 

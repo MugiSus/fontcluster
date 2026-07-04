@@ -20,9 +20,9 @@ pub mod rendering;
 use crate::commands::font::FontPreviewCacheState;
 use crate::core::AppState;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
 #[cfg(target_os = "macos")]
 use tauri::menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::{AppHandle, Emitter};
 
 /// Builds the native macOS application menu.
 ///
@@ -155,7 +155,6 @@ pub fn run() {
             crate::commands::delete_session,
             crate::commands::run_jobs,
             crate::commands::stop_jobs,
-            crate::commands::lasso_selected_process,
             crate::commands::render_font_preview,
             crate::commands::send_font_to_plugin,
             crate::commands::get_connected_plugins,

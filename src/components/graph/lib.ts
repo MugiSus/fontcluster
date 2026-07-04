@@ -1,10 +1,7 @@
-import { type FontWeight } from '@/types/font';
 import {
-  type GraphPointData,
   type GraphPointSearchTree,
   type GraphViewBox,
   type GraphVisibleBounds,
-  type PartitionedVisiblePoints,
 } from './types';
 
 const IMAGE_GRID_HEX_HEIGHT_PX = 64;
@@ -46,46 +43,6 @@ export function getVisibleBounds(
       viewBox.height / 2 +
       visibleHeight / 2 +
       VISIBLE_BOUNDS_PADDING * scale,
-  };
-}
-
-export function partitionVisiblePoints(
-  points: GraphPointData[],
-  filteredKeys: Set<string>,
-  activeWeights: FontWeight[],
-  bounds: GraphVisibleBounds,
-): PartitionedVisiblePoints {
-  const visibleFilteredPoints: GraphPointData[] = [];
-  const visibleUnfilteredPoints: GraphPointData[] = [];
-  const visibleActivePoints: GraphPointData[] = [];
-
-  const activeWeightSet = new Set(activeWeights);
-
-  for (const point of points) {
-    const isVisible =
-      point.x >= bounds.minX &&
-      point.x <= bounds.maxX &&
-      point.y >= bounds.minY &&
-      point.y <= bounds.maxY;
-
-    if (!isVisible) continue;
-
-    visibleActivePoints.push(point);
-    if (
-      filteredKeys.has(point.key) &&
-      activeWeightSet.has(point.item.meta.weight as FontWeight)
-    ) {
-      visibleFilteredPoints.push(point);
-      continue;
-    }
-
-    visibleUnfilteredPoints.push(point);
-  }
-
-  return {
-    visibleFilteredPoints,
-    visibleUnfilteredPoints,
-    visibleActivePoints,
   };
 }
 

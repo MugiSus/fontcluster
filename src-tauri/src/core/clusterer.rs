@@ -98,7 +98,6 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             let mut computed =
                 load_computed_data(&session_dir_for_second, id).unwrap_or(ComputedData {
                     rendered_text: None,
-                    positioning: None,
                     clustering: None,
                 });
             computed.clustering = Some(ClusteringData {
@@ -237,7 +236,7 @@ fn agglomerative_clustering(
             left,
             right,
             height: step.dissimilarity,
-            representative: Some(representative),
+            representative,
         });
         sizes.push(sizes[left] + sizes[right]);
         centroids.push(centroid);
@@ -301,8 +300,7 @@ fn agglomerative_clustering(
         .filter(|(_, is_active)| **is_active)
         .map(|(node, _)| (node, clusters[node].clone()))
         .collect::<Vec<_>>();
-    active_clusters
-        .sort_by_key(|(_, members)| members.iter().copied().min().unwrap_or(usize::MAX));
+    active_clusters.sort_by_key(|(_, members)| members.iter().copied().min().unwrap_or(usize::MAX));
 
     let mut labels = vec![-1; n];
     for (cluster_id, (_, members)) in active_clusters.iter().enumerate() {

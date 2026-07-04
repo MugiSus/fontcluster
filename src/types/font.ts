@@ -42,10 +42,6 @@ export interface FontMetadata {
   font_index: number;
 }
 
-export interface PositioningData {
-  position: number[]; // [x, y] 2D coordinates from the preference projector
-}
-
 export interface ClusteringData {
   k: number;
   /**
@@ -57,7 +53,6 @@ export interface ClusteringData {
 
 export interface ComputedData {
   rendered_text?: string | null;
-  positioning?: PositioningData | null;
   clustering?: ClusteringData | null;
 }
 
@@ -67,8 +62,3 @@ export interface FontItem {
 }
 
 export type FontItemRecord = Record<string, FontItem>;
-
-export interface LassoProcessResult {
-  safeNames: string[];
-  positioningBySafeName: Record<string, PositioningData>;
-}

@@ -7,7 +7,6 @@ import {
   PlusIcon,
   TelescopeIcon,
   TypeIcon,
-  WaypointsIcon,
   ZoomInIcon,
 } from 'lucide-solid';
 import { createMemo, Show } from 'solid-js';
@@ -30,15 +29,11 @@ import { type GraphToolMode } from './types';
 interface GraphBottomToolbarProps {
   toolMode: GraphToolMode;
   showImages: boolean;
-  showFontNames: boolean;
   showGlow: boolean;
-  showDendrogram: boolean;
   isFilterOpen: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
-  onToggleFontNames: () => void;
   onToggleGlow: () => void;
-  onToggleDendrogram: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
   onZoomOut?: (() => void) | undefined;
@@ -69,18 +64,14 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   // ToggleGroup (multiple) owns the display toggles; derive its value from the
   // booleans and translate changes back into the individual toggle handlers.
   const displaySelection = () =>
-    [
-      props.showImages && 'images',
-      props.showGlow && 'glow',
-      props.showDendrogram && 'dendrogram',
-    ].filter(Boolean) as string[];
+    [props.showImages && 'images', props.showGlow && 'glow'].filter(
+      Boolean,
+    ) as string[];
 
   const handleDisplayChange = (values: string[]) => {
     const next = new Set(values);
     if (next.has('images') !== props.showImages) props.onToggleImages();
     if (next.has('glow') !== props.showGlow) props.onToggleGlow();
-    if (next.has('dendrogram') !== props.showDendrogram)
-      props.onToggleDendrogram();
   };
 
   return (
@@ -155,36 +146,6 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           <TooltipContent>{t.graph.bottomToolbar.select()}</TooltipContent>
         </Tooltip>
 
-        {/*
-          "Lasso" and "Exclude" are temporarily hidden as their importance has
-          faded. The tool modes ('lasso-select' / 'lasso-exclude') still exist,
-          so restore these items by uncommenting them.
-
-          <Tooltip placement='left'>
-            <TooltipTrigger
-              as={ToggleGroupItem<'button'>}
-              value='lasso-select'
-              class={toggleItemClass}
-              aria-label='Lasso'
-            >
-              <LassoSelectIcon class='size-4' />
-            </TooltipTrigger>
-            <TooltipContent>Lasso</TooltipContent>
-          </Tooltip>
-
-          <Tooltip placement='left'>
-            <TooltipTrigger
-              as={ToggleGroupItem<'button'>}
-              value='lasso-exclude'
-              class={toggleItemClass}
-              aria-label='Exclude'
-            >
-              <CircleMinusIcon class='size-4' />
-            </TooltipTrigger>
-            <TooltipContent>Exclude</TooltipContent>
-          </Tooltip>
-        */}
-
         <Tooltip placement='left'>
           <TooltipTrigger
             as={ToggleGroupItem<'button'>}
@@ -232,24 +193,6 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           <TooltipContent>{t.graph.bottomToolbar.showSamples()}</TooltipContent>
         </Tooltip>
 
-        {/*
-          "Show Font Names" is paused for now. The showFontNames signal and
-          onToggleFontNames handler (see GraphContent) plus the props below are
-          kept, so the feature can be restored by uncommenting this item.
-
-          <Tooltip placement='left'>
-            <TooltipTrigger
-              as={ToggleGroupItem<'button'>}
-              value='font-names'
-              class={toggleItemClass}
-              aria-label='Show Font Names'
-            >
-              <TypeIcon class='size-4' />
-            </TooltipTrigger>
-            <TooltipContent>Show font names</TooltipContent>
-          </Tooltip>
-        */}
-
         <Tooltip placement='left'>
           <TooltipTrigger
             as={ToggleGroupItem<'button'>}
@@ -261,29 +204,6 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           </TooltipTrigger>
           <TooltipContent>{t.graph.bottomToolbar.glowMode()}</TooltipContent>
         </Tooltip>
-
-        {/*
-          Rendered only when the session has a dendrogram, rather than passing
-          `disabled`: Kobalte's ToggleGroup.Item bakes `disabled` into its
-          selection behavior once at mount, so an item mounted disabled (the
-          toolbar mounts before the session loads) would stay unclickable even
-          after the data arrives.
-        */}
-        <Show when={appState.dendrogram}>
-          <Tooltip placement='left'>
-            <TooltipTrigger
-              as={ToggleGroupItem<'button'>}
-              value='dendrogram'
-              class={toggleItemClass}
-              aria-label={t.graph.bottomToolbar.dendrogramMode()}
-            >
-              <WaypointsIcon class='size-4' />
-            </TooltipTrigger>
-            <TooltipContent>
-              {t.graph.bottomToolbar.dendrogramMode()}
-            </TooltipContent>
-          </Tooltip>
-        </Show>
       </ToggleGroup>
 
       <div class='w-6 border-t' />

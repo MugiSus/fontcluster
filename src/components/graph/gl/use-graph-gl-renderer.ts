@@ -14,7 +14,6 @@ import {
   WebGLRenderer,
 } from 'three';
 import { useColorMode } from '@kobalte/core';
-import { type FontWeight } from '@/types/font';
 import {
   type GraphCoordinate,
   type GraphPointData,
@@ -26,7 +25,6 @@ import {
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
-import { createAxisLayer } from './axis-layer';
 import {
   createDendrogramLayer,
   dendrogramAliasGlowOpacityForRank,
@@ -49,13 +47,11 @@ export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
-  origin: Accessor<GraphCoordinate>;
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   getPointByKey: (key: string) => GraphPointData | undefined;
   getPointsByFamilyName: (familyName: string) => readonly GraphPointData[];
   filteredKeys: Accessor<Set<string>>;
-  activeWeights: Accessor<FontWeight[]>;
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   hoveredKey: Accessor<string | null>;
@@ -66,7 +62,6 @@ export interface UseGraphGlRendererProps {
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
-  showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -75,13 +70,13 @@ export interface UseGraphGlRendererProps {
  * Orchestrates the GPU graph renderer.
  *
  * Responsibilities are split across composable layers — see
- * {@link createAxisLayer}, {@link createPointLayer}, {@link createRingLayer} and
- * {@link createImageLayer}. Each layer is constructed with accessors and owns
- * its own reactive updates (Solid manages its objects' lifecycle and teardown);
- * this hook only derives their inputs (e.g. the ring/image specs), wires the
- * on-demand render loop, and owns the renderer, scene, camera and glow
- * compositor. It is a pure renderer of derived state — it never mutates
- * application state.
+ * {@link createDendrogramLayer}, {@link createPointLayer},
+ * {@link createRingLayer} and {@link createImageLayer}. Each layer is
+ * constructed with accessors and owns its own reactive updates (Solid manages
+ * its objects' lifecycle and teardown); this hook only derives their inputs
+ * (e.g. the ring/image specs), wires the on-demand render loop, and owns the
+ * renderer, scene, camera and glow compositor. It is a pure renderer of
+ * derived state — it never mutates application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
   const { colorMode } = useColorMode();
@@ -93,8 +88,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- core: renderer, scene, camera -----------------------------------
     const renderer = new WebGLRenderer({
       canvas,
-      // No MSAA: points, rings and axes anti-alias themselves in-shader, so it
-      // only adds full-framebuffer cost.
+      // No MSAA: points, rings and dendrogram edges anti-alias themselves
+      // in-shader, so it only adds full-framebuffer cost.
       antialias: false,
       // Intentionally NOT 'high-performance': on macOS that can put WebGL on the
       // discrete GPU while the window composites on the integrated one, forcing a
@@ -130,20 +125,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
-      // The mode toggle is folded into every per-pass visibility switch below,
-      // so the dendrogram only ever draws where the axes backplate draws.
-      const showDendrogram = props.showDendrogram();
 
-      // Glow off: draw the sharp content (core dots + rings + images + axes)
+      // Glow off: draw the sharp content (core dots + rings + images + tree)
       // straight to the screen. The halo object is only used by the bloom path.
-      // The origin crosshair belongs to the map layout's score space, so the
-      // dendrogram (radial) mode swaps it for the tree.
       if (!props.glow()) {
         halo.visible = false;
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
-        axisLayer.visible = !showDendrogram;
-        dendrogramLayer.visible = showDendrogram;
+        dendrogramLayer.visible = true;
         ringLayer.visible = true;
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
@@ -158,9 +147,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // 1) Glow pass: halos only, into the half-float bloom buffer (cleared to
       //    transparent black so the premultiplied halos accumulate from zero).
       halo.visible = true;
-      dendrogramAliasHaloLayer.halo.visible = showDendrogram;
+      dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
-      axisLayer.visible = false;
       dendrogramLayer.visible = false;
       ringLayer.visible = false;
       imageLayer.visible = false;
@@ -169,25 +157,23 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
       renderer.setClearColor(getBackgroundColor({ isDark: isDarkMode }), 1);
 
-      // 2) Background + axes (or dendrogram edges) to the screen. These are
-      //    the backplate; draw them before the composite so the glow sits
-      //    above them but below the sharp content drawn last.
+      // 2) Background + dendrogram edges to the screen. These are the
+      //    backplate; draw them before the composite so the glow sits above
+      //    them but below the sharp content drawn last.
       halo.visible = false;
       dendrogramAliasHaloLayer.halo.visible = false;
-      axisLayer.visible = !showDendrogram;
-      dendrogramLayer.visible = showDendrogram;
+      dendrogramLayer.visible = true;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
 
-      // 3) Composite the upsampled glow over the background + axes.
+      // 3) Composite the upsampled glow over the background + tree.
       compositor.composite(renderer);
 
-      // 4) Sharp pass: core dots + rings + images over the composite (the axes
-      //    and dendrogram edges are already drawn). autoClear off so the
+      // 4) Sharp pass: core dots + rings + images over the composite (the
+      //    dendrogram edges are already drawn). autoClear off so the
       //    glow/background isn't wiped.
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
-      axisLayer.visible = false;
       dendrogramLayer.visible = false;
       ringLayer.visible = true;
       imageLayer.visible = true;
@@ -198,8 +184,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.autoClear = previousAutoClear;
 
       // Leave the scene in a sane default for any stray render.
-      axisLayer.visible = !showDendrogram;
-      dendrogramLayer.visible = showDendrogram;
+      dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
     };
     const scheduleRender = () => {
@@ -216,9 +201,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return window.devicePixelRatio;
     });
     // The active/dimmed rule, derived once and shared by the points, rings and
-    // images (a point is active when it passes the filter and its weight is on).
+    // images (a point is active when it passes the graph filter).
     const activePredicate = createMemo(() =>
-      makeActivePredicate(props.filteredKeys(), new Set(props.activeWeights())),
+      makeActivePredicate(props.filteredKeys()),
     );
     const dendrogramAliasGlowOpacity = createMemo(() => {
       const aliases = props.dendrogramNodeDots();
@@ -318,33 +303,31 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         });
       }
 
-      // Dendrogram mode: merge-node aliases use the same image thinning as
+      // Merge-node aliases use the same image thinning as
       // ordinary points upstream. Node keys live in their own namespace: the
       // same font may represent several nodes (and its own leaf) at once, and
       // the pooled meshes must not collide — the texture cache still dedupes
       // by safe name, so no extra loads happen. A selected alias keeps its
       // image visible the same way a selected ordinary point does.
-      if (props.showDendrogram()) {
-        const dendrogramAnchors = new Map<string, DendrogramImageAnchor>();
-        for (const anchor of props.dendrogramImageAnchors()) {
-          dendrogramAnchors.set(anchor.key, anchor);
-        }
-        if (selectedDendrogramAnchor) {
-          dendrogramAnchors.set(
-            selectedDendrogramAnchor.key,
-            selectedDendrogramAnchor,
-          );
-        }
-        for (const anchor of dendrogramAnchors.values()) {
-          specs.push({
-            key: anchor.key,
-            safeName: anchor.safeName,
-            x: anchor.x,
-            y: -anchor.y,
-            color: getClusterColor({ k: anchor.k, isDark: isDarkMode }),
-            opacity: predicate(anchor) ? 1 : DIMMED_OPACITY,
-          });
-        }
+      const dendrogramAnchors = new Map<string, DendrogramImageAnchor>();
+      for (const anchor of props.dendrogramImageAnchors()) {
+        dendrogramAnchors.set(anchor.key, anchor);
+      }
+      if (selectedDendrogramAnchor) {
+        dendrogramAnchors.set(
+          selectedDendrogramAnchor.key,
+          selectedDendrogramAnchor,
+        );
+      }
+      for (const anchor of dendrogramAnchors.values()) {
+        specs.push({
+          key: anchor.key,
+          safeName: anchor.safeName,
+          x: anchor.x,
+          y: -anchor.y,
+          color: getClusterColor({ k: anchor.k, isDark: isDarkMode }),
+          opacity: predicate(anchor) ? 1 : DIMMED_OPACITY,
+        });
       }
       return specs;
     });
@@ -388,12 +371,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
     const compositor = createGlowCompositor();
-    const axisLayer = createAxisLayer({
-      origin: props.origin,
-      isLight: () => !isDark(),
-      resolution: props.size,
-      requestRender: scheduleRender,
-    });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
       dots: props.dendrogramNodeDots,
@@ -415,7 +392,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     const dendrogramAliasHaloLayer = createPointLayer({
-      points: () => (props.showDendrogram() ? props.dendrogramNodeDots() : []),
+      points: props.dendrogramNodeDots,
       isDark,
       activePredicate,
       opacityForPoint: dendrogramAliasGlowOpacity,
@@ -435,7 +412,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
-    scene.add(axisLayer);
     scene.add(dendrogramLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);
@@ -451,13 +427,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       scheduleRender();
     });
 
-    // --- effect: glow / dendrogram on/off ---------------------------------
-    // `renderFrame` switches between the bloom and straight paths on `glow` and
-    // gates the dendrogram backplate on `showDendrogram`, but it reads them
-    // untracked (it runs in rAF), so subscribe here to repaint.
+    // --- effect: glow on/off ----------------------------------------------
+    // `renderFrame` switches between the bloom and straight paths on `glow`,
+    // but it reads the accessor untracked (it runs in rAF), so subscribe here
+    // to repaint.
     createEffect(() => {
       props.glow();
-      props.showDendrogram();
       scheduleRender();
     });
 

@@ -258,21 +258,12 @@ export function ControlContent() {
           />
 
           <ControlPropertySection
-            title={t.controlPanel.sections.position()}
+            title={t.controlPanel.sections.cluster()}
             isDisabled={
               isRunCooldown() &&
               appState.session.status.process_status !== 'analyzed'
             }
             onStepRun={() => handleRun({ override: 'analyzed' })}
-          />
-
-          <ControlPropertySection
-            title={t.controlPanel.sections.cluster()}
-            isDisabled={
-              isRunCooldown() &&
-              appState.session.status.process_status !== 'positioned'
-            }
-            onStepRun={() => handleRun({ override: 'positioned' })}
           >
             <TextProperty
               label={t.controlPanel.linkageMethod()}
