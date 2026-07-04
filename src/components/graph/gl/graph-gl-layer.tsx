@@ -23,6 +23,7 @@ interface GraphGlLayerProps {
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
   selectedKey: Accessor<string | null>;
+  selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   hoveredKey: Accessor<string | null>;
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
@@ -57,6 +58,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     filteredKeys: () => props.filteredKeys(),
     activeWeights: () => props.activeWeights(),
     selectedKey: () => props.selectedKey(),
+    selectedDendrogramAnchor: () => props.selectedDendrogramAnchor(),
     hoveredKey: () => props.hoveredKey(),
     selectedFamily: () => props.selectedFamily(),
     imageKeys: () => props.imageKeys(),

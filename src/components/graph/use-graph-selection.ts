@@ -16,8 +16,14 @@ interface UseGraphSelectionProps {
     y: number,
     radius: number,
   ) => GraphPointData | undefined;
-  /** Visible dendrogram merge-node sample under a graph point, if any. */
+  /** Visible dendrogram merge-node sample image under the pointer, if any. */
   findDendrogramAnchor: (x: number, y: number) => DendrogramImageAnchor | null;
+  /** Selectable dendrogram merge-node alias under the pointer, if any. */
+  findDendrogramPoint: (
+    x: number,
+    y: number,
+    radius: number,
+  ) => DendrogramImageAnchor | null;
 }
 
 /** What a pointer position resolves to: a font, optionally via the dendrogram
@@ -33,6 +39,10 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
 
   const selectedFontKey = () =>
     draggingSelection()?.key ?? appState.ui.selectedFontKey;
+  const selectedDendrogramNode = () => {
+    const dragging = draggingSelection();
+    return dragging ? dragging.nodeIndex : appState.ui.selectedDendrogramNode;
+  };
 
   // True while the pointer is actively resolving a selection (press/drag in
   // select mode), before it commits on mouse-up. The graph's selected-font
@@ -61,11 +71,33 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
       return { key: anchor.safeName, nodeIndex: anchor.nodeIndex };
     }
 
-    const nearest = props.findSelectablePoint(
-      point.x,
-      point.y,
-      props.getSelectionRadius(),
-    );
+    const radius = props.getSelectionRadius();
+    const nearest = props.findSelectablePoint(point.x, point.y, radius);
+    const dendrogramPoint = props.findDendrogramPoint(point.x, point.y, radius);
+
+    if (
+      dendrogramPoint &&
+      appState.fonts.displayData[dendrogramPoint.safeName]
+    ) {
+      if (!nearest) {
+        return {
+          key: dendrogramPoint.safeName,
+          nodeIndex: dendrogramPoint.nodeIndex,
+        };
+      }
+
+      const dendrogramDistance =
+        (point.x - dendrogramPoint.x) ** 2 + (point.y - dendrogramPoint.y) ** 2;
+      const nearestDistance =
+        (point.x - nearest.x) ** 2 + (point.y - nearest.y) ** 2;
+      if (dendrogramDistance <= nearestDistance) {
+        return {
+          key: dendrogramPoint.safeName,
+          nodeIndex: dendrogramPoint.nodeIndex,
+        };
+      }
+    }
+
     if (!nearest) return null;
 
     const item = appState.fonts.displayData[nearest.key];
@@ -105,6 +137,7 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
 
   return {
     selectedKey: selectedFontKey,
+    selectedDendrogramNode,
     selectedFamilyName: selectedFontFamily,
     isSelecting,
     isSelectedFontKey,

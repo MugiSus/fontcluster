@@ -272,6 +272,6 @@ export function makeActivePredicate(
   activeWeights: Set<FontWeight>,
 ): (point: GraphPointData) => boolean {
   return (point) =>
-    filteredKeys.has(point.key) &&
+    filteredKeys.has(point.item.meta.safe_name) &&
     activeWeights.has(point.item.meta.weight as FontWeight);
 }

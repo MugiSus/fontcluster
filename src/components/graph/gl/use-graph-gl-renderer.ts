@@ -55,6 +55,7 @@ export interface UseGraphGlRendererProps {
   filteredKeys: Accessor<Set<string>>;
   activeWeights: Accessor<FontWeight[]>;
   selectedKey: Accessor<string | null>;
+  selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   hoveredKey: Accessor<string | null>;
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
@@ -220,6 +221,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const selected = props.selectedKey();
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
+      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
       const isDarkMode = isDark();
       const predicate = activePredicate();
 
@@ -232,7 +234,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         }
       }
       if (hovered) kindByKey.set(hovered, 'hover');
-      if (selected) kindByKey.set(selected, 'selected');
+      if (selectedDendrogramAnchor) {
+        kindByKey.set(selectedDendrogramAnchor.safeName, 'alias-source');
+      }
+      if (selected && !selectedDendrogramAnchor) {
+        kindByKey.set(selected, 'selected');
+      }
 
       const specs: RingSpec[] = [];
       for (const [key, kind] of kindByKey) {
@@ -249,6 +256,18 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
       }
+      if (selectedDendrogramAnchor) {
+        specs.push({
+          x: selectedDendrogramAnchor.x,
+          y: -selectedDendrogramAnchor.y,
+          color: getClusterColor({
+            k: selectedDendrogramAnchor.item.computed?.clustering?.k,
+            isDark: isDarkMode,
+          }),
+          kind: 'selected',
+          opacity: predicate(selectedDendrogramAnchor) ? 1 : DIMMED_OPACITY,
+        });
+      }
       return specs;
     });
 
@@ -257,13 +276,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const imageSpecs = createMemo<ImageSpec[]>(() => {
       const imageKeys = props.imageKeys();
       const selected = props.selectedKey();
+      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
       const showImages = props.showImages();
       const predicate = activePredicate();
       const isDarkMode = isDark();
 
       const wanted = new Set<string>();
       if (showImages) for (const key of imageKeys) wanted.add(key);
-      if (selected) wanted.add(selected);
+      if (selected && !selectedDendrogramAnchor) wanted.add(selected);
 
       const specs: ImageSpec[] = [];
       for (const key of wanted) {
@@ -282,22 +302,31 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         });
       }
 
-      // Dendrogram mode: the merge nodes' exemplar samples (already gated on
-      // the zoom-dependent span fit upstream — see the viewer's visible-anchor
-      // memo, which is also the click hit-test source). Node keys live in
-      // their own `dendrogram:` namespace: the same font may represent several
-      // nodes (and its own leaf) at once, and the pooled meshes must not
-      // collide — the texture cache still dedupes by safe name, so no extra
-      // loads happen.
+      // Dendrogram mode: merge-node aliases use the same image thinning as
+      // ordinary points upstream. Node keys live in their own namespace: the
+      // same font may represent several nodes (and its own leaf) at once, and
+      // the pooled meshes must not collide — the texture cache still dedupes
+      // by safe name, so no extra loads happen. A selected alias keeps its
+      // image visible the same way a selected ordinary point does.
       if (props.showDendrogram()) {
+        const dendrogramAnchors = new Map<string, DendrogramImageAnchor>();
         for (const anchor of props.dendrogramImageAnchors()) {
+          dendrogramAnchors.set(anchor.key, anchor);
+        }
+        if (selectedDendrogramAnchor) {
+          dendrogramAnchors.set(
+            selectedDendrogramAnchor.key,
+            selectedDendrogramAnchor,
+          );
+        }
+        for (const anchor of dendrogramAnchors.values()) {
           specs.push({
-            key: `dendrogram:${anchor.nodeIndex}`,
+            key: anchor.key,
             safeName: anchor.safeName,
             x: anchor.x,
             y: -anchor.y,
             color: getClusterColor({ k: anchor.k, isDark: isDarkMode }),
-            opacity: 1,
+            opacity: predicate(anchor) ? 1 : DIMMED_OPACITY,
           });
         }
       }
@@ -313,12 +342,16 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // Merge nodes whose exemplar image is drawn; the dendrogram layer hides
     // their node dot the same way.
-    const anchoredNodeIndexes = createMemo(
-      () =>
-        new Set(
-          props.dendrogramImageAnchors().map((anchor) => anchor.nodeIndex),
-        ),
-    );
+    const anchoredNodeIndexes = createMemo(() => {
+      const nodeIndexes = new Set(
+        props.dendrogramImageAnchors().map((anchor) => anchor.nodeIndex),
+      );
+      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
+      if (selectedDendrogramAnchor) {
+        nodeIndexes.add(selectedDendrogramAnchor.nodeIndex);
+      }
+      return nodeIndexes;
+    });
 
     // The selected font's merge ancestry, stroked in its cluster color.
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
@@ -350,6 +383,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dots: props.dendrogramNodeDots,
       imageNodeIndexes: anchoredNodeIndexes,
       highlight: dendrogramHighlight,
+      activeKeys: props.filteredKeys,
       isDark,
       resolution: props.size,
       pixelRatio,

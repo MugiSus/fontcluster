@@ -19,14 +19,15 @@ const LINE_WIDTH_PX = 1;
 const AA_PAD_PX = 2;
 
 /** Which highlight affordance a ring represents — it sets the radius. */
-export type RingKind = 'selected' | 'hover' | 'family';
+export type RingKind = 'selected' | 'alias-source' | 'hover' | 'family';
 
 /** Radius (CSS px) per affordance; the stroke width stays constant regardless.
  *  Matches the original SVG circle radii. */
 const RING_RADIUS_PX: Record<RingKind, number> = {
-  selected: 40,
-  hover: 20,
-  family: 24,
+  'selected': 40,
+  'alias-source': 30,
+  'hover': 20,
+  'family': 24,
 };
 
 /** One ring to draw: a circle centered at world (x, y), sized by its kind. */

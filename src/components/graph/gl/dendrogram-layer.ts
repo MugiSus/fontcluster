@@ -40,8 +40,7 @@ const HIGHLIGHT_OPACITY = 0.9;
  *  branch points read like the leaf points. */
 const NODE_DOT_PX = 3.5;
 
-/** Depth fade of a merge's color towards the background (shared by the edges
- *  and the node dots so a dot sits tonally on its own bracket). */
+/** Depth fade of a merge edge's color towards the background. */
 const fadeForRank = (mergeIndex: number, lastMergeIndex: number) =>
   FADE_NEAR - (FADE_NEAR - FADE_FAR) * (mergeIndex / lastMergeIndex);
 
@@ -109,6 +108,8 @@ export interface DendrogramLayerProps {
   imageNodeIndexes: Accessor<Set<number>>;
   /** The selected font's ancestry to emphasize, if any. */
   highlight: Accessor<DendrogramHighlight | null>;
+  /** Representative font keys that are currently active/selectable. */
+  activeKeys: Accessor<Set<string>>;
   /** Whether the active theme is dark (picks cluster/background colors). */
   isDark: Accessor<boolean>;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
@@ -131,6 +132,8 @@ export interface DendrogramLayerProps {
  *   `getClusterColor` returns for `k = -1`;
  * - color fades towards the background with merge rank, so fine structure is
  *   vivid and the coarse trunks recede.
+ * The node dots themselves behave like graph-point aliases: they use the
+ * representative point color and the point-core shader's active/dimmed alpha.
  *
  * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
  * swaps in a freshly built geometry and disposes the old one. The render loop
@@ -226,13 +229,11 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   });
 
   // Node dot positions + colors (rebuilt with the dot set / theme, like the
-  // edges above). aHideCore is owned by the effect below.
+  // edges above). aState and aHideCore are owned by the effects below.
   createEffect(() => {
     const nodeDots = props.dots();
     const isDark = props.isDark();
     const count = nodeDots.length;
-    const lastMergeIndex = nodeDots[count - 1]?.mergeIndex || 1;
-    const background = new Color(getBackgroundColor({ isDark }));
     const dotColor = new Color();
 
     const positions = new Float32Array(count * 3);
@@ -243,11 +244,6 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       positions[index * 3 + 1] = -dot.y;
       positions[index * 3 + 2] = 0;
       dotColor.set(getClusterColor({ k: dot.k, isDark }));
-      dotColor.lerpColors(
-        background,
-        dotColor,
-        fadeForRank(dot.mergeIndex, lastMergeIndex),
-      );
       colors[index * 3] = dotColor.r;
       colors[index * 3 + 1] = dotColor.g;
       colors[index * 3 + 2] = dotColor.b;
@@ -266,6 +262,21 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       new Float32BufferAttribute(new Float32Array(count), 1),
     );
     dotGeometry.setDrawRange(0, count);
+    props.requestRender();
+  });
+
+  // Match the point-core active/dimmed opacity and scale for merge-node aliases.
+  createEffect(() => {
+    const activeKeys = props.activeKeys();
+    const nodeDots = props.dots();
+    const attribute = dotGeometry.getAttribute('aState');
+    if (!attribute || attribute.count !== nodeDots.length) return;
+
+    const states = attribute.array as Float32Array;
+    for (const [index, dot] of nodeDots.entries()) {
+      states[index] = dot.safeName && activeKeys.has(dot.safeName) ? 0 : 1;
+    }
+    attribute.needsUpdate = true;
     props.requestRender();
   });
 

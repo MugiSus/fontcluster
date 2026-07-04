@@ -6,7 +6,7 @@ import {
   radialDendrogramLayout,
 } from './dendrogram-layout';
 import { getGraphPointByKey } from './font-point-index';
-import { type GraphCoordinate } from './types';
+import { type GraphCoordinate, type GraphPointData } from './types';
 
 /**
  * Derives the dendrogram-mode line segments from the session's full merge
@@ -55,30 +55,28 @@ export interface DendrogramNodeDot {
   /** Graph-space (y-down) merge point. */
   x: number;
   y: number;
-  /** Cluster id shared by every visible point under the node, or `-1` when it
-   *  spans clusters — the same encoding the node's edges use. */
+  /** Representative font cluster id, so merge nodes read like aliases of the
+   *  graph points whose sample they carry. Falls back to the edge cluster id
+   *  when the representative is unavailable. */
   k: number;
-  /** Zero-based rank of the node's merge, for the depth fade. */
+  /** Zero-based rank of the node's merge. */
   mergeIndex: number;
+  /** Sample folder name of the representative leaf's font. */
+  safeName: string | null;
 }
 
-/** A merge node that carries its representative's sample image. */
-export interface DendrogramImageAnchor {
+/** A merge node as a graph-point alias of its representative font. */
+export interface DendrogramImageAnchor extends GraphPointData {
+  /** Unique graph-point key for this merge node alias. */
+  key: string;
   /** Dendrogram node index of the merge (leaf count + merge rank). */
   nodeIndex: number;
   /** Sample folder name of the representative leaf's font. */
   safeName: string;
-  /** Graph-space (y-down) merge point the image centers on. */
-  x: number;
-  y: number;
   /** Cluster to tint the image with: the representative font's own cluster,
    *  so the sample keeps one color from its leaf up every node it
    *  represents; `-1` when the representative is unknown or unclustered. */
   k: number;
-  /** Radial gap to the absorbing parent, in graph units; `Infinity` at the
-   *  root. The renderer only shows anchors whose gap fits the image box, so
-   *  zooming in reveals more of them. */
-  span: number;
 }
 
 interface DendrogramTree {
@@ -123,6 +121,8 @@ function fallbackRepresentative(
   leftSize: number,
   rightSize: number,
 ): number {
+  if (!left.center) return right.rep;
+  if (!right.center) return left.rep;
   if (left.rep < 0) return right.rep;
   if (right.rep < 0) return left.rep;
   return leftSize >= rightSize ? left.rep : right.rep;
@@ -217,9 +217,13 @@ const dendrogramTree = createRoot(() => {
       // The merged cluster's representative: the baked (centroid-nearest)
       // leaf when the session recorded one, else the larger-child heuristic.
       const baked = merge.representative;
-      const rep =
+      const bakedSafeName =
         baked != null && baked >= 0 && baked < leafCount
-          ? baked
+          ? dendrogram.ids[baked]
+          : undefined;
+      const rep =
+        bakedSafeName && getGraphPointByKey(bakedSafeName)
+          ? baked!
           : fallbackRepresentative(
               left,
               right,
@@ -242,7 +246,7 @@ const dendrogramTree = createRoot(() => {
       );
     }
 
-    // An anchor at every visible merge node carrying its representative's
+    // An alias point at every visible merge node carrying its representative's
     // sample — the same font deliberately repeats along the chain of merges
     // it keeps representing. And one dot per visible merge node, sample or
     // not, so every branch point reads as an actual point.
@@ -250,25 +254,32 @@ const dendrogramTree = createRoot(() => {
     const dots: DendrogramNodeDot[] = [];
     for (const [nodeIndex, node] of nodes.entries()) {
       if (nodeIndex < leafCount || !node.center) continue;
+      const merge = dendrogram.merges[nodeIndex - leafCount];
+      if (!merge || merge.height <= COINCIDENT_EPSILON) continue;
+      const safeName = node.rep >= 0 ? dendrogram.ids[node.rep] : undefined;
+      const representativePoint = safeName
+        ? getGraphPointByKey(safeName)
+        : undefined;
+      const representativeCluster =
+        representativePoint?.item.computed?.clustering?.k ?? node.k;
       dots.push({
         nodeIndex,
         x: node.center.x,
         y: node.center.y,
-        k: node.k,
+        k: representativeCluster,
         mergeIndex: nodeIndex - leafCount,
+        safeName: representativePoint?.item.meta.safe_name ?? null,
       });
-      if (node.rep < 0) continue;
-      const parent = node.parent === -1 ? null : nodes[node.parent];
-      const safeName = dendrogram.ids[node.rep];
-      if (!safeName) continue;
+      if (!representativePoint || !safeName) continue;
       imageAnchors.push({
+        key: `dendrogram:${nodeIndex}`,
         nodeIndex,
         safeName,
+        item: representativePoint.item,
         x: node.center.x,
         y: node.center.y,
         // The representative's own cluster, matching its leaf sample's tint.
-        k: nodes[node.rep]?.k ?? -1,
-        span: parent ? node.radius - parent.radius : Number.POSITIVE_INFINITY,
+        k: representativeCluster,
       });
     }
 

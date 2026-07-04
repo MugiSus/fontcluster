@@ -5,14 +5,23 @@ import {
   createSelector,
   createSignal,
 } from 'solid-js';
+import { quadtree } from 'd3-quadtree';
 import { appState } from '@/store';
 import { type FontWeight } from '@/types/font';
+import {
+  type DendrogramImageAnchor,
+  dendrogramImageAnchors,
+} from './dendrogram-edges';
 import {
   findSelectableFontPoint,
   fontPoints,
   getVisibleImageKeys,
 } from './font-point-index';
-import { getVisibleBounds, partitionVisiblePoints } from './lib';
+import {
+  collectVisibleImageKeys,
+  getVisibleBounds,
+  partitionVisiblePoints,
+} from './lib';
 import { type GraphViewBox, type GraphVisibleBounds } from './types';
 
 interface UseGraphPointsProps {
@@ -58,6 +67,28 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     return getVisibleImageKeys(bounds, imageZoomFactor());
   });
 
+  const selectableDendrogramAnchorTree = createMemo(() =>
+    quadtree<DendrogramImageAnchor>()
+      .x((point) => point.x)
+      .y((point) => point.y)
+      .addAll(
+        dendrogramImageAnchors().filter((point) =>
+          appState.fonts.filteredKeys.has(point.safeName),
+        ),
+      ),
+  );
+
+  const visibleDendrogramImageKeys = createMemo(() => {
+    const bounds = imageVisibleBounds();
+    if (!bounds) return new Set<string>();
+
+    return collectVisibleImageKeys(
+      selectableDendrogramAnchorTree(),
+      bounds,
+      imageZoomFactor(),
+    );
+  });
+
   const isImageVisible = createSelector(
     visibleImageKeys,
     (key: string, keys: Set<string>) => keys.has(key),
@@ -66,11 +97,19 @@ export function useGraphPoints(props: UseGraphPointsProps) {
   const findSelectablePoint = (x: number, y: number, radius: number) =>
     findSelectableFontPoint(x, y, radius);
 
+  const findSelectableDendrogramPoint = (
+    x: number,
+    y: number,
+    radius: number,
+  ) => selectableDendrogramAnchorTree().find(x, y, radius) ?? null;
+
   return {
     allPoints: fontPoints,
     visiblePoints,
     visibleImageKeys,
+    visibleDendrogramImageKeys,
     isImageVisible,
     findSelectablePoint,
+    findSelectableDendrogramPoint,
   };
 }

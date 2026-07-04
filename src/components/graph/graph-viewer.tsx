@@ -106,11 +106,21 @@ export function GraphViewer(props: GraphViewerProps) {
     return nearest;
   };
 
+  const findDendrogramPoint = (
+    x: number,
+    y: number,
+    radius: number,
+  ): DendrogramImageAnchor | null => {
+    if (!props.showDendrogram) return null;
+    return graph.findSelectableDendrogramPoint(x, y, radius);
+  };
+
   const selection = useGraphSelection({
     getGraphPointFromEvent: viewport.getGraphPointFromEvent,
     getSelectionRadius: () => 40 * viewport.zoomFactor(),
     findSelectablePoint: graph.findSelectablePoint,
     findDendrogramAnchor,
+    findDendrogramPoint,
   });
 
   // The selected font's merge ancestry for the dendrogram mode.
@@ -118,28 +128,46 @@ export function GraphViewer(props: GraphViewerProps) {
     props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
   );
 
+  const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
+    () => {
+      const nodeIndex = selection.selectedDendrogramNode();
+      if (nodeIndex === null || !props.showDendrogram) return null;
+      return (
+        dendrogramImageAnchors().find(
+          (candidate) => candidate.nodeIndex === nodeIndex,
+        ) ?? null
+      );
+    },
+  );
+
   // Merge-node exemplar images for the dendrogram mode, following the images
-  // toggle. An anchor only survives once its radial gap to the absorbing
-  // parent fits the image box at the current zoom, so zooming in reveals
-  // finer merge stages — this memo is the single source of the *visible*
-  // anchors: the GL image layer draws exactly these, and the click hit-test
-  // resolves against the same set.
+  // toggle and the same hex-grid image thinning used by ordinary graph points.
+  // This memo is the single source of the visible merge-node images: the GL
+  // image layer draws exactly these, and image-box hit-testing resolves against
+  // the same set. A selected alias remains visible like a selected ordinary
+  // graph point. Dot hit-testing is independent so image-hidden nodes still
+  // behave like selectable graph points.
   const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
-    if (!props.showDendrogram || !props.showImages) return [];
-    const minSpan = BOX_HEIGHT_PX * viewport.zoomFactor();
-    return dendrogramImageAnchors().filter((anchor) => anchor.span >= minSpan);
+    if (!props.showDendrogram) return [];
+    const anchors = new Map<string, DendrogramImageAnchor>();
+    if (props.showImages) {
+      const keys = graph.visibleDendrogramImageKeys();
+      for (const anchor of dendrogramImageAnchors()) {
+        if (keys.has(anchor.key)) anchors.set(anchor.key, anchor);
+      }
+    }
+    const selectedAnchor = selectedDendrogramAnchor();
+    if (selectedAnchor) anchors.set(selectedAnchor.key, selectedAnchor);
+    return [...anchors.values()];
   });
 
   // When the selection came from a merge-node sample, the floating actions
-  // anchor on that node's sample instead of the represented font's ring point
-  // (falling back to the ring point if the anchor is zoomed away).
+  // anchor on that node's alias point instead of the represented font's ring
+  // point.
   const getSelectedActionAnchorPoint = (key: string) => {
     const point = getGraphPointByKey(key);
-    const nodeIndex = appState.ui.selectedDendrogramNode;
-    if (!point || nodeIndex === null || !props.showDendrogram) return point;
-    const anchor = dendrogramNodeImageAnchors().find(
-      (candidate) => candidate.nodeIndex === nodeIndex,
-    );
+    const anchor = selectedDendrogramAnchor();
+    if (!point || !anchor) return point;
     return anchor ? { ...point, x: anchor.x, y: anchor.y } : point;
   };
 
@@ -422,6 +450,7 @@ export function GraphViewer(props: GraphViewerProps) {
           filteredKeys={() => appState.fonts.filteredKeys}
           activeWeights={() => props.activeGraphWeights}
           selectedKey={selection.selectedKey}
+          selectedDendrogramAnchor={selectedDendrogramAnchor}
           hoveredKey={() => appState.ui.hoveredFontKey}
           selectedFamily={selection.selectedFamilyName}
           imageKeys={graph.visibleImageKeys}
