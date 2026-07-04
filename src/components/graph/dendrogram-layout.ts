@@ -39,9 +39,9 @@ const START_ANGLE = -Math.PI / 2;
 const MAX_ARC_CHORD = 3;
 /** Strength of the logarithmic height scale used for merge radii. Hierarchical
  *  merge heights are typically dense near the leaves and sparse near the root;
- *  `log1p(9t) / log(10)` expands those low heights into more radial space while
+ *  `log1p(t) / log(2)` expands those low heights into more radial space while
  *  compressing the root side. */
-const HEIGHT_LOG_STRENGTH = 9;
+const HEIGHT_LOG_STRENGTH = 1;
 
 /** Graph-space point at a polar angle/radius around the ring centre. */
 export function polarPoint(angle: number, radius: number): GraphCoordinate {
