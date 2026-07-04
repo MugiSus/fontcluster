@@ -7,7 +7,7 @@ import {
   type PartitionedVisiblePoints,
 } from './types';
 
-const IMAGE_GRID_HEX_HEIGHT_PX = 96;
+const IMAGE_GRID_HEX_HEIGHT_PX = 80;
 const VISIBLE_BOUNDS_PADDING = 50;
 
 interface ImageGridMetrics {
