@@ -34,10 +34,11 @@ const FADE_NEAR = 0.9;
 const FADE_FAR = 0.3;
 /** Merge-node alias core opacity: finest merge at NEAR, root side at FAR. */
 const ALIAS_CORE_OPACITY_NEAR = 1.0;
-const ALIAS_CORE_OPACITY_FAR = 0.45;
-/** Merge-node alias glow opacity: finest merge at NEAR, root side at FAR. */
-const ALIAS_GLOW_OPACITY_NEAR = 0.2;
-const ALIAS_GLOW_OPACITY_FAR = 0.06;
+const ALIAS_CORE_OPACITY_FAR = 0.25;
+/** Merge-node alias glow opacity multiplier: finest merge at NEAR, root side
+ *  at FAR. The halo shader's own `uOpacity` is applied after this. */
+const ALIAS_GLOW_OPACITY_NEAR = 1.0;
+const ALIAS_GLOW_OPACITY_FAR = 0.5;
 /** The ancestry highlight is the mode's focal line: slightly wider and near
  *  opaque so it stands out of the faded tree. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
