@@ -23,6 +23,7 @@ import {
   type DendrogramEdge,
   type DendrogramImageAnchor,
   type DendrogramNodeDot,
+  getDendrogramAncestry,
 } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import {
@@ -366,6 +367,27 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         }),
       };
     });
+    const dendrogramFamilyHighlights = createMemo<DendrogramHighlight[]>(() => {
+      const selected = props.selectedKey();
+      const family = props.selectedFamily();
+      if (!family) return [];
+
+      const isDarkMode = isDark();
+      const highlights: DendrogramHighlight[] = [];
+      for (const point of props.getPointsByFamilyName(family)) {
+        if (point.key === selected) continue;
+        const points = getDendrogramAncestry(point.key);
+        if (points.length < 2) continue;
+        highlights.push({
+          points,
+          color: getClusterColor({
+            k: point.item.computed?.clustering?.k,
+            isDark: isDarkMode,
+          }),
+        });
+      }
+      return highlights;
+    });
 
     // --- layers (one scene; render order keeps images over rings over dots) -
     // Each layer owns its own reactive updates from the accessors below; this
@@ -376,6 +398,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dots: props.dendrogramNodeDots,
       imageNodeIndexes: anchoredNodeIndexes,
       highlight: dendrogramHighlight,
+      familyHighlights: dendrogramFamilyHighlights,
       activeKeys: props.filteredKeys,
       isDark,
       resolution: props.size,

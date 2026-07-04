@@ -43,6 +43,10 @@ const ALIAS_GLOW_OPACITY_FAR = 0.5;
  *  opaque so it stands out of the faded tree. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
 const HIGHLIGHT_OPACITY = 0.9;
+/** Family ancestry highlights keep the base edge width but use full opacity
+ *  and unfaded color, sitting visually between the tree and selected path. */
+const FAMILY_HIGHLIGHT_WIDTH_PX = EDGE_WIDTH_PX;
+const FAMILY_HIGHLIGHT_OPACITY = 1.0;
 /** Merge-node dot diameter (CSS px); matches the point layer's core dots so
  *  branch points read like the leaf points. */
 const NODE_DOT_PX = 3.5;
@@ -140,6 +144,8 @@ export interface DendrogramLayerProps {
   imageNodeIndexes: Accessor<Set<number>>;
   /** The selected font's ancestry to emphasize, if any. */
   highlight: Accessor<DendrogramHighlight | null>;
+  /** Rootward ancestry paths for the selected font's family members. */
+  familyHighlights: Accessor<DendrogramHighlight[]>;
   /** Representative font keys that are currently active/selectable. */
   activeKeys: Accessor<Set<string>>;
   /** Whether the active theme is dark (picks cluster/background colors). */
@@ -188,8 +194,18 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     depthTest: false,
     blending: NormalBlending,
   });
+  const familyHighlightMaterial = new LineMaterial({
+    color: 0xffffff,
+    linewidth: FAMILY_HIGHLIGHT_WIDTH_PX,
+    vertexColors: true,
+    transparent: true,
+    opacity: FAMILY_HIGHLIGHT_OPACITY,
+    depthTest: false,
+    blending: NormalBlending,
+  });
   antialiasLineMaterial(material);
   antialiasLineMaterial(highlightMaterial);
+  antialiasLineMaterial(familyHighlightMaterial);
 
   // The merge-node dots reuse the point layer's core sprite program: aColor
   // carries the representative color, aOpacity carries the alias depth fade,
@@ -211,6 +227,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   const group = new Group();
   let lines: LineSegments2 | null = null;
+  let familyHighlightLines: LineSegments2 | null = null;
   let highlightLine: Line2 | null = null;
 
   const dots = new Points(dotGeometry, dotMaterial);
@@ -338,6 +355,46 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
+  // Family-selected leaves get rootward highlights, batched into one
+  // segment geometry because they share the same visual treatment.
+  createEffect(() => {
+    const highlights = props.familyHighlights();
+    if (familyHighlightLines) {
+      group.remove(familyHighlightLines);
+      familyHighlightLines.geometry.dispose();
+      familyHighlightLines = null;
+    }
+
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const segmentColor = new Color();
+    for (const highlight of highlights) {
+      if (highlight.points.length < 2) continue;
+      segmentColor.set(highlight.color);
+      for (const [index, point] of highlight.points.entries()) {
+        if (index === 0) continue;
+        const previous = highlight.points[index - 1]!;
+        positions.push(previous.x, -previous.y, 0, point.x, -point.y, 0);
+        const { r, g, b } = segmentColor;
+        colors.push(r, g, b, r, g, b);
+      }
+    }
+
+    if (positions.length > 0) {
+      const geometry = new LineSegmentsGeometry();
+      geometry.setPositions(positions);
+      geometry.setColors(colors);
+      familyHighlightLines = new LineSegments2(
+        geometry,
+        familyHighlightMaterial,
+      );
+      familyHighlightLines.frustumCulled = false;
+      familyHighlightLines.renderOrder = -0.45;
+      group.add(familyHighlightLines);
+    }
+    props.requestRender();
+  });
+
   // The selected font's ancestry, drawn as a continuous polyline over the
   // tree. `LineGeometry` has no in-place resize either, so it is rebuilt per
   // selection change (the path is only ever tree-depth long).
@@ -356,6 +413,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       highlightMaterial.color.set(highlight.color);
       highlightLine = new Line2(geometry, highlightMaterial);
       highlightLine.frustumCulled = false;
+      // Above the family highlight (-0.45), so the selected path stays foremost.
       highlightLine.renderOrder = -0.4;
       group.add(highlightLine);
     }
@@ -367,6 +425,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     if (width > 0 && height > 0) {
       material.resolution.set(width, height);
       highlightMaterial.resolution.set(width, height);
+      familyHighlightMaterial.resolution.set(width, height);
     }
     props.requestRender();
   });
@@ -379,9 +438,11 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   onCleanup(() => {
     lines?.geometry.dispose();
+    familyHighlightLines?.geometry.dispose();
     highlightLine?.geometry.dispose();
     material.dispose();
     highlightMaterial.dispose();
+    familyHighlightMaterial.dispose();
     dotGeometry.dispose();
     dotMaterial.dispose();
   });
