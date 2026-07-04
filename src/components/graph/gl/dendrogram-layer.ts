@@ -13,16 +13,56 @@ import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 const EDGE_WIDTH_PX = 1;
 /** Uniform opacity on top of the per-segment fade, so crossing segments blend
  *  instead of the later (coarser) one occluding the finer one. */
-const EDGE_OPACITY = 0.8;
+const EDGE_OPACITY = 1.0;
 /** Per-segment fade: the finest merge draws at NEAR, the coarsest at FAR. The
  *  fade is baked into the vertex colors as a lerp towards the background, so
  *  the tree recedes with depth without needing per-vertex alpha. */
-const FADE_NEAR = 0.75;
-const FADE_FAR = 0.12;
+const FADE_NEAR = 0.9;
+const FADE_FAR = 0.3;
 /** The ancestry highlight is the mode's focal line: slightly wider and near
  *  opaque so it stands out of the faded tree. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
 const HIGHLIGHT_OPACITY = 0.9;
+
+/**
+ * Analytic edge anti-aliasing for three's `LineMaterial`.
+ *
+ * The graph renders without MSAA (see `use-graph-gl-renderer`: points, rings and
+ * axes all anti-alias themselves in-shader), but the stock `LineMaterial` only
+ * hard-`discard`s past the stroke edge, so the dendrogram's diagonal arcs and
+ * spokes stair-step. `alphaToCoverage` wouldn't help — its analytic ramp covers
+ * only the round caps and leans on MSAA for the long edges.
+ *
+ * So we patch the fragment shader's discard branch into a ~1px coverage ramp,
+ * driven by the width-normalized distance from the stroke centerline (`|vUv.x|`
+ * along the body, radial past the caps where `|vUv.y| > 1`) scaled to screen
+ * pixels via `fwidth`. Combined with the material's existing alpha blending this
+ * feathers every edge. A distinct `customProgramCacheKey` keeps this program out
+ * of the (identically-sourced) axis `LineMaterial`'s cache slot, and the guard
+ * fails loud if a three.js upgrade moves the branch out from under the patch.
+ */
+function antialiasLineMaterial(material: LineMaterial): void {
+  material.customProgramCacheKey = () => 'dendrogram-line-aa';
+  material.onBeforeCompile = (shader) => {
+    const patched = shader.fragmentShader.replace(
+      /if \( abs\( vUv\.y \) > 1\.0 \) \{\s*float a = vUv\.x;[\s\S]*?discard;\s*\}/,
+      `
+					// This pipeline renders without MSAA, so fade alpha across a ~1px
+					// coverage ramp at the stroke edge — |vUv.x| along the body, radial
+					// past the round caps — for in-shader anti-aliasing.
+					float capExtent = max( abs( vUv.y ) - 1.0, 0.0 );
+					float edgeDistance = length( vec2( vUv.x, capExtent ) );
+					alpha *= clamp( ( 1.0 - edgeDistance ) / max( fwidth( edgeDistance ), 1e-4 ) + 0.5, 0.0, 1.0 );
+      `,
+    );
+    if (patched === shader.fragmentShader) {
+      throw new Error(
+        'dendrogram AA patch did not match LineMaterial; three.js shader changed',
+      );
+    }
+    shader.fragmentShader = patched;
+  };
+}
 
 /** The selected font's merge-ancestry polyline and its stroke color. */
 export interface DendrogramHighlight {
@@ -78,6 +118,8 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     depthTest: false,
     blending: NormalBlending,
   });
+  antialiasLineMaterial(material);
+  antialiasLineMaterial(highlightMaterial);
 
   const group = new Group();
   let lines: LineSegments2 | null = null;
