@@ -1,9 +1,10 @@
-import { type Accessor, createEffect, onCleanup } from 'solid-js';
+import { type Accessor, createEffect, onCleanup, untrack } from 'solid-js';
 import {
   BufferGeometry,
   Color,
   Float32BufferAttribute,
   Group,
+  type InterleavedBufferAttribute,
   NormalBlending,
   type Object3D,
   Points,
@@ -126,6 +127,11 @@ export interface DendrogramHighlight {
   edges: DendrogramEdge[];
 }
 
+interface EdgeRange {
+  start: number;
+  end: number;
+}
+
 export interface DendrogramLayerProps {
   /** The edges to draw, in graph space (y-down), ordered by merge rank. */
   edges: Accessor<DendrogramEdge[]>;
@@ -165,9 +171,10 @@ export interface DendrogramLayerProps {
  * The node dots themselves behave like graph-point aliases: they use the
  * representative point color and the point-core shader's active/dimmed alpha.
  *
- * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
- * swaps in a freshly built geometry and disposes the old one. The render loop
- * owns the group's visibility (the mode toggle and the glow passes).
+ * `LineSegmentsGeometry` has no in-place resize, so edge-set changes swap in a
+ * freshly built geometry and dispose the old one. Theme and selection changes
+ * update the existing color buffer in place. The render loop owns the group's
+ * visibility (the mode toggle and the glow passes).
  */
 export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const material = new LineMaterial({
@@ -211,6 +218,63 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const group = new Group();
   let lines: LineSegments2 | null = null;
   let highlightLines: LineSegments2 | null = null;
+  let edgeColors: Float32Array | null = null;
+  let edgeRangesByMergeIndex: (EdgeRange | undefined)[] = [];
+  let previousColorEdges: DendrogramEdge[] | null = null;
+  let isPreviousColorDark: boolean | undefined;
+  let previousSubtreeMergeIndexes: ReadonlySet<number> | null = null;
+
+  const writeEdgeColors = (
+    edges: DendrogramEdge[],
+    isDark: boolean,
+    subtreeMergeIndexes: ReadonlySet<number>,
+    mergeIndexes?: readonly number[],
+  ) => {
+    const colors = edgeColors;
+    if (!lines || !colors || edges.length === 0) return false;
+
+    const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
+    const background = new Color(getBackgroundColor({ isDark }));
+    const segmentColor = new Color();
+    let didWrite = false;
+
+    const writeEdge = (edge: DendrogramEdge, edgeIndex: number) => {
+      const fade = subtreeMergeIndexes.has(edge.mergeIndex)
+        ? 1
+        : fadeForRank(edge.mergeIndex, lastMergeIndex);
+      segmentColor.set(getClusterColor({ k: edge.k, isDark }));
+      segmentColor.lerpColors(background, segmentColor, fade);
+      const offset = edgeIndex * 6;
+      colors[offset] = segmentColor.r;
+      colors[offset + 1] = segmentColor.g;
+      colors[offset + 2] = segmentColor.b;
+      colors[offset + 3] = segmentColor.r;
+      colors[offset + 4] = segmentColor.g;
+      colors[offset + 5] = segmentColor.b;
+      didWrite = true;
+    };
+
+    if (mergeIndexes) {
+      for (const mergeIndex of mergeIndexes) {
+        const range = edgeRangesByMergeIndex[mergeIndex];
+        if (!range) continue;
+        for (let index = range.start; index < range.end; index += 1) {
+          writeEdge(edges[index]!, index);
+        }
+      }
+    } else {
+      for (const [index, edge] of edges.entries()) {
+        writeEdge(edge, index);
+      }
+    }
+
+    if (!didWrite) return false;
+    const colorAttribute = lines.geometry.getAttribute('instanceColorStart') as
+      | InterleavedBufferAttribute
+      | undefined;
+    if (colorAttribute) colorAttribute.data.needsUpdate = true;
+    return true;
+  };
 
   const dots = new Points(dotGeometry, dotMaterial);
   dots.frustumCulled = false;
@@ -225,23 +289,58 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       lines.geometry.dispose();
       lines = null;
     }
+    edgeColors = null;
+    edgeRangesByMergeIndex = [];
     if (edges.length > 0) {
       // World Y is the negated graph Y (graph space is y-down).
-      const positions = edges.flatMap(({ x1, y1, x2, y2 }) => [
-        x1,
-        -y1,
-        0,
-        x2,
-        -y2,
-        0,
-      ]);
+      const positions = new Float32Array(edges.length * 6);
+      for (const [index, { x1, y1, x2, y2 }] of edges.entries()) {
+        const offset = index * 6;
+        positions[offset] = x1;
+        positions[offset + 1] = -y1;
+        positions[offset + 2] = 0;
+        positions[offset + 3] = x2;
+        positions[offset + 4] = -y2;
+        positions[offset + 5] = 0;
+      }
+
+      let rangeStart = 0;
+      while (rangeStart < edges.length) {
+        const mergeIndex = edges[rangeStart]!.mergeIndex;
+        let rangeEnd = rangeStart + 1;
+        while (
+          rangeEnd < edges.length &&
+          edges[rangeEnd]!.mergeIndex === mergeIndex
+        ) {
+          rangeEnd += 1;
+        }
+        edgeRangesByMergeIndex[mergeIndex] = {
+          start: rangeStart,
+          end: rangeEnd,
+        };
+        rangeStart = rangeEnd;
+      }
 
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
+      edgeColors = new Float32Array(edges.length * 6);
+      geometry.setColors(edgeColors);
       lines = new LineSegments2(geometry, material);
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;
       group.add(lines);
+      untrack(() => {
+        const isDark = props.isDark();
+        const subtreeMergeIndexes = props.subtreeMergeIndexes();
+        writeEdgeColors(edges, isDark, subtreeMergeIndexes);
+        previousColorEdges = edges;
+        isPreviousColorDark = isDark;
+        previousSubtreeMergeIndexes = subtreeMergeIndexes;
+      });
+    } else {
+      previousColorEdges = edges;
+      isPreviousColorDark = undefined;
+      previousSubtreeMergeIndexes = null;
     }
     props.requestRender();
   });
@@ -250,27 +349,52 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     const edges = props.edges();
     const isDark = props.isDark();
     const subtreeMergeIndexes = props.subtreeMergeIndexes();
-    if (!lines || edges.length === 0) return;
+    if (!lines || edges.length === 0) {
+      previousColorEdges = edges;
+      isPreviousColorDark = isDark;
+      previousSubtreeMergeIndexes = subtreeMergeIndexes;
+      return;
+    }
 
-    const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
-    const background = new Color(getBackgroundColor({ isDark }));
-    const segmentColor = new Color();
-    const colors = edges.flatMap(({ mergeIndex, k }) => {
-      const fade = subtreeMergeIndexes.has(mergeIndex)
-        ? 1
-        : fadeForRank(mergeIndex, lastMergeIndex);
-      segmentColor.set(getClusterColor({ k, isDark }));
-      segmentColor.lerpColors(background, segmentColor, fade);
-      const { r, g, b } = segmentColor;
-      return [r, g, b, r, g, b];
-    });
+    const previousSubtree = previousSubtreeMergeIndexes;
+    const shouldRewriteAllEdgeColors =
+      previousColorEdges !== edges ||
+      isPreviousColorDark !== isDark ||
+      !previousSubtree;
+    let didUpdate = false;
 
-    lines.geometry.setColors(colors);
-    props.requestRender();
+    if (shouldRewriteAllEdgeColors) {
+      didUpdate = writeEdgeColors(edges, isDark, subtreeMergeIndexes);
+    } else {
+      const changedMergeIndexes: number[] = [];
+      for (const mergeIndex of previousSubtree) {
+        if (!subtreeMergeIndexes.has(mergeIndex)) {
+          changedMergeIndexes.push(mergeIndex);
+        }
+      }
+      for (const mergeIndex of subtreeMergeIndexes) {
+        if (!previousSubtree.has(mergeIndex)) {
+          changedMergeIndexes.push(mergeIndex);
+        }
+      }
+      didUpdate =
+        changedMergeIndexes.length > 0 &&
+        writeEdgeColors(
+          edges,
+          isDark,
+          subtreeMergeIndexes,
+          changedMergeIndexes,
+        );
+    }
+
+    previousColorEdges = edges;
+    isPreviousColorDark = isDark;
+    previousSubtreeMergeIndexes = subtreeMergeIndexes;
+    if (didUpdate) props.requestRender();
   });
 
-  // Node dot positions + colors (rebuilt with the dot set / theme, like the
-  // edges above). aState and aHideCore are owned by the effects below.
+  // Node dot positions + colors. aState and aHideCore are owned by the effects
+  // below.
   createEffect(() => {
     const nodeDots = props.dots();
     const isDark = props.isDark();

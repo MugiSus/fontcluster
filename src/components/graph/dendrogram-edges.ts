@@ -72,6 +72,10 @@ interface DendrogramTree {
   edges: DendrogramEdge[];
   nodes: ClusterNode[];
   leafIndexByKey: Map<string, number>;
+  /** Lazily filled descendant caches for selected merge nodes. This is derived
+   *  from `merges` and scoped to this memoized tree; rebuilding the tree drops
+   *  the cache with it. */
+  subtreeMergeIndexesByNode: Map<number, ReadonlySet<number>>;
   /** Anchors at every visible merge node, carrying the node's
    *  representative's sample. */
   imageAnchors: DendrogramImageAnchor[];
@@ -277,6 +281,7 @@ const dendrogramTree = createRoot(() => {
       edges,
       nodes,
       leafIndexByKey,
+      subtreeMergeIndexesByNode: new Map(),
       imageAnchors,
       dots,
       ids: dendrogram.ids,
@@ -391,6 +396,9 @@ export function getDendrogramSubtreeMergeIndexes(
     return NO_MERGE_INDEXES;
   }
 
+  const cached = tree.subtreeMergeIndexesByNode.get(nodeIndex);
+  if (cached) return cached;
+
   const mergeIndexes = new Set<number>();
   const stack = [nodeIndex];
   while (stack.length > 0) {
@@ -405,5 +413,6 @@ export function getDendrogramSubtreeMergeIndexes(
     stack.push(merge.left, merge.right);
   }
 
+  tree.subtreeMergeIndexesByNode.set(nodeIndex, mergeIndexes);
   return mergeIndexes;
 }
