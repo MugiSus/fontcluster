@@ -1,5 +1,6 @@
 import { Show } from 'solid-js';
 import { GraphBottomToolbar } from './bottom-toolbar';
+import { DendrogramDock } from './dendrogram-dock';
 import { type GraphToolMode } from './types';
 import { type ViewportZoomControls } from './graph-viewer';
 import { LassoClearButton } from './lasso-clear-button';
@@ -10,6 +11,8 @@ interface GraphBottomControlsProps {
   showFontNames: boolean;
   showGlow: boolean;
   showDendrogram: boolean;
+  dendrogramVisibleMerges: number;
+  onDendrogramVisibleMergesChange: (count: number) => void;
   isFilterOpen: boolean;
   zoomControls: ViewportZoomControls | null;
   hasLassoResult: boolean;
@@ -30,6 +33,12 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
     >
       <Show when={props.hasLassoResult}>
         <LassoClearButton onClear={props.onClearLasso} />
+      </Show>
+      <Show when={props.showDendrogram}>
+        <DendrogramDock
+          visibleMerges={props.dendrogramVisibleMerges}
+          onVisibleMergesChange={props.onDendrogramVisibleMergesChange}
+        />
       </Show>
       <GraphBottomToolbar
         toolMode={props.toolMode}

@@ -1,4 +1,4 @@
-import { type Accessor, createEffect, onCleanup } from 'solid-js';
+import { type Accessor, createEffect, createSignal, onCleanup } from 'solid-js';
 import { Color, Group, NormalBlending, type Object3D } from 'three';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -20,6 +20,8 @@ const FADE_FAR = 0.12;
 export interface DendrogramLayerProps {
   /** The edges to draw, in graph space (y-down), ordered by merge rank. */
   edges: Accessor<DendrogramEdge[]>;
+  /** Merges to show: edges of merge ranks at or past this are hidden. */
+  visibleMerges: Accessor<number>;
   /** Whether the active theme is dark (picks cluster/background colors). */
   isDark: Accessor<boolean>;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
@@ -42,8 +44,10 @@ export interface DendrogramLayerProps {
  *   vivid and the coarse trunks recede.
  *
  * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
- * swaps in a freshly built geometry and disposes the old one. The render loop
- * owns the group's visibility (the mode toggle and the glow passes).
+ * swaps in a freshly built geometry and disposes the old one. The depth slider
+ * (`visibleMerges`) never rebuilds: edges arrive sorted by merge rank, so it
+ * just caps the geometry's `instanceCount` to the matching prefix. The render
+ * loop owns the group's visibility (the mode toggle and the glow passes).
  */
 export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const material = new LineMaterial({
@@ -58,6 +62,12 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   const group = new Group();
   let lines: LineSegments2 | null = null;
+  // Downstream notification that the geometry was swapped, so the prefix
+  // effect below re-applies the depth cap to the fresh (full) geometry.
+  const [built, setBuilt] = createSignal<{
+    lines: LineSegments2;
+    edges: DendrogramEdge[];
+  } | null>(null);
 
   createEffect(() => {
     const edges = props.edges();
@@ -98,6 +108,18 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       lines.renderOrder = -0.5;
       group.add(lines);
     }
+    setBuilt(lines ? { lines, edges } : null);
+    props.requestRender();
+  });
+
+  // Depth cap: draw only the edge prefix whose merge rank is below the limit.
+  createEffect(() => {
+    const current = built();
+    if (!current) return;
+    current.lines.geometry.instanceCount = countEdgesBelow(
+      current.edges,
+      props.visibleMerges(),
+    );
     props.requestRender();
   });
 
@@ -113,4 +135,17 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   });
 
   return group;
+}
+
+/** First index whose merge rank reaches `mergeLimit` — the count of edges to
+ *  draw, given `edges` is sorted by merge rank. */
+function countEdgesBelow(edges: DendrogramEdge[], mergeLimit: number): number {
+  let low = 0;
+  let high = edges.length;
+  while (low < high) {
+    const mid = (low + high) >> 1;
+    if (edges[mid]!.mergeIndex < mergeLimit) low = mid + 1;
+    else high = mid;
+  }
+  return low;
 }

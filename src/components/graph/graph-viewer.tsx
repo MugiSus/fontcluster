@@ -42,6 +42,7 @@ interface GraphViewerProps {
   showFontNames: boolean;
   showGlow: boolean;
   showDendrogram: boolean;
+  dendrogramVisibleMerges: number;
   activeGraphWeights: FontWeight[];
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
@@ -365,6 +366,7 @@ export function GraphViewer(props: GraphViewerProps) {
           glow={() => props.showGlow}
           dendrogramEdges={dendrogramEdges}
           showDendrogram={() => props.showDendrogram}
+          dendrogramVisibleMerges={() => props.dendrogramVisibleMerges}
           sessionDirectory={() => appState.sessionDirectory}
         />
         <svg
