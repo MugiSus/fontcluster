@@ -6,6 +6,10 @@ import { appState } from '@/store';
 import { type FontItem } from '@/types/font';
 import { GRAPH_SIZE } from './constants';
 import {
+  radialDendrogramLayout,
+  type RadialDendrogramLayout,
+} from './dendrogram-layout';
+import {
   type GraphCoordinate,
   type GraphPointData,
   type GraphVisibleBounds,
@@ -66,7 +70,33 @@ function createAxisProjection(values: number[]): (value: number) => number {
   return (value) => scale(value);
 }
 
-function createFontPointState(data: Record<string, FontItem>): FontPointState {
+function createFontPointState(
+  data: Record<string, FontItem>,
+  radial: RadialDendrogramLayout | null,
+): FontPointState {
+  // Dendrogram mode swaps the score projection for the radial tree layout:
+  // every analysed font sits on the ring, and the (hidden) axes' origin parks
+  // at the ring centre.
+  if (radial) {
+    const points: GraphPointData[] = Object.values(data).flatMap((item) => {
+      const position = radial.positionByKey.get(item.meta.safe_name);
+      return position
+        ? [
+            {
+              key: item.meta.safe_name,
+              item,
+              x: position.x,
+              y: position.y,
+            },
+          ]
+        : [];
+    });
+    return {
+      points,
+      origin: { x: GRAPH_SIZE / 2, y: GRAPH_SIZE / 2 },
+    };
+  }
+
   const located = Object.values(data).flatMap((item) => {
     const position = getFontVectorPosition(item);
     return position ? [{ item, position }] : [];
@@ -138,7 +168,7 @@ function findNearestFontItems(
 
 const fontPointIndex = createRoot(() => {
   const state = createMemo(() =>
-    createFontPointState(appState.fonts.displayData),
+    createFontPointState(appState.fonts.displayData, radialDendrogramLayout()),
   );
   const indexes = createMemo<FontPointIndexes>(() => {
     const byKey = new Map<string, GraphPointData>();

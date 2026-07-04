@@ -128,10 +128,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       // Glow off: draw the sharp content (core dots + rings + images + axes)
       // straight to the screen. The halo object is only used by the bloom path.
+      // The origin crosshair belongs to the map layout's score space, so the
+      // dendrogram (radial) mode swaps it for the tree.
       if (!props.glow()) {
         halo.visible = false;
         core.visible = true;
-        axisLayer.visible = true;
+        axisLayer.visible = !showDendrogram;
         dendrogramLayer.visible = showDendrogram;
         ringLayer.visible = true;
         imageLayer.visible = true;
@@ -157,11 +159,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
       renderer.setClearColor(getBackgroundColor({ isDark: isDarkMode }), 1);
 
-      // 2) Background + axes (+ dendrogram edges) to the screen. These are the
-      //    backplate; draw them before the composite so the glow sits above
-      //    them but below the sharp content drawn last.
+      // 2) Background + axes (or dendrogram edges) to the screen. These are
+      //    the backplate; draw them before the composite so the glow sits
+      //    above them but below the sharp content drawn last.
       halo.visible = false;
-      axisLayer.visible = true;
+      axisLayer.visible = !showDendrogram;
       dendrogramLayer.visible = showDendrogram;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
@@ -184,7 +186,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.autoClear = previousAutoClear;
 
       // Leave the scene in a sane default for any stray render.
-      axisLayer.visible = true;
+      axisLayer.visible = !showDendrogram;
       dendrogramLayer.visible = showDendrogram;
     };
     const scheduleRender = () => {

@@ -1,5 +1,6 @@
 import { createMemo, createRoot } from 'solid-js';
 import { appState } from '@/store';
+import { radialDendrogramLayout } from './dendrogram-layout';
 import { getGraphPointByKey } from './font-point-index';
 import { type GraphCoordinate } from './types';
 
@@ -7,12 +8,12 @@ import { type GraphCoordinate } from './types';
  * Derives the dendrogram-mode geometry from the session's full merge tree
  * (`appState.dendrogram`) and the current graph layout (`font-point-index`).
  *
- * The tree is drawn as a centroid tree: every dendrogram node sits at the 2-D
- * centroid of its member points (a leaf sits on its point), and each merge
- * contributes one segment per child, from the child's centroid to the merged
- * node's centroid. Fine merges become short local links and coarse merges
- * become trunks between cluster centres, so the hierarchy reads as a tree
- * instead of a hairball of point-to-point chords.
+ * Every dendrogram node gets a 2-D centre — in the radial layout the position
+ * `dendrogram-layout` computed for it, otherwise the centroid of its member
+ * points (a leaf sits on its point) — and each merge contributes one segment
+ * per child, from the child's centre to the merged node's centre. Fine merges
+ * become short local links and coarse merges become trunks, so the hierarchy
+ * reads as a tree instead of a hairball of point-to-point chords.
  *
  * Leaves missing from the layout (not analysed, or hidden by a lasso result)
  * simply don't contribute to centroids; a merge only draws its segments when
@@ -66,6 +67,10 @@ const dendrogramTree = createRoot(() => {
   const memo = createMemo<DendrogramTree | null>(() => {
     const dendrogram = appState.dendrogram;
     if (!dendrogram) return null;
+    // In the radial layout, merge centres come from the layout instead of the
+    // member centroid. Leaf positions need no override: the point index
+    // already serves the ring positions there.
+    const radial = radialDendrogramLayout();
 
     // Nodes are indexed like the merges: leaves first, then one node per merge.
     const nodes: ClusterNode[] = dendrogram.ids.map((id) => {
@@ -104,8 +109,11 @@ const dendrogramTree = createRoot(() => {
       const sumY = left.sumY + right.sumY;
       const count = left.count + right.count;
       const k = combineClusterIds(left, right);
-      const center: GraphCoordinate | null =
-        count > 0 ? { x: sumX / count, y: sumY / count } : null;
+      const center: GraphCoordinate | null = radial
+        ? (radial.nodeCenters[nodeIndex] ?? null)
+        : count > 0
+          ? { x: sumX / count, y: sumY / count }
+          : null;
 
       if (left.center && right.center && center) {
         edges.push(
