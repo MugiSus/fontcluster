@@ -63,7 +63,7 @@ export const en = {
       zoom: 'Zoom',
       showSamples: 'Show samples',
       glowMode: 'Glow mode',
-      dendrogramMode: 'Dendrogram',
+      dendrogramMode: 'Dendrogram (Experimental)',
       filter: 'Filter',
     },
     lassoClearButton: {

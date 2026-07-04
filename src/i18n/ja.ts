@@ -51,7 +51,7 @@ export const ja: Dictionary = {
       zoom: 'ズーム',
       showSamples: 'サンプル',
       glowMode: '光彩',
-      dendrogramMode: 'デンドログラム',
+      dendrogramMode: 'デンドログラム（β版）',
       filter: '絞り込み',
     },
     lassoClearButton: {
