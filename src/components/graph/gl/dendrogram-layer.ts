@@ -54,34 +54,41 @@ const fadeForRank = (mergeIndex: number, lastMergeIndex: number) =>
  * spokes stair-step. `alphaToCoverage` wouldn't help — its analytic ramp covers
  * only the round caps and leans on MSAA for the long edges.
  *
- * So we patch the fragment shader's discard branch into a ~1px coverage ramp,
- * driven by the width-normalized distance from the stroke centerline (`|vUv.x|`
- * along the body, radial past the caps where `|vUv.y| > 1`) scaled to screen
- * pixels via `fwidth`. Combined with the material's existing alpha blending this
- * feathers every edge. A distinct `customProgramCacheKey` keeps this program out
- * of the (identically-sourced) axis `LineMaterial`'s cache slot, and the guard
- * fails loud if a three.js upgrade moves the branch out from under the patch.
+ * `onBeforeCompile` is three's supported hook for modifying a built-in
+ * material's program (https://threejs.org/docs/#api/en/materials/Material.onBeforeCompile).
+ * The patch is inject-only: a ~1px alpha coverage ramp — driven by the
+ * width-normalized distance from the stroke centerline (`|vUv.x|` along the
+ * body, radial past the round caps where `|vUv.y| > 1`), scaled to screen
+ * pixels via `fwidth` — inserted at the stable `#include <logdepthbuf_fragment>`
+ * chunk line just before the shader's color output. The upstream cap-discard
+ * block stays untouched; it only trims fragments our ramp has already faded
+ * to ≤ 0.5. Combined with the material's existing alpha blending this feathers
+ * every edge. A distinct `customProgramCacheKey` keeps this program out of the
+ * (identically-sourced) axis `LineMaterial`'s cache slot, and the guard fails
+ * loud if a three.js upgrade drops the anchor.
  */
 function antialiasLineMaterial(material: LineMaterial): void {
   material.customProgramCacheKey = () => 'dendrogram-line-aa';
   material.onBeforeCompile = (shader) => {
-    const patched = shader.fragmentShader.replace(
-      /if \( abs\( vUv\.y \) > 1\.0 \) \{\s*float a = vUv\.x;[\s\S]*?discard;\s*\}/,
-      `
-					// This pipeline renders without MSAA, so fade alpha across a ~1px
-					// coverage ramp at the stroke edge — |vUv.x| along the body, radial
-					// past the round caps — for in-shader anti-aliasing.
-					float capExtent = max( abs( vUv.y ) - 1.0, 0.0 );
-					float edgeDistance = length( vec2( vUv.x, capExtent ) );
-					alpha *= clamp( ( 1.0 - edgeDistance ) / max( fwidth( edgeDistance ), 1e-4 ) + 0.5, 0.0, 1.0 );
-      `,
-    );
-    if (patched === shader.fragmentShader) {
+    const anchor = '#include <logdepthbuf_fragment>';
+    if (!shader.fragmentShader.includes(anchor)) {
       throw new Error(
-        'dendrogram AA patch did not match LineMaterial; three.js shader changed',
+        'dendrogram AA anchor not in LineMaterial; three.js shader changed',
       );
     }
-    shader.fragmentShader = patched;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      anchor,
+      /* glsl */ `
+			// This pipeline renders without MSAA, so fade alpha across a ~1px
+			// coverage ramp at the stroke edge — |vUv.x| along the body, radial
+			// past the round caps — for in-shader anti-aliasing.
+			float capExtent = max( abs( vUv.y ) - 1.0, 0.0 );
+			float edgeDistance = length( vec2( vUv.x, capExtent ) );
+			alpha *= clamp( ( 1.0 - edgeDistance ) / max( fwidth( edgeDistance ), 1e-4 ) + 0.5, 0.0, 1.0 );
+
+			${anchor}
+      `,
+    );
   };
 }
 
