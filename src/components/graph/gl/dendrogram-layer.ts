@@ -46,7 +46,7 @@ const HIGHLIGHT_OPACITY = 0.9;
 /** Family ancestry highlights keep the base edge width but use full opacity
  *  and unfaded color, sitting visually between the tree and selected path. */
 const FAMILY_HIGHLIGHT_WIDTH_PX = EDGE_WIDTH_PX;
-const FAMILY_HIGHLIGHT_OPACITY = 1.0;
+const FAMILY_HIGHLIGHT_OPACITY = 0.5;
 /** Merge-node dot diameter (CSS px); matches the point layer's core dots so
  *  branch points read like the leaf points. */
 const NODE_DOT_PX = 3.5;
