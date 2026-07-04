@@ -42,7 +42,7 @@ use super::plugin_bridge::PluginConnection;
 /// File extension of a packed session document.
 pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
 /// Sessions written by an app version older than this are pruned on startup.
-const MIN_SUPPORTED_SESSION_VERSION: &str = "0.15.0";
+const MIN_SUPPORTED_SESSION_VERSION: &str = "0.20.0";
 /// Name of the JSON config file inside a session directory/document.
 const SESSION_CONFIG_FILE: &str = "config.json";
 /// Name of the JSON file recording the full clustering dendrogram.
