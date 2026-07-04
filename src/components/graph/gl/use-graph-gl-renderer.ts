@@ -65,6 +65,7 @@ export interface UseGraphGlRendererProps {
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
+  dendrogramSubtreeEdges: Accessor<DendrogramEdge[]>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -320,14 +321,17 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         ),
     );
 
-    // The selected font's merge ancestry, stroked in its cluster color.
+    // The selected font's merge ancestry — plus, when the selection is a
+    // merge node's sample, that node's subtree — stroked in its cluster color.
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
       const points = props.dendrogramAncestry();
-      if (points.length < 2) return null;
+      const segments = props.dendrogramSubtreeEdges();
+      if (points.length < 2 && segments.length === 0) return null;
       const selected = props.selectedKey();
       const point = selected ? props.getPointByKey(selected) : undefined;
       return {
         points,
+        segments,
         color: getClusterColor({
           k: point?.item.computed?.clustering?.k,
           isDark: isDark(),

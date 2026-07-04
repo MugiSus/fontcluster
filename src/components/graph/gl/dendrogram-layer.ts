@@ -85,10 +85,13 @@ function antialiasLineMaterial(material: LineMaterial): void {
   };
 }
 
-/** The selected font's merge-ancestry polyline and its stroke color. */
+/** The selection emphasis: the merge-ancestry polyline, the selected merge
+ *  node's subtree segments, and their shared stroke color. */
 export interface DendrogramHighlight {
   /** Graph-space (y-down) polyline: the point, then successive merge centroids. */
   points: GraphCoordinate[];
+  /** Graph-space (y-down) segments of the selected node's subtree, if any. */
+  segments: DendrogramEdge[];
   color: number;
 }
 
@@ -170,6 +173,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const group = new Group();
   let lines: LineSegments2 | null = null;
   let highlightLine: Line2 | null = null;
+  let highlightSegments: LineSegments2 | null = null;
 
   const dots = new Points(dotGeometry, dotMaterial);
   dots.frustumCulled = false;
@@ -278,9 +282,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
-  // The selected font's ancestry, drawn as a continuous polyline over the
-  // tree. `LineGeometry` has no in-place resize either, so it is rebuilt per
-  // selection change (the path is only ever tree-depth long).
+  // The selection emphasis: the ancestry as a continuous polyline, plus —
+  // when a merge node's sample is the selection — every segment of that
+  // node's subtree, both in the highlight stroke. Neither geometry has an
+  // in-place resize, so both rebuild per selection change.
   createEffect(() => {
     const highlight = props.highlight();
     if (highlightLine) {
@@ -288,16 +293,39 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       highlightLine.geometry.dispose();
       highlightLine = null;
     }
-    if (highlight && highlight.points.length >= 2) {
-      // World Y is the negated graph Y (graph space is y-down).
-      const positions = highlight.points.flatMap(({ x, y }) => [x, -y, 0]);
-      const geometry = new LineGeometry();
-      geometry.setPositions(positions);
+    if (highlightSegments) {
+      group.remove(highlightSegments);
+      highlightSegments.geometry.dispose();
+      highlightSegments = null;
+    }
+    if (highlight) {
       highlightMaterial.color.set(highlight.color);
-      highlightLine = new Line2(geometry, highlightMaterial);
-      highlightLine.frustumCulled = false;
-      highlightLine.renderOrder = -0.4;
-      group.add(highlightLine);
+      if (highlight.points.length >= 2) {
+        // World Y is the negated graph Y (graph space is y-down).
+        const positions = highlight.points.flatMap(({ x, y }) => [x, -y, 0]);
+        const geometry = new LineGeometry();
+        geometry.setPositions(positions);
+        highlightLine = new Line2(geometry, highlightMaterial);
+        highlightLine.frustumCulled = false;
+        highlightLine.renderOrder = -0.4;
+        group.add(highlightLine);
+      }
+      if (highlight.segments.length > 0) {
+        const positions = highlight.segments.flatMap(({ x1, y1, x2, y2 }) => [
+          x1,
+          -y1,
+          0,
+          x2,
+          -y2,
+          0,
+        ]);
+        const geometry = new LineSegmentsGeometry();
+        geometry.setPositions(positions);
+        highlightSegments = new LineSegments2(geometry, highlightMaterial);
+        highlightSegments.frustumCulled = false;
+        highlightSegments.renderOrder = -0.4;
+        group.add(highlightSegments);
+      }
     }
     props.requestRender();
   });
@@ -320,6 +348,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   onCleanup(() => {
     lines?.geometry.dispose();
     highlightLine?.geometry.dispose();
+    highlightSegments?.geometry.dispose();
     material.dispose();
     highlightMaterial.dispose();
     dotGeometry.dispose();
