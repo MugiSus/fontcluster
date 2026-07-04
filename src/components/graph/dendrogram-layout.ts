@@ -37,6 +37,11 @@ const START_ANGLE = -Math.PI / 2;
 /** Longest chord used when tessellating arcs; short enough (a few px at the
  *  default zoom) that the polyline reads as a smooth circle. */
 const MAX_ARC_CHORD = 3;
+/** Strength of the logarithmic height scale used for merge radii. Hierarchical
+ *  merge heights are typically dense near the leaves and sparse near the root;
+ *  `log1p(9t) / log(10)` expands those low heights into more radial space while
+ *  compressing the root side. */
+const HEIGHT_LOG_STRENGTH = 9;
 
 /** Graph-space point at a polar angle/radius around the ring centre. */
 export function polarPoint(angle: number, radius: number): GraphCoordinate {
@@ -135,14 +140,26 @@ export const radialDendrogramLayout = createRoot(() => {
           : (left + right) / 2;
     }
 
-    // Radius: leaves on the ring, merges sinking towards the centre linearly
-    // with dissimilarity; the root (the highest merge) lands exactly on it.
-    const maxHeight = merges[merges.length - 1]?.height ?? 0;
+    // Radius: leaves on the ring, merges sinking towards the centre with
+    // dissimilarity. The raw linkage heights are usually dense near zero, so a
+    // logarithmic progression spreads fine leaf-side structure outward and
+    // compresses the sparse root-side structure. Some linkage methods can
+    // produce inversions, so use the cumulative maximum height for a monotone
+    // radial tree even when one merge's raw height dips below a previous step.
+    let maxHeight = 0;
+    const monotoneMergeHeights = merges.map((merge) => {
+      maxHeight = Math.max(maxHeight, merge.height);
+      return maxHeight;
+    });
+    const logDenominator = Math.log1p(HEIGHT_LOG_STRENGTH);
     const radiusOf = (node: number) => {
       if (node < leafCount) return LEAF_RADIUS;
       if (maxHeight <= 0) return 0;
-      const height = merges[node - leafCount]!.height;
-      return LEAF_RADIUS * (1 - height / maxHeight);
+      const normalizedHeight =
+        (monotoneMergeHeights[node - leafCount] ?? 0) / maxHeight;
+      const heightProgress =
+        Math.log1p(HEIGHT_LOG_STRENGTH * normalizedHeight) / logDenominator;
+      return LEAF_RADIUS * (1 - heightProgress);
     };
 
     const nodeRadii = angles.map((_, node) => radiusOf(node));
