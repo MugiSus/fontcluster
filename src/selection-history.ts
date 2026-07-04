@@ -15,11 +15,13 @@ const SELECTION_HISTORY_DEBOUNCE = 250;
 
 type SelectionHistorySnapshot = {
   selectedFontKey: string | null;
+  selectedDendrogramNode: number | null;
   lassoResult: LassoProcessResult | null;
 };
 
 const getSnapshot = (): SelectionHistorySnapshot => ({
   selectedFontKey: appState.ui.selectedFontKey,
+  selectedDendrogramNode: appState.ui.selectedDendrogramNode,
   lassoResult: appState.ui.lassoResult
     ? structuredClone(unwrap(appState.ui.lassoResult))
     : null,
@@ -28,6 +30,11 @@ const getSnapshot = (): SelectionHistorySnapshot => ({
 const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
   batch(() => {
     setAppState('ui', 'selectedFontKey', snapshot.selectedFontKey);
+    setAppState(
+      'ui',
+      'selectedDendrogramNode',
+      snapshot.selectedDendrogramNode,
+    );
     setAppState('ui', 'lassoResult', snapshot.lassoResult);
     setAppState('ui', 'isLassoProcessing', false);
   });
@@ -38,6 +45,9 @@ const snapshotsEqual = (
   right: SelectionHistorySnapshot,
 ) => {
   if (left.selectedFontKey !== right.selectedFontKey) return false;
+  if (left.selectedDendrogramNode !== right.selectedDendrogramNode) {
+    return false;
+  }
   if (left.lassoResult === right.lassoResult) return true;
   if (!left.lassoResult || !right.lassoResult) return false;
   if (

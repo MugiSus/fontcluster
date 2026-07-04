@@ -66,7 +66,27 @@ export const refreshSession = () => loadSession(appState.session.session_id);
 // Actions
 
 export const setSelectedFontKey = (key: string | null) => {
-  setAppState('ui', 'selectedFontKey', key);
+  batch(() => {
+    setAppState('ui', 'selectedFontKey', key);
+    // A plain font selection supersedes any merge-node sample selection.
+    setAppState('ui', 'selectedDendrogramNode', null);
+  });
+  selectionHistory.commitDebounced();
+};
+
+/**
+ * Selects a dendrogram merge node's exemplar sample: the represented font
+ * becomes the selected font, and the node index drives the dendrogram's
+ * subtree highlight until a plain selection replaces it.
+ */
+export const setSelectedDendrogramNodeSample = (
+  nodeIndex: number,
+  key: string,
+) => {
+  batch(() => {
+    setAppState('ui', 'selectedFontKey', key);
+    setAppState('ui', 'selectedDendrogramNode', nodeIndex);
+  });
   selectionHistory.commitDebounced();
 };
 
@@ -140,6 +160,7 @@ export const setCurrentSessionId = async (id: string) => {
     setAppState('ui', 'isLassoProcessing', false);
     if (isSessionSwitch) {
       setAppState('ui', 'selectedFontKey', null);
+      setAppState('ui', 'selectedDendrogramNode', null);
       setAppState('ui', 'hoveredFontKey', null);
       setAppState('ui', 'sentFontItemKey', null);
       setAppState('sessionDirectory', '');
@@ -166,13 +187,16 @@ export const processLassoSelection = async (safeNames: string[]) => {
       setAppState('ui', 'lassoResult', result);
 
       const selectedFontKey = appState.ui.selectedFontKey;
+      const shouldKeepSelection =
+        !!selectedFontKey && result.safeNames.includes(selectedFontKey);
       setAppState(
         'ui',
         'selectedFontKey',
-        selectedFontKey && result.safeNames.includes(selectedFontKey)
-          ? selectedFontKey
-          : null,
+        shouldKeepSelection ? selectedFontKey : null,
       );
+      if (!shouldKeepSelection) {
+        setAppState('ui', 'selectedDendrogramNode', null);
+      }
     });
     selectionHistory.commit();
   } finally {

@@ -1,7 +1,11 @@
 import { createSelector, createSignal } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
-import { setSelectedFontKey as setCommittedSelectedFontKey } from '@/actions';
+import {
+  setSelectedDendrogramNodeSample,
+  setSelectedFontKey as setCommittedSelectedFontKey,
+} from '@/actions';
 import { appState } from '@/store';
+import { type DendrogramImageAnchor } from './dendrogram-edges';
 import { type GraphCoordinate, type GraphPointData } from './types';
 
 interface UseGraphSelectionProps {
@@ -12,20 +16,28 @@ interface UseGraphSelectionProps {
     y: number,
     radius: number,
   ) => GraphPointData | undefined;
+  /** Visible dendrogram merge-node sample under a graph point, if any. */
+  findDendrogramAnchor: (x: number, y: number) => DendrogramImageAnchor | null;
+}
+
+/** What a pointer position resolves to: a font, optionally via the dendrogram
+ *  merge node whose exemplar sample was hit. */
+interface SelectionTarget {
+  key: string;
+  nodeIndex: number | null;
 }
 
 export function useGraphSelection(props: UseGraphSelectionProps) {
-  const [draggingSelectedFontKey, setDraggingSelectedFontKey] = createSignal<
-    string | null
-  >(null);
+  const [draggingSelection, setDraggingSelection] =
+    createSignal<SelectionTarget | null>(null);
 
   const selectedFontKey = () =>
-    draggingSelectedFontKey() ?? appState.ui.selectedFontKey;
+    draggingSelection()?.key ?? appState.ui.selectedFontKey;
 
   // True while the pointer is actively resolving a selection (press/drag in
   // select mode), before it commits on mouse-up. The graph's selected-font
   // actions stay hidden during this window.
-  const isSelecting = () => draggingSelectedFontKey() !== null;
+  const isSelecting = () => draggingSelection() !== null;
 
   const selectedFontFamily = () => {
     const key = selectedFontKey();
@@ -36,28 +48,38 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
   const isSelectedFontKey = createSelector(selectedFontKey);
   const isSelectedFamily = createSelector(selectedFontFamily);
 
-  const getFontKeyFromMouseEvent = (event: MouseEvent) => {
+  const getTargetFromMouseEvent = (
+    event: MouseEvent,
+  ): SelectionTarget | null => {
     const point = props.getGraphPointFromEvent(event);
     if (!point) return null;
+
+    // The merge-node samples draw over the points, so a hit on one wins over
+    // the nearest ring point.
+    const anchor = props.findDendrogramAnchor(point.x, point.y);
+    if (anchor && appState.fonts.displayData[anchor.safeName]) {
+      return { key: anchor.safeName, nodeIndex: anchor.nodeIndex };
+    }
 
     const nearest = props.findSelectablePoint(
       point.x,
       point.y,
       props.getSelectionRadius(),
     );
-
-    if (!nearest) {
-      return null;
-    }
+    if (!nearest) return null;
 
     const item = appState.fonts.displayData[nearest.key];
     if (!item) return null;
 
-    return nearest.key;
+    return { key: nearest.key, nodeIndex: null };
   };
 
-  const setSelectedFontKey = (key: string | null, event?: MouseEvent) => {
-    setCommittedSelectedFontKey(key);
+  const commitSelection = (target: SelectionTarget, event?: MouseEvent) => {
+    if (target.nodeIndex === null) {
+      setCommittedSelectedFontKey(target.key);
+    } else {
+      setSelectedDendrogramNodeSample(target.nodeIndex, target.key);
+    }
     if (event && (event.shiftKey || event.ctrlKey || event.metaKey)) {
       emit('copy_family_name', {
         toast: false,
@@ -67,17 +89,17 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
   };
 
   const trackDraggingSelection = (event: MouseEvent) => {
-    const key = getFontKeyFromMouseEvent(event);
-    if (key) setDraggingSelectedFontKey(key);
+    const target = getTargetFromMouseEvent(event);
+    if (target) setDraggingSelection(target);
   };
 
   const clearDraggingSelection = () => {
-    setDraggingSelectedFontKey(null);
+    setDraggingSelection(null);
   };
 
   const selectFromMouseEvent = (event: MouseEvent) => {
-    const key = draggingSelectedFontKey() ?? getFontKeyFromMouseEvent(event);
-    if (key) setSelectedFontKey(key, event);
+    const target = draggingSelection() ?? getTargetFromMouseEvent(event);
+    if (target) commitSelection(target, event);
     clearDraggingSelection();
   };
 

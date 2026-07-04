@@ -24,7 +24,7 @@ import {
   graphOrigin,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
-import { BOX_HEIGHT_PX } from './gl/image-layer';
+import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './gl/image-layer';
 import { SelectedFontActions } from './selected-font-actions';
 import {
   type GraphCoordinate,
@@ -81,10 +81,37 @@ export function GraphViewer(props: GraphViewerProps) {
     isMoving: viewport.isMoving,
     activeGraphWeights: () => props.activeGraphWeights,
   });
+  // Hit-test for the merge-node samples: the image box around each visible
+  // anchor (the same set the GL layer draws — see the memo below), nearest
+  // centre winning. Referenced before the memo's declaration, but only ever
+  // called from mouse events, well after setup.
+  const findDendrogramAnchor = (
+    x: number,
+    y: number,
+  ): DendrogramImageAnchor | null => {
+    const zoom = viewport.zoomFactor();
+    const halfWidth = (BOX_WIDTH_PX / 2) * zoom;
+    const halfHeight = (BOX_HEIGHT_PX / 2) * zoom;
+    let nearest: DendrogramImageAnchor | null = null;
+    let nearestDistance = Infinity;
+    for (const anchor of dendrogramNodeImageAnchors()) {
+      const dx = x - anchor.x;
+      const dy = y - anchor.y;
+      if (Math.abs(dx) > halfWidth || Math.abs(dy) > halfHeight) continue;
+      const distance = Math.hypot(dx, dy);
+      if (distance < nearestDistance) {
+        nearest = anchor;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  };
+
   const selection = useGraphSelection({
     getGraphPointFromEvent: viewport.getGraphPointFromEvent,
     getSelectionRadius: () => 40 * viewport.zoomFactor(),
     findSelectablePoint: graph.findSelectablePoint,
+    findDendrogramAnchor,
   });
 
   // The selected font's merge ancestry for the dendrogram mode.
@@ -116,6 +143,19 @@ export function GraphViewer(props: GraphViewerProps) {
     const minSpan = BOX_HEIGHT_PX * viewport.zoomFactor();
     return [...byNode.values()].filter((anchor) => anchor.span >= minSpan);
   });
+
+  // When the selection came from a merge-node sample, the floating actions
+  // anchor on that node's sample instead of the represented font's ring point
+  // (falling back to the ring point if the anchor is zoomed away).
+  const getSelectedActionAnchorPoint = (key: string) => {
+    const point = getGraphPointByKey(key);
+    const nodeIndex = appState.ui.selectedDendrogramNode;
+    if (!point || nodeIndex === null || !props.showDendrogram) return point;
+    const anchor = dendrogramNodeImageAnchors().find(
+      (candidate) => candidate.nodeIndex === nodeIndex,
+    );
+    return anchor ? { ...point, x: anchor.x, y: anchor.y } : point;
+  };
 
   onMount(() => {
     props.onViewportZoomControlsChange?.({
@@ -471,7 +511,7 @@ export function GraphViewer(props: GraphViewerProps) {
         isSelecting={selection.isSelecting}
         viewBox={viewport.viewBox}
         size={svgSize}
-        getPointByKey={getGraphPointByKey}
+        getPointByKey={getSelectedActionAnchorPoint}
       />
     </div>
   );

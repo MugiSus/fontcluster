@@ -39,6 +39,10 @@ export interface AppState {
      *  the store rather than the graph component because the point layout
      *  derivation (font-point-index) switches on it. */
     showDendrogram: boolean;
+    /** Dendrogram node index of the selected merge-node sample; drives the
+     *  subtree highlight. Null when the selection is a plain font (or
+     *  nothing) — any plain font selection clears it. */
+    selectedDendrogramNode: number | null;
   };
   plugins: {
     connections: PluginConnection[];
@@ -108,6 +112,7 @@ export const [appState, setAppState] = createStore<AppState>({
     activeGraphWeights: [400],
     visibleGraphClusters: [],
     showDendrogram: false,
+    selectedDendrogramNode: null,
   },
   plugins: {
     connections: [],
