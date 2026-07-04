@@ -14,7 +14,6 @@ import {
   dendrogramImageAnchors,
   dendrogramNodeDots,
   getDendrogramAncestry,
-  getDendrogramAncestryImageAnchors,
   getDendrogramSubtreeEdges,
 } from './dendrogram-edges';
 import {
@@ -129,29 +128,16 @@ export function GraphViewer(props: GraphViewerProps) {
       : [],
   );
 
-  // Merge-node exemplar images for the dendrogram mode: the always-on reign
-  // ends follow the images toggle, the selected font's ancestry handovers
-  // show regardless (like the selected font's own image). Deduped by node,
-  // ancestry last so its unconditional span wins. An anchor only survives
-  // once its radial gap to the absorbing parent fits the image box at the
-  // current zoom, so zooming in reveals finer merge stages — this memo is the
-  // single source of the *visible* anchors: the GL image layer draws exactly
-  // these, and the click hit-test resolves against the same set.
+  // Merge-node exemplar images for the dendrogram mode: the representatives'
+  // reign ends, following the images toggle. An anchor only survives once its
+  // radial gap to the absorbing parent fits the image box at the current
+  // zoom, so zooming in reveals finer merge stages — this memo is the single
+  // source of the *visible* anchors: the GL image layer draws exactly these,
+  // and the click hit-test resolves against the same set.
   const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
-    if (!props.showDendrogram) return [];
-    const byNode = new Map<number, DendrogramImageAnchor>();
-    if (props.showImages) {
-      for (const anchor of dendrogramImageAnchors()) {
-        byNode.set(anchor.nodeIndex, anchor);
-      }
-    }
-    for (const anchor of getDendrogramAncestryImageAnchors(
-      selection.selectedKey(),
-    )) {
-      byNode.set(anchor.nodeIndex, anchor);
-    }
+    if (!props.showDendrogram || !props.showImages) return [];
     const minSpan = BOX_HEIGHT_PX * viewport.zoomFactor();
-    return [...byNode.values()].filter((anchor) => anchor.span >= minSpan);
+    return dendrogramImageAnchors().filter((anchor) => anchor.span >= minSpan);
   });
 
   // When the selection came from a merge-node sample, the floating actions

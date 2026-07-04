@@ -367,47 +367,6 @@ export function getDendrogramSubtreeEdges(
 }
 
 /**
- * The representative handovers along a font's merge ancestry: an anchor at
- * every ancestor merge whose representative differs from the previous one on
- * the path — the "intermediate stages" a selected font passes through. Spans
- * are `Infinity` so these always survive the renderer's persistence filter.
- */
-export function getDendrogramAncestryImageAnchors(
-  key: string | null,
-): DendrogramImageAnchor[] {
-  const tree = dendrogramTree();
-  if (!tree || !key) return NO_ANCHORS;
-  const leafIndex = tree.leafIndexByKey.get(key);
-  const leaf = leafIndex === undefined ? undefined : tree.nodes[leafIndex];
-  if (!leaf?.center) return NO_ANCHORS;
-
-  const anchors: DendrogramImageAnchor[] = [];
-  let lastRep = leaf.rep;
-  let node = leaf;
-  while (node.parent !== -1) {
-    const nodeIndex = node.parent;
-    const parent = tree.nodes[nodeIndex];
-    if (!parent?.center) break;
-    if (parent.rep >= 0 && parent.rep !== lastRep) {
-      const safeName = tree.ids[parent.rep];
-      if (safeName) {
-        anchors.push({
-          nodeIndex,
-          safeName,
-          x: parent.center.x,
-          y: parent.center.y,
-          k: parent.dominantK,
-          span: Number.POSITIVE_INFINITY,
-        });
-      }
-      lastRep = parent.rep;
-    }
-    node = parent;
-  }
-  return anchors;
-}
-
-/**
  * The polyline of a font's merge ancestry, in graph space, following the same
  * brackets the tree draws: from the font's point radially in to each
  * absorbing merge's radius, then along that merge's arc to its angle, up to
