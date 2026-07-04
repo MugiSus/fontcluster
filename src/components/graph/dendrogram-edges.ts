@@ -1,6 +1,5 @@
 import { createMemo, createRoot } from 'solid-js';
 import { appState } from '@/store';
-import { type DendrogramMerge } from '@/types/session';
 import {
   arcPoints,
   polarPoint,
@@ -98,11 +97,6 @@ interface DendrogramTree {
   dots: DendrogramNodeDot[];
   /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
   ids: string[];
-  /** Leaf count (`nodes[i]` for `i < leafCount` are leaves). */
-  leafCount: number;
-  /** The session's merges: the children of node `leafCount + i` are
-   *  `merges[i].left`/`.right`, for subtree walks. */
-  merges: DendrogramMerge[];
 }
 
 const NO_ANCESTRY: GraphCoordinate[] = [];
@@ -306,8 +300,6 @@ const dendrogramTree = createRoot(() => {
       imageAnchors,
       dots,
       ids: dendrogram.ids,
-      leafCount,
-      merges: dendrogram.merges,
     };
   });
   return memo;
@@ -336,35 +328,6 @@ export const dendrogramImageAnchors = (): DendrogramImageAnchor[] =>
  */
 export const dendrogramNodeDots = (): DendrogramNodeDot[] =>
   dendrogramTree()?.dots ?? NO_DOTS;
-
-/**
- * Every drawn edge of the subtree under a dendrogram node: the node's own
- * bracket and everything below it, in merge order. Empty for null or a leaf,
- * or when the dendrogram mode is inactive. Complements the merge-ancestry
- * polyline when a merge node's exemplar sample is the selection.
- */
-export function getDendrogramSubtreeEdges(
-  nodeIndex: number | null,
-): DendrogramEdge[] {
-  const tree = dendrogramTree();
-  if (!tree || nodeIndex === null || nodeIndex < tree.leafCount) {
-    return NO_EDGES;
-  }
-
-  // Collect the subtree's merge ranks. Every node has one parent, so the
-  // children walk visits each node at most once.
-  const mergeIndexes = new Set<number>();
-  const stack = [nodeIndex];
-  while (stack.length > 0) {
-    const node = stack.pop()!;
-    if (node < tree.leafCount) continue;
-    const merge = tree.merges[node - tree.leafCount];
-    if (!merge) continue;
-    mergeIndexes.add(node - tree.leafCount);
-    stack.push(merge.left, merge.right);
-  }
-  return tree.edges.filter((edge) => mergeIndexes.has(edge.mergeIndex));
-}
 
 /**
  * The polyline of a font's merge ancestry, in graph space, following the same

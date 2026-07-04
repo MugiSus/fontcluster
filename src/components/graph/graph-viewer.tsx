@@ -8,13 +8,11 @@ import { processLassoSelection } from '@/actions';
 import { useElementSize } from '@/hooks/use-element-size';
 import { type FontWeight } from '@/types/font';
 import {
-  type DendrogramEdge,
   type DendrogramImageAnchor,
   dendrogramEdges,
   dendrogramImageAnchors,
   dendrogramNodeDots,
   getDendrogramAncestry,
-  getDendrogramSubtreeEdges,
 } from './dendrogram-edges';
 import {
   fontPoints,
@@ -118,14 +116,6 @@ export function GraphViewer(props: GraphViewerProps) {
   // The selected font's merge ancestry for the dendrogram mode.
   const dendrogramAncestry = createMemo(() =>
     props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
-  );
-
-  // The selected merge node's subtree, emphasized alongside the ancestry
-  // while its exemplar sample is the selection.
-  const dendrogramSubtreeEdges = createMemo<DendrogramEdge[]>(() =>
-    props.showDendrogram
-      ? getDendrogramSubtreeEdges(appState.ui.selectedDendrogramNode)
-      : [],
   );
 
   // Merge-node exemplar images for the dendrogram mode: the representatives'
@@ -442,7 +432,6 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           showDendrogram={() => props.showDendrogram}
           dendrogramAncestry={dendrogramAncestry}
-          dendrogramSubtreeEdges={dendrogramSubtreeEdges}
           sessionDirectory={() => appState.sessionDirectory}
         />
         <svg

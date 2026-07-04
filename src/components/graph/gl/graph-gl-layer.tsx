@@ -33,7 +33,6 @@ interface GraphGlLayerProps {
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
-  dendrogramSubtreeEdges: Accessor<DendrogramEdge[]>;
   sessionDirectory: Accessor<string>;
 }
 
@@ -68,7 +67,6 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     showDendrogram: () => props.showDendrogram(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
-    dendrogramSubtreeEdges: () => props.dendrogramSubtreeEdges(),
     sessionDirectory: () => props.sessionDirectory(),
   });
 
