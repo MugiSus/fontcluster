@@ -31,6 +31,7 @@ const CORE = 3.5;
  * run higher without dense overlaps painting the layer fully opaque.
  */
 const GLOW_OPACITY = 0.2;
+const FULL_OPACITY = () => 1;
 
 export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
@@ -38,6 +39,8 @@ export interface PointLayerProps {
   isDark: Accessor<boolean>;
   /** Marks a point active (full) vs dimmed (filtered-out / inactive weight). */
   activePredicate: Accessor<(point: GraphPointData) => boolean>;
+  /** Extra per-point opacity multiplier; defaults to fully opaque. */
+  opacityForPoint?: Accessor<(point: GraphPointData) => number>;
   /** Keys whose sample image is drawn; their core dot is hidden (glow stays). */
   imageShownKeys: Accessor<Set<string>>;
   /** Device pixel ratio; sprite size = CSS px × this. */
@@ -59,6 +62,7 @@ export interface PointLayerProps {
  * - `aColor` — the cluster color (rebuilt with the point set / theme).
  * - `aState` — 0 for active points, 1 for dimmed (filtered-out / inactive
  *   weight) points.
+ * - `aOpacity` — an extra per-point opacity multiplier, normally 1.
  * - `aHideCore` — 1 for points whose sample image is drawn (the core dot is
  *   suppressed there; only the core program reads it, so the glow still shows).
  *
@@ -152,6 +156,10 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
       new Float32BufferAttribute(new Float32Array(count), 1),
     );
     geometry.setAttribute(
+      'aOpacity',
+      new Float32BufferAttribute(new Float32Array(count), 1),
+    );
+    geometry.setAttribute(
       'aHideCore',
       new Float32BufferAttribute(new Float32Array(count), 1),
     );
@@ -193,6 +201,22 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     attribute.needsUpdate = true;
   };
 
+  /** Updates only the extra opacity multiplier per point (cheap, no realloc). */
+  const setOpacity = (
+    pointData: GraphPointData[],
+    opacityForPoint: (point: GraphPointData) => number,
+  ) => {
+    const attribute = geometry.getAttribute('aOpacity');
+    // Guard against running before the matching geometry has been built.
+    if (!attribute || attribute.count !== pointData.length) return;
+
+    const opacities = attribute.array as Float32Array;
+    for (const [index, point] of pointData.entries()) {
+      opacities[index] = opacityForPoint(point);
+    }
+    attribute.needsUpdate = true;
+  };
+
   /** Flags points whose image is shown so the core shader drops their dot. */
   const setHiddenCores = (
     pointData: GraphPointData[],
@@ -221,6 +245,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     untrack(() => {
       setColors(pointData, props.isDark());
       setActiveState(pointData, props.activePredicate());
+      setOpacity(pointData, props.opacityForPoint?.() ?? FULL_OPACITY);
       setHiddenCores(pointData, props.imageShownKeys());
     });
     props.requestRender();
@@ -237,6 +262,12 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
   // Active/dimmed state (filter / active weights).
   createEffect(() => {
     setActiveState(props.points(), props.activePredicate());
+    props.requestRender();
+  });
+
+  // Extra opacity (alias-depth fade, etc.).
+  createEffect(() => {
+    setOpacity(props.points(), props.opacityForPoint?.() ?? FULL_OPACITY);
     props.requestRender();
   });
 

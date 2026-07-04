@@ -29,6 +29,7 @@ import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
 import {
   createDendrogramLayer,
+  dendrogramAliasGlowOpacityForRank,
   type DendrogramHighlight,
 } from './dendrogram-layer';
 import { createGlowCompositor } from './glow-compositor';
@@ -42,6 +43,7 @@ ColorManagement.enabled = false;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.4;
+const NO_IMAGE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
@@ -138,6 +140,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // dendrogram (radial) mode swaps it for the tree.
       if (!props.glow()) {
         halo.visible = false;
+        dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         axisLayer.visible = !showDendrogram;
         dendrogramLayer.visible = showDendrogram;
@@ -155,6 +158,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // 1) Glow pass: halos only, into the half-float bloom buffer (cleared to
       //    transparent black so the premultiplied halos accumulate from zero).
       halo.visible = true;
+      dendrogramAliasHaloLayer.halo.visible = showDendrogram;
       core.visible = false;
       axisLayer.visible = false;
       dendrogramLayer.visible = false;
@@ -169,6 +173,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       //    the backplate; draw them before the composite so the glow sits
       //    above them but below the sharp content drawn last.
       halo.visible = false;
+      dendrogramAliasHaloLayer.halo.visible = false;
       axisLayer.visible = !showDendrogram;
       dendrogramLayer.visible = showDendrogram;
       renderer.setRenderTarget(null);
@@ -181,6 +186,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       //    and dendrogram edges are already drawn). autoClear off so the
       //    glow/background isn't wiped.
       core.visible = true;
+      dendrogramAliasHaloLayer.halo.visible = false;
       axisLayer.visible = false;
       dendrogramLayer.visible = false;
       ringLayer.visible = true;
@@ -194,6 +200,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // Leave the scene in a sane default for any stray render.
       axisLayer.visible = !showDendrogram;
       dendrogramLayer.visible = showDendrogram;
+      dendrogramAliasHaloLayer.halo.visible = false;
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
@@ -213,6 +220,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const activePredicate = createMemo(() =>
       makeActivePredicate(props.filteredKeys(), new Set(props.activeWeights())),
     );
+    const dendrogramAliasGlowOpacity = createMemo(() => {
+      const aliases = props.dendrogramNodeDots();
+      const lastMergeIndex = aliases[aliases.length - 1]?.mergeIndex || 1;
+      return (point: GraphPointData) =>
+        dendrogramAliasGlowOpacityForRank(
+          (point as DendrogramNodeDot).mergeIndex,
+          lastMergeIndex,
+        );
+    });
 
     // The highlight rings to show (selection / hover / family). Each font gets
     // at most one ring (selected wins), dimmed with the same active/dimmed rule
@@ -398,6 +414,16 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       glowScale: compositor.glowScale,
       requestRender: scheduleRender,
     });
+    const dendrogramAliasHaloLayer = createPointLayer({
+      points: () => (props.showDendrogram() ? props.dendrogramNodeDots() : []),
+      isDark,
+      activePredicate,
+      opacityForPoint: dendrogramAliasGlowOpacity,
+      imageShownKeys: () => NO_IMAGE_KEYS,
+      pixelRatio,
+      glowScale: compositor.glowScale,
+      requestRender: scheduleRender,
+    });
     const ringLayer = createRingLayer({
       specs: ringSpecs,
       zoom: props.zoomFactor,
@@ -413,6 +439,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     scene.add(dendrogramLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);
+    scene.add(dendrogramAliasHaloLayer.halo);
     scene.add(ringLayer);
     scene.add(imageLayer);
 

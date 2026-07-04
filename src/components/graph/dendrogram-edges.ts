@@ -48,36 +48,24 @@ interface ClusterNode {
   rep: number;
 }
 
-/** One merge node of the radial tree, drawn as a data dot. */
-export interface DendrogramNodeDot {
-  /** Dendrogram node index of the merge (leaf count + merge rank). */
-  nodeIndex: number;
-  /** Graph-space (y-down) merge point. */
-  x: number;
-  y: number;
-  /** Representative font cluster id, so merge nodes read like aliases of the
-   *  graph points whose sample they carry. Falls back to the edge cluster id
-   *  when the representative is unavailable. */
-  k: number;
-  /** Zero-based rank of the node's merge. */
-  mergeIndex: number;
-  /** Sample folder name of the representative leaf's font. */
-  safeName: string | null;
-}
-
-/** A merge node as a graph-point alias of its representative font. */
-export interface DendrogramImageAnchor extends GraphPointData {
+/** One merge-node alias of the radial tree, drawn as a data dot. */
+export interface DendrogramNodeDot extends GraphPointData {
   /** Unique graph-point key for this merge node alias. */
   key: string;
   /** Dendrogram node index of the merge (leaf count + merge rank). */
   nodeIndex: number;
   /** Sample folder name of the representative leaf's font. */
   safeName: string;
-  /** Cluster to tint the image with: the representative font's own cluster,
-   *  so the sample keeps one color from its leaf up every node it
-   *  represents; `-1` when the representative is unknown or unclustered. */
+  /** Representative font cluster id, so merge nodes read like aliases of the
+   *  graph points whose sample they carry. Falls back to the edge cluster id
+   *  when the representative is unavailable. */
   k: number;
+  /** Zero-based rank of the node's merge. */
+  mergeIndex: number;
 }
+
+/** A merge node as a graph-point alias of its representative font. */
+export type DendrogramImageAnchor = DendrogramNodeDot;
 
 interface DendrogramTree {
   edges: DendrogramEdge[];
@@ -260,27 +248,21 @@ const dendrogramTree = createRoot(() => {
       const representativePoint = safeName
         ? getGraphPointByKey(safeName)
         : undefined;
+      if (!representativePoint || !safeName) continue;
       const representativeCluster =
         representativePoint?.item.computed?.clustering?.k ?? node.k;
-      dots.push({
-        nodeIndex,
-        x: node.center.x,
-        y: node.center.y,
-        k: representativeCluster,
-        mergeIndex: nodeIndex - leafCount,
-        safeName: representativePoint?.item.meta.safe_name ?? null,
-      });
-      if (!representativePoint || !safeName) continue;
-      imageAnchors.push({
+      const alias = {
         key: `dendrogram:${nodeIndex}`,
         nodeIndex,
         safeName,
         item: representativePoint.item,
         x: node.center.x,
         y: node.center.y,
-        // The representative's own cluster, matching its leaf sample's tint.
         k: representativeCluster,
-      });
+        mergeIndex: nodeIndex - leafCount,
+      };
+      dots.push(alias);
+      imageAnchors.push(alias);
     }
 
     const leafIndexByKey = new Map(

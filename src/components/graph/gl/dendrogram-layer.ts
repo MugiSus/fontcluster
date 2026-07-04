@@ -32,6 +32,12 @@ const EDGE_OPACITY = 1.0;
  *  the tree recedes with depth without needing per-vertex alpha. */
 const FADE_NEAR = 0.9;
 const FADE_FAR = 0.3;
+/** Merge-node alias core opacity: finest merge at NEAR, root side at FAR. */
+const ALIAS_CORE_OPACITY_NEAR = 1.0;
+const ALIAS_CORE_OPACITY_FAR = 0.45;
+/** Merge-node alias glow opacity: finest merge at NEAR, root side at FAR. */
+const ALIAS_GLOW_OPACITY_NEAR = 0.2;
+const ALIAS_GLOW_OPACITY_FAR = 0.06;
 /** The ancestry highlight is the mode's focal line: slightly wider and near
  *  opaque so it stands out of the faded tree. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
@@ -41,8 +47,34 @@ const HIGHLIGHT_OPACITY = 0.9;
 const NODE_DOT_PX = 3.5;
 
 /** Depth fade of a merge edge's color towards the background. */
-const fadeForRank = (mergeIndex: number, lastMergeIndex: number) =>
-  FADE_NEAR - (FADE_NEAR - FADE_FAR) * (mergeIndex / lastMergeIndex);
+const fadeForRank = (
+  mergeIndex: number,
+  lastMergeIndex: number,
+  near = FADE_NEAR,
+  far = FADE_FAR,
+) => near - (near - far) * (mergeIndex / lastMergeIndex);
+
+export const dendrogramAliasCoreOpacityForRank = (
+  mergeIndex: number,
+  lastMergeIndex: number,
+) =>
+  fadeForRank(
+    mergeIndex,
+    lastMergeIndex,
+    ALIAS_CORE_OPACITY_NEAR,
+    ALIAS_CORE_OPACITY_FAR,
+  );
+
+export const dendrogramAliasGlowOpacityForRank = (
+  mergeIndex: number,
+  lastMergeIndex: number,
+) =>
+  fadeForRank(
+    mergeIndex,
+    lastMergeIndex,
+    ALIAS_GLOW_OPACITY_NEAR,
+    ALIAS_GLOW_OPACITY_FAR,
+  );
 
 /**
  * Analytic edge anti-aliasing for three's `LineMaterial`.
@@ -160,9 +192,9 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   antialiasLineMaterial(highlightMaterial);
 
   // The merge-node dots reuse the point layer's core sprite program: aColor
-  // carries the depth-faded merge color, aState stays active, and aHideCore
-  // suppresses the dot where the node's exemplar image is drawn — exactly the
-  // leaf points' image behaviour.
+  // carries the representative color, aOpacity carries the alias depth fade,
+  // and aHideCore suppresses the dot where the node's exemplar image is drawn
+  // — exactly the leaf points' image behaviour.
   const dotGeometry = new BufferGeometry();
   const dotMaterial = new ShaderMaterial({
     uniforms: {
@@ -234,10 +266,12 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     const nodeDots = props.dots();
     const isDark = props.isDark();
     const count = nodeDots.length;
+    const lastMergeIndex = nodeDots[count - 1]?.mergeIndex || 1;
     const dotColor = new Color();
 
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
+    const opacities = new Float32Array(count);
     for (const [index, dot] of nodeDots.entries()) {
       positions[index * 3] = dot.x;
       // World Y is the negated graph Y (graph space is y-down).
@@ -247,6 +281,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       colors[index * 3] = dotColor.r;
       colors[index * 3 + 1] = dotColor.g;
       colors[index * 3 + 2] = dotColor.b;
+      opacities[index] = dendrogramAliasCoreOpacityForRank(
+        dot.mergeIndex,
+        lastMergeIndex,
+      );
     }
     dotGeometry.setAttribute(
       'position',
@@ -256,6 +294,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     dotGeometry.setAttribute(
       'aState',
       new Float32BufferAttribute(new Float32Array(count), 1),
+    );
+    dotGeometry.setAttribute(
+      'aOpacity',
+      new Float32BufferAttribute(opacities, 1),
     );
     dotGeometry.setAttribute(
       'aHideCore',
@@ -274,7 +316,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
     const states = attribute.array as Float32Array;
     for (const [index, dot] of nodeDots.entries()) {
-      states[index] = dot.safeName && activeKeys.has(dot.safeName) ? 0 : 1;
+      states[index] = activeKeys.has(dot.safeName) ? 0 : 1;
     }
     attribute.needsUpdate = true;
     props.requestRender();
