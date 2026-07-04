@@ -38,7 +38,7 @@ export const ja: Dictionary = {
       google_fonts_popular500: 'Google Fonts TOP 500',
       google_fonts_popular1000: 'Google Fonts TOP 1000',
       google_fonts_popular1500: 'Google Fonts TOP 1500',
-      google_fonts_all: 'Google Fonts',
+      google_fonts_all: 'Google Fonts すべて',
     },
   },
   graph: {
@@ -179,7 +179,7 @@ export const ja: Dictionary = {
       downloading: 'アップデートをインストールしています...',
       installed: 'アップデートをインストールしました',
       applyOnLaunch: 'アップデートは次回の起動時に適用されます。',
-      restart: '再起動',
+      restart: '今すぐ再起動',
       upToDate: '最新バージョンを使用しています。',
       failed: 'アップデートを確認できませんでした',
     },
