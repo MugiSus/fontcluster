@@ -16,7 +16,7 @@ import { imageFragmentShader, imageVertexShader } from './image-shaders';
 
 /** The box (CSS px) a sample image is fit inside, matching the SVG masked rect. */
 const BOX_WIDTH_PX = 128;
-const BOX_HEIGHT_PX = 26;
+export const BOX_HEIGHT_PX = 26;
 
 /** One sample image to draw, centered (in world space) on its point. */
 export interface ImageSpec {

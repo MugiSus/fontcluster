@@ -1,6 +1,9 @@
 import { type Accessor } from 'solid-js';
 import { type FontWeight } from '@/types/font';
-import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
+import {
+  type DendrogramEdge,
+  type DendrogramImageAnchor,
+} from '@/components/graph/dendrogram-edges';
 import {
   type GraphCoordinate,
   type GraphPointData,
@@ -25,6 +28,7 @@ interface GraphGlLayerProps {
   showImages: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
+  dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
@@ -57,6 +61,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     showImages: () => props.showImages(),
     glow: () => props.glow(),
     dendrogramEdges: () => props.dendrogramEdges(),
+    dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     showDendrogram: () => props.showDendrogram(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),

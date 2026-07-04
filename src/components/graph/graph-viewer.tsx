@@ -7,7 +7,13 @@ import { appState } from '@/store';
 import { processLassoSelection } from '@/actions';
 import { useElementSize } from '@/hooks/use-element-size';
 import { type FontWeight } from '@/types/font';
-import { dendrogramEdges, getDendrogramAncestry } from './dendrogram-edges';
+import {
+  type DendrogramImageAnchor,
+  dendrogramEdges,
+  dendrogramImageAnchors,
+  getDendrogramAncestry,
+  getDendrogramAncestryImageAnchors,
+} from './dendrogram-edges';
 import {
   fontPoints,
   getGraphPointByKey,
@@ -83,6 +89,26 @@ export function GraphViewer(props: GraphViewerProps) {
   const dendrogramAncestry = createMemo(() =>
     props.showDendrogram ? getDendrogramAncestry(selection.selectedKey()) : [],
   );
+
+  // Merge-node exemplar images for the dendrogram mode: the always-on reign
+  // ends follow the images toggle, the selected font's ancestry handovers
+  // show regardless (like the selected font's own image). Deduped by node,
+  // ancestry last so its unconditional span wins.
+  const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
+    if (!props.showDendrogram) return [];
+    const byNode = new Map<number, DendrogramImageAnchor>();
+    if (props.showImages) {
+      for (const anchor of dendrogramImageAnchors()) {
+        byNode.set(anchor.nodeIndex, anchor);
+      }
+    }
+    for (const anchor of getDendrogramAncestryImageAnchors(
+      selection.selectedKey(),
+    )) {
+      byNode.set(anchor.nodeIndex, anchor);
+    }
+    return [...byNode.values()];
+  });
 
   onMount(() => {
     props.onViewportZoomControlsChange?.({
@@ -369,6 +395,7 @@ export function GraphViewer(props: GraphViewerProps) {
           showImages={() => props.showImages}
           glow={() => props.showGlow}
           dendrogramEdges={dendrogramEdges}
+          dendrogramImageAnchors={dendrogramNodeImageAnchors}
           showDendrogram={() => props.showDendrogram}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}

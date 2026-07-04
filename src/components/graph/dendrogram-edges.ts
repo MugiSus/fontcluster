@@ -44,16 +44,48 @@ interface ClusterNode {
   k: number;
   /** Node index of the merge that absorbed this node; `-1` for the root. */
   parent: number;
+  /** Leaf index of this node's representative font; `-1` when unknown. */
+  rep: number;
+  /** Cluster with the most members in this subtree (`-1` when nothing is
+   *  clustered) and that member count. Every final cluster is a contiguous
+   *  subtree, so the two children of a merge hold disjoint cluster sets and
+   *  the parent's majority is just the larger of the children's. */
+  dominantK: number;
+  dominantCount: number;
+}
+
+/** A merge node that carries its representative's sample image. */
+export interface DendrogramImageAnchor {
+  /** Dendrogram node index of the merge (leaf count + merge rank). */
+  nodeIndex: number;
+  /** Sample folder name of the representative leaf's font. */
+  safeName: string;
+  /** Graph-space (y-down) merge point the image centers on. */
+  x: number;
+  y: number;
+  /** Cluster to tint the image with: the one with the most members in the
+   *  merged subtree, or `-1` when nothing under it is clustered. */
+  k: number;
+  /** Radial gap to the absorbing parent, in graph units; `Infinity` at the
+   *  root. The renderer only shows anchors whose gap fits the image box, so
+   *  zooming in reveals more of them. */
+  span: number;
 }
 
 interface DendrogramTree {
   edges: DendrogramEdge[];
   nodes: ClusterNode[];
   leafIndexByKey: Map<string, number>;
+  /** Anchors at every representative's reign end: the innermost merge still
+   *  represented by that font (its rep loses at the parent, or the root). */
+  imageAnchors: DendrogramImageAnchor[];
+  /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
+  ids: string[];
 }
 
 const NO_ANCESTRY: GraphCoordinate[] = [];
 const NO_EDGES: DendrogramEdge[] = [];
+const NO_ANCHORS: DendrogramImageAnchor[] = [];
 
 /** Two points closer than this (in graph units) count as coincident. */
 const COINCIDENT_EPSILON = 1e-6;
@@ -70,6 +102,20 @@ function combineClusterIds(left: ClusterNode, right: ClusterNode): number {
   return left.k === right.k ? left.k : -1;
 }
 
+/** Representative of a merge whose dendrogram predates the baked
+ *  `representative` field: the larger child's representative carries over
+ *  (ties keep the left) — the usual dendrogram labelling heuristic. */
+function fallbackRepresentative(
+  left: ClusterNode,
+  right: ClusterNode,
+  leftSize: number,
+  rightSize: number,
+): number {
+  if (left.rep < 0) return right.rep;
+  if (right.rep < 0) return left.rep;
+  return leftSize >= rightSize ? left.rep : right.rep;
+}
+
 const dendrogramTree = createRoot(() => {
   const memo = createMemo<DendrogramTree | null>(() => {
     const radial = radialDendrogramLayout();
@@ -78,13 +124,21 @@ const dendrogramTree = createRoot(() => {
 
     const leafCount = dendrogram.ids.length;
     // Nodes are indexed like the merges: leaves first, then one node per merge.
-    const nodes: ClusterNode[] = dendrogram.ids.map((id, index) => ({
-      center: radial.nodeCenters[index] ?? null,
-      angle: radial.nodeAngles[index] ?? Number.NaN,
-      radius: radial.nodeRadii[index] ?? 0,
-      k: getGraphPointByKey(id)?.item.computed?.clustering?.k ?? -1,
-      parent: -1,
-    }));
+    const nodes: ClusterNode[] = dendrogram.ids.map((id, index) => {
+      const k = getGraphPointByKey(id)?.item.computed?.clustering?.k ?? -1;
+      return {
+        center: radial.nodeCenters[index] ?? null,
+        angle: radial.nodeAngles[index] ?? Number.NaN,
+        radius: radial.nodeRadii[index] ?? 0,
+        k,
+        parent: -1,
+        rep: index,
+        dominantK: k,
+        dominantCount: k >= 0 ? 1 : 0,
+      };
+    });
+    // Total (not just visible) leaves per node, for the fallback rep rule.
+    const subtreeSizes: number[] = dendrogram.ids.map(() => 1);
 
     const edges: DendrogramEdge[] = [];
     const pushPolyline = (
@@ -121,7 +175,11 @@ const dendrogramTree = createRoot(() => {
           radius: 0,
           k: -1,
           parent: -1,
+          rep: -1,
+          dominantK: -1,
+          dominantCount: 0,
         });
+        subtreeSizes.push(0);
         continue;
       }
 
@@ -151,16 +209,63 @@ const dendrogramTree = createRoot(() => {
         pushPolyline([child.center!, center], mergeIndex, k);
       }
 
+      // The merged cluster's representative: the baked (centroid-nearest)
+      // leaf when the session recorded one, else the larger-child heuristic.
+      const baked = merge.representative;
+      const rep =
+        baked != null && baked >= 0 && baked < leafCount
+          ? baked
+          : fallbackRepresentative(
+              left,
+              right,
+              subtreeSizes[merge.left] ?? 0,
+              subtreeSizes[merge.right] ?? 0,
+            );
+
+      // Ties keep the left child for determinism, like the linkage order.
+      const dominant = left.dominantCount >= right.dominantCount ? left : right;
+
       left.parent = nodeIndex;
       right.parent = nodeIndex;
-      nodes.push({ center, angle, radius, k, parent: -1 });
+      nodes.push({
+        center,
+        angle,
+        radius,
+        k,
+        parent: -1,
+        rep,
+        dominantK: dominant.dominantK,
+        dominantCount: dominant.dominantCount,
+      });
+      subtreeSizes.push(
+        (subtreeSizes[merge.left] ?? 0) + (subtreeSizes[merge.right] ?? 0),
+      );
+    }
+
+    // One anchor per representative, at its reign end: the innermost merge it
+    // still represents (its rep is not the parent's, or the node is a root).
+    const imageAnchors: DendrogramImageAnchor[] = [];
+    for (const [nodeIndex, node] of nodes.entries()) {
+      if (nodeIndex < leafCount || !node.center || node.rep < 0) continue;
+      const parent = node.parent === -1 ? null : nodes[node.parent];
+      if (parent && parent.rep === node.rep) continue;
+      const safeName = dendrogram.ids[node.rep];
+      if (!safeName) continue;
+      imageAnchors.push({
+        nodeIndex,
+        safeName,
+        x: node.center.x,
+        y: node.center.y,
+        k: node.dominantK,
+        span: parent ? node.radius - parent.radius : Number.POSITIVE_INFINITY,
+      });
     }
 
     const leafIndexByKey = new Map(
       dendrogram.ids.map((id, index) => [id, index]),
     );
 
-    return { edges, nodes, leafIndexByKey };
+    return { edges, nodes, leafIndexByKey, imageAnchors, ids: dendrogram.ids };
   });
   return memo;
 });
@@ -172,6 +277,55 @@ const dendrogramTree = createRoot(() => {
  */
 export const dendrogramEdges = (): DendrogramEdge[] =>
   dendrogramTree()?.edges ?? NO_EDGES;
+
+/**
+ * One image anchor per representative's reign end (see
+ * {@link DendrogramImageAnchor}), in node order. Empty when the dendrogram
+ * mode is inactive or the session has no recorded dendrogram.
+ */
+export const dendrogramImageAnchors = (): DendrogramImageAnchor[] =>
+  dendrogramTree()?.imageAnchors ?? NO_ANCHORS;
+
+/**
+ * The representative handovers along a font's merge ancestry: an anchor at
+ * every ancestor merge whose representative differs from the previous one on
+ * the path — the "intermediate stages" a selected font passes through. Spans
+ * are `Infinity` so these always survive the renderer's persistence filter.
+ */
+export function getDendrogramAncestryImageAnchors(
+  key: string | null,
+): DendrogramImageAnchor[] {
+  const tree = dendrogramTree();
+  if (!tree || !key) return NO_ANCHORS;
+  const leafIndex = tree.leafIndexByKey.get(key);
+  const leaf = leafIndex === undefined ? undefined : tree.nodes[leafIndex];
+  if (!leaf?.center) return NO_ANCHORS;
+
+  const anchors: DendrogramImageAnchor[] = [];
+  let lastRep = leaf.rep;
+  let node = leaf;
+  while (node.parent !== -1) {
+    const nodeIndex = node.parent;
+    const parent = tree.nodes[nodeIndex];
+    if (!parent?.center) break;
+    if (parent.rep >= 0 && parent.rep !== lastRep) {
+      const safeName = tree.ids[parent.rep];
+      if (safeName) {
+        anchors.push({
+          nodeIndex,
+          safeName,
+          x: parent.center.x,
+          y: parent.center.y,
+          k: parent.dominantK,
+          span: Number.POSITIVE_INFINITY,
+        });
+      }
+      lastRep = parent.rep;
+    }
+    node = parent;
+  }
+  return anchors;
+}
 
 /**
  * The polyline of a font's merge ancestry, in graph space, following the same

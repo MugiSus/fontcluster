@@ -20,7 +20,10 @@ import {
   type GraphPointData,
   type GraphViewBox,
 } from '@/components/graph/types';
-import { type DendrogramEdge } from '@/components/graph/dendrogram-edges';
+import {
+  type DendrogramEdge,
+  type DendrogramImageAnchor,
+} from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createAxisLayer } from './axis-layer';
 import {
@@ -28,7 +31,7 @@ import {
   type DendrogramHighlight,
 } from './dendrogram-layer';
 import { createGlowCompositor } from './glow-compositor';
-import { createImageLayer, type ImageSpec } from './image-layer';
+import { BOX_HEIGHT_PX, createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
 
@@ -57,6 +60,7 @@ export interface UseGraphGlRendererProps {
   showImages: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
+  dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   showDendrogram: Accessor<boolean>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
@@ -274,6 +278,28 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           }),
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
+      }
+
+      // Dendrogram mode: the merge nodes' exemplar samples. An anchor only
+      // shows once its radial gap to the absorbing parent fits the image box
+      // at the current zoom, so zooming in reveals finer merge stages. Node
+      // keys live in their own `dendrogram:` namespace: the same font may
+      // represent several nodes (and its own leaf) at once, and the pooled
+      // meshes must not collide — the texture cache still dedupes by safe
+      // name, so no extra loads happen.
+      if (props.showDendrogram()) {
+        const minSpan = BOX_HEIGHT_PX * props.zoomFactor();
+        for (const anchor of props.dendrogramImageAnchors()) {
+          if (anchor.span < minSpan) continue;
+          specs.push({
+            key: `dendrogram:${anchor.nodeIndex}`,
+            safeName: anchor.safeName,
+            x: anchor.x,
+            y: -anchor.y,
+            color: getClusterColor({ k: anchor.k, isDark: isDarkMode }),
+            opacity: 1,
+          });
+        }
       }
       return specs;
     });
