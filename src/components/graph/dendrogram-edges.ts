@@ -46,12 +46,6 @@ interface ClusterNode {
   parent: number;
   /** Leaf index of this node's representative font; `-1` when unknown. */
   rep: number;
-  /** Cluster with the most members in this subtree (`-1` when nothing is
-   *  clustered) and that member count. Every final cluster is a contiguous
-   *  subtree, so the two children of a merge hold disjoint cluster sets and
-   *  the parent's majority is just the larger of the children's. */
-  dominantK: number;
-  dominantCount: number;
 }
 
 /** One merge node of the radial tree, drawn as a data dot. */
@@ -77,8 +71,9 @@ export interface DendrogramImageAnchor {
   /** Graph-space (y-down) merge point the image centers on. */
   x: number;
   y: number;
-  /** Cluster to tint the image with: the one with the most members in the
-   *  merged subtree, or `-1` when nothing under it is clustered. */
+  /** Cluster to tint the image with: the representative font's own cluster,
+   *  so the sample keeps one color from its leaf up every node it
+   *  represents; `-1` when the representative is unknown or unclustered. */
   k: number;
   /** Radial gap to the absorbing parent, in graph units; `Infinity` at the
    *  root. The renderer only shows anchors whose gap fits the image box, so
@@ -141,19 +136,14 @@ const dendrogramTree = createRoot(() => {
 
     const leafCount = dendrogram.ids.length;
     // Nodes are indexed like the merges: leaves first, then one node per merge.
-    const nodes: ClusterNode[] = dendrogram.ids.map((id, index) => {
-      const k = getGraphPointByKey(id)?.item.computed?.clustering?.k ?? -1;
-      return {
-        center: radial.nodeCenters[index] ?? null,
-        angle: radial.nodeAngles[index] ?? Number.NaN,
-        radius: radial.nodeRadii[index] ?? 0,
-        k,
-        parent: -1,
-        rep: index,
-        dominantK: k,
-        dominantCount: k >= 0 ? 1 : 0,
-      };
-    });
+    const nodes: ClusterNode[] = dendrogram.ids.map((id, index) => ({
+      center: radial.nodeCenters[index] ?? null,
+      angle: radial.nodeAngles[index] ?? Number.NaN,
+      radius: radial.nodeRadii[index] ?? 0,
+      k: getGraphPointByKey(id)?.item.computed?.clustering?.k ?? -1,
+      parent: -1,
+      rep: index,
+    }));
     // Total (not just visible) leaves per node, for the fallback rep rule.
     const subtreeSizes: number[] = dendrogram.ids.map(() => 1);
 
@@ -193,8 +183,6 @@ const dendrogramTree = createRoot(() => {
           k: -1,
           parent: -1,
           rep: -1,
-          dominantK: -1,
-          dominantCount: 0,
         });
         subtreeSizes.push(0);
         continue;
@@ -239,9 +227,6 @@ const dendrogramTree = createRoot(() => {
               subtreeSizes[merge.right] ?? 0,
             );
 
-      // Ties keep the left child for determinism, like the linkage order.
-      const dominant = left.dominantCount >= right.dominantCount ? left : right;
-
       left.parent = nodeIndex;
       right.parent = nodeIndex;
       nodes.push({
@@ -251,8 +236,6 @@ const dendrogramTree = createRoot(() => {
         k,
         parent: -1,
         rep,
-        dominantK: dominant.dominantK,
-        dominantCount: dominant.dominantCount,
       });
       subtreeSizes.push(
         (subtreeSizes[merge.left] ?? 0) + (subtreeSizes[merge.right] ?? 0),
@@ -283,7 +266,8 @@ const dendrogramTree = createRoot(() => {
         safeName,
         x: node.center.x,
         y: node.center.y,
-        k: node.dominantK,
+        // The representative's own cluster, matching its leaf sample's tint.
+        k: nodes[node.rep]?.k ?? -1,
         span: parent ? node.radius - parent.radius : Number.POSITIVE_INFINITY,
       });
     }
