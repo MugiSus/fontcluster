@@ -205,21 +205,48 @@ fn agglomerative_clustering(
     // Every merge (full tree), plus per-leaf the height at which each point is
     // first absorbed — its isolation. A leaf is a direct operand of exactly
     // one merge, so this fills every entry in one pass.
+    //
+    // Alongside, each node's running centroid/size feed the representative
+    // propagation: a merge's representative is whichever child representative
+    // sits closer to the merged centroid (an incremental medoid
+    // approximation), so the UI can put one exemplar sample on a merge node.
     let mut merge_heights = Vec::with_capacity(dendrogram.steps().len());
     let mut merges = Vec::with_capacity(dendrogram.steps().len());
     let mut join_heights = vec![0.0f32; n];
+    let mut centroids: Vec<Vec<f32>> = (0..n).map(|i| normalized.row(i).to_vec()).collect();
+    let mut sizes: Vec<usize> = vec![1; n];
+    let mut representatives: Vec<usize> = (0..n).collect();
     for step in dendrogram.steps() {
         merge_heights.push(step.dissimilarity);
+        let (left, right) = (step.cluster1, step.cluster2);
+        let total = (sizes[left] + sizes[right]) as f32;
+        let centroid: Vec<f32> = centroids[left]
+            .iter()
+            .zip(&centroids[right])
+            .map(|(l, r)| (l * sizes[left] as f32 + r * sizes[right] as f32) / total)
+            .collect();
+        // `<=` keeps ties on the left operand for determinism.
+        let representative = if squared_distance_to(&normalized, representatives[left], &centroid)
+            <= squared_distance_to(&normalized, representatives[right], &centroid)
+        {
+            representatives[left]
+        } else {
+            representatives[right]
+        };
         merges.push(DendrogramMerge {
-            left: step.cluster1,
-            right: step.cluster2,
+            left,
+            right,
             height: step.dissimilarity,
+            representative: Some(representative),
         });
-        if step.cluster1 < n {
-            join_heights[step.cluster1] = step.dissimilarity;
+        sizes.push(sizes[left] + sizes[right]);
+        centroids.push(centroid);
+        representatives.push(representative);
+        if left < n {
+            join_heights[left] = step.dissimilarity;
         }
-        if step.cluster2 < n {
-            join_heights[step.cluster2] = step.dissimilarity;
+        if right < n {
+            join_heights[right] = step.dissimilarity;
         }
     }
     let mut active_count = n;
@@ -327,6 +354,20 @@ fn normalize_points(points: &Array2<f32>) -> Array2<f32> {
         }
     }
     normalized
+}
+
+/// Squared Euclidean distance from row `row` of `points` to `target` (for
+/// comparisons only, so the square root is skipped).
+fn squared_distance_to(points: &Array2<f32>, row: usize, target: &[f32]) -> f32 {
+    points
+        .row(row)
+        .iter()
+        .zip(target)
+        .map(|(a, b)| {
+            let delta = a - b;
+            delta * delta
+        })
+        .sum()
 }
 
 /// Euclidean distance between rows `left` and `right` of `points`.

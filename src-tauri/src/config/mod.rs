@@ -200,6 +200,12 @@ pub struct DendrogramMerge {
     /// Dissimilarity at which the two clusters merged, in the normalised PCA
     /// space the clustering ran in.
     pub height: f32,
+    /// Leaf index of the merged cluster's representative: of the two
+    /// children's representatives, the one closer to the merged centroid (an
+    /// incremental medoid approximation). `None` in dendrograms recorded
+    /// before this field existed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub representative: Option<usize>,
 }
 
 /// The full dendrogram of a clustering run, persisted as `dendrogram.json`

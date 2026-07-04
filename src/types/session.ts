@@ -75,6 +75,11 @@ export interface DendrogramMerge {
   /** Dissimilarity at which the two clusters merged, in the normalized PCA
    *  space the clustering ran in. */
   height: number;
+  /** Leaf index of the merged cluster's representative: of the two children's
+   *  representatives, the one closer to the merged centroid (an incremental
+   *  medoid approximation). Absent in dendrograms recorded before this field
+   *  existed. */
+  representative?: number;
 }
 
 /**
