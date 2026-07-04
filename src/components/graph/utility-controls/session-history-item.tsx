@@ -1,5 +1,5 @@
 import { Show } from 'solid-js';
-import { PlayIcon, RotateCcwIcon, SquareIcon, Trash2Icon } from 'lucide-solid';
+import { HistoryIcon, PauseIcon, PlayIcon, Trash2Icon } from 'lucide-solid';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -100,10 +100,10 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
                 as={Button<'button'>}
                 size='icon'
                 variant='ghost'
-                class='size-7 rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive'
+                class='size-7 rounded-full'
                 onClick={props.onStopRun}
               >
-                <SquareIcon class='size-3' />
+                <PauseIcon class='size-3' />
               </TooltipTrigger>
               <TooltipContent>
                 {t.graph.utilityControls.sessionHistory.stop()}
@@ -121,7 +121,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
                 disabled={props.isRestoring || !canRestore()}
                 onClick={props.onSelectSession}
               >
-                <RotateCcwIcon class='size-3.5' />
+                <HistoryIcon class='size-3.5' />
               </TooltipTrigger>
               <TooltipContent>
                 {t.graph.utilityControls.sessionHistory.restore()}
