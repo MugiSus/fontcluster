@@ -110,7 +110,6 @@ impl SampleRenderer {
                             load_computed_data(&render_config.output_dir, &safe_name).unwrap_or(
                                 ComputedData {
                                     rendered_text: None,
-                                    positioning: None,
                                     clustering: None,
                                 },
                             );

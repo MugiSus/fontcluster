@@ -22,7 +22,7 @@ import { type GraphCoordinate } from '@/components/graph/types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
-/** Stroke width in CSS px; fat lines keep a solid core (see axis-layer). */
+/** Stroke width in CSS px; fat lines keep a solid core. */
 const EDGE_WIDTH_PX = 1;
 /** Uniform opacity on top of the per-segment fade, so crossing segments blend
  *  instead of the later (coarser) one occluding the finer one. */
@@ -81,10 +81,10 @@ export const dendrogramAliasGlowOpacityForRank = (
  * Analytic edge anti-aliasing for three's `LineMaterial`.
  *
  * The graph renders without MSAA (see `use-graph-gl-renderer`: points, rings and
- * axes all anti-alias themselves in-shader), but the stock `LineMaterial` only
- * hard-`discard`s past the stroke edge, so the dendrogram's diagonal arcs and
- * spokes stair-step. `alphaToCoverage` wouldn't help — its analytic ramp covers
- * only the round caps and leans on MSAA for the long edges.
+ * dendrogram edges all anti-alias themselves in-shader), but the stock
+ * `LineMaterial` only hard-`discard`s past the stroke edge, so the dendrogram's
+ * diagonal arcs and spokes stair-step. `alphaToCoverage` wouldn't help — its
+ * analytic ramp covers only the round caps and leans on MSAA for the long edges.
  *
  * `onBeforeCompile` is three's supported hook for modifying a built-in
  * material's program (https://threejs.org/docs/#api/en/materials/Material.onBeforeCompile).
@@ -95,9 +95,8 @@ export const dendrogramAliasGlowOpacityForRank = (
  * chunk line just before the shader's color output. The upstream cap-discard
  * block stays untouched; it only trims fragments our ramp has already faded
  * to ≤ 0.5. Combined with the material's existing alpha blending this feathers
- * every edge. A distinct `customProgramCacheKey` keeps this program out of the
- * (identically-sourced) axis `LineMaterial`'s cache slot, and the guard fails
- * loud if a three.js upgrade drops the anchor.
+ * every edge. A distinct `customProgramCacheKey` keeps this program in its own
+ * cache slot, and the guard fails loud if a three.js upgrade drops the anchor.
  */
 function antialiasLineMaterial(material: LineMaterial): void {
   material.customProgramCacheKey = () => 'dendrogram-line-aa';
@@ -156,8 +155,8 @@ export interface DendrogramLayerProps {
 /**
  * The radial dendrogram tree: the bracket chords of every merge — arcs plus
  * radial spokes (see `dendrogram-edges.ts`) — and a data dot at every merge
- * node. Rendered between the origin axes and the points (renderOrder -0.5)
- * so the tree reads as a backplate under the content.
+ * node. Rendered under the points (renderOrder -0.5) so the tree reads as a
+ * backplate under the content.
  *
  * Two visual encodings are baked into per-segment vertex colors:
  * - merges whose subtree lies inside one final cluster take that cluster's
@@ -170,7 +169,7 @@ export interface DendrogramLayerProps {
  *
  * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
  * swaps in a freshly built geometry and disposes the old one. The render loop
- * owns the group's visibility (the mode toggle and the glow passes).
+ * owns the group's visibility across the glow passes.
  */
 export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const material = new LineMaterial({

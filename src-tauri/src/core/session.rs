@@ -42,7 +42,7 @@ use super::plugin_bridge::PluginConnection;
 /// File extension of a packed session document.
 pub const SESSION_DOCUMENT_EXTENSION: &str = "fontclusterdoc";
 /// Sessions written by an app version older than this are pruned on startup.
-const MIN_SUPPORTED_SESSION_VERSION: &str = "0.15.0";
+const MIN_SUPPORTED_SESSION_VERSION: &str = "0.20.0";
 /// Name of the JSON config file inside a session directory/document.
 const SESSION_CONFIG_FILE: &str = "config.json";
 /// Name of the JSON file recording the full clustering dendrogram.
@@ -435,9 +435,8 @@ impl AppState {
     /// Applies a partial config update before (re-)running a session.
     ///
     /// When `status` indicates a re-run from an already-rendered stage
-    /// (`Rendered`/`Analyzed`/`Positioned`), the rendering config is left
-    /// untouched so existing samples stay valid and only clustering settings
-    /// are changed.
+    /// (`Rendered`/`Analyzed`), the rendering config is left untouched so
+    /// existing samples stay valid and only clustering settings are changed.
     pub fn update_session_config(
         &self,
         algorithm: AlgorithmConfigPatch,
@@ -446,7 +445,7 @@ impl AppState {
         self.update_session(|session| {
             let update_clustering_only = matches!(
                 status,
-                Some(ProcessStatus::Rendered | ProcessStatus::Analyzed | ProcessStatus::Positioned)
+                Some(ProcessStatus::Rendered | ProcessStatus::Analyzed)
             );
 
             if !update_clustering_only {
@@ -573,7 +572,6 @@ fn progress_section_mut(
         ProgressStage::Rendering => &mut progress.rendering,
         ProgressStage::Analysis => &mut progress.analysis,
         ProgressStage::Clustering => &mut progress.clustering,
-        ProgressStage::Position => &mut progress.position,
     }
 }
 
@@ -844,7 +842,7 @@ pub fn load_font_metadata(session_dir: &Path, safe_name: &str) -> Result<FontMet
     )?)?)
 }
 
-/// Writes a font's `computed.json` (rendering/positioning/clustering results).
+/// Writes a font's `computed.json` (rendering/clustering results).
 pub fn save_computed_data(
     session_dir: &Path,
     safe_name: &str,
@@ -930,7 +928,7 @@ pub fn load_dendrogram(session_dir: &Path) -> Result<DendrogramData> {
 /// Returns the raw feature vectors paired with their font ids (the sample
 /// directory names), ordered by id. Samples that have not been analysed yet
 /// (no `vector.bin`) are skipped, so the two returned vectors stay aligned by
-/// index. Shared by the clustering and positioning stages.
+/// index. Shared by clustering and other sample-vector consumers.
 pub fn load_sample_vectors(session_dir: &Path) -> Result<(Vec<Vec<f32>>, Vec<String>)> {
     let mut entries: Vec<_> = fs::read_dir(session_dir.join("samples"))?
         .filter_map(|entry| entry.ok())

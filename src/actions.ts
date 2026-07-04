@@ -13,7 +13,6 @@ import {
   type FontItem,
   type FontItemRecord,
   type FontWeight,
-  type LassoProcessResult,
 } from './types/font';
 import {
   type SessionConfig,
@@ -142,23 +141,10 @@ export const setActiveGraphWeights = (weights: FontWeight[]) =>
 export const setVisibleGraphClusters = (clusterIds: number[]) =>
   setAppState('ui', 'visibleGraphClusters', clusterIds);
 
-export const setShowDendrogram = (shown: boolean) =>
-  setAppState('ui', 'showDendrogram', shown);
-
-export const clearLassoResult = () => {
-  batch(() => {
-    setAppState('ui', 'lassoResult', null);
-    setAppState('ui', 'isLassoProcessing', false);
-  });
-  selectionHistory.commit();
-};
-
 export const setCurrentSessionId = async (id: string) => {
   const isSessionSwitch = appState.session.session_id !== id;
-  batch(() => {
-    setAppState('ui', 'lassoResult', null);
-    setAppState('ui', 'isLassoProcessing', false);
-    if (isSessionSwitch) {
+  if (isSessionSwitch) {
+    batch(() => {
       setAppState('ui', 'selectedFontKey', null);
       setAppState('ui', 'selectedDendrogramNode', null);
       setAppState('ui', 'hoveredFontKey', null);
@@ -166,42 +152,10 @@ export const setCurrentSessionId = async (id: string) => {
       setAppState('sessionDirectory', '');
       setAppState('dendrogram', null);
       setAppState('fonts', 'data', reconcile({}));
-    }
-  });
+    });
+  }
   selectionHistory.reset();
   await loadSession(id);
-};
-
-export const processLassoSelection = async (safeNames: string[]) => {
-  if (safeNames.length === 0 || appState.ui.isLassoProcessing) return;
-
-  const sessionId = appState.session.session_id;
-  setAppState('ui', 'isLassoProcessing', true);
-  try {
-    const result = await invoke<LassoProcessResult>('lasso_selected_process', {
-      safeNames,
-    });
-    if (appState.session.session_id !== sessionId) return;
-
-    batch(() => {
-      setAppState('ui', 'lassoResult', result);
-
-      const selectedFontKey = appState.ui.selectedFontKey;
-      const shouldKeepSelection =
-        !!selectedFontKey && result.safeNames.includes(selectedFontKey);
-      setAppState(
-        'ui',
-        'selectedFontKey',
-        shouldKeepSelection ? selectedFontKey : null,
-      );
-      if (!shouldKeepSelection) {
-        setAppState('ui', 'selectedDendrogramNode', null);
-      }
-    });
-    selectionHistory.commit();
-  } finally {
-    setAppState('ui', 'isLassoProcessing', false);
-  }
 };
 
 export const runProcessingJobs = async (
@@ -209,10 +163,6 @@ export const runProcessingJobs = async (
   sessionId?: string,
   overrideStatus?: ProcessStatus,
 ) => {
-  batch(() => {
-    setAppState('ui', 'lassoResult', null);
-    setAppState('ui', 'isLassoProcessing', false);
-  });
   selectionHistory.reset();
 
   const result = await invoke<string>('run_jobs', {
@@ -321,10 +271,6 @@ export function useAppEvents() {
 
     listenWithCleanup<string>('clustering_complete', (event) => {
       console.log('Clustering completed for session:', event.payload);
-    });
-
-    listenWithCleanup<string>('positioning_complete', (event) => {
-      console.log('Positioning completed for session:', event.payload);
     });
 
     listenWithCleanup<string>('all_jobs_complete', (event) => {

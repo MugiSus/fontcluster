@@ -54,7 +54,7 @@ const GLOW_LAYER_OPACITY = 0.4;
  * colors, not the blend.
  *
  * Keeping the buffer split out from the sharp scene lets the glow accumulate in
- * half-float precision while the sharp dots / rings / images / axes stay in the
+ * half-float precision while the sharp dots / rings / images / tree stay in the
  * ordinary full-resolution screen pass.
  */
 export function createGlowCompositor() {

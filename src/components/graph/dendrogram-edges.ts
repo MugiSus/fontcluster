@@ -44,7 +44,7 @@ interface ClusterNode {
   k: number;
   /** Node index of the merge that absorbed this node; `-1` for the root. */
   parent: number;
-  /** Leaf index of this node's representative font; `-1` when unknown. */
+  /** Leaf index of this node's recorded representative font. */
   rep: number;
 }
 
@@ -57,8 +57,7 @@ export interface DendrogramNodeDot extends GraphPointData {
   /** Sample folder name of the representative leaf's font. */
   safeName: string;
   /** Representative font cluster id, so merge nodes read like aliases of the
-   *  graph points whose sample they carry. Falls back to the edge cluster id
-   *  when the representative is unavailable. */
+   *  graph points whose sample they carry. */
   k: number;
   /** Zero-based rank of the node's merge. */
   mergeIndex: number;
@@ -100,22 +99,6 @@ function combineClusterIds(left: ClusterNode, right: ClusterNode): number {
   return left.k === right.k ? left.k : -1;
 }
 
-/** Representative of a merge whose dendrogram predates the baked
- *  `representative` field: the larger child's representative carries over
- *  (ties keep the left) — the usual dendrogram labelling heuristic. */
-function fallbackRepresentative(
-  left: ClusterNode,
-  right: ClusterNode,
-  leftSize: number,
-  rightSize: number,
-): number {
-  if (!left.center) return right.rep;
-  if (!right.center) return left.rep;
-  if (left.rep < 0) return right.rep;
-  if (right.rep < 0) return left.rep;
-  return leftSize >= rightSize ? left.rep : right.rep;
-}
-
 const dendrogramTree = createRoot(() => {
   const memo = createMemo<DendrogramTree | null>(() => {
     const radial = radialDendrogramLayout();
@@ -132,8 +115,6 @@ const dendrogramTree = createRoot(() => {
       parent: -1,
       rep: index,
     }));
-    // Total (not just visible) leaves per node, for the fallback rep rule.
-    const subtreeSizes: number[] = dendrogram.ids.map(() => 1);
 
     const edges: DendrogramEdge[] = [];
     const pushPolyline = (
@@ -170,9 +151,8 @@ const dendrogramTree = createRoot(() => {
           radius: 0,
           k: -1,
           parent: -1,
-          rep: -1,
+          rep: 0,
         });
-        subtreeSizes.push(0);
         continue;
       }
 
@@ -202,23 +182,6 @@ const dendrogramTree = createRoot(() => {
         pushPolyline([child.center!, center], mergeIndex, k);
       }
 
-      // The merged cluster's representative: the baked (centroid-nearest)
-      // leaf when the session recorded one, else the larger-child heuristic.
-      const baked = merge.representative;
-      const bakedSafeName =
-        baked != null && baked >= 0 && baked < leafCount
-          ? dendrogram.ids[baked]
-          : undefined;
-      const rep =
-        bakedSafeName && getGraphPointByKey(bakedSafeName)
-          ? baked!
-          : fallbackRepresentative(
-              left,
-              right,
-              subtreeSizes[merge.left] ?? 0,
-              subtreeSizes[merge.right] ?? 0,
-            );
-
       left.parent = nodeIndex;
       right.parent = nodeIndex;
       nodes.push({
@@ -227,11 +190,8 @@ const dendrogramTree = createRoot(() => {
         radius,
         k,
         parent: -1,
-        rep,
+        rep: merge.representative,
       });
-      subtreeSizes.push(
-        (subtreeSizes[merge.left] ?? 0) + (subtreeSizes[merge.right] ?? 0),
-      );
     }
 
     // An alias point at every visible merge node carrying its representative's
@@ -244,7 +204,7 @@ const dendrogramTree = createRoot(() => {
       if (nodeIndex < leafCount || !node.center) continue;
       const merge = dendrogram.merges[nodeIndex - leafCount];
       if (!merge || merge.height <= COINCIDENT_EPSILON) continue;
-      const safeName = node.rep >= 0 ? dendrogram.ids[node.rep] : undefined;
+      const safeName = dendrogram.ids[node.rep];
       const representativePoint = safeName
         ? getGraphPointByKey(safeName)
         : undefined;

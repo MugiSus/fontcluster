@@ -38,12 +38,7 @@ export interface AlgorithmConfig {
   clustering: ClusteringOptions;
 }
 
-export type ProcessStatus =
-  | 'empty'
-  | 'rendered'
-  | 'analyzed'
-  | 'positioned'
-  | 'clustered';
+export type ProcessStatus = 'empty' | 'rendered' | 'analyzed' | 'clustered';
 
 export interface ClusterStat {
   size: number;
@@ -77,9 +72,8 @@ export interface DendrogramMerge {
   height: number;
   /** Leaf index of the merged cluster's representative: of the two children's
    *  representatives, the one closer to the merged centroid (an incremental
-   *  medoid approximation). Absent in dendrograms recorded before this field
-   *  existed. */
-  representative?: number;
+   *  medoid approximation). */
+  representative: number;
 }
 
 /**
@@ -102,7 +96,6 @@ export interface SessionProgress {
   rendering: SessionProgressSection;
   analysis: SessionProgressSection;
   clustering: SessionProgressSection;
-  position: SessionProgressSection;
 }
 
 export interface ProcessingStatus {

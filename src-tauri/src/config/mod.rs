@@ -146,7 +146,6 @@ pub enum ProcessStatus {
     Empty,
     Rendered,
     Analyzed,
-    Positioned,
     Clustered,
 }
 
@@ -202,10 +201,8 @@ pub struct DendrogramMerge {
     pub height: f32,
     /// Leaf index of the merged cluster's representative: of the two
     /// children's representatives, the one closer to the merged centroid (an
-    /// incremental medoid approximation). `None` in dendrograms recorded
-    /// before this field existed.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub representative: Option<usize>,
+    /// incremental medoid approximation).
+    pub representative: usize,
 }
 
 /// The full dendrogram of a clustering run, persisted as `dendrogram.json`
@@ -242,7 +239,6 @@ pub struct ProcessingProgress {
     pub rendering: ProgressSection,
     pub analysis: ProgressSection,
     pub clustering: ProgressSection,
-    pub position: ProgressSection,
 }
 
 /// A single `numerator / denominator` progress fraction.
@@ -273,7 +269,6 @@ pub enum ProgressStage {
     Rendering,
     Analysis,
     Clustering,
-    Position,
 }
 
 /// Per-font results produced by the pipeline, persisted as `computed.json`.
@@ -286,15 +281,7 @@ pub struct ComputedData {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rendered_text: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub positioning: Option<PositioningData>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub clustering: Option<ClusteringData>,
-}
-
-/// 2-D layout coordinate assigned to a font by the positioning stage.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PositioningData {
-    pub position: [f32; 2],
 }
 
 /// Per-font results assigned by the clustering stage.

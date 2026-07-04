@@ -39,7 +39,6 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
       rendering: { numerator: 0, denominator: 1 },
       analysis: { numerator: 0, denominator: 1 },
       clustering: { numerator: 0, denominator: 1 },
-      position: { numerator: 0, denominator: 1 },
     },
   },
   discovered_fonts: {},

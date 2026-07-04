@@ -10,7 +10,6 @@ import {
   Points,
   ShaderMaterial,
 } from 'three';
-import { type FontWeight } from '@/types/font';
 import { type GraphPointData } from '@/components/graph/types';
 import { getClusterColor } from './cluster-colors-gl';
 import {
@@ -297,12 +296,9 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
   return { core, halo };
 }
 
-/** Builds the active-state predicate from the current filter + weight set. */
+/** Builds the active-state predicate from the current graph filter. */
 export function makeActivePredicate(
   filteredKeys: Set<string>,
-  activeWeights: Set<FontWeight>,
 ): (point: GraphPointData) => boolean {
-  return (point) =>
-    filteredKeys.has(point.item.meta.safe_name) &&
-    activeWeights.has(point.item.meta.weight as FontWeight);
+  return (point) => filteredKeys.has(point.item.meta.safe_name);
 }

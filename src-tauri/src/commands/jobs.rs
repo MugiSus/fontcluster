@@ -6,15 +6,15 @@
 //! - the app side ([`run_jobs`]/[`stop_jobs`]) spawns the worker, reads the
 //!   JSON event lines it prints, and forwards them to the webview;
 //! - the worker side ([`run_jobs_worker`]/[`run_jobs_pipeline`]) actually runs
-//!   the discovery → render → analyse → position → cluster stages.
+//!   the discovery → render → analyse → cluster stages.
 
 use crate::commands::progress::progress_events;
 use crate::config::{
     AlgorithmConfig, ClusteringConfig, FontSet, ProcessStatus, ProgressStage, RenderingConfig,
 };
 use crate::core::{
-    clusterer, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader, Positioner,
-    RunningJob, SampleRenderer, StdoutEventSink,
+    clusterer, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader, RunningJob,
+    SampleRenderer, StdoutEventSink,
 };
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -193,17 +193,16 @@ struct WorkerEventMessage {
 }
 
 /// Progress stages a run starting from `status` will (re)compute, in pipeline
-/// execution order (rendering → analysis → position → clustering).
+/// execution order (rendering → analysis → clustering).
 ///
 /// Stages before the resume point are omitted so their already-complete
 /// progress bars stay full while the downstream ones are cleared.
 fn stages_to_reset(status: &ProcessStatus) -> &'static [ProgressStage] {
-    use ProgressStage::{Analysis, Clustering, Position, Rendering};
+    use ProgressStage::{Analysis, Clustering, Rendering};
     match status {
-        ProcessStatus::Empty => &[Rendering, Analysis, Position, Clustering],
-        ProcessStatus::Rendered => &[Analysis, Position, Clustering],
-        ProcessStatus::Analyzed => &[Position, Clustering],
-        ProcessStatus::Positioned => &[Clustering],
+        ProcessStatus::Empty => &[Rendering, Analysis, Clustering],
+        ProcessStatus::Rendered => &[Analysis, Clustering],
+        ProcessStatus::Analyzed => &[Clustering],
         ProcessStatus::Clustered => &[],
     }
 }
@@ -244,7 +243,7 @@ pub fn run_jobs_worker(request_json: &str) -> Result<()> {
 /// Runs the full processing pipeline for one request.
 ///
 /// Initialises or resumes the session, then advances it through the rendering,
-/// analysis, positioning and clustering stages. Each stage is skipped if the
+/// analysis and clustering stages. Each stage is skipped if the
 /// session's [`ProcessStatus`] already covers it, so an interrupted session
 /// resumes where it left off. The session is packed into its document once it
 /// reaches `Clustered`. Returns `"Cancelled"` if cancellation is observed at
@@ -360,31 +359,12 @@ pub async fn run_jobs_pipeline(
         events.emit_string("analysis_complete", id.clone())?;
     }
 
-    // Step 4: Positioning
+    // Step 4: Clustering
     let status = {
         let guard = state.current_session.lock().unwrap();
         guard.as_ref().unwrap().status.process_status.clone()
     };
     if status == ProcessStatus::Analyzed {
-        if state.is_cancelled.load(Ordering::Relaxed) {
-            return Ok("Cancelled".into());
-        }
-        println!("📍 Starting positioning...");
-        events.emit_unit("positioning_start")?;
-        Positioner::position_all(&events, state).await?;
-
-        if state.is_cancelled.load(Ordering::Relaxed) {
-            return Ok("Cancelled".into());
-        }
-        events.emit_string("positioning_complete", id.clone())?;
-    }
-
-    // Step 5: Clustering
-    let status = {
-        let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
-    };
-    if status == ProcessStatus::Positioned {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }

@@ -39,7 +39,6 @@ export const en = {
     sections: {
       render: 'render',
       analyze: 'analyze',
-      position: 'position',
       cluster: 'cluster',
     },
     fontSets: {
@@ -63,11 +62,7 @@ export const en = {
       zoom: 'Zoom',
       showSamples: 'Show samples',
       glowMode: 'Glow mode',
-      dendrogramMode: 'Dendrogram (Experimental)',
       filter: 'Filter',
-    },
-    lassoClearButton: {
-      label: 'Lasso',
     },
     filterDock: {
       clear: 'Clear',
@@ -80,9 +75,6 @@ export const en = {
     selectedFontActions: {
       copy: 'Copy family name',
       applyToPlugins: 'Apply to plugins',
-    },
-    toasts: {
-      lassoFailed: 'Lasso failed: {{error}}',
     },
     utilityControls: {
       undo: {
@@ -120,7 +112,6 @@ export const en = {
         undoDelete: 'Undo',
         statusRendering: 'Rendering',
         statusAnalyzing: 'Analyzing',
-        statusPositioning: 'Positioning',
         statusClustering: 'Clustering',
         statusStopped: 'Stopped',
         processing: 'Processing',

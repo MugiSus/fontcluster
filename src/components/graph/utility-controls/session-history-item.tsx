@@ -45,8 +45,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
     const weightedProgress =
       sectionRatio(progress.rendering) * 0.2 +
       sectionRatio(progress.analysis) * 0.6 +
-      sectionRatio(progress.clustering) * 0.1 +
-      sectionRatio(progress.position) * 0.1;
+      sectionRatio(progress.clustering) * 0.2;
 
     return Math.min(1, Math.max(0, weightedProgress));
   };
@@ -63,9 +62,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
                     ? t.graph.utilityControls.sessionHistory.statusRendering()
                     : session().status.process_status === 'rendered'
                       ? t.graph.utilityControls.sessionHistory.statusAnalyzing()
-                      : session().status.process_status === 'analyzed'
-                        ? t.graph.utilityControls.sessionHistory.statusPositioning()
-                        : t.graph.utilityControls.sessionHistory.statusClustering()
+                      : t.graph.utilityControls.sessionHistory.statusClustering()
                   : t.graph.utilityControls.sessionHistory.statusStopped()}
               </span>
             </Show>

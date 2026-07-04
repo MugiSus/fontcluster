@@ -5,7 +5,6 @@ import {
   type FontItem,
   type FontWeight,
   type FontItemRecord,
-  type LassoProcessResult,
 } from './types/font';
 import { type DendrogramData, type SessionConfig } from './types/session';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
@@ -14,8 +13,8 @@ import type { PluginConnection } from './lib/plugin-bridge';
 export interface AppState {
   session: SessionConfig;
   sessionDirectory: string;
-  /** Full clustering dendrogram of the active session; null when the session
-   *  predates dendrogram recording. */
+  /** Full clustering dendrogram of the active session; null before a session
+   *  is loaded or while switching sessions. */
   dendrogram: DendrogramData | null;
   fonts: {
     data: Record<string, FontItem>;
@@ -26,8 +25,6 @@ export interface AppState {
     selectedFontKey: string | null;
     hoveredFontKey: string | null;
     sentFontItemKey: string | null;
-    lassoResult: LassoProcessResult | null;
-    isLassoProcessing: boolean;
     isSessionLoading: boolean;
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
@@ -35,13 +32,8 @@ export interface AppState {
     listPreviewText: string;
     activeGraphWeights: FontWeight[];
     visibleGraphClusters: number[];
-    /** Whether the graph shows the dendrogram (radial tree) mode. Lives in
-     *  the store rather than the graph component because the point layout
-     *  derivation (font-point-index) switches on it. */
-    showDendrogram: boolean;
-    /** Dendrogram node index of the selected merge-node sample; drives the
-     *  subtree highlight. Null when the selection is a plain font (or
-     *  nothing) — any plain font selection clears it. */
+    /** Dendrogram node index of the selected merge-node sample. Null when the
+     *  selection is a plain font (or nothing) — any plain font selection clears it. */
     selectedDendrogramNode: number | null;
   };
   plugins: {
@@ -87,7 +79,7 @@ export const [appState, setAppState] = createStore<AppState>({
   fonts: {
     data: {},
     get displayData(): FontItemRecord {
-      return displayFontItemRecordMemo();
+      return this.data;
     },
     get filteredKeys(): Set<string> {
       return filteredKeysMemo();
@@ -97,8 +89,6 @@ export const [appState, setAppState] = createStore<AppState>({
     selectedFontKey: null,
     hoveredFontKey: null,
     sentFontItemKey: null,
-    lassoResult: null,
-    isLassoProcessing: false,
     isSessionLoading: false,
     get selectedFont(): FontItem | null {
       const key = this.selectedFontKey;
@@ -111,7 +101,6 @@ export const [appState, setAppState] = createStore<AppState>({
     listPreviewText: '',
     activeGraphWeights: [400],
     visibleGraphClusters: [],
-    showDendrogram: false,
     selectedDendrogramNode: null,
   },
   plugins: {
@@ -120,30 +109,6 @@ export const [appState, setAppState] = createStore<AppState>({
       return this.connections.length > 0;
     },
   },
-});
-
-export const displayFontItemRecordMemo = createRoot(() => {
-  const memo = createMemo(() => {
-    const result = appState.ui.lassoResult;
-    if (!result) return appState.fonts.data;
-
-    const displayData: FontItemRecord = {};
-    for (const safeName of result.safeNames) {
-      const item = appState.fonts.data[safeName];
-      const positioning = result.positioningBySafeName[safeName];
-      if (!item || !positioning) continue;
-
-      displayData[safeName] = {
-        meta: item.meta,
-        computed: {
-          ...item.computed,
-          positioning,
-        },
-      };
-    }
-    return displayData;
-  });
-  return memo;
 });
 
 export const fuse = createRoot(() => {

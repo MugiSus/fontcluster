@@ -12,12 +12,7 @@ export interface GraphCoordinate {
   y: number;
 }
 
-export type GraphToolMode =
-  | 'select'
-  | 'lasso-select'
-  | 'lasso-exclude'
-  | 'drag'
-  | 'zoom';
+export type GraphToolMode = 'select' | 'drag' | 'zoom';
 
 export interface GraphVisibleBounds {
   minX: number;
@@ -31,12 +26,6 @@ export interface GraphPointData {
   item: FontItem;
   x: number;
   y: number;
-}
-
-export interface PartitionedVisiblePoints {
-  visibleFilteredPoints: GraphPointData[];
-  visibleUnfilteredPoints: GraphPointData[];
-  visibleActivePoints: GraphPointData[];
 }
 
 export interface GraphPointSearchTree {

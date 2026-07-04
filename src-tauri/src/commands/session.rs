@@ -38,8 +38,8 @@ pub struct SessionPayload {
     config: SessionConfig,
     directory: PathBuf,
     fonts: HashMap<String, FontData>,
-    /// Full merge tree of the clustering run; `None` for sessions clustered by
-    /// an app version that did not record it.
+    /// Full merge tree of the clustering run. Required once clustered; absent
+    /// while a new session is still before clustering.
     dendrogram: Option<DendrogramData>,
 }
 
@@ -60,7 +60,11 @@ pub async fn load_session(
     };
     let directory = AppState::resolve_session_dir(&session_id)?;
     let fonts = crate::commands::font::read_font_items(&session_id)?;
-    let dendrogram = load_dendrogram(&directory).ok();
+    let dendrogram = if config.status.process_status == ProcessStatus::Clustered {
+        Some(load_dendrogram(&directory)?)
+    } else {
+        load_dendrogram(&directory).ok()
+    };
     Ok(SessionPayload {
         config,
         directory,
