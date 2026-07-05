@@ -29,15 +29,13 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
   const [query, setQuery] = createSignal(appState.ui.searchQuery);
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
-  // The largest clusters get a visibility toggle. Pick the top ids by size,
-  // then order them by id so the swatch colors stay in a stable sequence.
+  // The largest clusters get a visibility toggle, displayed by size.
   const topClusterIds = createMemo(() =>
     appState.session.status.clustering_stats.clusters
       .map((stat, id) => ({ id, size: stat.size }))
-      .toSorted((a, b) => b.size - a.size)
+      .toSorted((a, b) => b.size - a.size || a.id - b.id)
       .slice(0, MAX_CLUSTER_TOGGLES)
-      .map(({ id }) => id)
-      .toSorted((a, b) => a - b),
+      .map(({ id }) => id),
   );
 
   let inputElement: HTMLInputElement | undefined;
