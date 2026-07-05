@@ -28,13 +28,16 @@ void main() {
  * A signed-distance ring stroke. The fragment's distance from the center in
  * screen pixels is `length(vLocal) * uHalfPx`; the stroke is the band a half-width
  * either side of {@link uRadiusPx}, anti-aliased with the screen-space derivative
- * so it stays a constant {@link uHalfWidthPx}-wide line at any zoom. Straight alpha
+ * so it stays a constant {@link uHalfWidthPx}-wide line at any zoom. Selected
+ * rings can also paint an opaque background fill inside the circle. Straight alpha
  * scaled by {@link uOpacity}; the material normal-blends it onto the screen, so a
  * dimmed ring is an even veil with no joint seams.
  */
 export const ringFragmentShader = /* glsl */ `
 uniform vec3 uColor;
+uniform vec3 uFillColor;
 uniform float uOpacity;     // whole-ring opacity (1 = active, < 1 = dimmed)
+uniform float uFillOpacity;  // inside-circle background fill opacity
 uniform float uHalfPx;      // screen px at the quad edge (ring radius + padding)
 uniform float uRadiusPx;    // stroke centerline radius (screen px)
 uniform float uHalfWidthPx; // half the stroke width (screen px)
@@ -45,8 +48,11 @@ void main() {
   float distPx = length(vLocal) * uHalfPx;
   float d = abs(distPx - uRadiusPx);      // distance to the stroke centerline
   float aa = fwidth(distPx);              // ~1 device px, for the anti-aliased edge
-  float alpha = (1.0 - smoothstep(uHalfWidthPx - aa, uHalfWidthPx + aa, d)) * uOpacity;
+  float fillAlpha = (1.0 - smoothstep(uRadiusPx - aa, uRadiusPx + aa, distPx)) * uFillOpacity;
+  float strokeAlpha = (1.0 - smoothstep(uHalfWidthPx - aa, uHalfWidthPx + aa, d)) * uOpacity;
+  float alpha = strokeAlpha + fillAlpha * (1.0 - strokeAlpha);
   if (alpha <= 0.0) discard;
-  gl_FragColor = vec4(uColor, alpha);
+  vec3 color = (uColor * strokeAlpha + uFillColor * fillAlpha * (1.0 - strokeAlpha)) / alpha;
+  gl_FragColor = vec4(color, alpha);
 }
 `;

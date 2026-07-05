@@ -8,6 +8,7 @@ import {
   PlaneGeometry,
   ShaderMaterial,
 } from 'three';
+import { getBackgroundColor } from './cluster-colors-gl';
 import { ringFragmentShader, ringVertexShader } from './ring-shaders';
 
 /** Stroke width (CSS px) of every ring, constant regardless of radius. A thin
@@ -17,6 +18,8 @@ const LINE_WIDTH_PX = 1;
 /** Extra screen px the quad extends past the ring radius, so the stroke's outer
  *  half-width and its anti-aliased feather are never clipped by the quad edge. */
 const AA_PAD_PX = 2;
+/** Selected rings clear their interior back to the graph background. */
+const SELECTED_FILL_OPACITY = 1;
 
 /** Which highlight affordance a ring represents — it sets the radius. */
 export type RingKind = 'selected' | 'alias-source' | 'hover' | 'family';
@@ -43,6 +46,8 @@ export interface RingSpec {
 export interface RingLayerProps {
   /** The rings to show; one mesh is kept alive per array slot. */
   specs: Accessor<RingSpec[]>;
+  /** Whether the active theme is dark (picks the selected-ring fill color). */
+  isDark: Accessor<boolean>;
   /** World-units-per-CSS-pixel factor so radii stay constant on zoom. */
   zoom: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
@@ -54,7 +59,9 @@ export interface RingLayerProps {
  *
  * Each ring is a single quad carrying a signed-distance ring stroke (see
  * {@link ringFragmentShader}), scaled so the stroke sits at its pixel radius. The
- * SDF keeps the stroke a constant pixel width at any zoom, and — unlike a `Line2`
+ * selected ring also fills its interior with the graph background color so the
+ * current node reads over nearby edges and points. The SDF keeps the stroke a
+ * constant pixel width at any zoom, and — unlike a `Line2`
  * polyline, which double-blends at its segment joints — has no self-overlap, so a
  * dimmed (filtered-out / inactive-weight) ring veils evenly with no brighter
  * seams. It is kept out of the bloom pass so it renders crisp rather than glowing.
@@ -78,7 +85,9 @@ export function createRingLayer(props: RingLayerProps): Object3D {
       const material = new ShaderMaterial({
         uniforms: {
           uColor: { value: new Color() },
+          uFillColor: { value: new Color() },
           uOpacity: { value: 1 },
+          uFillOpacity: { value: 0 },
           uHalfPx: { value: 1 },
           uRadiusPx: { value: 1 },
           uHalfWidthPx: { value: LINE_WIDTH_PX / 2 },
@@ -98,9 +107,15 @@ export function createRingLayer(props: RingLayerProps): Object3D {
 
       // Appearance / position follow the spec at this slot.
       createEffect(() => {
-        (material.uniforms['uColor']!.value as Color).set(spec().color);
-        material.uniforms['uOpacity']!.value = spec().opacity;
-        mesh.position.set(spec().x, spec().y, 1);
+        const current = spec();
+        (material.uniforms['uColor']!.value as Color).set(current.color);
+        (material.uniforms['uFillColor']!.value as Color).set(
+          getBackgroundColor({ isDark: props.isDark() }),
+        );
+        material.uniforms['uOpacity']!.value = current.opacity;
+        material.uniforms['uFillOpacity']!.value =
+          current.kind === 'selected' ? SELECTED_FILL_OPACITY : 0;
+        mesh.position.set(current.x, current.y, 1);
       });
       // The kind's pixel radius is held constant on zoom by scaling the quad; the
       // shader reads the same radius/half-extent in screen px to place the stroke.

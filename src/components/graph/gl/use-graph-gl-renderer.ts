@@ -455,6 +455,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const ringLayer = createRingLayer({
       specs: ringSpecs,
+      isDark,
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
