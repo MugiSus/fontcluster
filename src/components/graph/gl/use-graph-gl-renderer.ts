@@ -394,8 +394,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const dendrogramLabelLayer = createDendrogramLabelLayer({
       labels: props.dendrogramLeafLabels,
+      // The image layer's screen-space thinning + viewport cull set the label
+      // density too (`imageKeys` is computed whether or not images are shown).
+      visibleKeys: props.imageKeys,
       activeKeys: props.filteredKeys,
+      showImages: props.showImages,
       isDark,
+      zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
     const pointLayer = createPointLayer({
