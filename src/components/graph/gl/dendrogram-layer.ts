@@ -1,4 +1,4 @@
-import { type Accessor, createEffect, onCleanup } from 'solid-js';
+import { type Accessor, createEffect, onCleanup, untrack } from 'solid-js';
 import {
   BufferGeometry,
   Color,
@@ -243,13 +243,17 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         const { r, g, b } = segmentColor;
         return [r, g, b, r, g, b];
       });
+      const activeKeys = untrack(() => props.activeKeys());
+      const opacities = edges.map(({ sourceKey }) =>
+        sourceKey && !activeKeys.has(sourceKey) ? FILTERED_EDGE_OPACITY : 1,
+      );
 
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
       geometry.setColors(colors);
       geometry.setAttribute(
         'instanceOpacity',
-        new InstancedBufferAttribute(new Float32Array(edges.length).fill(1), 1),
+        new InstancedBufferAttribute(new Float32Array(opacities), 1),
       );
       lines = new LineSegments2(geometry, material as unknown as LineMaterial);
       lines.frustumCulled = false;
