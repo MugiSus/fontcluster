@@ -19,7 +19,7 @@ const CLUSTER_DARK = [
 ];
 
 /** Tailwind `text-zinc-500`, used for unclustered points (no cluster). */
-const UNCLUSTERED = 0x71717a;
+const UNCLUSTERED = 0xa0a0a4;
 // Hex equivalents of the `--background` HSL values in index.css.
 const BACKGROUND_LIGHT = 0xfdfdfe;
 const BACKGROUND_DARK = 0x0e0f13;
