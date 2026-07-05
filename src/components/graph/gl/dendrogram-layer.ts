@@ -8,10 +8,14 @@ import {
   type Object3D,
   Points,
   ShaderMaterial,
+  Vector2,
 } from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+// Type-only: `Line2` / `LineSegments2` type their material param as `LineMaterial`,
+// but we drive them with our own `ShaderMaterial` (see `createFatLineMaterial`).
+// The class is never imported as a value, so it stays out of the bundle.
+import { type LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import {
@@ -20,6 +24,7 @@ import {
 } from '@/components/graph/dendrogram-edges';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
+import { fatLineFragmentShader, fatLineVertexShader } from './line-shaders';
 import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
 /** Stroke width in CSS px; fat lines keep a solid core. */
@@ -34,7 +39,7 @@ const FADE_NEAR = 0.9;
 const FADE_FAR = 0.3;
 /** Merge-node alias core opacity: finest merge at NEAR, root side at FAR. */
 const ALIAS_CORE_OPACITY_NEAR = 1.0;
-const ALIAS_CORE_OPACITY_FAR = 0.25;
+const ALIAS_CORE_OPACITY_FAR = 1.0;
 /** Merge-node alias glow opacity multiplier: finest merge at NEAR, root side
  *  at FAR. The halo shader's own `uOpacity` is applied after this. */
 const ALIAS_GLOW_OPACITY_NEAR = 1.0;
@@ -42,10 +47,10 @@ const ALIAS_GLOW_OPACITY_FAR = 0.5;
 /** The ancestry highlight is the mode's focal line: slightly wider and near
  *  opaque so it stands out of the faded tree. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
-const HIGHLIGHT_OPACITY = 0.9;
+const HIGHLIGHT_OPACITY = 1;
 /** Merge-node dot diameter (CSS px); matches the point layer's core dots so
  *  branch points read like the leaf points. */
-const NODE_DOT_PX = 3.5;
+const NODE_DOT_PX = 3;
 
 /** Depth fade of a merge edge's color towards the background. */
 const fadeForRank = (
@@ -78,49 +83,39 @@ export const dendrogramAliasGlowOpacityForRank = (
   );
 
 /**
- * Analytic edge anti-aliasing for three's `LineMaterial`.
+ * A `Line2` / `LineSegments2` material driven by our own fat-line shader
+ * (see `line-shaders.ts`), which anti-aliases every stroke in-shader — the graph
+ * renders without MSAA (`use-graph-gl-renderer`), so points, rings and these
+ * edges all feather themselves. This replaces three's built-in `LineMaterial`,
+ * whose fragment shader only hard-`discard`s past the stroke edge (leaving the
+ * diagonal arcs and spokes to stair-step) and whose `alphaToCoverage` ramp
+ * covers only the round caps and leans on MSAA for the long edges.
  *
- * The graph renders without MSAA (see `use-graph-gl-renderer`: points, rings and
- * dendrogram edges all anti-alias themselves in-shader), but the stock
- * `LineMaterial` only hard-`discard`s past the stroke edge, so the dendrogram's
- * diagonal arcs and spokes stair-step. `alphaToCoverage` wouldn't help — its
- * analytic ramp covers only the round caps and leans on MSAA for the long edges.
- *
- * `onBeforeCompile` is three's supported hook for modifying a built-in
- * material's program (https://threejs.org/docs/#api/en/materials/Material.onBeforeCompile).
- * The patch is inject-only: a ~1px alpha coverage ramp — driven by the
- * width-normalized distance from the stroke centerline (`|vUv.x|` along the
- * body, radial past the round caps where `|vUv.y| > 1`), scaled to screen
- * pixels via `fwidth` — inserted at the stable `#include <logdepthbuf_fragment>`
- * chunk line just before the shader's color output. The upstream cap-discard
- * block stays untouched; it only trims fragments our ramp has already faded
- * to ≤ 0.5. Combined with the material's existing alpha blending this feathers
- * every edge. A distinct `customProgramCacheKey` keeps this program in its own
- * cache slot, and the guard fails loud if a three.js upgrade drops the anchor.
+ * `vertexColors` toggles the shader's `USE_COLOR` path: the edges carry a
+ * per-segment color, the ancestry highlight takes the flat `diffuse` uniform.
+ * The layer keeps `resolution`, `diffuse` and `opacity` uniforms in sync via the
+ * effects below (the same values `LineMaterial` exposed as `.resolution` etc.).
  */
-function antialiasLineMaterial(material: LineMaterial): void {
-  material.customProgramCacheKey = () => 'dendrogram-line-aa';
-  material.onBeforeCompile = (shader) => {
-    const anchor = '#include <logdepthbuf_fragment>';
-    if (!shader.fragmentShader.includes(anchor)) {
-      throw new Error(
-        'dendrogram AA anchor not in LineMaterial; three.js shader changed',
-      );
-    }
-    shader.fragmentShader = shader.fragmentShader.replace(
-      anchor,
-      /* glsl */ `
-			// This pipeline renders without MSAA, so fade alpha across a ~1px
-			// coverage ramp at the stroke edge — |vUv.x| along the body, radial
-			// past the round caps — for in-shader anti-aliasing.
-			float capExtent = max( abs( vUv.y ) - 1.0, 0.0 );
-			float edgeDistance = length( vec2( vUv.x, capExtent ) );
-			alpha *= clamp( ( 1.0 - edgeDistance ) / max( fwidth( edgeDistance ), 1e-4 ) + 0.5, 0.0, 1.0 );
-
-			${anchor}
-      `,
-    );
-  };
+function createFatLineMaterial(options: {
+  color: number;
+  linewidth: number;
+  opacity: number;
+  hasVertexColors: boolean;
+}): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      diffuse: { value: new Color(options.color) },
+      opacity: { value: options.opacity },
+      linewidth: { value: options.linewidth },
+      resolution: { value: new Vector2(1, 1) },
+    },
+    vertexShader: fatLineVertexShader,
+    fragmentShader: fatLineFragmentShader,
+    vertexColors: options.hasVertexColors,
+    transparent: true,
+    depthTest: false,
+    blending: NormalBlending,
+  });
 }
 
 /** The selected font's merge-ancestry polyline and its stroke color. */
@@ -172,24 +167,18 @@ export interface DendrogramLayerProps {
  * owns the group's visibility across the glow passes.
  */
 export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
-  const material = new LineMaterial({
+  const material = createFatLineMaterial({
     color: 0xffffff,
     linewidth: EDGE_WIDTH_PX,
-    vertexColors: true,
-    transparent: true,
     opacity: EDGE_OPACITY,
-    depthTest: false,
-    blending: NormalBlending,
+    hasVertexColors: true,
   });
-  const highlightMaterial = new LineMaterial({
+  const highlightMaterial = createFatLineMaterial({
+    color: 0xffffff,
     linewidth: HIGHLIGHT_WIDTH_PX,
-    transparent: true,
     opacity: HIGHLIGHT_OPACITY,
-    depthTest: false,
-    blending: NormalBlending,
+    hasVertexColors: false,
   });
-  antialiasLineMaterial(material);
-  antialiasLineMaterial(highlightMaterial);
 
   // The merge-node dots reuse the point layer's core sprite program: aColor
   // carries the representative color, aOpacity carries the alias depth fade,
@@ -252,7 +241,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
       geometry.setColors(colors);
-      lines = new LineSegments2(geometry, material);
+      lines = new LineSegments2(geometry, material as unknown as LineMaterial);
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;
       group.add(lines);
@@ -353,8 +342,11 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       const positions = highlight.points.flatMap(({ x, y }) => [x, -y, 0]);
       const geometry = new LineGeometry();
       geometry.setPositions(positions);
-      highlightMaterial.color.set(highlight.color);
-      highlightLine = new Line2(geometry, highlightMaterial);
+      highlightMaterial.uniforms['diffuse']!.value.set(highlight.color);
+      highlightLine = new Line2(
+        geometry,
+        highlightMaterial as unknown as LineMaterial,
+      );
       highlightLine.frustumCulled = false;
       highlightLine.renderOrder = -0.4;
       group.add(highlightLine);
@@ -365,8 +357,8 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   createEffect(() => {
     const { width, height } = props.resolution();
     if (width > 0 && height > 0) {
-      material.resolution.set(width, height);
-      highlightMaterial.resolution.set(width, height);
+      material.uniforms['resolution']!.value.set(width, height);
+      highlightMaterial.uniforms['resolution']!.value.set(width, height);
     }
     props.requestRender();
   });
