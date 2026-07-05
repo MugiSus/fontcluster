@@ -22,9 +22,11 @@ import {
 import {
   type DendrogramEdge,
   type DendrogramImageAnchor,
+  type DendrogramLeafLabel,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
+import { createDendrogramLabelLayer } from './dendrogram-label-layer';
 import {
   createDendrogramLayer,
   dendrogramAliasGlowOpacityForRank,
@@ -58,10 +60,12 @@ export interface UseGraphGlRendererProps {
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
+  showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
+  dendrogramLeafLabels: Accessor<DendrogramLeafLabel[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -125,6 +129,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
+      // The label layer only ever shows when the toolbar toggle is on; the
+      // passes below combine this with their own visibility rules.
+      const showLabels = props.showFontNames();
 
       // Glow off: draw the sharp content (core dots + rings + images + tree)
       // straight to the screen. The halo object is only used by the bloom path.
@@ -133,6 +140,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         dendrogramLayer.visible = true;
+        dendrogramLabelLayer.visible = showLabels;
         ringLayer.visible = true;
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
@@ -150,6 +158,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
       dendrogramLayer.visible = false;
+      dendrogramLabelLayer.visible = false;
       ringLayer.visible = false;
       imageLayer.visible = false;
       renderer.setRenderTarget(compositor.target);
@@ -169,12 +178,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // 3) Composite the upsampled glow over the background + tree.
       compositor.composite(renderer);
 
-      // 4) Sharp pass: core dots + rings + images over the composite (the
-      //    dendrogram edges are already drawn). autoClear off so the
+      // 4) Sharp pass: core dots + labels + rings + images over the composite
+      //    (the dendrogram edges are already drawn). autoClear off so the
       //    glow/background isn't wiped.
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
       dendrogramLayer.visible = false;
+      dendrogramLabelLayer.visible = showLabels;
       ringLayer.visible = true;
       imageLayer.visible = true;
       // eslint-disable-next-line @typescript-eslint/naming-convention -- captures three.js renderer.autoClear to restore after render
@@ -382,6 +392,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       pixelRatio,
       requestRender: scheduleRender,
     });
+    const dendrogramLabelLayer = createDendrogramLabelLayer({
+      labels: props.dendrogramLeafLabels,
+      activeKeys: props.filteredKeys,
+      isDark,
+      requestRender: scheduleRender,
+    });
     const pointLayer = createPointLayer({
       points: props.points,
       isDark,
@@ -413,6 +429,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     scene.add(dendrogramLayer);
+    scene.add(dendrogramLabelLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);
     scene.add(dendrogramAliasHaloLayer.halo);
@@ -427,12 +444,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       scheduleRender();
     });
 
-    // --- effect: glow on/off ----------------------------------------------
-    // `renderFrame` switches between the bloom and straight paths on `glow`,
-    // but it reads the accessor untracked (it runs in rAF), so subscribe here
-    // to repaint.
+    // --- effect: glow / font-name toggles ---------------------------------
+    // `renderFrame` switches between the bloom and straight paths on `glow`
+    // and gates the label layer on `showFontNames`, but it reads both
+    // accessors untracked (it runs in rAF), so subscribe here to repaint.
     createEffect(() => {
       props.glow();
+      props.showFontNames();
       scheduleRender();
     });
 

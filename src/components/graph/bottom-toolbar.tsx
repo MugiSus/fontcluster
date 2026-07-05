@@ -5,6 +5,7 @@ import {
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
+  TagIcon,
   TelescopeIcon,
   TypeIcon,
   ZoomInIcon,
@@ -29,10 +30,12 @@ import { type GraphToolMode } from './types';
 interface GraphBottomToolbarProps {
   toolMode: GraphToolMode;
   showImages: boolean;
+  showFontNames: boolean;
   showGlow: boolean;
   isFilterOpen: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
+  onToggleFontNames: () => void;
   onToggleGlow: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
@@ -64,13 +67,18 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   // ToggleGroup (multiple) owns the display toggles; derive its value from the
   // booleans and translate changes back into the individual toggle handlers.
   const displaySelection = () =>
-    [props.showImages && 'images', props.showGlow && 'glow'].filter(
-      Boolean,
-    ) as string[];
+    [
+      props.showImages && 'images',
+      props.showFontNames && 'fontNames',
+      props.showGlow && 'glow',
+    ].filter(Boolean) as string[];
 
   const handleDisplayChange = (values: string[]) => {
     const next = new Set(values);
     if (next.has('images') !== props.showImages) props.onToggleImages();
+    if (next.has('fontNames') !== props.showFontNames) {
+      props.onToggleFontNames();
+    }
     if (next.has('glow') !== props.showGlow) props.onToggleGlow();
   };
 
@@ -191,6 +199,20 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             <TypeIcon class='size-4' />
           </TooltipTrigger>
           <TooltipContent>{t.graph.bottomToolbar.showSamples()}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='fontNames'
+            class={toggleItemClass}
+            aria-label={t.graph.bottomToolbar.showFontNames()}
+          >
+            <TagIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>
+            {t.graph.bottomToolbar.showFontNames()}
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>

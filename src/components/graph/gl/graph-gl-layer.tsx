@@ -2,6 +2,7 @@ import { type Accessor } from 'solid-js';
 import {
   type DendrogramEdge,
   type DendrogramImageAnchor,
+  type DendrogramLeafLabel,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import {
@@ -24,10 +25,12 @@ interface GraphGlLayerProps {
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
+  showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
+  dendrogramLeafLabels: Accessor<DendrogramLeafLabel[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -56,10 +59,12 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     selectedFamily: () => props.selectedFamily(),
     imageKeys: () => props.imageKeys(),
     showImages: () => props.showImages(),
+    showFontNames: () => props.showFontNames(),
     glow: () => props.glow(),
     dendrogramEdges: () => props.dendrogramEdges(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
+    dendrogramLeafLabels: () => props.dendrogramLeafLabels(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

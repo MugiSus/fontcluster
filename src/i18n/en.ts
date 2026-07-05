@@ -61,6 +61,7 @@ export const en = {
       drag: 'Move',
       zoom: 'Zoom',
       showSamples: 'Show samples',
+      showFontNames: 'Show font names',
       glowMode: 'Glow mode',
       filter: 'Filter',
     },

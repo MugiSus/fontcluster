@@ -7,6 +7,7 @@ import {
   type DendrogramImageAnchor,
   dendrogramEdges,
   dendrogramImageAnchors,
+  dendrogramLeafLabels,
   dendrogramNodeDots,
   getDendrogramAncestry,
 } from './dendrogram-edges';
@@ -38,6 +39,7 @@ export interface ViewportZoomControls {
 interface GraphViewerProps {
   toolMode: GraphToolMode;
   showImages: boolean;
+  showFontNames: boolean;
   showGlow: boolean;
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
@@ -350,10 +352,12 @@ export function GraphViewer(props: GraphViewerProps) {
           selectedFamily={selection.selectedFamilyName}
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}
+          showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}
           dendrogramEdges={dendrogramEdges}
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
+          dendrogramLeafLabels={dendrogramLeafLabels}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />

@@ -49,6 +49,7 @@ export const ja: Dictionary = {
       drag: '移動',
       zoom: 'ズーム',
       showSamples: 'サンプル',
+      showFontNames: 'フォント名',
       glowMode: '光彩',
       filter: '絞り込み',
     },

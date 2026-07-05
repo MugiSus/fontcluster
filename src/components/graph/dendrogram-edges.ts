@@ -66,6 +66,20 @@ export interface DendrogramNodeDot extends GraphPointData {
 /** A merge node as a graph-point alias of its representative font. */
 export type DendrogramImageAnchor = DendrogramNodeDot;
 
+/** One leaf's name label, placed radially just outside the leaf ring. */
+export interface DendrogramLeafLabel {
+  /** Graph-point key (sample safe name) of the leaf's font. */
+  key: string;
+  /** The font name drawn as the label. */
+  text: string;
+  /** Polar angle of the leaf on the ring (graph space, y-down). */
+  angle: number;
+  /** Ring radius of the leaf. */
+  radius: number;
+  /** Final cluster id of the leaf's font, or `-1` when unclustered. */
+  k: number;
+}
+
 interface DendrogramTree {
   edges: DendrogramEdge[];
   nodes: ClusterNode[];
@@ -75,6 +89,8 @@ interface DendrogramTree {
   imageAnchors: DendrogramImageAnchor[];
   /** One dot per visible merge node, in merge order. */
   dots: DendrogramNodeDot[];
+  /** One name label per visible leaf, in leaf order. */
+  labels: DendrogramLeafLabel[];
   /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
   ids: string[];
 }
@@ -83,6 +99,7 @@ const NO_ANCESTRY: GraphCoordinate[] = [];
 const NO_EDGES: DendrogramEdge[] = [];
 const NO_ANCHORS: DendrogramImageAnchor[] = [];
 const NO_DOTS: DendrogramNodeDot[] = [];
+const NO_LABELS: DendrogramLeafLabel[] = [];
 
 /** Two points closer than this (in graph units) count as coincident. */
 const COINCIDENT_EPSILON = 1e-6;
@@ -115,6 +132,23 @@ const dendrogramTree = createRoot(() => {
       parent: -1,
       rep: index,
     }));
+
+    // A name label at every visible leaf. The canonical name-table font name
+    // is used as-is (names are recorded in English).
+    const labels: DendrogramLeafLabel[] = [];
+    for (const [index, id] of dendrogram.ids.entries()) {
+      const leaf = nodes[index]!;
+      if (!leaf.center) continue;
+      const fontName = getGraphPointByKey(id)?.item.meta.font_name;
+      if (!fontName) continue;
+      labels.push({
+        key: id,
+        text: fontName,
+        angle: leaf.angle,
+        radius: leaf.radius,
+        k: leaf.k,
+      });
+    }
 
     const edges: DendrogramEdge[] = [];
     const pushPolyline = (
@@ -235,6 +269,7 @@ const dendrogramTree = createRoot(() => {
       leafIndexByKey,
       imageAnchors,
       dots,
+      labels,
       ids: dendrogram.ids,
     };
   });
@@ -264,6 +299,14 @@ export const dendrogramImageAnchors = (): DendrogramImageAnchor[] =>
  */
 export const dendrogramNodeDots = (): DendrogramNodeDot[] =>
   dendrogramTree()?.dots ?? NO_DOTS;
+
+/**
+ * One name label per visible leaf (see {@link DendrogramLeafLabel}), in leaf
+ * order. Empty when the dendrogram mode is inactive or the session has no
+ * recorded dendrogram.
+ */
+export const dendrogramLeafLabels = (): DendrogramLeafLabel[] =>
+  dendrogramTree()?.labels ?? NO_LABELS;
 
 /**
  * The polyline of a font's merge ancestry, in graph space, following the same

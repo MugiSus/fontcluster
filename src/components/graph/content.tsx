@@ -9,6 +9,7 @@ import { type GraphToolMode } from './types';
 export function GraphContent() {
   const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
   const [showImages, setShowImages] = createSignal(true);
+  const [showFontNames, setShowFontNames] = createSignal(true);
   const [showGlow, setShowGlow] = createSignal(true);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
@@ -30,17 +31,20 @@ export function GraphContent() {
       <GraphViewer
         toolMode={toolMode()}
         showImages={showImages()}
+        showFontNames={showFontNames()}
         showGlow={showGlow()}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
       <GraphBottomControls
         toolMode={toolMode()}
         showImages={showImages()}
+        showFontNames={showFontNames()}
         showGlow={showGlow()}
         isFilterOpen={isFilterOpen()}
         zoomControls={viewportZoomControls()}
         onToolModeChange={setToolMode}
         onToggleImages={() => setShowImages((shown) => !shown)}
+        onToggleFontNames={() => setShowFontNames((shown) => !shown)}
         onToggleGlow={() => setShowGlow((shown) => !shown)}
         onToggleFilter={() => setIsFilterOpen((open) => !open)}
       />
