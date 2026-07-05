@@ -4,6 +4,7 @@ import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import { useElementSize } from '@/hooks/use-element-size';
 import {
+  dendrogramArcs,
   type DendrogramImageAnchor,
   dendrogramEdges,
   dendrogramImageAnchors,
@@ -355,6 +356,7 @@ export function GraphViewer(props: GraphViewerProps) {
           showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}
           dendrogramEdges={dendrogramEdges}
+          dendrogramArcs={dendrogramArcs}
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           dendrogramLeafLabels={dendrogramLeafLabels}

@@ -14,15 +14,16 @@ import { type GraphCoordinate, type GraphPointData } from './types';
  *
  * Every merge draws as a bracket rather than a V: an arc at the merge's
  * radius spanning its children's angles, plus one radial spoke from each
- * child in to that arc — the classic circular-dendrogram elbow. Arcs are
- * tessellated into short chords for the GL line renderer.
+ * child in to that arc — the classic circular-dendrogram elbow. Spokes and
+ * arcs are separate GL draw specs so arcs can render as one analytic SDF quad
+ * instead of many short chords.
  *
  * Leaves missing from the layout (not analysed, or hidden by a filter) simply
  * don't take part; a merge with a single visible child passes through as a
  * plain spoke.
  */
 
-/** One drawn segment of the radial tree, in graph space (y-down). */
+/** One straight spoke segment of the radial tree, in graph space (y-down). */
 export interface DendrogramEdge {
   x1: number;
   y1: number;
@@ -30,6 +31,21 @@ export interface DendrogramEdge {
   y2: number;
   /** Zero-based rank of the merge this edge belongs to, in linkage order
    *  (ascending dissimilarity). Edges are emitted in this order. */
+  mergeIndex: number;
+  /** Final cluster id shared by every visible point under the merged node, or
+   *  `-1` when the merge spans clusters (or contains unclustered points). */
+  k: number;
+}
+
+/** One circular arc of the radial tree, in graph-space polar coordinates. */
+export interface DendrogramArc {
+  /** Start angle in radians, graph-space y-down. */
+  angleFrom: number;
+  /** End angle in radians, graph-space y-down. */
+  angleTo: number;
+  /** Arc radius in graph units. */
+  radius: number;
+  /** Zero-based rank of the merge this arc belongs to. */
   mergeIndex: number;
   /** Final cluster id shared by every visible point under the merged node, or
    *  `-1` when the merge spans clusters (or contains unclustered points). */
@@ -82,6 +98,7 @@ export interface DendrogramLeafLabel {
 
 interface DendrogramTree {
   edges: DendrogramEdge[];
+  arcs: DendrogramArc[];
   nodes: ClusterNode[];
   leafIndexByKey: Map<string, number>;
   /** Anchors at every visible merge node, carrying the node's
@@ -97,6 +114,7 @@ interface DendrogramTree {
 
 const NO_ANCESTRY: GraphCoordinate[] = [];
 const NO_EDGES: DendrogramEdge[] = [];
+const NO_ARCS: DendrogramArc[] = [];
 const NO_ANCHORS: DendrogramImageAnchor[] = [];
 const NO_DOTS: DendrogramNodeDot[] = [];
 const NO_LABELS: DendrogramLeafLabel[] = [];
@@ -151,6 +169,7 @@ const dendrogramTree = createRoot(() => {
     }
 
     const edges: DendrogramEdge[] = [];
+    const arcs: DendrogramArc[] = [];
     const pushPolyline = (
       points: GraphCoordinate[],
       mergeIndex: number,
@@ -205,11 +224,18 @@ const dendrogramTree = createRoot(() => {
           mergeIndex,
           k,
         );
-        pushPolyline(
-          [leftElbow, ...arcPoints(left.angle, right.angle, radius)],
-          mergeIndex,
-          k,
-        );
+        if (
+          radius > COINCIDENT_EPSILON &&
+          Math.abs(right.angle - left.angle) > COINCIDENT_EPSILON
+        ) {
+          arcs.push({
+            angleFrom: left.angle,
+            angleTo: right.angle,
+            radius,
+            mergeIndex,
+            k,
+          });
+        }
       } else if (center) {
         // One side hidden: the merge passes through as a plain spoke.
         const child = left.center ? left : right;
@@ -265,6 +291,7 @@ const dendrogramTree = createRoot(() => {
 
     return {
       edges,
+      arcs,
       nodes,
       leafIndexByKey,
       imageAnchors,
@@ -277,12 +304,20 @@ const dendrogramTree = createRoot(() => {
 });
 
 /**
- * One edge per drawable chord of the radial tree, in graph space (y-down),
- * ordered by merge rank. Empty when the dendrogram mode is inactive or the
- * session has no recorded dendrogram.
+ * One straight spoke segment per drawable radial tree edge, in graph space
+ * (y-down), ordered by merge rank. Empty when the dendrogram mode is inactive
+ * or the session has no recorded dendrogram.
  */
 export const dendrogramEdges = (): DendrogramEdge[] =>
   dendrogramTree()?.edges ?? NO_EDGES;
+
+/**
+ * One analytic circular arc per visible two-child merge, in graph-space polar
+ * coordinates. Empty when the dendrogram mode is inactive or the session has no
+ * recorded dendrogram.
+ */
+export const dendrogramArcs = (): DendrogramArc[] =>
+  dendrogramTree()?.arcs ?? NO_ARCS;
 
 /**
  * One image anchor per visible merge node (see

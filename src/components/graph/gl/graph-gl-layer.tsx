@@ -1,5 +1,6 @@
 import { type Accessor } from 'solid-js';
 import {
+  type DendrogramArc,
   type DendrogramEdge,
   type DendrogramImageAnchor,
   type DendrogramLeafLabel,
@@ -28,6 +29,7 @@ interface GraphGlLayerProps {
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
+  dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   dendrogramLeafLabels: Accessor<DendrogramLeafLabel[]>;
@@ -62,6 +64,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     showFontNames: () => props.showFontNames(),
     glow: () => props.glow(),
     dendrogramEdges: () => props.dendrogramEdges(),
+    dendrogramArcs: () => props.dendrogramArcs(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     dendrogramLeafLabels: () => props.dendrogramLeafLabels(),

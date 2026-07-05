@@ -4,7 +4,7 @@ import {
   type GraphVisibleBounds,
 } from './types';
 
-const IMAGE_GRID_HEX_HEIGHT_PX = 48;
+const IMAGE_GRID_HEX_HEIGHT_PX = 32;
 const VISIBLE_BOUNDS_PADDING = 50;
 
 interface ImageGridMetrics {

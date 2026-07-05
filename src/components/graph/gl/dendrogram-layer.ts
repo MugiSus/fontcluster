@@ -4,6 +4,9 @@ import {
   Color,
   Float32BufferAttribute,
   Group,
+  InstancedBufferAttribute,
+  InstancedBufferGeometry,
+  Mesh,
   NormalBlending,
   type Object3D,
   Points,
@@ -19,16 +22,21 @@ import { type LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import {
+  type DendrogramArc,
   type DendrogramEdge,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
+import { GRAPH_SIZE } from '@/components/graph/constants';
 import { type GraphCoordinate } from '@/components/graph/types';
+import { arcFragmentShader, arcVertexShader } from './arc-shaders';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { fatLineFragmentShader, fatLineVertexShader } from './line-shaders';
 import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
 /** Stroke width in CSS px; fat lines keep a solid core. */
 const EDGE_WIDTH_PX = 1;
+/** Extra CSS px around each analytic arc's bounding quad for the AA feather. */
+const ARC_AA_PAD_PX = 2;
 /** Uniform opacity on top of the per-segment fade, so crossing segments blend
  *  instead of the later (coarser) one occluding the finer one. */
 const EDGE_OPACITY = 1.0;
@@ -51,6 +59,9 @@ const HIGHLIGHT_OPACITY = 1;
 /** Merge-node dot diameter (CSS px); matches the point layer's core dots so
  *  branch points read like the leaf points. */
 const NODE_DOT_PX = 3;
+const DENDROGRAM_CENTER = GRAPH_SIZE / 2;
+const TWO_PI = Math.PI * 2;
+const ARC_BOUNDS_CARDINAL_ANGLES = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
 
 /** Depth fade of a merge edge's color towards the background. */
 const fadeForRank = (
@@ -126,8 +137,10 @@ export interface DendrogramHighlight {
 }
 
 export interface DendrogramLayerProps {
-  /** The edges to draw, in graph space (y-down), ordered by merge rank. */
+  /** The straight spokes to draw, in graph space (y-down), ordered by merge rank. */
   edges: Accessor<DendrogramEdge[]>;
+  /** The analytic arcs to draw, in graph-space polar coordinates. */
+  arcs: Accessor<DendrogramArc[]>;
   /** The merge-node dots to draw, in merge order. */
   dots: Accessor<DendrogramNodeDot[]>;
   /** Node indexes whose exemplar image is drawn; their dot is hidden (the
@@ -141,6 +154,8 @@ export interface DendrogramLayerProps {
   isDark: Accessor<boolean>;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
   resolution: Accessor<{ width: number; height: number }>;
+  /** World-units-per-CSS-pixel factor so arc stroke width stays constant. */
+  zoom: Accessor<number>;
   /** Device pixel ratio; the node dot sprite sizes to it. */
   pixelRatio: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
@@ -148,8 +163,8 @@ export interface DendrogramLayerProps {
 }
 
 /**
- * The radial dendrogram tree: the bracket chords of every merge — arcs plus
- * radial spokes (see `dendrogram-edges.ts`) — and a data dot at every merge
+ * The radial dendrogram tree: the bracket arcs plus radial spokes (see
+ * `dendrogram-edges.ts`) and a data dot at every merge
  * node. Rendered under the points (renderOrder -0.5) so the tree reads as a
  * backplate under the content.
  *
@@ -162,9 +177,9 @@ export interface DendrogramLayerProps {
  * The node dots themselves behave like graph-point aliases: they use the
  * representative point color and the point-core shader's active/dimmed alpha.
  *
- * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
- * swaps in a freshly built geometry and disposes the old one. The render loop
- * owns the group's visibility across the glow passes.
+ * `LineSegmentsGeometry` and the instanced arc geometry have no in-place resize,
+ * so each edge/theme change swaps in freshly built geometry and disposes the old
+ * one. The render loop owns the group's visibility across the glow passes.
  */
 export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   const material = createFatLineMaterial({
@@ -178,6 +193,20 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     linewidth: HIGHLIGHT_WIDTH_PX,
     opacity: HIGHLIGHT_OPACITY,
     hasVertexColors: false,
+  });
+  const arcMaterial = new ShaderMaterial({
+    uniforms: {
+      uCenter: { value: new Vector2(DENDROGRAM_CENTER, DENDROGRAM_CENTER) },
+      uLineWidth: { value: EDGE_WIDTH_PX },
+      uOpacity: { value: EDGE_OPACITY },
+      uPad: { value: ARC_AA_PAD_PX },
+      uZoom: { value: 1 },
+    },
+    vertexShader: arcVertexShader,
+    fragmentShader: arcFragmentShader,
+    transparent: true,
+    depthTest: false,
+    blending: NormalBlending,
   });
 
   // The merge-node dots reuse the point layer's core sprite program: aColor
@@ -200,6 +229,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   const group = new Group();
   let lines: LineSegments2 | null = null;
+  let arcMesh: Mesh<InstancedBufferGeometry, ShaderMaterial> | null = null;
   let highlightLine: Line2 | null = null;
 
   const dots = new Points(dotGeometry, dotMaterial);
@@ -245,6 +275,101 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;
       group.add(lines);
+    }
+    props.requestRender();
+  });
+
+  createEffect(() => {
+    const arcs = props.arcs();
+    const straightEdges = props.edges();
+    const isDark = props.isDark();
+    if (arcMesh) {
+      group.remove(arcMesh);
+      arcMesh.geometry.dispose();
+      arcMesh = null;
+    }
+    if (arcs.length > 0) {
+      const lastMergeIndex = Math.max(
+        straightEdges[straightEdges.length - 1]?.mergeIndex ??
+          arcs[arcs.length - 1]!.mergeIndex,
+        1,
+      );
+      const background = new Color(getBackgroundColor({ isDark }));
+      const segmentColor = new Color();
+      const boxCenters = new Float32Array(arcs.length * 2);
+      const boxHalfSizes = new Float32Array(arcs.length * 2);
+      const angles = new Float32Array(arcs.length * 2);
+      const radii = new Float32Array(arcs.length);
+      const colors = new Float32Array(arcs.length * 3);
+
+      for (const [index, arc] of arcs.entries()) {
+        const startX = DENDROGRAM_CENTER + arc.radius * Math.cos(arc.angleFrom);
+        const startY = DENDROGRAM_CENTER + arc.radius * Math.sin(arc.angleFrom);
+        const endX = DENDROGRAM_CENTER + arc.radius * Math.cos(arc.angleTo);
+        const endY = DENDROGRAM_CENTER + arc.radius * Math.sin(arc.angleTo);
+        let minX = Math.min(startX, endX);
+        let maxX = Math.max(startX, endX);
+        let minY = Math.min(startY, endY);
+        let maxY = Math.max(startY, endY);
+
+        for (const cardinal of ARC_BOUNDS_CARDINAL_ANGLES) {
+          const angle = cardinal < arc.angleFrom ? cardinal + TWO_PI : cardinal;
+          if (angle > arc.angleTo) continue;
+          const x = DENDROGRAM_CENTER + arc.radius * Math.cos(angle);
+          const y = DENDROGRAM_CENTER + arc.radius * Math.sin(angle);
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        }
+
+        boxCenters[index * 2] = (minX + maxX) / 2;
+        boxCenters[index * 2 + 1] = (minY + maxY) / 2;
+        boxHalfSizes[index * 2] = (maxX - minX) / 2;
+        boxHalfSizes[index * 2 + 1] = (maxY - minY) / 2;
+        angles[index * 2] = arc.angleFrom;
+        angles[index * 2 + 1] = arc.angleTo;
+        radii[index] = arc.radius;
+
+        const fade = fadeForRank(arc.mergeIndex, lastMergeIndex);
+        segmentColor.set(getClusterColor({ k: arc.k, isDark }));
+        segmentColor.lerpColors(background, segmentColor, fade);
+        colors[index * 3] = segmentColor.r;
+        colors[index * 3 + 1] = segmentColor.g;
+        colors[index * 3 + 2] = segmentColor.b;
+      }
+
+      const geometry = new InstancedBufferGeometry();
+      geometry.setIndex([0, 2, 1, 2, 3, 1]);
+      geometry.setAttribute(
+        'position',
+        new Float32BufferAttribute([-1, -1, 0, 1, -1, 0, -1, 1, 0, 1, 1, 0], 3),
+      );
+      geometry.setAttribute(
+        'instanceBoxCenter',
+        new InstancedBufferAttribute(boxCenters, 2),
+      );
+      geometry.setAttribute(
+        'instanceBoxHalfSize',
+        new InstancedBufferAttribute(boxHalfSizes, 2),
+      );
+      geometry.setAttribute(
+        'instanceAngles',
+        new InstancedBufferAttribute(angles, 2),
+      );
+      geometry.setAttribute(
+        'instanceRadius',
+        new InstancedBufferAttribute(radii, 1),
+      );
+      geometry.setAttribute(
+        'instanceColor',
+        new InstancedBufferAttribute(colors, 3),
+      );
+      geometry.instanceCount = arcs.length;
+      arcMesh = new Mesh(geometry, arcMaterial);
+      arcMesh.frustumCulled = false;
+      arcMesh.renderOrder = -0.5;
+      group.add(arcMesh);
     }
     props.requestRender();
   });
@@ -363,6 +488,11 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
+  createEffect(() => {
+    arcMaterial.uniforms['uZoom']!.value = props.zoom();
+    props.requestRender();
+  });
+
   // Device pixel ratio (dot sprite size = CSS px × dpr), like the point layer.
   createEffect(() => {
     dotMaterial.uniforms['uPixelRatio']!.value = props.pixelRatio();
@@ -371,9 +501,11 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   onCleanup(() => {
     lines?.geometry.dispose();
+    arcMesh?.geometry.dispose();
     highlightLine?.geometry.dispose();
     material.dispose();
     highlightMaterial.dispose();
+    arcMaterial.dispose();
     dotGeometry.dispose();
     dotMaterial.dispose();
   });

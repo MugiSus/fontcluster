@@ -20,6 +20,7 @@ import {
   type GraphViewBox,
 } from '@/components/graph/types';
 import {
+  type DendrogramArc,
   type DendrogramEdge,
   type DendrogramImageAnchor,
   type DendrogramLeafLabel,
@@ -63,6 +64,7 @@ export interface UseGraphGlRendererProps {
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
+  dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   dendrogramLeafLabels: Accessor<DendrogramLeafLabel[]>;
@@ -383,12 +385,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const compositor = createGlowCompositor();
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
+      arcs: props.dendrogramArcs,
       dots: props.dendrogramNodeDots,
       imageNodeIndexes: anchoredNodeIndexes,
       highlight: dendrogramHighlight,
       activeKeys: props.filteredKeys,
       isDark,
       resolution: props.size,
+      zoom: props.zoomFactor,
       pixelRatio,
       requestRender: scheduleRender,
     });
