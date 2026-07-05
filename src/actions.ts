@@ -24,14 +24,20 @@ import {
 // --- Session loading ---
 
 /**
- * Loads a session by id: pulls its config, sample directory and font items
- * from the backend and atomically swaps them into the store. The active
- * session is identified by `appState.session.session_id`, so there is no
- * separate "requested id" to keep in sync.
+ * Loads a session by id: clears the current display payload, then pulls its
+ * config, sample directory and font items from the backend. The active session
+ * is identified by `appState.session.session_id`, so there is no separate
+ * "requested id" to keep in sync.
  */
 export const loadSession = async (id: string) => {
   if (!id) return;
   setAppState('ui', 'isSessionLoading', true);
+  batch(() => {
+    setAppState('ui', 'selectedDendrogramNode', null);
+    setAppState('sessionDirectory', '');
+    setAppState('dendrogram', null);
+    setAppState('fonts', 'data', reconcile({}));
+  });
   try {
     const { config, directory, fonts, dendrogram } = await invoke<{
       config: SessionConfig;
@@ -149,9 +155,6 @@ export const setCurrentSessionId = async (id: string) => {
       setAppState('ui', 'selectedDendrogramNode', null);
       setAppState('ui', 'hoveredFontKey', null);
       setAppState('ui', 'sentFontItemKey', null);
-      setAppState('sessionDirectory', '');
-      setAppState('dendrogram', null);
-      setAppState('fonts', 'data', reconcile({}));
     });
   }
   selectionHistory.reset();

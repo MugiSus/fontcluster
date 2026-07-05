@@ -57,6 +57,7 @@ export interface ImageLayerProps {
 }
 
 interface ImageEntry {
+  safeName: string;
   mesh: Mesh;
   material: ShaderMaterial;
   /** Texture aspect ratio (width / height), known only once it has loaded. */
@@ -125,7 +126,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     mesh.frustumCulled = false;
     mesh.renderOrder = 2;
     group.add(mesh);
-    const entry: ImageEntry = { mesh, material };
+    const entry: ImageEntry = { safeName: spec.safeName, mesh, material };
 
     const cached = textureCache.get(spec.safeName);
     if (cached) {
@@ -146,10 +147,12 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
         texture.magFilter = LinearFilter;
         texture.generateMipmaps = false;
         textureCache.set(spec.safeName, texture);
-        material.uniforms['uMap']!.value = texture;
-        entry.aspect = aspectOf(texture);
-        applyFit(entry);
-        requestRender();
+        if (entries.get(spec.key) === entry) {
+          material.uniforms['uMap']!.value = texture;
+          entry.aspect = aspectOf(texture);
+          applyFit(entry);
+          requestRender();
+        }
       });
     }
     return entry;
@@ -184,6 +187,12 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     for (const spec of specs) {
       if (!sessionDirectory || !spec.safeName) continue;
       let entry = entries.get(spec.key);
+      if (entry && entry.safeName !== spec.safeName) {
+        group.remove(entry.mesh);
+        entry.material.dispose();
+        entries.delete(spec.key);
+        entry = undefined;
+      }
       if (!entry) {
         entry = createEntry(spec, sessionDirectory);
         entries.set(spec.key, entry);
