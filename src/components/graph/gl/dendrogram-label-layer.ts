@@ -5,12 +5,13 @@ import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.wof
 import { type DendrogramLeafLabel } from '@/components/graph/dendrogram-edges';
 import { polarPoint } from '@/components/graph/dendrogram-layout';
 import { getClusterColor } from './cluster-colors-gl';
-import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './image-layer';
 
 /** Label glyph em-height in CSS px, held constant on zoom. */
-const FONT_SIZE_PX = 12;
+const FONT_SIZE_PX = 10;
 /** Screen px between a label's near edge and the leaf point / image box. */
 const MARGIN_PX = 6;
+/** Fixed extra screen-px gap while sample images are shown. */
+const SAMPLE_IMAGE_EXTRA_GAP_PX = 12;
 /** Matches the ring/image layers' dimmed opacity for filtered-out fonts. */
 const DIMMED_OPACITY = 0.4;
 
@@ -29,15 +30,6 @@ const GEIST_FONT_URL = URL.createObjectURL(
   ),
 );
 
-/** Screen-px clearance of the sample image box along a label's outward
- *  radial direction (the rectangle's support extent at that angle). */
-function imageBoxExtentPx(angle: number): number {
-  return (
-    (BOX_WIDTH_PX / 2) * Math.abs(Math.cos(angle)) +
-    (BOX_HEIGHT_PX / 2) * Math.abs(Math.sin(angle))
-  );
-}
-
 export interface DendrogramLabelLayerProps {
   /** The leaf labels to draw, in leaf order. */
   labels: Accessor<DendrogramLeafLabel[]>;
@@ -46,7 +38,7 @@ export interface DendrogramLabelLayerProps {
   visibleKeys: Accessor<Set<string>>;
   /** Representative font keys that are currently active/selectable. */
   activeKeys: Accessor<Set<string>>;
-  /** Whether the sample images are shown (labels then clear the image box). */
+  /** Whether the sample images are shown (labels then get a fixed extra gap). */
   showImages: Accessor<boolean>;
   /** Whether the active theme is dark (picks cluster colors). */
   isDark: Accessor<boolean>;
@@ -129,15 +121,16 @@ export function createDendrogramLabelLayer(
 
   // Placement: the glyphs are authored in CSS px, so scaling by the
   // world-per-px zoom keeps them a constant screen size; the ring gap scales
-  // the same way (clearing the image box when the samples are shown).
+  // the same way. When samples are shown, use a fixed extra gap
+  // instead of an angle-dependent rectangle projection, so text-to-core
+  // distance stays uniform around the ring.
   // Matrix-only updates — zooming and panning never resync the worker.
   createEffect(() => {
     const zoom = props.zoom();
     const showImages = props.showImages();
     for (const [index, label] of props.labels().entries()) {
       const member = members[index]!;
-      const gapPx =
-        MARGIN_PX + (showImages ? imageBoxExtentPx(label.angle) : 0);
+      const gapPx = MARGIN_PX + (showImages ? SAMPLE_IMAGE_EXTRA_GAP_PX : 0);
       const position = polarPoint(label.angle, label.radius + gapPx * zoom);
       member.position.set(position.x, -position.y, 0);
       member.scale.set(zoom, zoom, 1);
