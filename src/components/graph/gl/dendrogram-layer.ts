@@ -4,6 +4,7 @@ import {
   Color,
   Float32BufferAttribute,
   Group,
+  InstancedBufferAttribute,
   NormalBlending,
   type Object3D,
   Points,
@@ -32,6 +33,9 @@ const EDGE_WIDTH_PX = 1;
 /** Uniform opacity on top of the per-segment fade, so crossing segments blend
  *  instead of the later (coarser) one occluding the finer one. */
 const EDGE_OPACITY = 1.0;
+/** Extra opacity multiplier for leaf/alias spokes whose representative font is
+ *  filtered out or weight-inactive. */
+const FILTERED_EDGE_OPACITY = 0.4;
 /** Per-segment fade: the finest merge draws at NEAR, the coarsest at FAR. The
  *  fade is baked into the vertex colors as a lerp towards the background, so
  *  the tree recedes with depth without needing per-vertex alpha. */
@@ -161,6 +165,8 @@ export interface DendrogramLayerProps {
  *   vivid and the coarse trunks recede.
  * The node dots themselves behave like graph-point aliases: they use the
  * representative point color and the point-core shader's active/dimmed alpha.
+ * Leaf/alias spokes carry their representative key and multiply alpha when the
+ * same key is filtered out; merge arcs keep the base edge opacity.
  *
  * `LineSegmentsGeometry` has no in-place resize, so each edge/theme change
  * swaps in a freshly built geometry and disposes the old one. The render loop
@@ -241,11 +247,34 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
       geometry.setColors(colors);
+      geometry.setAttribute(
+        'instanceOpacity',
+        new InstancedBufferAttribute(new Float32Array(edges.length).fill(1), 1),
+      );
       lines = new LineSegments2(geometry, material as unknown as LineMaterial);
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;
       group.add(lines);
     }
+    props.requestRender();
+  });
+
+  // Leaf/alias spoke opacity follows the same filtered-key source as points,
+  // labels and images. Merge arcs have no source key and stay at full opacity.
+  createEffect(() => {
+    const activeKeys = props.activeKeys();
+    const edges = props.edges();
+    const attribute = lines?.geometry.getAttribute('instanceOpacity');
+    if (!attribute || attribute.count !== edges.length) return;
+
+    const opacities = attribute.array as Float32Array;
+    for (const [index, edge] of edges.entries()) {
+      opacities[index] =
+        edge.sourceKey && !activeKeys.has(edge.sourceKey)
+          ? FILTERED_EDGE_OPACITY
+          : 1;
+    }
+    attribute.needsUpdate = true;
     props.requestRender();
   });
 

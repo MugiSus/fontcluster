@@ -28,6 +28,8 @@ export interface DendrogramEdge {
   y1: number;
   x2: number;
   y2: number;
+  /** Representative font key for a leaf/alias spoke; null for merge arcs. */
+  sourceKey: string | null;
   /** Zero-based rank of the merge this edge belongs to, in linkage order
    *  (ascending dissimilarity). Edges are emitted in this order. */
   mergeIndex: number;
@@ -155,6 +157,7 @@ const dendrogramTree = createRoot(() => {
       points: GraphCoordinate[],
       mergeIndex: number,
       k: number,
+      sourceKey: string | null,
     ) => {
       for (const [index, point] of points.entries()) {
         if (index === 0) continue;
@@ -167,6 +170,7 @@ const dendrogramTree = createRoot(() => {
           y1: previous.y,
           x2: point.x,
           y2: point.y,
+          sourceKey,
           mergeIndex,
           k,
         });
@@ -199,21 +203,33 @@ const dendrogramTree = createRoot(() => {
         // The bracket: a spoke from each child in to the merge's radius, and
         // the arc between the two elbows.
         const leftElbow = polarPoint(left.angle, radius);
-        pushPolyline([left.center, leftElbow], mergeIndex, k);
+        pushPolyline(
+          [left.center, leftElbow],
+          mergeIndex,
+          k,
+          dendrogram.ids[left.rep] ?? null,
+        );
         pushPolyline(
           [right.center, polarPoint(right.angle, radius)],
           mergeIndex,
           k,
+          dendrogram.ids[right.rep] ?? null,
         );
         pushPolyline(
           [leftElbow, ...arcPoints(left.angle, right.angle, radius)],
           mergeIndex,
           k,
+          null,
         );
       } else if (center) {
         // One side hidden: the merge passes through as a plain spoke.
         const child = left.center ? left : right;
-        pushPolyline([child.center!, center], mergeIndex, k);
+        pushPolyline(
+          [child.center!, center],
+          mergeIndex,
+          k,
+          dendrogram.ids[child.rep] ?? null,
+        );
       }
 
       left.parent = nodeIndex;

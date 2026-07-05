@@ -8,8 +8,9 @@
 //
 // The quad expansion mirrors `LineMaterial`'s non-world-units path exactly: each
 // segment is an instanced box (`LineSegmentsGeometry` / `LineGeometry` supply
-// `position` / `uv` and the `instanceStart/End` + `instanceColorStart/End`
-// attributes), grown perpendicular to the screen-space segment direction by
+// `position` / `uv` and the `instanceStart/End` attributes, while the tree
+// geometry adds `instanceColorStart/End` and `instanceOpacity` for its segments),
+// grown perpendicular to the screen-space segment direction by
 // `linewidth`, with the box's end rows extended along the direction for the
 // round caps. Two upstream branches are dropped on purpose:
 //   - the perspective near-plane `trimSegment` — the graph renders through an
@@ -34,7 +35,9 @@ attribute vec3 instanceEnd;
 #ifdef USE_COLOR
   attribute vec3 instanceColorStart;
   attribute vec3 instanceColorEnd;
+  attribute float instanceOpacity;
   varying vec3 vColor;
+  varying float vOpacity;
 #endif
 
 varying vec2 vUv;
@@ -43,6 +46,7 @@ void main() {
   #ifdef USE_COLOR
     // Rows below the box midline take the start vertex, the rest the end vertex.
     vColor = ( position.y < 0.5 ) ? instanceColorStart : instanceColorEnd;
+    vOpacity = instanceOpacity;
   #endif
 
   vUv = uv;
@@ -93,6 +97,7 @@ uniform float opacity;
 
 #ifdef USE_COLOR
   varying vec3 vColor;
+  varying float vOpacity;
 #endif
 
 varying vec2 vUv;
@@ -112,6 +117,9 @@ void main() {
   );
 
   float alpha = opacity * coverage;
+  #ifdef USE_COLOR
+    alpha *= vOpacity;
+  #endif
   if ( alpha <= 0.0 ) discard;
 
   vec3 color = diffuse;
