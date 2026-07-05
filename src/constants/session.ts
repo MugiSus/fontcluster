@@ -13,8 +13,8 @@ export const DEFAULT_RENDERING_CONFIG: RenderingOptions = {
 };
 
 export const DEFAULT_CLUSTERING_CONFIG: ClusteringOptions = {
-  method: 'average',
-  preprocessing_dimensions: 8,
+  method: 'complete',
+  preprocessing_dimensions: 16,
   distance_threshold: 0.5,
   target_cluster_count: 0,
 };
