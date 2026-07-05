@@ -263,7 +263,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           x: point.x,
           y: -point.y,
           color: getClusterColor({
-            clustering: point.item.computed?.clustering,
+            colorIndex: point.item.computed?.clustering?.color_index,
             isDark: isDarkMode,
           }),
           kind,
@@ -275,7 +275,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           x: selectedDendrogramAnchor.x,
           y: -selectedDendrogramAnchor.y,
           color: getClusterColor({
-            clustering: selectedDendrogramAnchor.clustering,
+            colorIndex: selectedDendrogramAnchor.colorIndex,
             isDark: isDarkMode,
           }),
           kind: 'selected',
@@ -322,7 +322,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           x: point.x,
           y: -point.y,
           color: getClusterColor({
-            clustering: point.item.computed?.clustering,
+            colorIndex: point.item.computed?.clustering?.color_index,
             isDark: isDarkMode,
           }),
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
@@ -352,7 +352,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           x: anchor.x,
           y: -anchor.y,
           color: getClusterColor({
-            clustering: anchor.clustering,
+            colorIndex: anchor.colorIndex,
             isDark: isDarkMode,
           }),
           opacity: predicate(anchor) ? 1 : DIMMED_OPACITY,
@@ -398,7 +398,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return {
         points,
         color: getClusterColor({
-          clustering: point?.item.computed?.clustering,
+          colorIndex: point?.item.computed?.clustering?.color_index,
           isDark: isDark(),
         }),
       };

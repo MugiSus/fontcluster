@@ -1,5 +1,3 @@
-import { type ClusterColoring } from '@/types/font';
-
 const CLUSTER_TEXT_COLORS = [
   'text-cluster-1',
   'text-cluster-2',
@@ -33,42 +31,28 @@ const CLUSTER_CSS_COLORS = [
   'var(--cluster-8)',
 ];
 
-/** Palette slot of a clustering: its stamped color, falling back to the
- *  cluster id for data persisted before colors existed. */
-function paletteSlot(clustering: ClusterColoring): number {
-  return clustering.color ?? clustering.k;
-}
-
-export function getClusterTextColor(
-  clustering: ClusterColoring | null | undefined,
-): string {
-  if (!clustering || clustering.k === -1) {
+export function getClusterTextColor(colorIndex: number | undefined): string {
+  if (colorIndex === undefined) {
     return 'text-zinc-500';
   }
 
-  return CLUSTER_TEXT_COLORS[
-    paletteSlot(clustering) % CLUSTER_TEXT_COLORS.length
-  ]!;
+  return CLUSTER_TEXT_COLORS[colorIndex % CLUSTER_TEXT_COLORS.length]!;
 }
 
 export function getClusterBackgroundColor(
-  clustering: ClusterColoring | null | undefined,
+  colorIndex: number | undefined,
 ): string {
-  if (!clustering || clustering.k === -1) {
+  if (colorIndex === undefined) {
     return 'bg-zinc-500';
   }
 
-  return CLUSTER_BG_COLORS[paletteSlot(clustering) % CLUSTER_BG_COLORS.length]!;
+  return CLUSTER_BG_COLORS[colorIndex % CLUSTER_BG_COLORS.length]!;
 }
 
-export function getClusterCssColor(
-  clustering: ClusterColoring | null | undefined,
-): string {
-  if (!clustering || clustering.k === -1) {
+export function getClusterCssColor(colorIndex: number | undefined): string {
+  if (colorIndex === undefined) {
     return 'rgb(113 113 122)';
   }
 
-  return CLUSTER_CSS_COLORS[
-    paletteSlot(clustering) % CLUSTER_CSS_COLORS.length
-  ]!;
+  return CLUSTER_CSS_COLORS[colorIndex % CLUSTER_CSS_COLORS.length]!;
 }

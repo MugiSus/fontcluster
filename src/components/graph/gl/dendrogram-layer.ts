@@ -260,9 +260,9 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         -y2,
         0,
       ]);
-      const colors = edges.flatMap(({ mergeIndex, clustering }) => {
+      const colors = edges.flatMap(({ mergeIndex, colorIndex }) => {
         const fade = fadeForRank(mergeIndex, lastMergeIndex);
-        segmentColor.set(getClusterColor({ clustering, isDark }));
+        segmentColor.set(getClusterColor({ colorIndex, isDark }));
         segmentColor.lerpColors(background, segmentColor, fade);
         const { r, g, b } = segmentColor;
         return [r, g, b, r, g, b];
@@ -333,7 +333,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
         const fade = fadeForRank(arc.mergeIndex, lastMergeIndex);
         segmentColor.set(
-          getClusterColor({ clustering: arc.clustering, isDark }),
+          getClusterColor({ colorIndex: arc.colorIndex, isDark }),
         );
         segmentColor.lerpColors(background, segmentColor, fade);
         colors[index * 3] = segmentColor.r;
@@ -393,7 +393,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       // World Y is the negated graph Y (graph space is y-down).
       positions[index * 3 + 1] = -dot.y;
       positions[index * 3 + 2] = 0;
-      dotColor.set(getClusterColor({ clustering: dot.clustering, isDark }));
+      dotColor.set(getClusterColor({ colorIndex: dot.colorIndex, isDark }));
       colors[index * 3] = dotColor.r;
       colors[index * 3 + 1] = dotColor.g;
       colors[index * 3 + 2] = dotColor.b;

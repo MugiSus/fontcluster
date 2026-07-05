@@ -8,8 +8,6 @@
  * sync with the `--cluster-*` / `--background` values in index.css.
  */
 
-import { type ClusterColoring } from '@/types/font';
-
 // Cluster palette, indexed by the clustering's palette slot (modulo length).
 const CLUSTER_LIGHT = [
   0x1aba8c, 0xcbcb2e, 0xda532a, 0x465ae0, 0x985cd5, 0x85d11b, 0xe3941f,
@@ -26,19 +24,17 @@ const UNCLUSTERED = 0x71717a;
 const BACKGROUND_LIGHT = 0xfdfdfe;
 const BACKGROUND_DARK = 0x0e0f13;
 
-/** Returns the 0xRRGGBB color for a font's clustering in the given theme.
- *  The slot is the stamped `color`, falling back to `k` for data persisted
- *  before colors existed. */
+/** Returns the 0xRRGGBB color for a font's palette slot in the given theme. */
 export function getClusterColor({
-  clustering,
+  colorIndex,
   isDark,
 }: {
-  clustering: ClusterColoring | null | undefined;
+  colorIndex: number | undefined;
   isDark?: boolean;
 }): number {
-  if (!clustering || clustering.k === -1) return UNCLUSTERED;
+  if (colorIndex === undefined) return UNCLUSTERED;
   const palette = isDark ? CLUSTER_DARK : CLUSTER_LIGHT;
-  return palette[(clustering.color ?? clustering.k) % palette.length]!;
+  return palette[colorIndex % palette.length]!;
 }
 
 /** Returns the 0xRRGGBB clear color (matching `--background`) for the theme. */

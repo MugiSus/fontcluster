@@ -174,7 +174,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     const colors = attribute.array as Float32Array;
     for (const [index, point] of pointData.entries()) {
       const hex = getClusterColor({
-        clustering: point.item.computed?.clustering,
+        colorIndex: point.item.computed?.clustering?.color_index,
         isDark,
       });
       colors[index * 3] = ((hex >> 16) & 0xff) / 255;

@@ -50,18 +50,11 @@ export interface ClusteringData {
    */
   join_height: number;
   /**
-   * Palette slot of this font's cluster (the cluster's
-   * `ClusterStat.color_index`, stamped per font by the backend). Null only in
-   * data persisted before colors existed; consumers then fall back to `k`.
+   * Palette slot of this font's cluster (its `ClusterStat.color_index`),
+   * stamped per font by the backend so drawables need no cluster lookup.
    */
-  color: number | null;
+  color_index: number;
 }
-
-/**
- * The identity + color slice of {@link ClusteringData} that colored drawables
- * carry; `ClusteringData` itself satisfies it.
- */
-export type ClusterColoring = Pick<ClusteringData, 'k' | 'color'>;
 
 export interface ComputedData {
   rendered_text?: string | null;

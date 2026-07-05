@@ -231,11 +231,8 @@ pub struct ClusterStat {
     /// diameter); `0.0` for singletons.
     pub diameter: f32,
     /// Palette slot to draw this cluster in, assigned so clusters whose arcs
-    /// touch on the radial dendrogram ring never share a slot. `None` only
-    /// when decoding stats written before this field existed (the UI then
-    /// falls back to the cluster id); new runs always record it.
-    #[serde(default)]
-    pub color_index: Option<usize>,
+    /// touch on the radial dendrogram ring never share a slot.
+    pub color_index: usize,
 }
 
 /// Progress fractions for each pipeline stage, persisted so the UI can render
@@ -293,11 +290,10 @@ pub struct ComputedData {
 /// Per-font results assigned by the clustering stage.
 ///
 /// Everything here is a free by-product of the dendrogram replay that derives
-/// `k`; `#[serde(default)]` keeps `computed.json` files written before a field
-/// existed loadable.
+/// `k` and the cluster's palette slot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusteringData {
-    /// Zero-based cluster index, or `-1` if the font was left unclustered.
+    /// Zero-based cluster index.
     pub k: i32,
     /// Linkage height at which this font first merged into a larger node in
     /// the full dendrogram — its isolation in the normalised PCA space the
@@ -305,12 +301,9 @@ pub struct ClusteringData {
     /// point.
     #[serde(default)]
     pub join_height: f32,
-    /// Palette slot of this font's cluster (the cluster's
-    /// [`ClusterStat::color_index`], stamped per font so drawables need no
-    /// lookup). `None` only when decoding data written before colors existed;
-    /// the UI then falls back to `k`.
-    #[serde(default)]
-    pub color: Option<usize>,
+    /// Palette slot of this font's cluster (its [`ClusterStat::color_index`]),
+    /// stamped per font so drawables read the color without a cluster lookup.
+    pub color_index: usize,
 }
 
 /// Descriptive metadata extracted from a single font face.

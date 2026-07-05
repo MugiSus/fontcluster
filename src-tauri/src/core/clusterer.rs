@@ -89,8 +89,8 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     let dendrogram = DendrogramData { ids, merges };
 
     // Each font's persisted clustering carries its cluster's palette slot, so
-    // drawables read `k` and `color` from one place.
-    let color_by_label: Vec<Option<usize>> = stats
+    // drawables read `k` and `color_index` from one place.
+    let color_by_label: Vec<usize> = stats
         .clusters
         .iter()
         .map(|cluster| cluster.color_index)
@@ -111,9 +111,9 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             computed.clustering = Some(ClusteringData {
                 k: labels[i],
                 join_height: join_heights[i],
-                color: usize::try_from(labels[i])
-                    .ok()
-                    .and_then(|label| color_by_label.get(label).copied().flatten()),
+                // Every point lands in an active cluster, so `labels[i]` is a
+                // valid index into the per-label colors.
+                color_index: color_by_label[labels[i] as usize],
             });
             save_computed_data(&session_dir_for_second, &meta.safe_name, &computed)?;
             progress_events::increase_numerator(
@@ -195,7 +195,7 @@ fn agglomerative_clustering(
                 size: 1,
                 centroid: vec![0.0; points.ncols()],
                 diameter: 0.0,
-                color_index: Some(0),
+                color_index: 0,
             }],
             cut_height: 0.0,
             merge_heights: Vec::new(),
@@ -334,7 +334,7 @@ fn agglomerative_clustering(
                 .map(|centroid| centroid.to_vec())
                 .unwrap_or_default(),
             diameter: node_height[*node],
-            color_index: Some(*color_index),
+            color_index: *color_index,
         })
         .collect();
 

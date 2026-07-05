@@ -32,10 +32,14 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
   // The largest clusters get a visibility toggle, displayed by size.
   const topClusters = createMemo(() =>
     appState.session.status.clustering_stats.clusters
-      .map((stat, k) => ({ k, size: stat.size, color: stat.color_index }))
+      .map((stat, k) => ({
+        k,
+        size: stat.size,
+        colorIndex: stat.color_index,
+      }))
       .toSorted((a, b) => b.size - a.size || a.k - b.k)
       .slice(0, MAX_CLUSTER_TOGGLES)
-      .map(({ k, color }) => ({ k, color })),
+      .map(({ k, colorIndex }) => ({ k, colorIndex })),
   );
 
   let inputElement: HTMLInputElement | undefined;
