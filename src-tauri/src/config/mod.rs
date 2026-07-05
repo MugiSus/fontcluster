@@ -230,6 +230,12 @@ pub struct ClusterStat {
     /// Largest internal merge height within this cluster (its dendrogram
     /// diameter); `0.0` for singletons.
     pub diameter: f32,
+    /// Palette slot to draw this cluster in, assigned so clusters whose arcs
+    /// touch on the radial dendrogram ring never share a slot. `None` only
+    /// when decoding stats written before this field existed (the UI then
+    /// falls back to the cluster id); new runs always record it.
+    #[serde(default)]
+    pub color_index: Option<usize>,
 }
 
 /// Progress fractions for each pipeline stage, persisted so the UI can render
@@ -299,6 +305,12 @@ pub struct ClusteringData {
     /// point.
     #[serde(default)]
     pub join_height: f32,
+    /// Palette slot of this font's cluster (the cluster's
+    /// [`ClusterStat::color_index`], stamped per font so drawables need no
+    /// lookup). `None` only when decoding data written before colors existed;
+    /// the UI then falls back to `k`.
+    #[serde(default)]
+    pub color: Option<usize>,
 }
 
 /// Descriptive metadata extracted from a single font face.

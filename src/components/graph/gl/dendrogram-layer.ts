@@ -171,7 +171,7 @@ export interface DendrogramLayerProps {
  * Two visual encodings are baked into per-segment vertex colors:
  * - merges whose subtree lies inside one final cluster take that cluster's
  *   color; merges spanning clusters fall back to the neutral gray that
- *   `getClusterColor` returns for `k = -1`;
+ *   `getClusterColor` returns for "no cluster";
  * - color fades towards the background with merge rank, so fine structure is
  *   vivid and the coarse trunks recede.
  * The node dots themselves behave like graph-point aliases: they use the
@@ -260,9 +260,9 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         -y2,
         0,
       ]);
-      const colors = edges.flatMap(({ mergeIndex, k }) => {
+      const colors = edges.flatMap(({ mergeIndex, clustering }) => {
         const fade = fadeForRank(mergeIndex, lastMergeIndex);
-        segmentColor.set(getClusterColor({ k, isDark }));
+        segmentColor.set(getClusterColor({ clustering, isDark }));
         segmentColor.lerpColors(background, segmentColor, fade);
         const { r, g, b } = segmentColor;
         return [r, g, b, r, g, b];
@@ -332,7 +332,9 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         radii[index] = arc.radius;
 
         const fade = fadeForRank(arc.mergeIndex, lastMergeIndex);
-        segmentColor.set(getClusterColor({ k: arc.k, isDark }));
+        segmentColor.set(
+          getClusterColor({ clustering: arc.clustering, isDark }),
+        );
         segmentColor.lerpColors(background, segmentColor, fade);
         colors[index * 3] = segmentColor.r;
         colors[index * 3 + 1] = segmentColor.g;
@@ -391,7 +393,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       // World Y is the negated graph Y (graph space is y-down).
       positions[index * 3 + 1] = -dot.y;
       positions[index * 3 + 2] = 0;
-      dotColor.set(getClusterColor({ k: dot.k, isDark }));
+      dotColor.set(getClusterColor({ clustering: dot.clustering, isDark }));
       colors[index * 3] = dotColor.r;
       colors[index * 3 + 1] = dotColor.g;
       colors[index * 3 + 2] = dotColor.b;

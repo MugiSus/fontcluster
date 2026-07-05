@@ -30,12 +30,12 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
   const isFiltered = createMemo(() => appState.ui.searchQuery.length > 0);
 
   // The largest clusters get a visibility toggle, displayed by size.
-  const topClusterIds = createMemo(() =>
+  const topClusters = createMemo(() =>
     appState.session.status.clustering_stats.clusters
-      .map((stat, id) => ({ id, size: stat.size }))
-      .toSorted((a, b) => b.size - a.size || a.id - b.id)
+      .map((stat, k) => ({ k, size: stat.size, color: stat.color_index }))
+      .toSorted((a, b) => b.size - a.size || a.k - b.k)
       .slice(0, MAX_CLUSTER_TOGGLES)
-      .map(({ id }) => id),
+      .map(({ k, color }) => ({ k, color })),
   );
 
   let inputElement: HTMLInputElement | undefined;
@@ -113,12 +113,17 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
         </Show>
 
         <Show
-          when={topClusterIds().length > 0 && topClusterIds().join(',')}
+          when={
+            topClusters().length > 0 &&
+            topClusters()
+              .map((clustering) => clustering.k)
+              .join(',')
+          }
           keyed
         >
           <div class='mx-0.5 h-5 w-px bg-border/60' />
           <ClusterSelector
-            clusterIds={topClusterIds()}
+            clusters={topClusters()}
             onChange={setVisibleGraphClusters}
           />
         </Show>

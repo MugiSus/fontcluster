@@ -26,7 +26,7 @@ interface ListFontItemProps {
 export function ListFontItem(props: ListFontItemProps) {
   const { t } = useI18n();
   const meta = () => props.item.meta;
-  const clusterId = () => props.item.computed?.clustering?.k;
+  const clustering = () => props.item.computed?.clustering;
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
   const shouldRenderPreview = () =>
     props.isPreviewEnabled !== false && props.previewText !== '';
@@ -86,14 +86,14 @@ export function ListFontItem(props: ListFontItemProps) {
       <div
         class={cn(
           'absolute bottom-0 left-px top-px z-10 w-[5px]',
-          getClusterBackgroundColor(clusterId()),
+          getClusterBackgroundColor(clustering()),
         )}
       />
       {/* <div
         aria-hidden='true'
         class='pointer-events-none absolute inset-y-0 right-0 w-16 opacity-60 transition-opacity group-hover:opacity-90'
         style={{
-          'background-image': `repeating-linear-gradient(-45deg, black 0 13.14px, ${getClusterCssColor(clusterId())} 13.14px 14.14px)`,
+          'background-image': `repeating-linear-gradient(-45deg, black 0 13.14px, ${getClusterCssColor(clustering())} 13.14px 14.14px)`,
           '-webkit-mask-image': 'linear-gradient(to right, transparent, black)',
           'mask-image': 'linear-gradient(to right, transparent, black)',
         }}
@@ -102,7 +102,7 @@ export function ListFontItem(props: ListFontItemProps) {
         aria-hidden='true'
         class='pointer-events-none absolute inset-y-0 left-px w-2'
         style={{
-          'background-image': `repeating-linear-gradient(-45deg, black 0 2.14px, ${getClusterCssColor(clusterId())} 2.14px 3.14px)`,
+          'background-image': `repeating-linear-gradient(-45deg, black 0 2.14px, ${getClusterCssColor(clustering())} 2.14px 3.14px)`,
         }}
       /> */}
       <div class='flex items-center gap-2 text-sm font-semibold'>
@@ -138,7 +138,7 @@ export function ListFontItem(props: ListFontItemProps) {
           class={cn(
             'absolute right-3 top-1/2 !size-4 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity',
             isPluginConnected() && props.isSentFontItem && 'opacity-100',
-            getClusterTextColor(clusterId()),
+            getClusterTextColor(clustering()),
           )}
           stroke-width={2}
         />

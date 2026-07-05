@@ -88,6 +88,14 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     // the dendrogram over the graph without re-clustering.
     let dendrogram = DendrogramData { ids, merges };
 
+    // Each font's persisted clustering carries its cluster's palette slot, so
+    // drawables read `k` and `color` from one place.
+    let color_by_label: Vec<Option<usize>> = stats
+        .clusters
+        .iter()
+        .map(|cluster| cluster.color_index)
+        .collect();
+
     let session_dir_for_second = session_dir.clone();
     let events = events.clone();
     let state_clone = state.clone();
@@ -103,6 +111,9 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             computed.clustering = Some(ClusteringData {
                 k: labels[i],
                 join_height: join_heights[i],
+                color: usize::try_from(labels[i])
+                    .ok()
+                    .and_then(|label| color_by_label.get(label).copied().flatten()),
             });
             save_computed_data(&session_dir_for_second, &meta.safe_name, &computed)?;
             progress_events::increase_numerator(
@@ -184,6 +195,7 @@ fn agglomerative_clustering(
                 size: 1,
                 centroid: vec![0.0; points.ncols()],
                 diameter: 0.0,
+                color_index: Some(0),
             }],
             cut_height: 0.0,
             merge_heights: Vec::new(),
@@ -309,9 +321,12 @@ fn agglomerative_clustering(
         }
     }
 
+    let color_indices = assign_color_indices(&active_clusters, &dendrogram, n);
+
     let cluster_stats = active_clusters
         .iter()
-        .map(|(node, members)| ClusterStat {
+        .zip(&color_indices)
+        .map(|((node, members), color_index)| ClusterStat {
             size: members.len(),
             centroid: normalized
                 .select(Axis(0), members)
@@ -319,6 +334,7 @@ fn agglomerative_clustering(
                 .map(|centroid| centroid.to_vec())
                 .unwrap_or_default(),
             diameter: node_height[*node],
+            color_index: Some(*color_index),
         })
         .collect();
 
@@ -332,6 +348,88 @@ fn agglomerative_clustering(
             merge_heights,
         },
     ))
+}
+
+/// Number of distinct cluster colors the UI palette provides; must stay in
+/// sync with the `--cluster-1..8` variables in `index.css` (see the frontend's
+/// `cluster-colors` modules).
+const CLUSTER_COLOR_COUNT: usize = 8;
+
+/// Assigns each active cluster a palette slot such that clusters drawn next to
+/// each other never share one.
+///
+/// The UI's only layout is the radial dendrogram: leaves sit on a ring in
+/// left-first pre-order of the merge tree, so every cluster occupies one
+/// contiguous arc and two clusters are visually adjacent exactly when their
+/// arcs are consecutive on the ring (cyclically — the first and last arc touch
+/// at the seam). Walking the tree with the same traversal order as the UI
+/// yields that ring order.
+///
+/// Every cluster starts from its historical color, `label % palette` — labels
+/// are numbered by smallest member index, so the slots land on the ring in no
+/// meaningful order (deliberately: a palette cycled along the ring would read
+/// as a hue wheel). One pass around the ring then repairs collisions only:
+/// a cluster that matches its predecessor (or, for the last cluster, the first
+/// one across the seam) moves to the nearest following slot free of both its
+/// neighbours, so untouched clusters keep their id-derived color. With at most
+/// `palette` clusters the id-derived slots are already pairwise distinct and
+/// nothing moves.
+///
+/// Returns one palette slot per cluster, in `active_clusters` (label) order.
+fn assign_color_indices(
+    active_clusters: &[(usize, Vec<usize>)],
+    dendrogram: &kodama::Dendrogram<f32>,
+    leaf_count: usize,
+) -> Vec<usize> {
+    let node_count = leaf_count + dendrogram.steps().len();
+    let mut label_of_node = vec![usize::MAX; node_count];
+    for (label, (node, _)) in active_clusters.iter().enumerate() {
+        label_of_node[*node] = label;
+    }
+
+    // Left-first pre-order over the full merge tree (right child pushed first,
+    // matching the UI's leaf placement), stopping at active cluster roots:
+    // the order they are met is their ring order.
+    let mut ring_order = Vec::with_capacity(active_clusters.len());
+    let mut stack = vec![node_count - 1];
+    while let Some(node) = stack.pop() {
+        if label_of_node[node] != usize::MAX {
+            ring_order.push(label_of_node[node]);
+            continue;
+        }
+        let step = &dendrogram.steps()[node - leaf_count];
+        stack.push(step.cluster2);
+        stack.push(step.cluster1);
+    }
+
+    let cluster_count = ring_order.len();
+    let mut color_indices: Vec<usize> = (0..active_clusters.len())
+        .map(|label| label % CLUSTER_COLOR_COUNT)
+        .collect();
+
+    // Repair pass around the ring. The first cluster never moves; each later
+    // one is checked against its already-final predecessor — plus, for the
+    // last cluster, the first one across the seam. A moved cluster also
+    // avoids its successor's current slot, so a repair never creates the
+    // next pair's collision and untouched clusters keep their id-derived
+    // color. Two forbidden slots always leave a free one in a palette of 8.
+    for rank in 1..cluster_count {
+        let label = ring_order[rank];
+        let previous = color_indices[ring_order[rank - 1]];
+        let next = color_indices[ring_order[(rank + 1) % cluster_count]];
+        let collides = color_indices[label] == previous
+            || (rank == cluster_count - 1 && color_indices[label] == next);
+        if !collides {
+            continue;
+        }
+        let base = color_indices[label];
+        color_indices[label] = (1..CLUSTER_COLOR_COUNT)
+            .map(|offset| (base + offset) % CLUSTER_COLOR_COUNT)
+            .find(|slot| *slot != previous && *slot != next)
+            .unwrap_or(base);
+    }
+
+    color_indices
 }
 
 /// Min-max normalises each column (feature) into `[0, 1]`, mapping

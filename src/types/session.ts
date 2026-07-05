@@ -46,6 +46,10 @@ export interface ClusterStat {
   centroid: number[];
   /** Largest internal merge height within this cluster; 0 for singletons. */
   diameter: number;
+  /** Palette slot to draw this cluster in, assigned by the backend so
+   *  ring-adjacent clusters never share one. Null only in stats persisted
+   *  before this field existed. */
+  color_index: number | null;
 }
 
 export interface ClusteringStats {

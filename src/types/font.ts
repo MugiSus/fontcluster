@@ -49,7 +49,19 @@ export interface ClusteringData {
    * normalized PCA space the clustering ran in. Higher = more of an outlier.
    */
   join_height: number;
+  /**
+   * Palette slot of this font's cluster (the cluster's
+   * `ClusterStat.color_index`, stamped per font by the backend). Null only in
+   * data persisted before colors existed; consumers then fall back to `k`.
+   */
+  color: number | null;
 }
+
+/**
+ * The identity + color slice of {@link ClusteringData} that colored drawables
+ * carry; `ClusteringData` itself satisfies it.
+ */
+export type ClusterColoring = Pick<ClusteringData, 'k' | 'color'>;
 
 export interface ComputedData {
   rendered_text?: string | null;

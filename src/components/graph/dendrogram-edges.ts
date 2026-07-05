@@ -1,5 +1,6 @@
 import { createMemo, createRoot } from 'solid-js';
 import { appState } from '@/store';
+import { type ClusterColoring } from '@/types/font';
 import {
   arcPoints,
   polarPoint,
@@ -32,9 +33,9 @@ export interface DendrogramEdge {
   /** Zero-based rank of the merge this edge belongs to, in linkage order
    *  (ascending dissimilarity). Edges are emitted in this order. */
   mergeIndex: number;
-  /** Final cluster id shared by every visible point under the merged node, or
-   *  `-1` when the merge spans clusters (or contains unclustered points). */
-  k: number;
+  /** Clustering shared by every visible point under the merged node;
+   *  undefined when the merge spans clusters (or has unclustered points). */
+  clustering: ClusterColoring | undefined;
 }
 
 /** One circular arc of the radial tree, in graph-space polar coordinates. */
@@ -47,9 +48,9 @@ export interface DendrogramArc {
   radius: number;
   /** Zero-based rank of the merge this arc belongs to. */
   mergeIndex: number;
-  /** Final cluster id shared by every visible point under the merged node, or
-   *  `-1` when the merge spans clusters (or contains unclustered points). */
-  k: number;
+  /** Clustering shared by every visible point under the merged node;
+   *  undefined when the merge spans clusters (or has unclustered points). */
+  clustering: ClusterColoring | undefined;
 }
 
 /** Resolved state of one dendrogram node (leaves first, then one per merge). */
@@ -57,7 +58,9 @@ interface ClusterNode {
   center: GraphCoordinate | null;
   angle: number;
   radius: number;
-  k: number;
+  /** Clustering shared by every visible leaf under this node; undefined when
+   *  the node spans clusters (or has unclustered leaves). */
+  clustering: ClusterColoring | undefined;
   /** Node index of the merge that absorbed this node; `-1` for the root. */
   parent: number;
   /** Leaf index of this node's recorded representative font. */
@@ -72,9 +75,9 @@ export interface DendrogramNodeDot extends GraphPointData {
   nodeIndex: number;
   /** Sample folder name of the representative leaf's font. */
   safeName: string;
-  /** Representative font cluster id, so merge nodes read like aliases of the
-   *  graph points whose sample they carry. */
-  k: number;
+  /** Representative font's clustering, so merge nodes read like aliases of
+   *  the graph points whose sample they carry. */
+  clustering: ClusterColoring | undefined;
   /** Zero-based rank of the node's merge. */
   mergeIndex: number;
 }
@@ -92,8 +95,8 @@ export interface DendrogramLeafLabel {
   angle: number;
   /** Ring radius of the leaf. */
   radius: number;
-  /** Final cluster id of the leaf's font, or `-1` when unclustered. */
-  k: number;
+  /** Clustering of the leaf's font; undefined when unclustered. */
+  clustering: ClusterColoring | undefined;
 }
 
 interface DendrogramTree {
@@ -126,12 +129,17 @@ function isCoincident(a: GraphCoordinate, b: GraphCoordinate): boolean {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < COINCIDENT_EPSILON;
 }
 
-/** Cluster id of a node whose children have ids `left`/`right`; mixing two
- *  different ids (or anything unclustered) yields `-1`. */
-function combineClusterIds(left: ClusterNode, right: ClusterNode): number {
-  if (!left.center) return right.k;
-  if (!right.center) return left.k;
-  return left.k === right.k ? left.k : -1;
+/** Clustering of a node whose children carry `left`/`right`; mixing two
+ *  different clusters (or anything unclustered) yields `undefined`. */
+function combineClustering(
+  left: ClusterNode,
+  right: ClusterNode,
+): ClusterColoring | undefined {
+  if (!left.center) return right.clustering;
+  if (!right.center) return left.clustering;
+  return left.clustering?.k === right.clustering?.k
+    ? left.clustering
+    : undefined;
 }
 
 const dendrogramTree = createRoot(() => {
@@ -146,7 +154,8 @@ const dendrogramTree = createRoot(() => {
       center: radial.nodeCenters[index] ?? null,
       angle: radial.nodeAngles[index] ?? Number.NaN,
       radius: radial.nodeRadii[index] ?? 0,
-      k: getGraphPointByKey(id)?.item.computed?.clustering?.k ?? -1,
+      clustering:
+        getGraphPointByKey(id)?.item.computed?.clustering ?? undefined,
       parent: -1,
       rep: index,
     }));
@@ -164,7 +173,7 @@ const dendrogramTree = createRoot(() => {
         text: fontName,
         angle: leaf.angle,
         radius: leaf.radius,
-        k: leaf.k,
+        clustering: leaf.clustering,
       });
     }
 
@@ -173,7 +182,7 @@ const dendrogramTree = createRoot(() => {
     const pushPolyline = (
       points: GraphCoordinate[],
       mergeIndex: number,
-      k: number,
+      clustering: ClusterColoring | undefined,
     ) => {
       for (const [index, point] of points.entries()) {
         if (index === 0) continue;
@@ -187,7 +196,7 @@ const dendrogramTree = createRoot(() => {
           x2: point.x,
           y2: point.y,
           mergeIndex,
-          k,
+          clustering,
         });
       }
     };
@@ -202,7 +211,7 @@ const dendrogramTree = createRoot(() => {
           center: null,
           angle: Number.NaN,
           radius: 0,
-          k: -1,
+          clustering: undefined,
           parent: -1,
           rep: 0,
         });
@@ -212,17 +221,17 @@ const dendrogramTree = createRoot(() => {
       const center = radial.nodeCenters[nodeIndex] ?? null;
       const angle = radial.nodeAngles[nodeIndex] ?? Number.NaN;
       const radius = radial.nodeRadii[nodeIndex] ?? 0;
-      const k = combineClusterIds(left, right);
+      const clustering = combineClustering(left, right);
 
       if (left.center && right.center) {
         // The bracket: a spoke from each child in to the merge's radius, and
         // the arc between the two elbows.
         const leftElbow = polarPoint(left.angle, radius);
-        pushPolyline([left.center, leftElbow], mergeIndex, k);
+        pushPolyline([left.center, leftElbow], mergeIndex, clustering);
         pushPolyline(
           [right.center, polarPoint(right.angle, radius)],
           mergeIndex,
-          k,
+          clustering,
         );
         if (
           radius > COINCIDENT_EPSILON &&
@@ -233,13 +242,13 @@ const dendrogramTree = createRoot(() => {
             angleTo: right.angle,
             radius,
             mergeIndex,
-            k,
+            clustering,
           });
         }
       } else if (center) {
         // One side hidden: the merge passes through as a plain spoke.
         const child = left.center ? left : right;
-        pushPolyline([child.center!, center], mergeIndex, k);
+        pushPolyline([child.center!, center], mergeIndex, clustering);
       }
 
       left.parent = nodeIndex;
@@ -248,7 +257,7 @@ const dendrogramTree = createRoot(() => {
         center,
         angle,
         radius,
-        k,
+        clustering,
         parent: -1,
         rep: merge.representative,
       });
@@ -269,8 +278,6 @@ const dendrogramTree = createRoot(() => {
         ? getGraphPointByKey(safeName)
         : undefined;
       if (!representativePoint || !safeName) continue;
-      const representativeCluster =
-        representativePoint?.item.computed?.clustering?.k ?? node.k;
       const alias = {
         key: `dendrogram:${nodeIndex}`,
         nodeIndex,
@@ -278,7 +285,8 @@ const dendrogramTree = createRoot(() => {
         item: representativePoint.item,
         x: node.center.x,
         y: node.center.y,
-        k: representativeCluster,
+        clustering:
+          representativePoint.item.computed?.clustering ?? node.clustering,
         mergeIndex: nodeIndex - leafCount,
       };
       dots.push(alias);

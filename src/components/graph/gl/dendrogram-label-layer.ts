@@ -117,7 +117,7 @@ export function createDendrogramLabelLayer(
       // World Y is the negated graph Y (graph space is y-down), so a graph
       // polar angle θ becomes a rotation of -θ around world Z.
       member.rotation.z = isFlipped ? Math.PI - label.angle : -label.angle;
-      member.color = getClusterColor({ k: label.k, isDark });
+      member.color = getClusterColor({ clustering: label.clustering, isDark });
     }
     batched.sync();
     props.requestRender();
