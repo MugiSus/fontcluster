@@ -40,6 +40,10 @@ export interface DendrogramLabelLayerProps {
   activeKeys: Accessor<Set<string>>;
   /** Whether the sample images are shown (labels then get a fixed extra gap). */
   showImages: Accessor<boolean>;
+  /** Whether the toolbar font-name toggle is enabled. */
+  showFontNames: Accessor<boolean>;
+  /** Leaf keys whose forced sample images are drawn, so labels remain visible. */
+  forcedImageLabelKeys: Accessor<Set<string>>;
   /** Whether the active theme is dark (picks cluster colors). */
   isDark: Accessor<boolean>;
   /** World-units-per-CSS-pixel factor so labels keep their px size on zoom. */
@@ -128,9 +132,14 @@ export function createDendrogramLabelLayer(
   createEffect(() => {
     const zoom = props.zoom();
     const showImages = props.showImages();
+    const forcedImageLabelKeys = props.forcedImageLabelKeys();
     for (const [index, label] of props.labels().entries()) {
       const member = members[index]!;
-      const gapPx = MARGIN_PX + (showImages ? SAMPLE_IMAGE_EXTRA_GAP_PX : 0);
+      const gapPx =
+        MARGIN_PX +
+        (showImages || forcedImageLabelKeys.has(label.key)
+          ? SAMPLE_IMAGE_EXTRA_GAP_PX
+          : 0);
       const position = polarPoint(label.angle, label.radius + gapPx * zoom);
       member.position.set(position.x, -position.y, 0);
       member.scale.set(zoom, zoom, 1);
@@ -138,15 +147,21 @@ export function createDendrogramLabelLayer(
     props.requestRender();
   });
 
-  // Visibility (the image thinning's pick + viewport cull) and the standard
-  // active/dimmed rule, via fill opacity: cheap in-place updates the batch
-  // reads per frame, so density changes while panning never resync either.
+  // Visibility (the image thinning's pick + viewport cull, plus forced image
+  // label exceptions) and the standard active/dimmed rule, via fill opacity:
+  // cheap in-place updates the batch reads per frame, so density changes while
+  // panning never resync either.
   createEffect(() => {
     const visibleKeys = props.visibleKeys();
     const activeKeys = props.activeKeys();
+    const showFontNames = props.showFontNames();
+    const forcedImageLabelKeys = props.forcedImageLabelKeys();
     for (const [index, label] of props.labels().entries()) {
       const member = members[index]!;
-      member.fillOpacity = !visibleKeys.has(label.key)
+      const isVisible =
+        (showFontNames && visibleKeys.has(label.key)) ||
+        forcedImageLabelKeys.has(label.key);
+      member.fillOpacity = !isVisible
         ? 0
         : activeKeys.has(label.key)
           ? 1

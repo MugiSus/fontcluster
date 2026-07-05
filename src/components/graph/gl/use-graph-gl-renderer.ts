@@ -131,9 +131,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
-      // The label layer only ever shows when the toolbar toggle is on; the
-      // passes below combine this with their own visibility rules.
-      const showLabels = props.showFontNames();
+      // The label layer shows for the toolbar toggle, plus selected/family
+      // image labels while their sample images are drawn.
+      const showLabels =
+        props.showFontNames() || forcedImageLabelKeys().size > 0;
 
       // Glow off: draw the sharp content (core dots + rings + images + tree)
       // straight to the screen. The halo object is only used by the bloom path.
@@ -284,11 +285,24 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return specs;
     });
 
-    // The sample images to show. The selected font always shows its image, but
-    // it still dims with its ring when filtered out / weight-inactive.
+    const forcedLeafImageKeys = createMemo(() => {
+      const keys = new Set<string>();
+      const selected = props.selectedKey();
+      const family = props.selectedFamily();
+      if (selected) keys.add(selected);
+      if (family) {
+        for (const point of props.getPointsByFamilyName(family)) {
+          keys.add(point.key);
+        }
+      }
+      return keys;
+    });
+
+    // The sample images to show. Selected / family-highlighted leaves always
+    // show their image, but still dim with their ring when filtered out /
+    // weight-inactive.
     const imageSpecs = createMemo<ImageSpec[]>(() => {
       const imageKeys = props.imageKeys();
-      const selected = props.selectedKey();
       const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
       const showImages = props.showImages();
       const predicate = activePredicate();
@@ -296,7 +310,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const wanted = new Set<string>();
       if (showImages) for (const key of imageKeys) wanted.add(key);
-      if (selected && !selectedDendrogramAnchor) wanted.add(selected);
+      for (const key of forcedLeafImageKeys()) wanted.add(key);
 
       const specs: ImageSpec[] = [];
       for (const key of wanted) {
@@ -350,6 +364,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const imageShownKeys = createMemo(
       () => new Set(imageSpecs().map((spec) => spec.key)),
     );
+    const forcedImageLabelKeys = createMemo(() => {
+      const shown = imageShownKeys();
+      const keys = new Set<string>();
+      for (const key of forcedLeafImageKeys()) {
+        if (shown.has(key)) keys.add(key);
+      }
+      return keys;
+    });
 
     // Merge nodes whose exemplar image is drawn; the dendrogram layer hides
     // their node dot the same way.
@@ -403,6 +425,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       visibleKeys: props.imageKeys,
       activeKeys: props.filteredKeys,
       showImages: props.showImages,
+      showFontNames: props.showFontNames,
+      forcedImageLabelKeys,
       isDark,
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
@@ -455,11 +479,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- effect: glow / font-name toggles ---------------------------------
     // `renderFrame` switches between the bloom and straight paths on `glow`
-    // and gates the label layer on `showFontNames`, but it reads both
-    // accessors untracked (it runs in rAF), so subscribe here to repaint.
+    // and gates the label layer on font-name / selected-image visibility, but
+    // it reads those accessors untracked (it runs in rAF), so subscribe here.
     createEffect(() => {
       props.glow();
       props.showFontNames();
+      forcedImageLabelKeys();
       scheduleRender();
     });
 
