@@ -1,7 +1,7 @@
 import { GRAPH_SIZE } from './constants';
 import { type GraphVisibleBounds } from './types';
 
-const DETAIL_IMAGE_GAP_PX = 40;
+const DETAIL_IMAGE_GAP_PX = 24;
 const CENTER = GRAPH_SIZE / 2;
 
 interface DetailPoint {
