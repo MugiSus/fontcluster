@@ -287,7 +287,7 @@ export function useAppEvents() {
           label: t.jobs.toasts.view(),
           onClick: () => setCurrentSessionId(event.payload),
         },
-        duration: 20000,
+        duration: 30000,
       });
     });
 
