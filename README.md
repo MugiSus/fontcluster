@@ -3,6 +3,17 @@
 
 Install at [fontcluster.mugisus.me](https://fontcluster.mugisus.me)
 
+## Acknowledgements
+
+FontCluster's font-similarity engine is built on **FontCLIP**, and this app would not exist without the research behind it. Deep thanks to its authors:
+
+> Yuki Tatsukawa, I-Chao Shen, Anran Qi, Yuki Koyama, Takeo Igarashi, and Ariel Shamir.
+> *FontCLIP: A Semantic Typography Visual-Language Model for Multilingual Font Applications.*
+> Computer Graphics Forum 43 (Eurographics 2024).
+> [arXiv:2403.06453](https://arxiv.org/abs/2403.06453) · [DOI](https://doi.org/10.1111/cgf.15043) · [Code](https://github.com/yukistavailable/FontCLIP)
+
+The model bundled with the app is a small student network distilled from a FontCLIP-style fine-tuned CLIP. See [src-tauri/models/README.md](src-tauri/models/README.md) for its provenance and further credits — CLIP (Radford et al.), the crowdsourced font attribute dataset (O'Donovan et al.), and RepViT (Wang et al.).
+
 ## License
 
 Copyright © 2026 mugisus
