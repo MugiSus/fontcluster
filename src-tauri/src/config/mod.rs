@@ -26,6 +26,11 @@ pub struct SessionConfig {
     pub app_version: String,
     pub modified_app_version: String,
     pub session_id: String,
+    /// User-given display name; empty means "untitled" and the UI falls back
+    /// to the rendering sample text. Defaults for sessions written before the
+    /// field existed.
+    #[serde(default)]
+    pub title: String,
     pub created_at: DateTime<Utc>,
     pub modified_at: DateTime<Utc>,
     pub discovered_fonts: HashMap<i32, Vec<String>>,

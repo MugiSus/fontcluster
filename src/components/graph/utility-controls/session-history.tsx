@@ -21,7 +21,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { appState } from '@/store';
-import { runProcessingJobs, setCurrentSessionId, stopJobs } from '@/actions';
+import {
+  runProcessingJobs,
+  setCurrentSessionId,
+  stopJobs,
+  updateSessionTitle,
+} from '@/actions';
 import { type SessionConfig } from '@/types/session';
 import { SessionHistoryItem } from './session-history-item';
 
@@ -220,6 +225,30 @@ export function SessionHistory(props: SessionHistoryProps) {
     }
   };
 
+  const renameSession = async (sessionId: string, newTitle: string) => {
+    const previousTitle =
+      sessionHistory.find((session) => session.session_id === sessionId)
+        ?.title ?? '';
+    // Update the store before the backend write settles so the old title
+    // doesn't flash while the rename is in flight; revert only on failure.
+    setSessionHistory(
+      (session) => session.session_id === sessionId,
+      'title',
+      newTitle,
+    );
+    try {
+      await updateSessionTitle(sessionId, newTitle);
+    } catch (error) {
+      console.error('Failed to rename session:', error);
+      setSessionHistory(
+        (session) => session.session_id === sessionId,
+        'title',
+        previousTitle,
+      );
+      toast.error(t.graph.utilityControls.sessionHistory.renameFailed());
+    }
+  };
+
   const continueSessionProcessing = (session: SessionConfig) => {
     toast.info(
       t.jobs.toasts.started({ text: session.algorithm.rendering.text }),
@@ -361,7 +390,9 @@ export function SessionHistory(props: SessionHistoryProps) {
                   fallback={
                     <PendingDeleteItem
                       sessionId={session.session_id}
-                      sampleText={session.algorithm.rendering.text || 'A'}
+                      sampleText={
+                        session.title || session.algorithm.rendering.text || 'A'
+                      }
                     />
                   }
                 >
@@ -381,6 +412,9 @@ export function SessionHistory(props: SessionHistoryProps) {
                       selectSession(session.session_id);
                     }}
                     onStopRun={() => stopCurrentRun(session.session_id)}
+                    onRename={(newTitle) =>
+                      renameSession(session.session_id, newTitle)
+                    }
                   />
                 </Show>
               )}

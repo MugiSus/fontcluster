@@ -118,6 +118,15 @@ impl AppState {
         Ok(Self::get_generated_dir()?.join(format!("{id}.{SESSION_DOCUMENT_EXTENSION}")))
     }
 
+    /// `<cache-dir>/FontCluster/CoreMLCache` — persisted compiled CoreML
+    /// models, so the multi-minute compile of a large model happens only once
+    /// rather than on every job run.
+    pub fn get_model_cache_dir() -> Result<PathBuf> {
+        dirs::cache_dir()
+            .map(|d| d.join("FontCluster").join("CoreMLCache"))
+            .ok_or_else(|| crate::error::AppError::Io("Cache dir not found".into()))
+    }
+
     /// `<cache-dir>/FontCluster/Session` — root of the unpacked working/view
     /// directories.
     pub fn get_session_cache_root() -> Result<PathBuf> {
@@ -321,6 +330,7 @@ impl AppState {
             app_version: env!("CARGO_PKG_VERSION").to_string(),
             modified_app_version: env!("CARGO_PKG_VERSION").to_string(),
             session_id: id.clone(),
+            title: String::new(),
             created_at: chrono::Utc::now(),
             modified_at: chrono::Utc::now(),
             discovered_fonts: HashMap::new(),
@@ -491,6 +501,59 @@ impl AppState {
         if let Some(session) = guard.as_mut() {
             f(progress_section_mut(&mut session.status.progress, stage));
             self.save_session(session)?;
+        }
+        Ok(())
+    }
+
+    /// Sets the user-given title of session `id` in every place it is stored:
+    /// the processing directory, the extracted `Current` view, the packed
+    /// document, and the in-memory active session.
+    ///
+    /// Deliberately does not bump `modified_at`: a rename is a metadata edit,
+    /// and bumping would reorder the history list and re-trigger unread
+    /// markers keyed on the modification time.
+    pub fn set_session_title(&self, id: &str, title: &str) -> Result<()> {
+        let _guard = session_view_lock()
+            .lock()
+            .map_err(|_| crate::error::AppError::Processing("Session view lock poisoned".into()))?;
+
+        let mut found = false;
+
+        let processing = Self::get_session_processing_dir(id)?;
+        if has_session_config(&processing) {
+            let mut session = read_session_config_from_dir(&processing)?;
+            session.title = title.to_string();
+            write_session_config_atomic(&session, &processing)?;
+            found = true;
+        }
+
+        let current = Self::get_session_current_dir(id)?;
+        if has_session_config(&current) {
+            let mut session = read_session_config_from_dir(&current)?;
+            session.title = title.to_string();
+            write_session_config_atomic(&session, &current)?;
+        }
+
+        let document_path = Self::get_session_document_path(id)?;
+        if document_path.exists() {
+            let mut session = read_session_config_from_document(&document_path)?;
+            session.title = title.to_string();
+            rewrite_document_config(&document_path, &session)?;
+            found = true;
+        }
+
+        if !found {
+            return Err(crate::error::AppError::Processing(format!(
+                "Session {} not found",
+                id
+            )));
+        }
+
+        let mut guard = self.current_session.lock().unwrap();
+        if let Some(session) = guard.as_mut() {
+            if session.session_id == id {
+                session.title = title.to_string();
+            }
         }
         Ok(())
     }
@@ -667,6 +730,84 @@ fn write_session_config_atomic(session: &SessionConfig, dir: &Path) -> Result<()
         crate::error::AppError::Io(format!(
             "Failed to persist session config {}: {}",
             config_path.display(),
+            e
+        ))
+    })?;
+    Ok(())
+}
+
+/// Replaces `config.json` inside a packed session document, copying every
+/// other entry verbatim (no re-compression). Written to a temp file first and
+/// atomically persisted, like [`pack_dir_to_document`].
+fn rewrite_document_config(document_path: &Path, session: &SessionConfig) -> Result<()> {
+    let file = fs::File::open(document_path).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to open session document {}: {}",
+            document_path.display(),
+            e
+        ))
+    })?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| {
+        crate::error::AppError::Processing(format!(
+            "Invalid session document {}: {}",
+            document_path.display(),
+            e
+        ))
+    })?;
+    let parent = document_path
+        .parent()
+        .ok_or_else(|| crate::error::AppError::Io("Document path has no parent".into()))?;
+    let temporary = tempfile::NamedTempFile::new_in(parent).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to create temporary session document in {}: {}",
+            parent.display(),
+            e
+        ))
+    })?;
+    {
+        let mut writer = zip::ZipWriter::new(temporary.as_file());
+        for i in 0..archive.len() {
+            let entry = archive.by_index_raw(i).map_err(|e| {
+                crate::error::AppError::Processing(format!(
+                    "Failed to read entry {} from {}: {}",
+                    i,
+                    document_path.display(),
+                    e
+                ))
+            })?;
+            if entry.name() == SESSION_CONFIG_FILE {
+                continue;
+            }
+            writer.raw_copy_file(entry).map_err(|e| {
+                crate::error::AppError::Processing(format!(
+                    "Failed to copy entry {} of {}: {}",
+                    i,
+                    document_path.display(),
+                    e
+                ))
+            })?;
+        }
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        writer.start_file(SESSION_CONFIG_FILE, options).map_err(|e| {
+            crate::error::AppError::Processing(format!(
+                "Failed to start zip entry {}: {}",
+                SESSION_CONFIG_FILE, e
+            ))
+        })?;
+        writer.write_all(serde_json::to_string_pretty(session)?.as_bytes())?;
+        writer.finish().map_err(|e| {
+            crate::error::AppError::Processing(format!(
+                "Failed to finish session document {}: {}",
+                document_path.display(),
+                e
+            ))
+        })?;
+    }
+    temporary.persist(document_path).map_err(|e| {
+        crate::error::AppError::Io(format!(
+            "Failed to persist session document {}: {}",
+            document_path.display(),
             e
         ))
     })?;

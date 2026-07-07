@@ -1,7 +1,7 @@
 //! Feature extraction stage: turns each rendered sample image into an
 //! embedding vector with an ONNX vision model.
 //!
-//! A single [`Analyzer`] owns one ONNX [`Session`] (RepViT) guarded by a
+//! A single [`Analyzer`] owns one ONNX [`Session`] guarded by a
 //! mutex. Images are preprocessed in parallel with [`rayon`], run through the
 //! model in fixed-size batches, and the resulting embedding for each image is
 //! written next to it as `vector.bin`. On Apple silicon the CoreML execution
@@ -29,16 +29,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::Ordering, Mutex};
 
-const MODEL_REPO_DIR: &str = "repvit_m1.dist_in1k";
+const MODEL_REPO_DIR: &str = "student_repvit_m1_0_v3";
 const MODEL_FILE_NAME: &str = "model.onnx";
 const DEFAULT_INPUT_SIZE: u32 = 224;
 const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
 const MODEL_BATCH_SIZE: usize = 8;
 const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
-/// ImageNet channel normalisation mean the model was trained with.
-const DEFAULT_MEAN: [f32; 3] = [0.485, 0.456, 0.406];
-/// ImageNet channel normalisation standard deviation.
-const DEFAULT_STD: [f32; 3] = [0.229, 0.224, 0.225];
 
 /// Owns the loaded ONNX model and the preprocessing spec it expects.
 pub struct Analyzer {
@@ -72,8 +68,6 @@ impl Analyzer {
             session: Mutex::new(load_session(&model_path)?),
             spec: ModelSpec {
                 input_size: DEFAULT_INPUT_SIZE,
-                mean: DEFAULT_MEAN,
-                std: DEFAULT_STD,
             },
         })
     }
@@ -198,7 +192,8 @@ fn load_session(model_path: &Path) -> Result<Session> {
     builder = builder
         .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
         .map_err(|err| AppError::Processing(err.to_string()))?;
-    builder = configure_execution_providers(builder)?;
+    let cache_dir = AppState::get_model_cache_dir()?.join(MODEL_REPO_DIR);
+    builder = configure_execution_providers(builder, &cache_dir)?;
 
     let session = builder
         .commit_from_file(model_path)
@@ -216,19 +211,35 @@ fn load_session(model_path: &Path) -> Result<Session> {
 
 /// Registers the platform's preferred execution provider.
 ///
-/// On Apple silicon this enables CoreML on the Neural Engine; on every other
+/// On Apple silicon this enables CoreML on the Neural Engine and points it at a
+/// persistent on-disk cache (`cache_dir`), so the expensive compile of a large
+/// model runs only on the first job rather than on every run. On every other
 /// target the builder is returned unchanged so the default CPU provider runs.
-fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuilder> {
+fn configure_execution_providers(
+    builder: SessionBuilder,
+    cache_dir: &Path,
+) -> Result<SessionBuilder> {
     #[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
     {
+        fs::create_dir_all(cache_dir).map_err(|e| {
+            AppError::Io(format!(
+                "Failed to create CoreML cache dir {}: {}",
+                cache_dir.display(),
+                e
+            ))
+        })?;
         let coreml = ep::CoreML::default()
             .with_compute_units(ep::coreml::ComputeUnits::CPUAndNeuralEngine)
             .with_model_format(ep::coreml::ModelFormat::MLProgram)
             .with_static_input_shapes(true)
-            .with_specialization_strategy(ep::coreml::SpecializationStrategy::FastPrediction);
+            .with_specialization_strategy(ep::coreml::SpecializationStrategy::FastPrediction)
+            .with_model_cache_dir(cache_dir.to_string_lossy());
         let available = ep::ExecutionProvider::is_available(&coreml)
             .map_err(|err| AppError::Processing(err.to_string()))?;
-        println!("🚀 Analyzer: CoreML EP available={available}");
+        println!(
+            "🚀 Analyzer: CoreML EP available={available}, cache={}",
+            cache_dir.display()
+        );
 
         builder
             .with_execution_providers([coreml.build().error_on_failure()])
@@ -237,6 +248,7 @@ fn configure_execution_providers(builder: SessionBuilder) -> Result<SessionBuild
 
     #[cfg(not(all(target_vendor = "apple", target_arch = "aarch64")))]
     {
+        let _ = cache_dir;
         Ok(builder)
     }
 }
@@ -387,13 +399,10 @@ fn preprocess_images(
         .collect()
 }
 
-/// The preprocessing the model expects: square input size and per-channel
-/// normalisation parameters.
+/// The preprocessing the model expects: square grayscale input size.
 #[derive(Debug, Clone)]
 struct ModelSpec {
     input_size: u32,
-    mean: [f32; 3],
-    std: [f32; 3],
 }
 
 /// Finds the directory containing the ONNX model.
@@ -442,18 +451,19 @@ fn resolve_model_dir() -> Result<PathBuf> {
 
 /// Loads and preprocesses one image into the model's NCHW input tensor.
 ///
-/// The image is resized to fit `spec.input_size`, alpha-composited onto black,
-/// centred in a square canvas, and normalised per channel.
+/// The renderer writes a white coverage mask in the PNG alpha channel. This
+/// converts that mask to black ink on a white background, producing the
+/// `[0, 1]` grayscale input expected by the FontCLIP ONNX wrapper.
 fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     let dyn_img = image::open(path)
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
     let resized = dyn_img.resize(spec.input_size, spec.input_size, FilterType::CatmullRom);
     let rgba = resized.to_rgba8();
-    let rgb_raw = rgba_to_rgb_with_alpha(&rgba);
-    let rgb = image::RgbImage::from_raw(rgba.width(), rgba.height(), rgb_raw)
-        .expect("RGBA to RGB conversion should preserve buffer size");
+    let gray_raw = rgba_mask_to_gray_on_white(&rgba);
+    let gray = image::GrayImage::from_raw(rgba.width(), rgba.height(), gray_raw)
+        .expect("RGBA mask to grayscale conversion should preserve buffer size");
 
-    let processed = center_in_square(&rgb, spec.input_size);
+    let processed = center_in_square(&gray, spec.input_size);
 
     if processed.width() != spec.input_size || processed.height() != spec.input_size {
         return Err(AppError::Processing(format!(
@@ -466,20 +476,20 @@ fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     }
 
     let mut input =
-        Array4::<f32>::zeros((1, 3, spec.input_size as usize, spec.input_size as usize));
-    fill_nchw_input(&processed, &mut input, Some(&spec.mean), Some(&spec.std))?;
+        Array4::<f32>::zeros((1, 1, spec.input_size as usize, spec.input_size as usize));
+    fill_nchw_input(&processed, &mut input)?;
 
     Ok(input)
 }
 
-/// Centres `source` on a black `target_size` square, returning it unchanged if
+/// Centres `source` on a white `target_size` square, returning it unchanged if
 /// it is already that size.
-fn center_in_square(source: &image::RgbImage, target_size: u32) -> image::RgbImage {
+fn center_in_square(source: &image::GrayImage, target_size: u32) -> image::GrayImage {
     if source.width() == target_size && source.height() == target_size {
         return source.clone();
     }
 
-    let mut canvas = image::RgbImage::new(target_size, target_size);
+    let mut canvas = image::GrayImage::from_pixel(target_size, target_size, image::Luma([255]));
     let x_offset = (target_size - source.width()) / 2;
     let y_offset = (target_size - source.height()) / 2;
     replace(
@@ -491,59 +501,35 @@ fn center_in_square(source: &image::RgbImage, target_size: u32) -> image::RgbIma
     canvas
 }
 
-/// Flattens RGBA pixels to RGB by premultiplying each channel with alpha
-/// (i.e. compositing over black), in parallel.
-fn rgba_to_rgb_with_alpha(rgba: &image::RgbaImage) -> Vec<u8> {
-    let mut rgb = vec![0u8; rgba.width() as usize * rgba.height() as usize * 3];
-    rgb.par_chunks_exact_mut(3)
+/// Converts the renderer's white alpha mask into grayscale black ink on white.
+fn rgba_mask_to_gray_on_white(rgba: &image::RgbaImage) -> Vec<u8> {
+    let mut gray = vec![255u8; rgba.width() as usize * rgba.height() as usize];
+    gray.par_iter_mut()
         .zip(rgba.as_raw().par_chunks_exact(4))
         .for_each(|(dst, src)| {
             let alpha = src[3] as f32 / 255.0;
-            dst[0] = (src[0] as f32 * alpha).round() as u8;
-            dst[1] = (src[1] as f32 * alpha).round() as u8;
-            dst[2] = (src[2] as f32 * alpha).round() as u8;
+            let coverage = src[0] as f32 * alpha;
+            *dst = (255.0 - coverage).round().clamp(0.0, 255.0) as u8;
         });
-    rgb
+    gray
 }
 
-/// Fills an NCHW tensor from an RGB image, one channel plane per thread.
+/// Fills an NCHW tensor from a grayscale image.
 ///
-/// Pixel values are scaled to `[0, 1]` and, when both `mean` and `std` are
-/// supplied, standardised as `(value - mean) / std` per channel.
-fn fill_nchw_input(
-    processed: &image::RgbImage,
-    input: &mut Array4<f32>,
-    mean: Option<&[f32]>,
-    std: Option<&[f32]>,
-) -> Result<()> {
+/// Pixel values are scaled to `[0, 1]`; CLIP channel replication and
+/// normalisation are intentionally owned by the ONNX wrapper.
+fn fill_nchw_input(processed: &image::GrayImage, input: &mut Array4<f32>) -> Result<()> {
     let plane_len = processed.width() as usize * processed.height() as usize;
     let input_slice = input
         .as_slice_mut()
         .expect("Input tensor should be contiguous");
     let pixels = processed.as_raw();
 
-    input_slice
-        .par_chunks_mut(plane_len)
-        .enumerate()
-        .for_each(|(channel, plane)| {
-            let mean_value = mean
-                .and_then(|values| values.get(channel))
-                .copied()
-                .unwrap_or(0.0);
-            let std_value = std
-                .and_then(|values| values.get(channel))
-                .copied()
-                .unwrap_or(1.0);
-
-            for (index, pixel) in pixels.chunks_exact(3).enumerate() {
-                let value = pixel[channel] as f32 / 255.0;
-                plane[index] = if mean.is_some() && std.is_some() {
-                    (value - mean_value) / std_value
-                } else {
-                    value
-                };
-            }
-        });
+    input_slice.par_chunks_mut(plane_len).for_each(|plane| {
+        for (index, pixel) in pixels.iter().enumerate() {
+            plane[index] = *pixel as f32 / 255.0;
+        }
+    });
 
     Ok(())
 }

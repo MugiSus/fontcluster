@@ -111,6 +111,9 @@ export interface ProcessingStatus {
 
 export interface SessionConfig {
   session_id: string;
+  /** User-given display name; empty means "untitled" and the UI falls back to
+   *  the rendering sample text. */
+  title: string;
   created_at: string;
   modified_at: string;
   app_version: string;

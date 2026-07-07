@@ -180,6 +180,17 @@ fn prune_session_history(sessions: &mut Vec<StoredSession>, state: &AppState) ->
     Ok(())
 }
 
+/// Sets a session's user-given title. An empty `new_title` clears it, letting
+/// the UI fall back to the rendering sample text.
+#[command]
+pub async fn update_session_title(
+    session_id: String,
+    new_title: String,
+    state: State<'_, AppState>,
+) -> Result<()> {
+    state.set_session_title(&session_id, &new_title)
+}
+
 /// Returns the ids of sessions that currently have a running job.
 #[command]
 pub async fn get_running_session_ids(state: State<'_, AppState>) -> Result<Vec<String>> {

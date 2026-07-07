@@ -111,6 +111,8 @@ export const en = {
         continueProcessing: 'Resume',
         delete: 'Delete',
         undoDelete: 'Undo',
+        renameTitle: 'Click to edit title',
+        renameFailed: 'Failed to rename session',
         statusRendering: 'Rendering',
         statusAnalyzing: 'Analyzing',
         statusClustering: 'Clustering',

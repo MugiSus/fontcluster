@@ -28,6 +28,7 @@ export const DEFAULT_SESSION_CONFIG: SessionConfig = {
   app_version: '0.5.0',
   modified_app_version: '0.5.0',
   session_id: '',
+  title: '',
   created_at: new Date().toISOString(),
   modified_at: new Date().toISOString(),
   status: {

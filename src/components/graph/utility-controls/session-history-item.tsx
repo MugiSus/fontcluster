@@ -1,6 +1,8 @@
-import { Show } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { HistoryIcon, PauseIcon, PlayIcon, Trash2Icon } from 'lucide-solid';
 import { Button } from '@/components/ui/button';
+import { TextField, TextFieldInput } from '@/components/ui/text-field';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -22,6 +24,7 @@ interface SessionHistoryItemProps {
   onContinueProcessing: () => void;
   onSelectSession: () => void;
   onStopRun: () => void;
+  onRename: (newTitle: string) => void;
 }
 
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
@@ -30,6 +33,28 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const isRunning = () => props.isRunning;
 
   const isComplete = () => session()?.status.process_status === 'clustered';
+
+  const sampleText = () => session().algorithm.rendering.text || 'A';
+
+  // Ephemeral edit state only; the title itself lives in the session config.
+  const [isEditingTitle, setIsEditingTitle] = createSignal(false);
+  let titleInput: HTMLInputElement | undefined;
+
+  const startTitleEdit = () => {
+    // The worker process rewrites config.json while a job runs; renaming
+    // concurrently could clobber its updates, so editing waits until it stops.
+    if (isRunning()) return;
+    setIsEditingTitle(true);
+    titleInput?.focus();
+    titleInput?.select();
+  };
+
+  const commitTitleEdit = () => {
+    if (!isEditingTitle()) return;
+    const newTitle = titleInput?.value.trim() ?? '';
+    setIsEditingTitle(false);
+    if (newTitle !== session().title) props.onRename(newTitle);
+  };
 
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;
@@ -53,7 +78,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   return (
     <article class='relative rounded-sm p-2 text-xs transition-colors hover:bg-muted/60'>
       <div class='flex items-start justify-between gap-2'>
-        <div class='flex min-w-0 flex-col gap-1'>
+        <div class='flex min-w-0 flex-1 flex-col gap-1'>
           <div class='flex min-w-0 items-center gap-2'>
             <Show when={!isComplete()}>
               <span class='font-bold capitalize text-muted-foreground'>
@@ -77,9 +102,44 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               })}
             </time>
           </div>
-          <p class='truncate text-sm font-medium leading-5'>
-            {session().algorithm.rendering.text || 'A'}
-          </p>
+          <Show
+            when={isEditingTitle()}
+            fallback={
+              <p
+                class={cn(
+                  'truncate text-sm font-medium leading-5',
+                  !isRunning() && 'cursor-text',
+                )}
+                title={
+                  isRunning()
+                    ? undefined
+                    : t.graph.utilityControls.sessionHistory.renameTitle()
+                }
+                onClick={startTitleEdit}
+              >
+                {session().title || sampleText()}
+              </p>
+            }
+          >
+            <TextField>
+              <TextFieldInput
+                ref={titleInput}
+                type='text'
+                class='h-5 rounded-none px-0 text-left font-medium leading-5 placeholder:font-normal hover:bg-transparent focus:bg-transparent'
+                value={session().title}
+                placeholder={sampleText()}
+                aria-label={t.graph.utilityControls.sessionHistory.renameTitle()}
+                onBlur={commitTitleEdit}
+                onKeyDown={(event: KeyboardEvent) => {
+                  // Keep typing from triggering the dropdown menu's own
+                  // keyboard navigation/typeahead.
+                  event.stopPropagation();
+                  if (event.key === 'Enter') commitTitleEdit();
+                  if (event.key === 'Escape') setIsEditingTitle(false);
+                }}
+              />
+            </TextField>
+          </Show>
           <Show when={isComplete()}>
             <p class='truncate text-muted-foreground'>
               {t.graph.utilityControls.sessionHistory.summary({
