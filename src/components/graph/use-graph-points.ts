@@ -11,13 +11,15 @@ import {
   type DendrogramImageAnchor,
   dendrogramImageAnchors,
 } from './dendrogram-edges';
+import { collectVisibleRadialImageKeys } from './radial-image-visibility';
 import {
   findSelectableFontPoint,
   fontPoints,
   getVisibleImageKeys,
 } from './font-point-index';
-import { collectVisibleImageKeys, getVisibleBounds } from './lib';
 import { type GraphViewBox, type GraphVisibleBounds } from './types';
+
+const VISIBLE_BOUNDS_PADDING = 24;
 
 interface UseGraphPointsProps {
   svgSize: Accessor<{ width: number; height: number }>;
@@ -31,9 +33,34 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     createSignal<GraphVisibleBounds | null>(null);
   const [imageZoomFactor, setImageZoomFactor] = createSignal(1);
 
-  const visibleBounds = createMemo(() =>
-    getVisibleBounds(props.viewBox(), props.svgSize(), props.zoomFactor()),
-  );
+  const visibleBounds = createMemo<GraphVisibleBounds>(() => {
+    const viewBox = props.viewBox();
+    const size = props.svgSize();
+    const scale = props.zoomFactor();
+
+    return {
+      minX:
+        viewBox.x +
+        viewBox.width / 2 -
+        (size.width * scale) / 2 -
+        VISIBLE_BOUNDS_PADDING * scale,
+      maxX:
+        viewBox.x +
+        viewBox.width / 2 +
+        (size.width * scale) / 2 +
+        VISIBLE_BOUNDS_PADDING * scale,
+      minY:
+        viewBox.y +
+        viewBox.height / 2 -
+        (size.height * scale) / 2 -
+        VISIBLE_BOUNDS_PADDING * scale,
+      maxY:
+        viewBox.y +
+        viewBox.height / 2 +
+        (size.height * scale) / 2 +
+        VISIBLE_BOUNDS_PADDING * scale,
+    };
+  });
 
   createEffect(() => {
     if (props.isMoving()) return;
@@ -52,23 +79,25 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     return getVisibleImageKeys(bounds, imageZoomFactor());
   });
 
+  const selectableDendrogramAnchors = createMemo(() =>
+    dendrogramImageAnchors().filter((point) =>
+      appState.fonts.filteredKeys.has(point.safeName),
+    ),
+  );
+
   const selectableDendrogramAnchorTree = createMemo(() =>
     quadtree<DendrogramImageAnchor>()
       .x((point) => point.x)
       .y((point) => point.y)
-      .addAll(
-        dendrogramImageAnchors().filter((point) =>
-          appState.fonts.filteredKeys.has(point.safeName),
-        ),
-      ),
+      .addAll(selectableDendrogramAnchors()),
   );
 
   const visibleDendrogramImageKeys = createMemo(() => {
     const bounds = imageVisibleBounds();
     if (!bounds) return new Set<string>();
 
-    return collectVisibleImageKeys(
-      selectableDendrogramAnchorTree(),
+    return collectVisibleRadialImageKeys(
+      selectableDendrogramAnchors(),
       bounds,
       imageZoomFactor(),
     );

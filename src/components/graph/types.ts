@@ -27,7 +27,3 @@ export interface GraphPointData {
   x: number;
   y: number;
 }
-
-export interface GraphPointSearchTree {
-  find: (x: number, y: number, radius?: number) => GraphPointData | undefined;
-}

@@ -6,8 +6,8 @@ import {
   radialDendrogramLayout,
   type RadialDendrogramLayout,
 } from './dendrogram-layout';
+import { collectVisibleRadialImageKeys } from './radial-image-visibility';
 import { type GraphPointData, type GraphVisibleBounds } from './types';
-import { collectVisibleImageKeys } from './lib';
 
 const MAX_NEAREST_FONT_ITEMS = 60;
 
@@ -118,7 +118,7 @@ const fontPointIndex = createRoot(() => {
     findSelectablePoint: (x: number, y: number, radius: number) =>
       selectableTree().find(x, y, radius),
     getVisibleImageKeys: (bounds: GraphVisibleBounds, scale: number) =>
-      collectVisibleImageKeys(selectableTree(), bounds, scale),
+      collectVisibleRadialImageKeys(selectablePoints(), bounds, scale),
     getNearestSelectableFontItems: (selectedKey: string) => {
       const selectedPoint = indexes().byKey.get(selectedKey);
       if (!selectedPoint) return [];
