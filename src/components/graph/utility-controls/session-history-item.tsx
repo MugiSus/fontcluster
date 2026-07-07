@@ -1,6 +1,7 @@
 import { createSignal, Show } from 'solid-js';
 import { HistoryIcon, PauseIcon, PlayIcon, Trash2Icon } from 'lucide-solid';
 import { Button } from '@/components/ui/button';
+import { TextField, TextFieldInput } from '@/components/ui/text-field';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -77,7 +78,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   return (
     <article class='relative rounded-sm p-2 text-xs transition-colors hover:bg-muted/60'>
       <div class='flex items-start justify-between gap-2'>
-        <div class='flex min-w-0 flex-col gap-1'>
+        <div class='flex min-w-0 flex-1 flex-col gap-1'>
           <div class='flex min-w-0 items-center gap-2'>
             <Show when={!isComplete()}>
               <span class='font-bold capitalize text-muted-foreground'>
@@ -120,22 +121,24 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               </p>
             }
           >
-            <input
-              ref={titleInput}
-              type='text'
-              class='w-full bg-transparent text-sm font-medium leading-5 outline-none placeholder:font-normal placeholder:text-muted-foreground'
-              value={session().title}
-              placeholder={sampleText()}
-              aria-label={t.graph.utilityControls.sessionHistory.renameTitle()}
-              onBlur={commitTitleEdit}
-              onKeyDown={(event) => {
-                // Keep typing from triggering the dropdown menu's own
-                // keyboard navigation/typeahead.
-                event.stopPropagation();
-                if (event.key === 'Enter') commitTitleEdit();
-                if (event.key === 'Escape') setIsEditingTitle(false);
-              }}
-            />
+            <TextField>
+              <TextFieldInput
+                ref={titleInput}
+                type='text'
+                class='h-5 rounded-none px-0 text-left font-medium leading-5 placeholder:font-normal hover:bg-transparent focus:bg-transparent'
+                value={session().title}
+                placeholder={sampleText()}
+                aria-label={t.graph.utilityControls.sessionHistory.renameTitle()}
+                onBlur={commitTitleEdit}
+                onKeyDown={(event: KeyboardEvent) => {
+                  // Keep typing from triggering the dropdown menu's own
+                  // keyboard navigation/typeahead.
+                  event.stopPropagation();
+                  if (event.key === 'Enter') commitTitleEdit();
+                  if (event.key === 'Escape') setIsEditingTitle(false);
+                }}
+              />
+            </TextField>
           </Show>
           <Show when={isComplete()}>
             <p class='truncate text-muted-foreground'>

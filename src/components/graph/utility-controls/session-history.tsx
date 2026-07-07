@@ -226,15 +226,25 @@ export function SessionHistory(props: SessionHistoryProps) {
   };
 
   const renameSession = async (sessionId: string, newTitle: string) => {
+    const previousTitle =
+      sessionHistory.find((session) => session.session_id === sessionId)
+        ?.title ?? '';
+    // Update the store before the backend write settles so the old title
+    // doesn't flash while the rename is in flight; revert only on failure.
+    setSessionHistory(
+      (session) => session.session_id === sessionId,
+      'title',
+      newTitle,
+    );
     try {
       await updateSessionTitle(sessionId, newTitle);
+    } catch (error) {
+      console.error('Failed to rename session:', error);
       setSessionHistory(
         (session) => session.session_id === sessionId,
         'title',
-        newTitle,
+        previousTitle,
       );
-    } catch (error) {
-      console.error('Failed to rename session:', error);
       toast.error(t.graph.utilityControls.sessionHistory.renameFailed());
     }
   };
