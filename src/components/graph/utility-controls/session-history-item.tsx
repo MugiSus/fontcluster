@@ -1,6 +1,7 @@
-import { Show } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { HistoryIcon, PauseIcon, PlayIcon, Trash2Icon } from 'lucide-solid';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -22,6 +23,7 @@ interface SessionHistoryItemProps {
   onContinueProcessing: () => void;
   onSelectSession: () => void;
   onStopRun: () => void;
+  onRename: (newTitle: string) => void;
 }
 
 export function SessionHistoryItem(props: SessionHistoryItemProps) {
@@ -30,6 +32,28 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
   const isRunning = () => props.isRunning;
 
   const isComplete = () => session()?.status.process_status === 'clustered';
+
+  const sampleText = () => session().algorithm.rendering.text || 'A';
+
+  // Ephemeral edit state only; the title itself lives in the session config.
+  const [isEditingTitle, setIsEditingTitle] = createSignal(false);
+  let titleInput: HTMLInputElement | undefined;
+
+  const startTitleEdit = () => {
+    // The worker process rewrites config.json while a job runs; renaming
+    // concurrently could clobber its updates, so editing waits until it stops.
+    if (isRunning()) return;
+    setIsEditingTitle(true);
+    titleInput?.focus();
+    titleInput?.select();
+  };
+
+  const commitTitleEdit = () => {
+    if (!isEditingTitle()) return;
+    const newTitle = titleInput?.value.trim() ?? '';
+    setIsEditingTitle(false);
+    if (newTitle !== session().title) props.onRename(newTitle);
+  };
 
   const canRestore = () =>
     isComplete() && !isRunning() && !!session()?.session_id;
@@ -77,9 +101,42 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               })}
             </time>
           </div>
-          <p class='truncate text-sm font-medium leading-5'>
-            {session().algorithm.rendering.text || 'A'}
-          </p>
+          <Show
+            when={isEditingTitle()}
+            fallback={
+              <p
+                class={cn(
+                  'truncate text-sm font-medium leading-5',
+                  !isRunning() && 'cursor-text',
+                )}
+                title={
+                  isRunning()
+                    ? undefined
+                    : t.graph.utilityControls.sessionHistory.renameTitle()
+                }
+                onClick={startTitleEdit}
+              >
+                {session().title || sampleText()}
+              </p>
+            }
+          >
+            <input
+              ref={titleInput}
+              type='text'
+              class='w-full bg-transparent text-sm font-medium leading-5 outline-none placeholder:font-normal placeholder:text-muted-foreground'
+              value={session().title}
+              placeholder={sampleText()}
+              aria-label={t.graph.utilityControls.sessionHistory.renameTitle()}
+              onBlur={commitTitleEdit}
+              onKeyDown={(event) => {
+                // Keep typing from triggering the dropdown menu's own
+                // keyboard navigation/typeahead.
+                event.stopPropagation();
+                if (event.key === 'Enter') commitTitleEdit();
+                if (event.key === 'Escape') setIsEditingTitle(false);
+              }}
+            />
+          </Show>
           <Show when={isComplete()}>
             <p class='truncate text-muted-foreground'>
               {t.graph.utilityControls.sessionHistory.summary({

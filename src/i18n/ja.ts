@@ -99,6 +99,8 @@ export const ja: Dictionary = {
         continueProcessing: '再開',
         delete: '削除',
         undoDelete: '取り消す',
+        renameTitle: 'クリックしてタイトルを編集',
+        renameFailed: 'タイトルの変更に失敗しました',
         statusRendering: 'レンダリング中',
         statusAnalyzing: '解析中',
         statusClustering: 'クラスタリング中',

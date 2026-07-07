@@ -161,6 +161,22 @@ export const setCurrentSessionId = async (id: string) => {
   await loadSession(id);
 };
 
+/**
+ * Persists a session's user-given title (empty clears it back to the
+ * sample-text fallback) and mirrors it into the active session's store slice
+ * when the renamed session is the one currently loaded. Rejects on failure so
+ * the calling surface can show its own localized feedback.
+ */
+export const updateSessionTitle = async (
+  sessionId: string,
+  newTitle: string,
+) => {
+  await invoke('update_session_title', { sessionId, newTitle });
+  if (appState.session.session_id === sessionId) {
+    setAppState('session', 'title', newTitle);
+  }
+};
+
 export const runProcessingJobs = async (
   algorithm: Partial<AlgorithmConfig>,
   sessionId?: string,

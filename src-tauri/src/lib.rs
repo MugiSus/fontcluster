@@ -153,6 +153,7 @@ pub fn run() {
             crate::commands::get_running_session_ids,
             crate::commands::get_latest_session_id,
             crate::commands::delete_session,
+            crate::commands::update_session_title,
             crate::commands::run_jobs,
             crate::commands::stop_jobs,
             crate::commands::render_font_preview,
