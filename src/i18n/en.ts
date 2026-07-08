@@ -36,6 +36,12 @@ export const en = {
     preprocessDimensions: 'preprocess dimensions',
     groupingThreshold: 'threshold',
     targetClusters: 'target clusters',
+    attrEmphasis: {
+      thin: 'weight emphasis',
+      formal: 'formality emphasis',
+      serif: 'serif emphasis',
+      italic: 'italic emphasis',
+    },
     sections: {
       render: 'render',
       analyze: 'analyze',

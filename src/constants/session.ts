@@ -17,6 +17,7 @@ export const DEFAULT_CLUSTERING_CONFIG: ClusteringOptions = {
   preprocessing_dimensions: 16,
   distance_threshold: 0.5,
   target_cluster_count: 0,
+  attribute_emphasis: { thin: 0, formal: 0, serif: 0, italic: 0 },
 };
 
 export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {

@@ -24,6 +24,12 @@ export const ja: Dictionary = {
     preprocessDimensions: '前処理次元数',
     groupingThreshold: '閾値',
     targetClusters: '目標クラスタ数',
+    attrEmphasis: {
+      thin: '太さ重視',
+      formal: 'フォーマルさ重視',
+      serif: 'セリフ重視',
+      italic: 'イタリック重視',
+    },
     sections: {
       render: '描画',
       analyze: '解析',

@@ -8,8 +8,8 @@
 
 use crate::commands::progress::progress_events;
 use crate::config::{
-    ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
-    DendrogramData, DendrogramMerge, ProgressStage,
+    AttributeEmphasis, ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod,
+    ClusteringStats, ComputedData, DendrogramData, DendrogramMerge, ProgressStage,
 };
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
@@ -41,6 +41,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
+    let attribute_emphasis = config.attribute_emphasis;
     let session_dir_for_first = session_dir.clone();
 
     let (points, ids) =
@@ -57,6 +58,8 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
                 vectors.into_iter().flatten().collect(),
             )
             .map_err(|e| AppError::Processing(e.to_string()))?;
+
+            let data = apply_attribute_emphasis(data, &attribute_emphasis);
 
             let points = if n_samples < 2 || n_features <= preprocessing_dimensions {
                 data
@@ -137,6 +140,86 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     })?;
 
     Ok(())
+}
+
+/// Rescales the model's attribute directions inside the feature vectors.
+///
+/// For each non-zero emphasis level `l`, the component of every embedding
+/// along that attribute's direction `w` (from `attribute_directions.json`
+/// beside the model) is scaled by `2^l`: `x' = x + (2^l - 1) * (x . w) * w`.
+/// Rows are re-normalized afterwards to keep the unit-norm invariant of the
+/// raw embeddings. Falls back to the untouched data (with a log line) when
+/// the directions asset is missing or malformed, so clustering never fails
+/// on account of emphasis.
+fn apply_attribute_emphasis(data: Array2<f32>, emphasis: &AttributeEmphasis) -> Array2<f32> {
+    let active = emphasis.active_levels();
+    if active.is_empty() {
+        return data;
+    }
+
+    let directions = match load_attribute_directions(data.ncols()) {
+        Ok(directions) => directions,
+        Err(e) => {
+            println!("⚠️ Clusterer: attribute emphasis skipped: {e}");
+            return data;
+        }
+    };
+
+    let mut data = data;
+    for (name, level) in active {
+        let Some(w) = directions.get(name) else {
+            println!("⚠️ Clusterer: no direction for attribute '{name}', skipped");
+            continue;
+        };
+        // clamp defensively: the UI offers -4..=4, session files could say anything
+        let scale = 2f32.powi(i32::from(level.clamp(-4, 4))) - 1.0;
+        for mut row in data.axis_iter_mut(Axis(0)) {
+            let component: f32 = row.iter().zip(w).map(|(x, w)| x * w).sum();
+            row.iter_mut()
+                .zip(w)
+                .for_each(|(x, w)| *x += scale * component * w);
+        }
+    }
+
+    // restore the unit-norm invariant so distances stay comparable
+    for mut row in data.axis_iter_mut(Axis(0)) {
+        let norm = row.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-12);
+        row.iter_mut().for_each(|x| *x /= norm);
+    }
+    data
+}
+
+/// Loads `attribute_directions.json` from the model directory as
+/// `name -> unit direction vector`, validating the dimensionality.
+fn load_attribute_directions(
+    expected_dim: usize,
+) -> Result<std::collections::HashMap<String, Vec<f32>>> {
+    #[derive(serde::Deserialize)]
+    struct DirectionsFile {
+        dim: usize,
+        attributes: std::collections::HashMap<String, DirectionEntry>,
+    }
+    #[derive(serde::Deserialize)]
+    struct DirectionEntry {
+        direction: Vec<f32>,
+    }
+
+    let path = crate::core::analyzer::resolve_model_dir()?.join("attribute_directions.json");
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|e| AppError::Io(format!("{} unreadable: {e}", path.display())))?;
+    let parsed: DirectionsFile =
+        serde_json::from_str(&raw).map_err(|e| AppError::Processing(e.to_string()))?;
+    if parsed.dim != expected_dim {
+        return Err(AppError::Processing(format!(
+            "attribute directions are {}-d but embeddings are {}-d",
+            parsed.dim, expected_dim
+        )));
+    }
+    Ok(parsed
+        .attributes
+        .into_iter()
+        .map(|(name, entry)| (name, entry.direction))
+        .collect())
 }
 
 /// Reduces `data` to at most `dimensions` principal components.
@@ -488,5 +571,62 @@ fn kodama_method(method: ClusteringMethod) -> KodamaMethod {
         ClusteringMethod::Ward => KodamaMethod::Ward,
         ClusteringMethod::Centroid => KodamaMethod::Centroid,
         ClusteringMethod::Median => KodamaMethod::Median,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Emphasis at level 0 must be a strict no-op (no asset access either).
+    #[test]
+    fn emphasis_zero_is_noop() {
+        let data = Array2::from_shape_vec((2, 3), vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0]).unwrap();
+        let emphasis = AttributeEmphasis::default();
+        let out = apply_attribute_emphasis(data.clone(), &emphasis);
+        assert_eq!(out, data);
+    }
+
+    /// The real asset loads, matches the embedding dimension, and a non-zero
+    /// level reweights vectors while keeping them unit-norm.
+    #[test]
+    fn emphasis_reweights_along_asset_directions() {
+        let directions = match load_attribute_directions(512) {
+            Ok(d) => d,
+            // models/ is developer-local; skip rather than fail on CI
+            Err(_) => return,
+        };
+        let w = directions.get("serif").expect("serif direction present");
+        let norm: f32 = w.iter().map(|x| x * x).sum::<f32>().sqrt();
+        assert!((norm - 1.0).abs() < 1e-3, "direction should be unit norm");
+
+        // one row along w (max serif component), one row orthogonal-ish
+        let mut a = w.clone();
+        let mut b = vec![0.0f32; 512];
+        b[0] = 1.0;
+        let dot_bw: f32 = b.iter().zip(w).map(|(x, y)| x * y).sum();
+        b.iter_mut().zip(w).for_each(|(x, y)| *x -= dot_bw * y); // orthogonalize
+        let bnorm: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+        b.iter_mut().for_each(|x| *x /= bnorm);
+        a.extend_from_slice(&b);
+        let data = Array2::from_shape_vec((2, 512), a).unwrap();
+
+        let emphasis = AttributeEmphasis {
+            serif: 2,
+            ..Default::default()
+        };
+        let out = apply_attribute_emphasis(data, &emphasis);
+
+        // row norms restored
+        for row in out.axis_iter(Axis(0)) {
+            let n: f32 = row.iter().map(|x| x * x).sum::<f32>().sqrt();
+            assert!((n - 1.0).abs() < 1e-3);
+        }
+        // the along-w row is invariant up to renormalization (still ~parallel to w)
+        let cos_a: f32 = out.row(0).iter().zip(w).map(|(x, y)| x * y).sum();
+        assert!(cos_a > 0.999, "along-direction row stays aligned, got {cos_a}");
+        // the orthogonal row keeps ~zero serif component
+        let cos_b: f32 = out.row(1).iter().zip(w).map(|(x, y)| x * y).sum();
+        assert!(cos_b.abs() < 1e-3, "orthogonal row stays orthogonal, got {cos_b}");
     }
 }

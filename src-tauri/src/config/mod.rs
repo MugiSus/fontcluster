@@ -112,6 +112,42 @@ pub struct ClusteringConfig {
     pub distance_threshold: f32,
     /// Desired final cluster count; `0` means "use `distance_threshold`".
     pub target_cluster_count: usize,
+    /// Per-attribute emphasis applied to feature vectors before PCA.
+    /// Defaults to all-zero (no emphasis) so older sessions load unchanged.
+    #[serde(default)]
+    pub attribute_emphasis: AttributeEmphasis,
+}
+
+/// Emphasis levels (`-4..=4`) for the model's attribute directions; `0` leaves
+/// an axis untouched. Level `l` scales the attribute component by `2^l`, so
+/// `2` quadruples an attribute's contribution and `4` (x16) makes the axis
+/// dominate distances outright (see
+/// [`crate::core::clusterer::apply_attribute_emphasis`]).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct AttributeEmphasis {
+    #[serde(default)]
+    pub thin: i8,
+    #[serde(default)]
+    pub formal: i8,
+    #[serde(default)]
+    pub serif: i8,
+    #[serde(default)]
+    pub italic: i8,
+}
+
+impl AttributeEmphasis {
+    /// `(attribute-name, level)` pairs for the non-zero axes.
+    pub fn active_levels(&self) -> Vec<(&'static str, i8)> {
+        [
+            ("thin", self.thin),
+            ("formal", self.formal),
+            ("serif", self.serif),
+            ("italic", self.italic),
+        ]
+        .into_iter()
+        .filter(|(_, level)| *level != 0)
+        .collect()
+    }
 }
 
 /// Linkage criteria supported by the clustering stage, mirroring
@@ -136,6 +172,7 @@ impl Default for ClusteringConfig {
             preprocessing_dimensions: 8,
             distance_threshold: 0.5,
             target_cluster_count: 0,
+            attribute_emphasis: AttributeEmphasis::default(),
         }
     }
 }

@@ -410,7 +410,10 @@ struct ModelSpec {
 /// Searches development paths, the bundled resources directory (via
 /// `FONTCLUSTER_RESOURCE_DIR` or relative to the executable), and accepts the
 /// first location holding a non-empty `model.onnx`.
-fn resolve_model_dir() -> Result<PathBuf> {
+///
+/// `pub(crate)` because model-coupled assets (the clusterer's
+/// `attribute_directions.json`) live beside the model file.
+pub(crate) fn resolve_model_dir() -> Result<PathBuf> {
     let mut roots = vec![PathBuf::from("src-tauri/models"), PathBuf::from("models")];
 
     if let Ok(resource_dir) = std::env::var("FONTCLUSTER_RESOURCE_DIR") {

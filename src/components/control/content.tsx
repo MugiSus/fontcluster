@@ -98,6 +98,13 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
  * {@link parseRenderingConfig} does.
  */
 function parseClusteringConfig(formdata: FormData): ClusteringOptions {
+  // Emphasis levels are integers in -4..4; 0 (or an unparsable field) means
+  // "leave this attribute axis untouched".
+  const emphasisLevel = (name: string) => {
+    const value = Number(formdata.get(name));
+    return Number.isFinite(value) ? Math.max(-4, Math.min(4, value)) : 0;
+  };
+
   return {
     method: (formdata.get('clustering-method') ??
       DEFAULT_CLUSTERING_CONFIG.method) as ClusteringMethod,
@@ -110,6 +117,12 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
     target_cluster_count:
       Number(formdata.get('clustering-target-cluster-count')) ||
       DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
+    attribute_emphasis: {
+      thin: emphasisLevel('clustering-attr-thin'),
+      formal: emphasisLevel('clustering-attr-formal'),
+      serif: emphasisLevel('clustering-attr-serif'),
+      italic: emphasisLevel('clustering-attr-italic'),
+    },
   };
 }
 
@@ -321,6 +334,50 @@ export function ControlContent() {
               }
               step={1}
               minValue={0}
+            />
+            <NumberProperty
+              label={t.controlPanel.attrEmphasis.thin()}
+              name='clustering-attr-thin'
+              defaultValue={
+                appState.session.algorithm.clustering.attribute_emphasis
+                  ?.thin ?? 0
+              }
+              step={1}
+              minValue={-4}
+              maxValue={4}
+            />
+            <NumberProperty
+              label={t.controlPanel.attrEmphasis.formal()}
+              name='clustering-attr-formal'
+              defaultValue={
+                appState.session.algorithm.clustering.attribute_emphasis
+                  ?.formal ?? 0
+              }
+              step={1}
+              minValue={-4}
+              maxValue={4}
+            />
+            <NumberProperty
+              label={t.controlPanel.attrEmphasis.serif()}
+              name='clustering-attr-serif'
+              defaultValue={
+                appState.session.algorithm.clustering.attribute_emphasis
+                  ?.serif ?? 0
+              }
+              step={1}
+              minValue={-4}
+              maxValue={4}
+            />
+            <NumberProperty
+              label={t.controlPanel.attrEmphasis.italic()}
+              name='clustering-attr-italic'
+              defaultValue={
+                appState.session.algorithm.clustering.attribute_emphasis
+                  ?.italic ?? 0
+              }
+              step={1}
+              minValue={-4}
+              maxValue={4}
             />
           </ControlPropertySection>
         </div>

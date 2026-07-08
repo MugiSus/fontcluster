@@ -14,6 +14,19 @@ export interface ClusteringOptions {
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
+  attribute_emphasis: AttributeEmphasis;
+}
+
+/**
+ * Emphasis levels (-2..2) for the model's attribute directions; 0 leaves an
+ * axis untouched. Level l scales that attribute's contribution to clustering
+ * distances by 2^l (applied backend-side before PCA).
+ */
+export interface AttributeEmphasis {
+  thin: number;
+  formal: number;
+  serif: number;
+  italic: number;
 }
 
 export type FontSet =
