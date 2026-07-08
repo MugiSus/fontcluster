@@ -42,7 +42,7 @@ export type ProcessStatus = 'empty' | 'rendered' | 'analyzed' | 'clustered';
 
 export interface ClusterStat {
   size: number;
-  /** Centroid in the normalized PCA space the clustering ran in. */
+  /** Centroid in the unit-diameter PCA space the clustering ran in. */
   centroid: number[];
   /** Largest internal merge height within this cluster; 0 for singletons. */
   diameter: number;
@@ -70,8 +70,8 @@ export interface ClusteringStats {
 export interface DendrogramMerge {
   left: number;
   right: number;
-  /** Dissimilarity at which the two clusters merged, in the normalized PCA
-   *  space the clustering ran in. */
+  /** Dissimilarity at which the two clusters merged, in the unit-diameter
+   *  PCA space the clustering ran in. */
   height: number;
   /** Leaf index of the merged cluster's representative: of the two children's
    *  representatives, the one closer to the merged centroid (an incremental

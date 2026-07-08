@@ -177,8 +177,9 @@ pub struct ProcessingStatus {
 /// Every field is something the clustering stage already computes and would
 /// otherwise discard, recorded so the UI (and future auto-tuning) can inspect
 /// run quality without re-clustering. Centroids and heights live in the
-/// **normalised PCA space** the clustering ran in — not the 2-D layout space
-/// drawn on the graph.
+/// **unit-diameter PCA space** the clustering ran in (PCA scores rescaled so
+/// the largest pairwise distance is 1) — not the 2-D layout space drawn on
+/// the graph.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ClusteringStats {
     /// Per-cluster statistics, ordered by cluster id (matching each font's
@@ -201,8 +202,8 @@ pub struct ClusteringStats {
 pub struct DendrogramMerge {
     pub left: usize,
     pub right: usize,
-    /// Dissimilarity at which the two clusters merged, in the normalised PCA
-    /// space the clustering ran in.
+    /// Dissimilarity at which the two clusters merged, in the unit-diameter
+    /// PCA space the clustering ran in.
     pub height: f32,
     /// Leaf index of the merged cluster's representative: of the two
     /// children's representatives, the one closer to the merged centroid (an
@@ -230,7 +231,7 @@ pub struct DendrogramData {
 pub struct ClusterStat {
     /// Number of fonts assigned to this cluster.
     pub size: usize,
-    /// Cluster centroid in the normalised PCA space the clustering ran in.
+    /// Cluster centroid in the unit-diameter PCA space the clustering ran in.
     pub centroid: Vec<f32>,
     /// Largest internal merge height within this cluster (its dendrogram
     /// diameter); `0.0` for singletons.
@@ -301,7 +302,7 @@ pub struct ClusteringData {
     /// Zero-based cluster index.
     pub k: i32,
     /// Linkage height at which this font first merged into a larger node in
-    /// the full dendrogram — its isolation in the normalised PCA space the
+    /// the full dendrogram — its isolation in the unit-diameter PCA space the
     /// clustering ran in. Higher means more of an outlier; `0.0` for a lone
     /// point.
     #[serde(default)]

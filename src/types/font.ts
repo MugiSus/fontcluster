@@ -46,7 +46,8 @@ export interface ClusteringData {
   k: number;
   /**
    * Linkage height at which this font first merged into a larger node, in the
-   * normalized PCA space the clustering ran in. Higher = more of an outlier.
+   * unit-diameter PCA space the clustering ran in. Higher = more of an
+   * outlier.
    */
   join_height: number;
   /**

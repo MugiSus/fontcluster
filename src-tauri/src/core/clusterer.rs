@@ -1,9 +1,10 @@
 //! Clustering stage: groups fonts by visual similarity of their embeddings.
 //!
-//! Embeddings are optionally reduced with PCA, min-max normalised, and fed to
-//! agglomerative (hierarchical) clustering via [`kodama`]. The dendrogram is
-//! cut by either a target cluster count or a distance threshold (see
-//! [`ClusteringConfig`]), and the resulting label is stored on each font.
+//! Embeddings are optionally reduced with PCA, uniformly rescaled so the
+//! largest pairwise distance is 1, and fed to agglomerative (hierarchical)
+//! clustering via [`kodama`]. The dendrogram is cut by either a target cluster
+//! count or a distance threshold (see [`ClusteringConfig`]), and the resulting
+//! label is stored on each font.
 
 use crate::commands::progress::progress_events;
 use crate::config::{
@@ -22,7 +23,7 @@ use petal_decomposition::PcaBuilder;
 
 /// Clusters every analysed font in the active session and persists the labels.
 ///
-/// Reads the embeddings, reduces/normalises them, runs agglomerative
+/// Reads the embeddings, reduces/rescales them, runs agglomerative
 /// clustering, writes each font's cluster index, and records the cluster and
 /// sample counts on the session status. A no-op when there is nothing to
 /// cluster.
@@ -168,7 +169,12 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
 /// score), the full merge tree (see [`DendrogramMerge`]), and the
 /// [`ClusteringStats`] captured for the run.
 ///
-/// Points are min-max normalised, all pairwise Euclidean distances are fed to
+/// All pairwise Euclidean distances are computed on the points as given (the
+/// PCA scores), then points and distances are uniformly rescaled so the
+/// largest pairwise distance is 1. A uniform rescale preserves every distance
+/// ratio — the merge tree is exactly the raw-PCA one — while keeping
+/// `config.distance_threshold` readable as a fraction of the point-cloud
+/// diameter regardless of model or PCA scale. The distances are fed to
 /// [`kodama::linkage`], and the resulting dendrogram is replayed merge by
 /// merge until a stop criterion is hit:
 /// - if `config.target_cluster_count > 0`, stop once that many clusters
@@ -187,13 +193,12 @@ fn agglomerative_clustering(
 ) -> Result<(Vec<i32>, Vec<f32>, Vec<DendrogramMerge>, ClusteringStats)> {
     let n = points.nrows();
     if n == 1 {
-        // A lone point is its own cluster, never merges (join height 0), and a
-        // single min-max normalised row is all zeros, so its centroid is the
-        // zero vector.
+        // A lone point is its own cluster, never merges (join height 0), and
+        // is its own centroid.
         let stats = ClusteringStats {
             clusters: vec![ClusterStat {
                 size: 1,
-                centroid: vec![0.0; points.ncols()],
+                centroid: points.row(0).to_vec(),
                 diameter: 0.0,
                 color_index: 0,
             }],
@@ -203,14 +208,26 @@ fn agglomerative_clustering(
         return Ok((vec![0], vec![0.0], Vec::new(), stats));
     }
 
-    let normalized = normalize_points(&points);
     let mut condensed = Vec::with_capacity((n * (n - 1)) / 2);
 
     for i in 0..n {
         for j in (i + 1)..n {
-            condensed.push(point_distance(&normalized, i, j));
+            condensed.push(point_distance(&points, i, j));
         }
     }
+
+    // Unit-diameter rescale: points and pairwise distances divided by the
+    // largest pairwise distance, so downstream heights/centroids stay in one
+    // consistent space (identical points leave everything at scale 1).
+    let max_distance = condensed.iter().copied().fold(0.0f32, f32::max);
+    let points = if max_distance > 0.0 {
+        for distance in &mut condensed {
+            *distance /= max_distance;
+        }
+        points.mapv_into(|value| value / max_distance)
+    } else {
+        points
+    };
 
     let dendrogram = linkage(&mut condensed, n, kodama_method(config.method));
     // Every merge (full tree), plus per-leaf the height at which each point is
@@ -224,7 +241,7 @@ fn agglomerative_clustering(
     let mut merge_heights = Vec::with_capacity(dendrogram.steps().len());
     let mut merges = Vec::with_capacity(dendrogram.steps().len());
     let mut join_heights = vec![0.0f32; n];
-    let mut centroids: Vec<Vec<f32>> = (0..n).map(|i| normalized.row(i).to_vec()).collect();
+    let mut centroids: Vec<Vec<f32>> = (0..n).map(|i| points.row(i).to_vec()).collect();
     let mut sizes: Vec<usize> = vec![1; n];
     let mut representatives: Vec<usize> = (0..n).collect();
     for step in dendrogram.steps() {
@@ -237,8 +254,8 @@ fn agglomerative_clustering(
             .map(|(l, r)| (l * sizes[left] as f32 + r * sizes[right] as f32) / total)
             .collect();
         // `<=` keeps ties on the left operand for determinism.
-        let representative = if squared_distance_to(&normalized, representatives[left], &centroid)
-            <= squared_distance_to(&normalized, representatives[right], &centroid)
+        let representative = if squared_distance_to(&points, representatives[left], &centroid)
+            <= squared_distance_to(&points, representatives[right], &centroid)
         {
             representatives[left]
         } else {
@@ -328,7 +345,7 @@ fn agglomerative_clustering(
         .zip(&color_indices)
         .map(|((node, members), color_index)| ClusterStat {
             size: members.len(),
-            centroid: normalized
+            centroid: points
                 .select(Axis(0), members)
                 .mean_axis(Axis(0))
                 .map(|centroid| centroid.to_vec())
@@ -430,26 +447,6 @@ fn assign_color_indices(
     }
 
     color_indices
-}
-
-/// Min-max normalises each column (feature) into `[0, 1]`, mapping
-/// zero-variance columns to `0`.
-fn normalize_points(points: &Array2<f32>) -> Array2<f32> {
-    let mut normalized = points.clone();
-    for axis in 0..points.ncols() {
-        let column = points.column(axis);
-        let min = column.iter().copied().fold(f32::INFINITY, f32::min);
-        let max = column.iter().copied().fold(f32::NEG_INFINITY, f32::max);
-        let range = max - min;
-        for value in normalized.column_mut(axis).iter_mut() {
-            *value = if range > 0.0 {
-                (*value - min) / range
-            } else {
-                0.0
-            };
-        }
-    }
-    normalized
 }
 
 /// Squared Euclidean distance from row `row` of `points` to `target` (for
