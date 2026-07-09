@@ -112,6 +112,63 @@ pub struct ClusteringConfig {
     pub distance_threshold: f32,
     /// Desired final cluster count; `0` means "use `distance_threshold`".
     pub target_cluster_count: usize,
+    /// Per-attribute emphasis applied when building the clustering features.
+    /// Defaults to all-zero (no emphasis) so older sessions load unchanged.
+    #[serde(default)]
+    pub attribute_emphasis: AttributeEmphasis,
+}
+
+/// Emphasis levels (`-4..=4`) for the model's attribute directions; `0` leaves
+/// an axis untouched.
+///
+/// A non-zero level pulls that attribute's direction out of the embedding and
+/// re-appends it as an explicit, standardised clustering axis whose strength is
+/// `reference * 2^level` — `reference` being the typical base-axis spread (see
+/// [`crate::core::clusterer::build_cluster_features`]). So `±1–2` nudge grouping
+/// toward the attribute without unbalancing the tree, `±3–4` make it dominate,
+/// and negatives shrink it so fonts group as if the attribute were ignored. The
+/// named directions come from `attribute_directions.json` beside the model.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct AttributeEmphasis {
+    #[serde(default)]
+    pub serif: i8,
+    #[serde(default)]
+    pub cursive: i8,
+    #[serde(default)]
+    pub italic: i8,
+    #[serde(default)]
+    pub formal: i8,
+    #[serde(default)]
+    pub delicate: i8,
+    #[serde(default)]
+    pub playful: i8,
+    #[serde(default)]
+    pub legible: i8,
+    #[serde(default)]
+    pub thin: i8,
+}
+
+impl AttributeEmphasis {
+    /// `(attribute-name, level)` pairs for the non-zero axes, in display order.
+    ///
+    /// Levels are clamped to the UI's `-4..=4` range so a hand-edited
+    /// `config.json` can never blow up the `2^level` weighting.
+    pub fn active_levels(&self) -> Vec<(&'static str, i8)> {
+        [
+            ("serif", self.serif),
+            ("cursive", self.cursive),
+            ("italic", self.italic),
+            ("formal", self.formal),
+            ("delicate", self.delicate),
+            ("playful", self.playful),
+            ("legible", self.legible),
+            ("thin", self.thin),
+        ]
+        .into_iter()
+        .filter(|(_, level)| *level != 0)
+        .map(|(name, level)| (name, level.clamp(-4, 4)))
+        .collect()
+    }
 }
 
 /// Linkage criteria supported by the clustering stage, mirroring
@@ -136,6 +193,7 @@ impl Default for ClusteringConfig {
             preprocessing_dimensions: 8,
             distance_threshold: 0.5,
             target_cluster_count: 0,
+            attribute_emphasis: AttributeEmphasis::default(),
         }
     }
 }

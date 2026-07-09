@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, Show } from 'solid-js';
+import { createSignal, For, onCleanup, Show } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { toast } from 'solid-sonner';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
   type AlgorithmConfig,
   type RenderingOptions,
   type ClusteringOptions,
+  type AttributeEmphasis,
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
@@ -97,7 +98,27 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
  * {@link ClusteringOptions}, defaulting each field the same way
  * {@link parseRenderingConfig} does.
  */
+// Attribute-emphasis axes, in display order. Each maps a dictionary label key
+// to the form field / config key of the same name.
+const ATTRIBUTE_EMPHASIS_KEYS = [
+  'serif',
+  'cursive',
+  'italic',
+  'formal',
+  'delicate',
+  'playful',
+  'legible',
+  'thin',
+] as const satisfies readonly (keyof AttributeEmphasis)[];
+
 function parseClusteringConfig(formdata: FormData): ClusteringOptions {
+  // Emphasis levels are integers in -4..4; 0 (or an unparsable field) means
+  // "leave this attribute axis untouched".
+  const emphasisLevel = (attribute: keyof AttributeEmphasis) => {
+    const value = Number(formdata.get(`clustering-attr-${attribute}`));
+    return Number.isFinite(value) ? Math.max(-4, Math.min(4, value)) : 0;
+  };
+
   return {
     method: (formdata.get('clustering-method') ??
       DEFAULT_CLUSTERING_CONFIG.method) as ClusteringMethod,
@@ -110,6 +131,12 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
     target_cluster_count:
       Number(formdata.get('clustering-target-cluster-count')) ||
       DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
+    attribute_emphasis: Object.fromEntries(
+      ATTRIBUTE_EMPHASIS_KEYS.map((attribute) => [
+        attribute,
+        emphasisLevel(attribute),
+      ]),
+    ) as unknown as AttributeEmphasis,
   };
 }
 
@@ -322,6 +349,22 @@ export function ControlContent() {
               step={1}
               minValue={0}
             />
+            <For each={ATTRIBUTE_EMPHASIS_KEYS}>
+              {(attribute) => (
+                <NumberProperty
+                  label={t.controlPanel.attrEmphasis[attribute]()}
+                  name={`clustering-attr-${attribute}`}
+                  defaultValue={
+                    appState.session.algorithm.clustering.attribute_emphasis?.[
+                      attribute
+                    ] ?? 0
+                  }
+                  step={1}
+                  minValue={-4}
+                  maxValue={4}
+                />
+              )}
+            </For>
           </ControlPropertySection>
         </div>
       </Show>
