@@ -1,4 +1,4 @@
-import { createSignal, For, onCleanup, Show } from 'solid-js';
+import { createSignal, onCleanup, Show } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { toast } from 'solid-sonner';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,6 @@ import {
   type AlgorithmConfig,
   type RenderingOptions,
   type ClusteringOptions,
-  type AttributeEmphasis,
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
@@ -33,12 +32,14 @@ import { useI18n } from '@/i18n';
 import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
+  EMPHASIS_ATTRIBUTES,
 } from '@/constants/session';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
@@ -98,26 +99,15 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
  * {@link ClusteringOptions}, defaulting each field the same way
  * {@link parseRenderingConfig} does.
  */
-// Attribute-emphasis axes, in display order. Each maps a dictionary label key
-// to the form field / config key of the same name.
-const ATTRIBUTE_EMPHASIS_KEYS = [
-  'serif',
-  'cursive',
-  'italic',
-  'formal',
-  'delicate',
-  'playful',
-  'legible',
-  'thin',
-] as const satisfies readonly (keyof AttributeEmphasis)[];
-
 function parseClusteringConfig(formdata: FormData): ClusteringOptions {
-  // Emphasis levels are integers in -4..4; 0 (or an unparsable field) means
-  // "leave this attribute axis untouched".
-  const emphasisLevel = (attribute: keyof AttributeEmphasis) => {
-    const value = Number(formdata.get(`clustering-attr-${attribute}`));
-    return Number.isFinite(value) ? Math.max(-4, Math.min(4, value)) : 0;
-  };
+  // Emphasis levels are integers in -4..4; only non-zero axes are kept, so the
+  // stored map stays sparse and a missing key reads as "no emphasis".
+  const emphasis: Record<string, number> = {};
+  for (const attribute of EMPHASIS_ATTRIBUTES) {
+    const value = Number(formdata.get(`clustering-emphasis-${attribute}`));
+    const level = Number.isFinite(value) ? Math.max(-4, Math.min(4, value)) : 0;
+    if (level !== 0) emphasis[attribute] = level;
+  }
 
   return {
     method: (formdata.get('clustering-method') ??
@@ -131,12 +121,7 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
     target_cluster_count:
       Number(formdata.get('clustering-target-cluster-count')) ||
       DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
-    attribute_emphasis: Object.fromEntries(
-      ATTRIBUTE_EMPHASIS_KEYS.map((attribute) => [
-        attribute,
-        emphasisLevel(attribute),
-      ]),
-    ) as unknown as AttributeEmphasis,
+    emphasis,
   };
 }
 
@@ -349,22 +334,7 @@ export function ControlContent() {
               step={1}
               minValue={0}
             />
-            <For each={ATTRIBUTE_EMPHASIS_KEYS}>
-              {(attribute) => (
-                <NumberProperty
-                  label={t.controlPanel.attrEmphasis[attribute]()}
-                  name={`clustering-attr-${attribute}`}
-                  defaultValue={
-                    appState.session.algorithm.clustering.attribute_emphasis?.[
-                      attribute
-                    ] ?? 0
-                  }
-                  step={1}
-                  minValue={-4}
-                  maxValue={4}
-                />
-              )}
-            </For>
+            <EmphasisControls />
           </ControlPropertySection>
         </div>
       </Show>

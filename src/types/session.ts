@@ -14,28 +14,22 @@ export interface ClusteringOptions {
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
-  attribute_emphasis: AttributeEmphasis;
+  emphasis: EmphasisLevels;
 }
 
 /**
- * Emphasis levels (-4..4) for the model's attribute directions; 0 leaves an
- * axis untouched. A non-zero level pulls that attribute out of the embedding
- * and re-appends it as an explicit, standardised clustering axis whose strength
- * is `reference * 2^level` (backend-side), where reference is the typical
- * base-axis spread. So ±1–2 nudge grouping toward the attribute without
- * unbalancing the tree, ±3–4 make it dominate, and negatives shrink it so fonts
- * group as if it were ignored.
+ * Per-attribute emphasis levels (-4..4), keyed by O'Donovan attribute name
+ * (e.g. `serif`, `attention-grabbing`). Only non-zero entries are stored; a
+ * missing key means no emphasis.
+ *
+ * A non-zero level pulls that attribute out of the embedding and re-appends it
+ * as an explicit, standardised clustering axis whose strength is
+ * `reference * 2^level` (backend-side), where reference is the typical base-axis
+ * spread. So ±1–2 nudge grouping toward the attribute without unbalancing the
+ * tree, ±3–4 make it dominate, and negatives shrink it so fonts group as if it
+ * were ignored.
  */
-export interface AttributeEmphasis {
-  serif: number;
-  cursive: number;
-  italic: number;
-  formal: number;
-  delicate: number;
-  playful: number;
-  legible: number;
-  thin: number;
-}
+export type EmphasisLevels = Partial<Record<string, number>>;
 
 export type FontSet =
   | 'system_fonts'

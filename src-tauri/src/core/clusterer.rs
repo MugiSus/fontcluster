@@ -8,8 +8,8 @@
 
 use crate::commands::progress::progress_events;
 use crate::config::{
-    AttributeEmphasis, ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod,
-    ClusteringStats, ComputedData, DendrogramData, DendrogramMerge, ProgressStage,
+    ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
+    DendrogramData, DendrogramMerge, ProgressStage,
 };
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
@@ -20,7 +20,7 @@ use crate::error::{AppError, Result};
 use kodama::{linkage, Method as KodamaMethod};
 use ndarray::{concatenate, Array1, Array2, Axis};
 use petal_decomposition::PcaBuilder;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Clusters every analysed font in the active session and persists the labels.
 ///
@@ -42,7 +42,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
-    let attribute_emphasis = config.attribute_emphasis;
+    let emphasis = config.emphasis.clone();
     let session_dir_for_first = session_dir.clone();
 
     let (points, ids) =
@@ -60,8 +60,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             )
             .map_err(|e| AppError::Processing(e.to_string()))?;
 
-            let points =
-                build_cluster_features(data, preprocessing_dimensions, &attribute_emphasis)?;
+            let points = build_cluster_features(data, preprocessing_dimensions, &emphasis)?;
 
             Ok((points, ids))
         })
@@ -138,6 +137,20 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     Ok(())
 }
 
+/// `(attribute-name, level)` pairs for the non-zero emphasis axes.
+///
+/// Iteration order is the map's key order (`BTreeMap` iterates sorted), so the
+/// orthonormalisation in [`build_cluster_features`] is deterministic. Levels are
+/// clamped to the UI's `-4..=4` range so a hand-edited `config.json` cannot blow
+/// up the `2^level` weighting.
+fn active_emphasis(emphasis: &BTreeMap<String, i8>) -> Vec<(String, i8)> {
+    emphasis
+        .iter()
+        .filter(|(_, &level)| level != 0)
+        .map(|(name, &level)| (name.clone(), level.clamp(-4, 4)))
+        .collect()
+}
+
 /// Builds the feature matrix fed to clustering, honouring attribute emphasis.
 ///
 /// Without emphasis (the default) this reproduces the historical pipeline:
@@ -171,7 +184,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
 fn build_cluster_features(
     data: Array2<f32>,
     dimensions: usize,
-    emphasis: &AttributeEmphasis,
+    emphasis: &BTreeMap<String, i8>,
 ) -> Result<Array2<f32>> {
     let (n_samples, n_features) = data.dim();
     let reduce = |data: Array2<f32>| -> Result<Array2<f32>> {
@@ -182,7 +195,7 @@ fn build_cluster_features(
         }
     };
 
-    let active = emphasis.active_levels();
+    let active = active_emphasis(emphasis);
     if active.is_empty() || n_samples < 2 {
         return reduce(data);
     }
@@ -207,7 +220,7 @@ fn build_cluster_features(
     // Keep only attributes the asset actually carries, preserving their levels.
     let (vectors, levels): (Vec<Vec<f32>>, Vec<i8>) = active
         .iter()
-        .filter_map(|(name, level)| match directions.get(*name) {
+        .filter_map(|(name, level)| match directions.get(name) {
             Some(direction) => Some((direction.clone(), *level)),
             None => {
                 println!("⚠️ Clusterer: no direction for attribute '{name}', skipped");
@@ -709,7 +722,7 @@ mod tests {
             ],
         )
         .unwrap();
-        let out = build_cluster_features(data.clone(), 3, &AttributeEmphasis::default()).unwrap();
+        let out = build_cluster_features(data.clone(), 3, &BTreeMap::new()).unwrap();
         let expected = pca_embedding(data, 3).unwrap();
         assert_eq!(out, expected);
     }
@@ -751,24 +764,11 @@ mod tests {
         }
         let data = Array2::from_shape_vec((8, 512), values).unwrap();
 
-        let out1 = build_cluster_features(
-            data.clone(),
-            3,
-            &AttributeEmphasis {
-                serif: 1,
-                ..Default::default()
-            },
-        )
-        .unwrap();
-        let out2 = build_cluster_features(
-            data,
-            3,
-            &AttributeEmphasis {
-                serif: 2,
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        let out1 =
+            build_cluster_features(data.clone(), 3, &BTreeMap::from([("serif".to_string(), 1)]))
+                .unwrap();
+        let out2 =
+            build_cluster_features(data, 3, &BTreeMap::from([("serif".to_string(), 2)])).unwrap();
 
         // One appended column beyond the (rank-limited) PCA base.
         assert!(out1.ncols() >= 2 && out2.ncols() == out1.ncols());
