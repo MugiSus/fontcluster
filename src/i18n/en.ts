@@ -37,8 +37,8 @@ export const en = {
     groupingThreshold: 'threshold',
     targetClusters: 'target clusters',
     emphasis: {
-      title: 'attribute emphasis',
-      enable: 'enable attribute emphasis',
+      title: 'attributes',
+      enable: 'emphasize attributes',
       attributes: {
         'serif': 'serif',
         'cursive': 'cursive',

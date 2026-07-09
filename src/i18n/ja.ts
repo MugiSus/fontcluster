@@ -25,8 +25,8 @@ export const ja: Dictionary = {
     groupingThreshold: '閾値',
     targetClusters: '目標クラスタ数',
     emphasis: {
-      title: '属性の重視度',
-      enable: '属性の重視を有効化',
+      title: '属性',
+      enable: '属性を重視する',
       attributes: {
         'serif': 'セリフ',
         'cursive': '筆記体',
