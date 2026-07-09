@@ -38,6 +38,7 @@ export const en = {
     targetClusters: 'target clusters',
     emphasis: {
       title: 'attribute emphasis',
+      enable: 'enable attribute emphasis',
       attributes: {
         'serif': 'serif',
         'cursive': 'cursive',

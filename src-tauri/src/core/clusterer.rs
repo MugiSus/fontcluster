@@ -42,7 +42,14 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
-    let emphasis = config.emphasis.clone();
+    // The enable switch gates the whole feature: when off, hand the feature
+    // builder an empty map so it takes the plain no-emphasis path, while the
+    // stored levels stay untouched in the session.
+    let emphasis = if config.enable_attribute_emphasis {
+        config.emphasis.clone()
+    } else {
+        BTreeMap::new()
+    };
     let session_dir_for_first = session_dir.clone();
 
     let (points, ids) =
@@ -199,18 +206,9 @@ fn build_cluster_features(
     if active.is_empty() || n_samples < 2 {
         return reduce(data);
     }
-    println!(
-        "🎚️ Emphasis: active={active:?} n_samples={n_samples} n_features={n_features} dims={dimensions}"
-    );
 
     let directions = match load_attribute_directions(n_features) {
-        Ok(directions) => {
-            println!(
-                "🎚️ Emphasis: loaded {} attribute directions",
-                directions.len()
-            );
-            directions
-        }
+        Ok(directions) => directions,
         Err(e) => {
             println!("⚠️ Clusterer: attribute emphasis skipped: {e}");
             return reduce(data);
@@ -264,13 +262,6 @@ fn build_cluster_features(
             .column_mut(column)
             .mapv_inplace(|value| (value - mean) * scale);
     }
-
-    println!(
-        "🎚️ Emphasis: applied {} axis/axes (levels={levels:?}) reference={reference:.4} base_dims={} -> feature_dims={}",
-        levels.len(),
-        base.ncols(),
-        base.ncols() + attribute_axes.ncols()
-    );
 
     concatenate(Axis(1), &[base.view(), attribute_axes.view()])
         .map_err(|e| AppError::Processing(e.to_string()))

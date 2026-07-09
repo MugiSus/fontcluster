@@ -22,6 +22,7 @@ import {
   type AlgorithmConfig,
   type RenderingOptions,
   type ClusteringOptions,
+  type EmphasisLevels,
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
@@ -42,6 +43,7 @@ import {
 import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
+import { SwitchProperty } from './switch-property';
 import { TextProperty } from './text-property';
 
 // Ordered list of selectable font sets; `system_fonts` stays first so the
@@ -98,15 +100,30 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
  * Reads the clustering inputs off the submitted form into a
  * {@link ClusteringOptions}, defaulting each field the same way
  * {@link parseRenderingConfig} does.
+ *
+ * When emphasis is disabled its per-attribute inputs are disabled and therefore
+ * dropped from the form, so the previously committed `previousEmphasis` is
+ * carried forward instead of being wiped — the levels stay put and only their
+ * application is gated by `emphasisEnabled`.
  */
-function parseClusteringConfig(formdata: FormData): ClusteringOptions {
+function parseClusteringConfig(
+  formdata: FormData,
+  emphasisEnabled: boolean,
+  previousEmphasis: EmphasisLevels,
+): ClusteringOptions {
   // Emphasis levels are integers in -4..4; only non-zero axes are kept, so the
   // stored map stays sparse and a missing key reads as "no emphasis".
-  const emphasis: Record<string, number> = {};
-  for (const attribute of EMPHASIS_ATTRIBUTES) {
-    const value = Number(formdata.get(`clustering-emphasis-${attribute}`));
-    const level = Number.isFinite(value) ? Math.max(-4, Math.min(4, value)) : 0;
-    if (level !== 0) emphasis[attribute] = level;
+  let emphasis: EmphasisLevels = previousEmphasis;
+  if (emphasisEnabled) {
+    const parsed: Record<string, number> = {};
+    for (const attribute of EMPHASIS_ATTRIBUTES) {
+      const value = Number(formdata.get(`clustering-emphasis-${attribute}`));
+      const level = Number.isFinite(value)
+        ? Math.max(-4, Math.min(4, value))
+        : 0;
+      if (level !== 0) parsed[attribute] = level;
+    }
+    emphasis = parsed;
   }
 
   return {
@@ -121,6 +138,7 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
     target_cluster_count:
       Number(formdata.get('clustering-target-cluster-count')) ||
       DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
+    enable_attribute_emphasis: emphasisEnabled,
     emphasis,
   };
 }
@@ -133,6 +151,12 @@ export function ControlContent() {
   const clearRunCooldown = debounce(() => {
     setIsRunCooldown(false);
   }, 2000);
+
+  // Reactive so the switch drives the disabled state of the emphasis inputs;
+  // committed to the session on submit like every other form field.
+  const [emphasisEnabled, setEmphasisEnabled] = createSignal(
+    appState.session.algorithm.clustering.enable_attribute_emphasis,
+  );
 
   onCleanup(() => {
     clearRunCooldown.clear();
@@ -153,7 +177,11 @@ export function ControlContent() {
 
     const formdata = new FormData(formRef);
     const rendering = parseRenderingConfig(formdata);
-    const clustering = parseClusteringConfig(formdata);
+    const clustering = parseClusteringConfig(
+      formdata,
+      emphasisEnabled(),
+      appState.session.algorithm.clustering.emphasis,
+    );
 
     const sessionId =
       options?.override ||
@@ -334,7 +362,12 @@ export function ControlContent() {
               step={1}
               minValue={0}
             />
-            <EmphasisControls />
+            <SwitchProperty
+              label={t.controlPanel.emphasis.enable()}
+              checked={emphasisEnabled()}
+              onChange={setEmphasisEnabled}
+            />
+            <EmphasisControls disabled={!emphasisEnabled()} />
           </ControlPropertySection>
         </div>
       </Show>

@@ -26,6 +26,7 @@ export const ja: Dictionary = {
     targetClusters: '目標クラスタ数',
     emphasis: {
       title: '属性の重視度',
+      enable: '属性の重視を有効化',
       attributes: {
         'serif': 'セリフ',
         'cursive': '筆記体',

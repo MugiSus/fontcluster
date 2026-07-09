@@ -6,6 +6,11 @@ import { appState } from '@/store';
 import { EMPHASIS_ATTRIBUTES } from '@/constants/session';
 import { NumberProperty } from './number-property';
 
+type EmphasisControlsProps = {
+  /** Disables every attribute input (mirrors the "enable emphasis" switch). */
+  disabled?: boolean;
+};
+
 /**
  * Collapsible list of the 37 O'Donovan attribute-emphasis inputs (-4..4).
  *
@@ -14,7 +19,7 @@ import { NumberProperty } from './number-property';
  * session and renders. Collapsed by default so the long list stays out of the
  * way of the primary clustering parameters.
  */
-export function EmphasisControls() {
+export function EmphasisControls(props: EmphasisControlsProps) {
   const { t } = useI18n();
 
   return (
@@ -32,6 +37,7 @@ export function EmphasisControls() {
               defaultValue={
                 appState.session.algorithm.clustering.emphasis?.[attribute] ?? 0
               }
+              disabled={props.disabled}
               step={1}
               minValue={-4}
               maxValue={4}

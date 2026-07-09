@@ -14,6 +14,12 @@ export interface ClusteringOptions {
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
+  /**
+   * Master switch for attribute emphasis. When `false`, the backend ignores
+   * {@link ClusteringOptions.emphasis} entirely (the levels are kept so they
+   * survive a disabled run) and the UI disables the per-attribute inputs.
+   */
+  enable_attribute_emphasis: boolean;
   emphasis: EmphasisLevels;
 }
 
