@@ -29,8 +29,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::Ordering, Mutex};
 
-const MODEL_REPO_DIR: &str = "repvit_m3_0_distill_v6";
-const MODEL_FILE_NAME: &str = "model.onnx";
+const MODEL_REPO_DIR: &str = "mobilenet";
+const MODEL_FILE_NAME: &str = "v4medium-fp32.onnx";
 const DEFAULT_INPUT_SIZE: u32 = 224;
 const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
 const MODEL_BATCH_SIZE: usize = 8;
