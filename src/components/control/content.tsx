@@ -364,10 +364,10 @@ export function ControlContent() {
             />
             <SwitchProperty
               label={t.controlPanel.emphasis.enable()}
-              checked={emphasisEnabled()}
+              isChecked={emphasisEnabled()}
               onChange={setEmphasisEnabled}
             />
-            <EmphasisControls disabled={!emphasisEnabled()} />
+            <EmphasisControls isDisabled={!emphasisEnabled()} />
           </ControlPropertySection>
         </div>
       </Show>

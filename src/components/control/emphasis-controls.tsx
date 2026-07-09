@@ -8,7 +8,7 @@ import { NumberProperty } from './number-property';
 
 type EmphasisControlsProps = {
   /** Disables every attribute input (mirrors the "enable emphasis" switch). */
-  disabled?: boolean;
+  isDisabled?: boolean;
 };
 
 /**
@@ -24,7 +24,7 @@ export function EmphasisControls(props: EmphasisControlsProps) {
 
   return (
     <details class='group/emphasis'>
-      <summary class='flex cursor-pointer select-none list-none items-center gap-1 py-1.5 text-xs font-semibold capitalize text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
+      <summary class='flex cursor-pointer select-none list-none items-center gap-1 p-1.5 text-xs capitalize text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden'>
         <ChevronRightIcon class='size-3.5 transition-transform group-open/emphasis:rotate-90' />
         {t.controlPanel.emphasis.title()}
       </summary>
@@ -37,7 +37,7 @@ export function EmphasisControls(props: EmphasisControlsProps) {
               defaultValue={
                 appState.session.algorithm.clustering.emphasis?.[attribute] ?? 0
               }
-              disabled={props.disabled}
+              disabled={props.isDisabled}
               step={1}
               minValue={-4}
               maxValue={4}

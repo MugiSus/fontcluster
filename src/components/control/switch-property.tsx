@@ -8,9 +8,9 @@ import {
 type SwitchPropertyProps = {
   label: string;
   name?: string;
-  checked?: boolean;
-  disabled?: boolean;
-  onChange?: (checked: boolean) => void;
+  isChecked?: boolean;
+  isDisabled?: boolean;
+  onChange: (checked: boolean) => void;
 };
 
 /**
@@ -25,8 +25,8 @@ export function SwitchProperty(props: SwitchPropertyProps) {
   return (
     <Switch
       name={props.name}
-      checked={props.checked}
-      disabled={props.disabled}
+      checked={props.isChecked}
+      disabled={props.isDisabled}
       onChange={props.onChange}
       class='relative flex h-8 items-center pr-1.5'
     >
