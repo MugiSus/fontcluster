@@ -18,6 +18,10 @@
  * - `{{name}}` placeholders are resolved at call time via `resolveTemplate`.
  */
 export const en = {
+  common: {
+    scrollLeft: 'Scroll left',
+    scrollRight: 'Scroll right',
+  },
   panels: {
     control: 'control',
     list: 'list',

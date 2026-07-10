@@ -6,6 +6,10 @@ import type { Dictionary } from './index';
  * compile rather than falling back to a raw key at runtime.
  */
 export const ja: Dictionary = {
+  common: {
+    scrollLeft: '左へスクロール',
+    scrollRight: '右へスクロール',
+  },
   panels: {
     control: '制御',
     list: 'リスト',

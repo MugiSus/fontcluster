@@ -2,6 +2,7 @@ import { createMemo, createSignal, For } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { ChevronRightIcon, SlidersVerticalIcon } from 'lucide-solid';
 
+import { HorizontalScroller } from '@/components/horizontal-scroller';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -143,7 +144,7 @@ export function EmphasisControls() {
 
           <Separator />
 
-          <div class='relative grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-5 overflow-x-auto px-1 py-6'>
+          <HorizontalScroller class='grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-5 px-1 py-6'>
             <span aria-hidden='true' />
             <div
               aria-hidden='true'
@@ -205,7 +206,7 @@ export function EmphasisControls() {
               <span>{EMPHASIS_LEVEL_MIN}</span>
             </div>
             <span aria-hidden='true' />
-          </div>
+          </HorizontalScroller>
 
           <Separator />
 
