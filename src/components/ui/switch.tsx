@@ -1,4 +1,4 @@
-import type { ParentProps, ValidComponent } from 'solid-js';
+import type { ParentProps, ValidComponent, VoidProps } from 'solid-js';
 import { splitProps } from 'solid-js';
 
 import * as SwitchPrimitive from '@kobalte/core/switch';
@@ -26,7 +26,7 @@ const SwitchControl = <T extends ValidComponent = 'input'>(
       <SwitchPrimitive.Input class='[&:focus-visible+div]:outline-none [&:focus-visible+div]:ring-2 [&:focus-visible+div]:ring-ring [&:focus-visible+div]:ring-offset-2 [&:focus-visible+div]:ring-offset-background' />
       <SwitchPrimitive.Control
         class={cn(
-          'inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input shadow-sm transition-colors data-[checked]:bg-primary data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
+          'inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input shadow-sm transition-colors data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[disabled]:opacity-50',
           local.class,
         )}
         {...others}

@@ -1,3 +1,7 @@
+import type { ComponentProps } from 'solid-js';
+import { splitProps } from 'solid-js';
+
+import { cn } from '@/lib/utils';
 import {
   Switch,
   SwitchControl,
@@ -5,12 +9,11 @@ import {
   SwitchThumb,
 } from '@/components/ui/switch';
 
-type SwitchPropertyProps = {
+// Everything the underlying Switch takes (`checked`, `onChange`, `disabled`,
+// `name`, ...) passes straight through; `children` is omitted because this row
+// owns its own (the label and the control), and `label` is the only addition.
+type SwitchPropertyProps = Omit<ComponentProps<typeof Switch>, 'children'> & {
   label: string;
-  name?: string;
-  isChecked?: boolean;
-  isDisabled?: boolean;
-  onChange: (checked: boolean) => void;
 };
 
 /**
@@ -18,20 +21,20 @@ type SwitchPropertyProps = {
  * {@link import('./number-property').NumberProperty}: the label sits at the
  * left gutter and the control hugs the right edge inside the same `h-8` row.
  *
- * Controlled by the caller (`checked`/`onChange`) so its state can drive sibling
- * inputs; `SwitchLabel` keeps the label associated with the control for a11y.
+ * A thin pass-through over {@link Switch}; control it the same way (`checked`/
+ * `onChange`) so its state can drive sibling inputs. `SwitchLabel` keeps the
+ * label associated with the control for a11y.
  */
 export function SwitchProperty(props: SwitchPropertyProps) {
+  const [local, rest] = splitProps(props, ['label', 'class']);
+
   return (
     <Switch
-      name={props.name}
-      checked={props.isChecked}
-      disabled={props.isDisabled}
-      onChange={props.onChange}
-      class='relative flex h-8 items-center pr-1.5'
+      {...rest}
+      class={cn('relative flex h-8 items-center pr-1.5', local.class)}
     >
       <SwitchLabel class='absolute inset-y-0 left-2 flex items-center text-xs font-medium capitalize text-muted-foreground'>
-        {props.label}
+        {local.label}
       </SwitchLabel>
       <SwitchControl class='ml-auto'>
         <SwitchThumb />

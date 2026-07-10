@@ -19,6 +19,8 @@ export interface ClusteringOptions {
    * {@link ClusteringOptions.emphasis} entirely (the levels are kept so they
    * survive a disabled run) and the UI disables the per-attribute inputs.
    */
+  // snake_case to mirror the backend's serde field name verbatim.
+  // eslint-disable-next-line @typescript-eslint/naming-convention
   enable_attribute_emphasis: boolean;
   emphasis: EmphasisLevels;
 }
