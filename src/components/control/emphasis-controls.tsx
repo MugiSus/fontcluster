@@ -78,31 +78,37 @@ export function EmphasisControls() {
       </For>
 
       <Dialog open={isOpen()} onOpenChange={setIsOpen}>
-        <DialogTrigger class='group flex h-8 w-full items-center gap-2 rounded-md px-2 text-xs font-medium capitalize text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'>
-          <SlidersVerticalIcon class='size-3.5' />
+        <DialogTrigger
+          as={Button<'button'>}
+          type='button'
+          variant='ghost'
+          size='sm'
+          class='group justify-start px-2 capitalize text-muted-foreground shadow-none hover:text-foreground'
+        >
+          <SlidersVerticalIcon />
           <span>{t.controlPanel.emphasis.title()}</span>
-          <span class='ml-auto text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+          <span class='ml-auto text-xs font-medium uppercase tracking-wider text-foreground'>
             {t.controlPanel.emphasis.presets[selectedPreset()]()}
           </span>
-          <ChevronRightIcon class='size-3.5 transition-transform group-hover:translate-x-0.5' />
+          <ChevronRightIcon class='transition-transform group-hover:translate-x-1' />
         </DialogTrigger>
 
-        <DialogContent class='flex max-h-[min(720px,calc(100vh-2rem))] w-[min(72rem,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden p-0'>
-          <DialogHeader class='flex-row items-start gap-4 space-y-0 border-b px-6 py-5 pr-14 text-left'>
-            <div class='flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background'>
-              <SlidersVerticalIcon class='size-5' />
+        <DialogContent class='flex w-full max-w-lg flex-col gap-0 overflow-hidden p-0'>
+          <DialogHeader class='flex-row items-start gap-4 space-y-0 border-b px-6 py-4 pr-12 text-left'>
+            <div class='shrink-0 rounded-full bg-foreground p-2 text-background'>
+              <SlidersVerticalIcon />
             </div>
-            <div class='min-w-0 flex-1'>
+            <div class='flex-1'>
               <DialogTitle class='font-bold'>
                 {t.controlPanel.emphasis.equalizerTitle()}
               </DialogTitle>
-              <DialogDescription class='mt-1 max-w-2xl text-xs leading-relaxed'>
+              <DialogDescription class='mt-2 text-xs leading-relaxed'>
                 {t.controlPanel.emphasis.description()}
               </DialogDescription>
             </div>
           </DialogHeader>
 
-          <div class='flex items-center gap-2 border-b px-6 py-3'>
+          <div class='flex items-center gap-2 border-b px-6 py-4'>
             <span class='mr-2 text-xs font-bold'>
               {t.controlPanel.emphasis.preset()}
             </span>
@@ -110,7 +116,7 @@ export function EmphasisControls() {
               type='button'
               size='sm'
               variant={selectedPreset() === 'default' ? 'secondary' : 'outline'}
-              class='h-7 rounded-full px-4 shadow-none'
+              class='h-8 rounded-full shadow-none'
               onClick={() => setLevels({ ...defaultLevels })}
             >
               {t.controlPanel.emphasis.presets.default()}
@@ -119,7 +125,7 @@ export function EmphasisControls() {
               type='button'
               size='sm'
               variant={selectedPreset() === 'none' ? 'secondary' : 'outline'}
-              class='h-7 rounded-full px-4 shadow-none'
+              class='h-8 rounded-full shadow-none'
               onClick={() => setLevels({ ...noneLevels })}
             >
               {t.controlPanel.emphasis.presets.none()}
@@ -129,80 +135,65 @@ export function EmphasisControls() {
             </span>
           </div>
 
-          <div class='min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-6 py-5'>
-            <div class='relative flex min-w-max gap-3'>
-              <div class='w-6 shrink-0 pt-7 text-right text-xxs tabular-nums text-muted-foreground'>
-                <div class='relative h-52'>
-                  <span class='absolute right-0 top-0 -translate-y-1/2'>
-                    +4
-                  </span>
-                  <span class='absolute right-0 top-1/2 -translate-y-1/2'>
-                    0
-                  </span>
-                  <span class='absolute bottom-0 right-0 translate-y-1/2'>
-                    -4
-                  </span>
-                </div>
-              </div>
-
-              <div class='pointer-events-none absolute left-9 right-0 top-7 h-52'>
-                <div class='absolute inset-x-0 top-0 border-t border-border/60' />
-                <div class='absolute inset-x-0 top-1/2 border-t border-foreground/25' />
-                <div class='absolute inset-x-0 bottom-0 border-t border-border/60' />
-              </div>
-
-              <For each={EMPHASIS_ATTRIBUTES}>
-                {(attribute) => {
-                  const label = t.controlPanel.emphasis.attributes[attribute];
-                  return (
-                    <div class='relative z-10 flex w-10 shrink-0 flex-col items-center'>
-                      <span class='mb-2 h-5 text-xs font-bold tabular-nums'>
-                        {levels[attribute] > 0 ? '+' : ''}
-                        {levels[attribute]}
-                      </span>
-                      <Slider
-                        value={[levels[attribute]]}
-                        onChange={(value) =>
-                          setLevels(attribute, value[0] ?? 0)
-                        }
-                        minValue={-4}
-                        maxValue={4}
-                        step={1}
-                        orientation='vertical'
-                        getValueLabel={({ values }) =>
-                          `${label()}: ${values[0] ?? 0}`
-                        }
-                        class='h-52 w-10 flex-col justify-center'
-                      >
-                        <SliderTrack class='h-full w-2 grow-0'>
-                          <SliderFill
-                            class='h-auto w-full'
-                            style={
-                              levels[attribute] >= 0
-                                ? {
-                                    top: `calc(${50 - levels[attribute] * 12.5}% - 0.25rem)`,
-                                    bottom: 'calc(50% - 0.25rem)',
-                                  }
-                                : {
-                                    top: 'calc(50% - 0.25rem)',
-                                    bottom: `calc(${50 + levels[attribute] * 12.5}% - 0.25rem)`,
-                                  }
-                            }
-                          />
-                          <SliderThumb
-                            aria-label={label()}
-                            class='left-1/2 -ml-2.5'
-                          />
-                        </SliderTrack>
-                      </Slider>
-                      <span class='mt-3 flex w-full items-start justify-center text-center text-xxs leading-tight text-muted-foreground'>
-                        {label()}
-                      </span>
-                    </div>
-                  );
-                }}
-              </For>
+          <div class='flex items-stretch gap-4 overflow-x-scroll p-6'>
+            <div
+              aria-hidden='true'
+              class='flex shrink-0 flex-col items-end justify-between py-6 text-xxs tabular-nums text-muted-foreground'
+            >
+              <span>+4</span>
+              <span>0</span>
+              <span>-4</span>
             </div>
+
+            <For each={EMPHASIS_ATTRIBUTES}>
+              {(attribute) => {
+                const label = t.controlPanel.emphasis.attributes[attribute];
+                return (
+                  <div class='flex flex-col items-center'>
+                    <span class='mb-2 text-xs font-bold tabular-nums'>
+                      {levels[attribute] == 0
+                        ? '±'
+                        : levels[attribute] > 0
+                          ? '+'
+                          : ''}
+                      {levels[attribute]}
+                    </span>
+                    <Slider
+                      value={[levels[attribute]]}
+                      onChange={(value) => setLevels(attribute, value[0] ?? 0)}
+                      minValue={-4}
+                      maxValue={4}
+                      step={1}
+                      orientation='vertical'
+                      getValueLabel={({ values }) =>
+                        `${label()}: ${values[0] ?? 0}`
+                      }
+                      class='h-48 flex-col'
+                    >
+                      <SliderTrack>
+                        <SliderFill
+                          style={
+                            levels[attribute] >= 0
+                              ? {
+                                  top: `calc(${50 - levels[attribute] * 12.5}% - 0.25rem)`,
+                                  bottom: 'calc(50% - 0.25rem)',
+                                }
+                              : {
+                                  top: 'calc(50% - 0.25rem)',
+                                  bottom: `calc(${50 + levels[attribute] * 12.5}% - 0.25rem)`,
+                                }
+                          }
+                        />
+                        <SliderThumb aria-label={label()} />
+                      </SliderTrack>
+                    </Slider>
+                    <span class='mt-4 text-center text-xxs leading-tight text-muted-foreground'>
+                      {label()}
+                    </span>
+                  </div>
+                );
+              }}
+            </For>
           </div>
 
           <DialogFooter class='flex-row items-center justify-between space-x-0 border-t px-6 py-4 sm:justify-between sm:space-x-0'>
@@ -212,7 +203,7 @@ export function EmphasisControls() {
             <Button
               type='button'
               size='sm'
-              class='rounded-full px-5'
+              class='rounded-full px-4'
               onClick={() => setIsOpen(false)}
             >
               {t.controlPanel.emphasis.done()}

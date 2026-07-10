@@ -34,7 +34,7 @@ const SliderTrack = <T extends ValidComponent = 'div'>(
   return (
     <SliderPrimitive.Track
       class={cn(
-        'relative h-2 w-full grow rounded-full bg-secondary',
+        'relative grow rounded-full bg-secondary data-[orientation=horizontal]:h-2 data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-2',
         local.class,
       )}
       {...others}
@@ -51,7 +51,10 @@ const SliderFill = <T extends ValidComponent = 'div'>(
   const [local, others] = splitProps(props as SliderFillProps, ['class']);
   return (
     <SliderPrimitive.Fill
-      class={cn('absolute h-full rounded-full bg-primary', local.class)}
+      class={cn(
+        'absolute rounded-full bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full',
+        local.class,
+      )}
       {...others}
     />
   );
@@ -67,7 +70,7 @@ const SliderThumb = <T extends ValidComponent = 'span'>(
   return (
     <SliderPrimitive.Thumb
       class={cn(
-        'block size-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+        'block size-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[orientation=horizontal]:top-1/2 data-[orientation=vertical]:left-1/2 data-[orientation=horizontal]:-mt-2.5 data-[orientation=vertical]:-ml-2.5',
         local.class,
       )}
       {...others}
