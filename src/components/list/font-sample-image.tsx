@@ -1,6 +1,6 @@
 import { createMemo } from 'solid-js';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { type FontItem } from '@/types/font';
+import { FontWeight, WEIGHT_LABELS, type FontItem } from '@/types/font';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,14 @@ export function ListFontSampleImage(props: ListFontSampleImageProps) {
         <div class='text-sm font-semibold text-muted-foreground'>
           {props.item.meta.font_name}
         </div>
+      </div>
+      <div
+        class='absolute bottom-0 right-0 flex size-8 items-center justify-center bg-foreground font-extrabold text-background'
+        style={{
+          'font-weight': props.item.meta.weight,
+        }}
+      >
+        {WEIGHT_LABELS[props.item.meta.weight as FontWeight].short}
       </div>
     </div>
   );
