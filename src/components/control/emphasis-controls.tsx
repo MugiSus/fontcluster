@@ -25,7 +25,6 @@ import {
   EMPHASIS_LEVEL_MIN,
   EMPHASIS_LEVEL_NEUTRAL,
   EMPHASIS_LEVEL_STEP,
-  EMPHASIS_LEVEL_TICKS,
   EMPHASIS_PRESETS,
   type EmphasisPreset,
 } from '@/constants/emphasis';
@@ -96,15 +95,15 @@ export function EmphasisControls() {
         >
           <SlidersVerticalIcon />
           <span>{t.controlPanel.emphasis.title()}</span>
-          <span class='ml-auto text-xs uppercase tracking-wider text-foreground'>
+          <span class='ml-auto text-xs text-foreground'>
             {t.controlPanel.emphasis.presets[selectedPreset()]()}
           </span>
           <ChevronRightIcon />
         </DialogTrigger>
 
-        <DialogContent class='max-w-3xl gap-0 overflow-hidden p-0'>
-          <DialogHeader class='flex-row items-start gap-4 space-y-0 p-4 text-left'>
-            <SlidersVerticalIcon class='size-8 shrink-0' />
+        <DialogContent class='w-fit max-w-[calc(100vw-16rem)] gap-0 overflow-hidden p-0'>
+          <DialogHeader class='flex-row items-center gap-4 space-y-0 px-4 py-6 text-left'>
+            <SlidersVerticalIcon class='size-4' />
             <div class='flex flex-col gap-2'>
               <DialogTitle>
                 {t.controlPanel.emphasis.equalizerTitle()}
@@ -147,21 +146,15 @@ export function EmphasisControls() {
           <Separator />
 
           <div class='overflow-x-auto'>
-            <div class='grid auto-cols-[2rem] grid-flow-col grid-cols-[auto] grid-rows-[auto_auto_auto] items-center gap-2 p-4'>
+            <div class='grid auto-cols-[48px] grid-flow-col grid-cols-[auto] grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-4 p-4'>
               <span aria-hidden='true' />
               <div
                 aria-hidden='true'
-                class='flex flex-col justify-between self-stretch text-xxs tabular-nums text-muted-foreground'
+                class='flex flex-col justify-between self-stretch px-2 text-xxs tabular-nums text-muted-foreground'
               >
-                <For each={EMPHASIS_LEVEL_TICKS}>
-                  {(level) => (
-                    <span class='flex items-center gap-2'>
-                      {level > EMPHASIS_LEVEL_NEUTRAL ? '+' : ''}
-                      {level}
-                      <span>—</span>
-                    </span>
-                  )}
-                </For>
+                <span>+{EMPHASIS_LEVEL_MAX}</span>
+                <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>
+                <span>{EMPHASIS_LEVEL_MIN}</span>
               </div>
               <span aria-hidden='true' />
 
@@ -171,7 +164,11 @@ export function EmphasisControls() {
                   return (
                     <div class='contents'>
                       <output class='justify-self-center text-xs font-bold tabular-nums'>
-                        {levels[attribute] > EMPHASIS_LEVEL_NEUTRAL ? '+' : ''}
+                        {levels[attribute] === 0
+                          ? '±'
+                          : levels[attribute] > 0
+                            ? '+'
+                            : ''}
                         {levels[attribute]}
                       </output>
                       <Slider
@@ -189,7 +186,7 @@ export function EmphasisControls() {
                         getValueLabel={({ values }) =>
                           `${label()}: ${values[0] ?? EMPHASIS_LEVEL_NEUTRAL}`
                         }
-                        class='h-48 flex-col'
+                        class='h-48 flex-col py-2'
                       >
                         <SliderTrack>
                           <SliderFill originValue={EMPHASIS_LEVEL_NEUTRAL} />
@@ -212,7 +209,7 @@ export function EmphasisControls() {
             <Button
               type='button'
               size='sm'
-              class='rounded-full'
+              class='h-8 rounded-full'
               onClick={() => setIsOpen(false)}
             >
               {t.controlPanel.emphasis.done()}
