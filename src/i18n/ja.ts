@@ -53,7 +53,7 @@ export const ja: Dictionary = {
         'artistic': '芸術的',
         'attention-grabbing': '目を引く',
         'attractive': '魅力的',
-        'bad': '粗悪',
+        'bad': '野暮ったさ',
         'boring': '退屈',
         'calm': '穏やかさ',
         'capitals': '大文字的',

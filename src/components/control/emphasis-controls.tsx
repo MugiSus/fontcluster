@@ -144,7 +144,7 @@ export function EmphasisControls() {
 
           <Separator />
 
-          <HorizontalScroller class='grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-4 px-1 py-6'>
+          <HorizontalScroller class='grid auto-cols-[60px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-4 px-1 py-6'>
             <span aria-hidden='true' />
             <div
               aria-hidden='true'
@@ -162,7 +162,7 @@ export function EmphasisControls() {
                 return (
                   <>
                     <span
-                      class='min-w-0 self-end text-balance break-words text-center text-xxs leading-tight text-muted-foreground'
+                      class='min-w-0 self-end text-balance break-words text-center text-xs leading-tight text-foreground'
                       classList={{
                         'self-end !whitespace-nowrap justify-self-center [writing-mode:vertical-rl] -translate-x-px':
                           locale() === 'ja',
