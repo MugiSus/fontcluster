@@ -40,7 +40,7 @@ import { appState } from '@/store';
  * enclosing processing form, while preset constants remain immutable inputs.
  */
 export function EmphasisControls() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const savedClustering = appState.session.algorithm.clustering;
 
   const currentLevels = Object.fromEntries(
@@ -144,7 +144,7 @@ export function EmphasisControls() {
 
           <Separator />
 
-          <HorizontalScroller class='grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-5 px-1 py-6'>
+          <HorizontalScroller class='grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-4 px-1 py-6'>
             <span aria-hidden='true' />
             <div
               aria-hidden='true'
@@ -161,14 +161,15 @@ export function EmphasisControls() {
                 const label = t.controlPanel.equalizer.attributes[attribute];
                 return (
                   <>
-                    <output class='justify-self-center text-xs font-bold tabular-nums'>
-                      {levels[attribute] === 0
-                        ? '±'
-                        : levels[attribute] > 0
-                          ? '+'
-                          : ''}
-                      {levels[attribute]}
-                    </output>
+                    <span
+                      class='min-w-0 self-end text-balance break-words text-center text-xxs leading-tight text-muted-foreground'
+                      classList={{
+                        'self-end !whitespace-nowrap justify-self-center [writing-mode:vertical-rl] -translate-x-px':
+                          locale() === 'ja',
+                      }}
+                    >
+                      {label()}
+                    </span>
                     <Slider
                       value={[levels[attribute]]}
                       onChange={(value) =>
@@ -205,9 +206,14 @@ export function EmphasisControls() {
                         <SliderThumb aria-label={label()} />
                       </SliderTrack>
                     </Slider>
-                    <span class='min-w-0 break-words text-center text-xxs leading-tight text-muted-foreground'>
-                      {label()}
-                    </span>
+                    <output class='justify-self-center text-xs font-bold tabular-nums'>
+                      {levels[attribute] === 0
+                        ? '±'
+                        : levels[attribute] > 0
+                          ? '+'
+                          : ''}
+                      {levels[attribute]}
+                    </output>
                   </>
                 );
               }}
