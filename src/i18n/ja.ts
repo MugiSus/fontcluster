@@ -25,10 +25,10 @@ export const ja: Dictionary = {
     groupingThreshold: '閾値',
     targetClusters: '目標クラスタ数',
     emphasis: {
-      title: '属性',
-      equalizerTitle: '属性イコライザー',
+      title: '性質',
+      equalizerTitle: '属性イコライザー（ベータ）',
       description:
-        '各視覚属性がクラスタリングに与える影響を調整します。正の値は属性を強調し、負の値は影響を抑えます。',
+        '各視覚的属性がクラスタリングに与える影響を調整します。正の値は属性を強調し、負の値は影響を抑えます。',
       preset: 'プリセット',
       done: '完了',
       presets: {

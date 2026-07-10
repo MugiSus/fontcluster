@@ -6,8 +6,6 @@ import * as SliderPrimitive from '@kobalte/core/slider';
 
 import { cn } from '@/lib/utils';
 
-const SLIDER_TRACK_RADIUS = '0.25rem';
-
 type SliderProps<T extends ValidComponent = 'div'> =
   SliderPrimitive.SliderRootProps<T> & { class?: string | undefined };
 
@@ -36,7 +34,7 @@ const SliderTrack = <T extends ValidComponent = 'div'>(
   return (
     <SliderPrimitive.Track
       class={cn(
-        'relative grow rounded-full bg-secondary data-[orientation=horizontal]:h-2 data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-2',
+        'relative grow rounded-full bg-secondary data-[orientation=horizontal]:h-2 data-[orientation=horizontal]:w-full data-[orientation=vertical]:w-1',
         local.class,
       )}
       {...others}
@@ -73,21 +71,21 @@ const SliderFill = <T extends ValidComponent = 'div'>(
 
     if (context.state.orientation() === 'vertical') {
       return {
-        top: `calc(${(1 - end) * 100}% - ${SLIDER_TRACK_RADIUS})`,
-        bottom: `calc(${start * 100}% - ${SLIDER_TRACK_RADIUS})`,
+        top: `${(1 - end) * 100}%`,
+        bottom: `${start * 100}%`,
       };
     }
 
     return {
-      left: `calc(${start * 100}% - ${SLIDER_TRACK_RADIUS})`,
-      right: `calc(${(1 - end) * 100}% - ${SLIDER_TRACK_RADIUS})`,
+      left: `${start * 100}%`,
+      right: `${(1 - end) * 100}%`,
     };
   });
 
   return (
     <SliderPrimitive.Fill
       class={cn(
-        'absolute rounded-full bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full',
+        'absolute rounded-sm bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full',
         local.class,
       )}
       style={originStyle() ?? {}}
