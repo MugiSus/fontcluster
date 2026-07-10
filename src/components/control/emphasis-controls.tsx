@@ -101,7 +101,7 @@ export function EmphasisControls() {
           <ChevronRightIcon />
         </DialogTrigger>
 
-        <DialogContent class='w-fit max-w-[calc(100vw-16rem)] gap-0 overflow-hidden p-0'>
+        <DialogContent class='w-fit max-w-[calc(100vw-16rem)] gap-0 overflow-hidden p-0 shadow'>
           <DialogHeader class='flex-row items-center gap-4 space-y-0 px-4 py-6 text-left'>
             <SlidersVerticalIcon class='size-4' />
             <div class='flex flex-col gap-2'>
@@ -150,7 +150,7 @@ export function EmphasisControls() {
               <span aria-hidden='true' />
               <div
                 aria-hidden='true'
-                class='flex flex-col justify-between self-stretch px-2 text-xxs tabular-nums text-muted-foreground'
+                class='flex flex-col justify-between self-stretch px-2 text-xs tabular-nums leading-[0px] text-muted-foreground'
               >
                 <span>+{EMPHASIS_LEVEL_MAX}</span>
                 <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>
@@ -186,7 +186,7 @@ export function EmphasisControls() {
                         getValueLabel={({ values }) =>
                           `${label()}: ${values[0] ?? EMPHASIS_LEVEL_NEUTRAL}`
                         }
-                        class='h-48 flex-col py-2'
+                        class='h-48 flex-col'
                       >
                         <SliderTrack>
                           <SliderFill originValue={EMPHASIS_LEVEL_NEUTRAL} />
