@@ -93,9 +93,9 @@ export function EmphasisControls() {
           size='sm'
           class='group h-8 justify-start pl-2 pr-0.5 capitalize text-muted-foreground shadow-none hover:text-foreground'
         >
-          <SlidersVerticalIcon />
+          <SlidersVerticalIcon class='!size-3.5' />
           <span>{t.controlPanel.emphasis.title()}</span>
-          <span class='ml-auto text-xs text-foreground'>
+          <span class='ml-auto text-sm text-foreground'>
             {t.controlPanel.emphasis.presets[selectedPreset()]()}
           </span>
           <ChevronRightIcon />
@@ -129,7 +129,7 @@ export function EmphasisControls() {
                 }
               }}
               size='sm'
-              class='justify-start gap-2 *:text-xs'
+              class='justify-start gap-2 *:px-2.5 *:text-xs'
             >
               <ToggleGroupItem value='default'>
                 {t.controlPanel.emphasis.presets.default()}
@@ -145,7 +145,7 @@ export function EmphasisControls() {
 
           <Separator />
 
-          <div class='relative grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-6 overflow-x-auto px-1 py-6'>
+          <div class='relative grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-5 overflow-x-auto px-1 py-6'>
             <span aria-hidden='true' />
             <div
               aria-hidden='true'
