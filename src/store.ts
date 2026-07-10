@@ -23,6 +23,13 @@ export interface AppState {
   };
   ui: {
     selectedFontKey: string | null;
+    /** Live (uncommitted) selection while drag-selecting on the graph; commits
+     *  into selectedFontKey on mouse-up. Lets surfaces outside the graph (the
+     *  list's sample preview) follow the drag before it commits. */
+    draggingFontKey: string | null;
+    /** Dendrogram node index of the dragging target when it is a merge-node
+     *  sample; meaningful only while draggingFontKey is non-null. */
+    draggingDendrogramNode: number | null;
     hoveredFontKey: string | null;
     sentFontItemKey: string | null;
     isSessionLoading: boolean;
@@ -87,6 +94,8 @@ export const [appState, setAppState] = createStore<AppState>({
   },
   ui: {
     selectedFontKey: null,
+    draggingFontKey: null,
+    draggingDendrogramNode: null,
     hoveredFontKey: null,
     sentFontItemKey: null,
     isSessionLoading: false,

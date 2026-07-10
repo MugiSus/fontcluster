@@ -95,6 +95,20 @@ export const setSelectedDendrogramNodeSample = (
   selectionHistory.commitDebounced();
 };
 
+/**
+ * Tracks the live (uncommitted) selection while drag-selecting on the graph.
+ * Null clears it (mouse-up, mouse-leave). Owned by the store so surfaces
+ * outside the graph (e.g. the list's sample preview) can follow the drag
+ * before it commits into the selected font.
+ */
+export const setDraggingSelection = (
+  target: { key: string; nodeIndex: number | null } | null,
+) =>
+  batch(() => {
+    setAppState('ui', 'draggingFontKey', target?.key ?? null);
+    setAppState('ui', 'draggingDendrogramNode', target?.nodeIndex ?? null);
+  });
+
 export const setHoveredFontKey = (key: string | null) =>
   setAppState('ui', 'hoveredFontKey', key);
 
@@ -153,6 +167,8 @@ export const setCurrentSessionId = async (id: string) => {
     batch(() => {
       setAppState('ui', 'selectedFontKey', null);
       setAppState('ui', 'selectedDendrogramNode', null);
+      setAppState('ui', 'draggingFontKey', null);
+      setAppState('ui', 'draggingDendrogramNode', null);
       setAppState('ui', 'hoveredFontKey', null);
       setAppState('ui', 'sentFontItemKey', null);
     });

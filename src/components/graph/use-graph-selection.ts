@@ -1,6 +1,7 @@
-import { createSelector, createSignal } from 'solid-js';
+import { createSelector } from 'solid-js';
 import { emit } from '@tauri-apps/api/event';
 import {
+  setDraggingSelection,
   setSelectedDendrogramNodeSample,
   setSelectedFontKey as setCommittedSelectedFontKey,
 } from '@/actions';
@@ -34,20 +35,24 @@ interface SelectionTarget {
 }
 
 export function useGraphSelection(props: UseGraphSelectionProps) {
-  const [draggingSelection, setDraggingSelection] =
-    createSignal<SelectionTarget | null>(null);
+  // The in-flight drag target lives in the store (ui.draggingFontKey /
+  // ui.draggingDendrogramNode) so panels outside the graph can follow it.
+  const draggingSelection = (): SelectionTarget | null => {
+    const key = appState.ui.draggingFontKey;
+    return key ? { key, nodeIndex: appState.ui.draggingDendrogramNode } : null;
+  };
 
   const selectedFontKey = () =>
-    draggingSelection()?.key ?? appState.ui.selectedFontKey;
-  const selectedDendrogramNode = () => {
-    const dragging = draggingSelection();
-    return dragging ? dragging.nodeIndex : appState.ui.selectedDendrogramNode;
-  };
+    appState.ui.draggingFontKey ?? appState.ui.selectedFontKey;
+  const selectedDendrogramNode = () =>
+    appState.ui.draggingFontKey !== null
+      ? appState.ui.draggingDendrogramNode
+      : appState.ui.selectedDendrogramNode;
 
   // True while the pointer is actively resolving a selection (press/drag in
   // select mode), before it commits on mouse-up. The graph's selected-font
   // actions stay hidden during this window.
-  const isSelecting = () => draggingSelection() !== null;
+  const isSelecting = () => appState.ui.draggingFontKey !== null;
 
   const selectedFontFamily = () => {
     const key = selectedFontKey();

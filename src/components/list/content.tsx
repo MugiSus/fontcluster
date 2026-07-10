@@ -5,7 +5,7 @@ import {
   createSignal,
   Show,
 } from 'solid-js';
-import { debounce } from '@solid-primitives/scheduled';
+import { debounce, throttle } from '@solid-primitives/scheduled';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { toast } from 'solid-sonner';
 import { MousePointerClickIcon } from 'lucide-solid';
@@ -19,10 +19,12 @@ import {
 import { type FontItem } from '@/types/font';
 import { getNearestSelectableFontItems } from '@/components/graph/font-point-index';
 import { ListFontItem } from './list-font-item';
+import { ListFontSampleImage } from './font-sample-image';
 import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_UPDATE_DEBOUNCE = 0;
 const LIST_PREVIEW_SCROLL_DEBOUNCE = 400;
+const LIST_SAMPLE_IMAGE_THROTTLE = 16;
 const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;
 
@@ -87,6 +89,25 @@ export function ListContent() {
     enableListPreviews();
   };
 
+  // The sample image follows the in-flight drag, not just the committed
+  // selection — but through a throttled copy of the key: the dragging key
+  // changes at mousemove rate, and DOM updates at that rate make the whole
+  // drag janky. The GL graph keeps tracking every move.
+  const [sampleItemKey, setSampleItemKey] = createSignal<string | null>(null);
+  const updateSampleItemKey = throttle(
+    (key: string | null) => setSampleItemKey(key),
+    LIST_SAMPLE_IMAGE_THROTTLE,
+  );
+  createEffect(() => {
+    updateSampleItemKey(
+      appState.ui.draggingFontKey ?? appState.ui.selectedFontKey,
+    );
+  });
+  const sampleItem = () => {
+    const key = sampleItemKey();
+    return key ? appState.fonts.displayData[key] || null : null;
+  };
+
   const handleApply = (item: FontItem) =>
     applyFontToPlugins(item)
       .then(() =>
@@ -122,6 +143,9 @@ export function ListContent() {
 
   return (
     <div class='flex h-full flex-1 flex-col'>
+      <Show when={sampleItem()}>
+        {(item) => <ListFontSampleImage item={item()} />}
+      </Show>
       <ListPreviewTextField
         value={appState.ui.listPreviewText}
         placeholder={appState.session.algorithm.rendering.text || 'A'}

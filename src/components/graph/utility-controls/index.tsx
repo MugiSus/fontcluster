@@ -63,6 +63,22 @@ export function GraphUtilityControls() {
 
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
+          <LanguageToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+        </TooltipTrigger>
+        <TooltipContent>
+          {t.graph.utilityControls.language.title()}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger as='div' class='rounded-full'>
+          <ThemeModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
+        </TooltipTrigger>
+        <TooltipContent>{t.graph.utilityControls.theme.title()}</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger as='div' class='rounded-full'>
           <Button
             variant='ghost'
             size='icon'
@@ -84,22 +100,6 @@ export function GraphUtilityControls() {
         <TooltipContent>
           {t.graph.utilityControls.sessionHistory.title()}
         </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger as='div' class='rounded-full'>
-          <LanguageToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
-        </TooltipTrigger>
-        <TooltipContent>
-          {t.graph.utilityControls.language.title()}
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger as='div' class='rounded-full'>
-          <ThemeModeToggle class='size-8 rounded-full text-muted-foreground hover:bg-accent/80 hover:text-foreground' />
-        </TooltipTrigger>
-        <TooltipContent>{t.graph.utilityControls.theme.title()}</TooltipContent>
       </Tooltip>
     </div>
   );
