@@ -156,10 +156,20 @@ export function GraphViewer(props: GraphViewerProps) {
     return anchor ? { ...point, x: anchor.x, y: anchor.y } : point;
   };
 
+  // When a font is selected, the zoom buttons pivot around it instead of the
+  // viewport center, keeping the current selection under the cursor as it grows
+  // or shrinks. Falls back to center-based zoom when nothing is selected.
+  const getZoomFocus = (): GraphCoordinate | undefined => {
+    const key = selection.selectedKey();
+    if (!key) return undefined;
+    const point = getSelectedActionAnchorPoint(key);
+    return point ? { x: point.x, y: point.y } : undefined;
+  };
+
   onMount(() => {
     props.onViewportZoomControlsChange?.({
-      zoomIn: viewport.handleZoomIn,
-      zoomOut: viewport.handleZoomOut,
+      zoomIn: () => viewport.handleZoomIn(getZoomFocus()),
+      zoomOut: () => viewport.handleZoomOut(getZoomFocus()),
       resetView: viewport.handleReset,
     });
   });

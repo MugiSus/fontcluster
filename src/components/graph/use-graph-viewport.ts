@@ -290,7 +290,7 @@ export function useGraphViewport(
     zoomInto({
       focusX: center.x,
       focusY: center.y,
-      zoomFactor: ZOOM_FACTOR_RATIO ** -8,
+      zoomFactor: ZOOM_FACTOR_RATIO ** -4,
     });
   };
 
@@ -299,7 +299,7 @@ export function useGraphViewport(
     zoomInto({
       focusX: center.x,
       focusY: center.y,
-      zoomFactor: ZOOM_FACTOR_RATIO ** 8,
+      zoomFactor: ZOOM_FACTOR_RATIO ** 4,
     });
   };
 
