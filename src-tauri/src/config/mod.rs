@@ -8,7 +8,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 /// Text rendered into a sample image when the user has not chosen their own.
@@ -112,6 +112,34 @@ pub struct ClusteringConfig {
     pub distance_threshold: f32,
     /// Desired final cluster count; `0` means "use `distance_threshold`".
     pub target_cluster_count: usize,
+    /// Master switch for attribute emphasis. When `false`, [`Self::emphasis`] is
+    /// ignored while building the clustering features (the levels are kept so a
+    /// disabled run does not discard them). Defaults to `true` when absent so
+    /// sessions written before this field applied their emphasis unchanged.
+    #[serde(default = "default_enable_attribute_emphasis")]
+    pub enable_attribute_emphasis: bool,
+    /// Per-attribute emphasis applied when building the clustering features,
+    /// keyed by O'Donovan attribute name (e.g. `"serif"`, `"attention-grabbing"`).
+    /// Only non-zero levels are stored; a missing key means no emphasis. Empty by
+    /// default so older sessions load unchanged.
+    ///
+    /// A non-zero level (`-4..=4`) pulls that attribute's direction out of the
+    /// embedding and re-appends it as an explicit, standardised clustering axis
+    /// whose strength is `reference * 2^level` — `reference` being the typical
+    /// base-axis spread (see [`crate::core::clusterer::build_cluster_features`]).
+    /// So `±1–2` nudge grouping toward the attribute without unbalancing the tree,
+    /// `±3–4` make it dominate, and negatives shrink it so fonts group as if the
+    /// attribute were ignored. Directions come from `attribute_directions.json`
+    /// beside the model.
+    #[serde(default)]
+    pub emphasis: BTreeMap<String, i8>,
+}
+
+/// Serde fallback for [`ClusteringConfig::enable_attribute_emphasis`]: sessions written
+/// before the field existed always applied their emphasis, so a missing value
+/// reads as `true`.
+fn default_enable_attribute_emphasis() -> bool {
+    true
 }
 
 /// Linkage criteria supported by the clustering stage, mirroring
@@ -136,6 +164,8 @@ impl Default for ClusteringConfig {
             preprocessing_dimensions: 8,
             distance_threshold: 0.5,
             target_cluster_count: 0,
+            enable_attribute_emphasis: false,
+            emphasis: BTreeMap::new(),
         }
     }
 }

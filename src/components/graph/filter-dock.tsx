@@ -66,7 +66,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
       inert={!props.isOpen}
       onMouseDown={(event) => event.stopPropagation()}
       class={cn(
-        'absolute left-0 right-0 z-20 mx-auto w-max rounded-full border border-border/25 bg-background/50 shadow-md backdrop-blur-md transition-[bottom,opacity] duration-300 ease-out',
+        'absolute left-0 right-0 z-20 mx-auto w-max rounded-full border border-border/25 bg-background/50 shadow backdrop-blur-md transition-[bottom,opacity] duration-300 ease-out',
         props.isOpen ? 'bottom-4 opacity-100' : 'bottom-0 opacity-0',
       )}
     >

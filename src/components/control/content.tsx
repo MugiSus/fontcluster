@@ -30,14 +30,21 @@ import { appState } from '@/store';
 import { runProcessingJobs } from '@/actions';
 import { useI18n } from '@/i18n';
 import {
+  EMPHASIS_LEVEL_MAX,
+  EMPHASIS_LEVEL_MIN,
+  EMPHASIS_LEVEL_NEUTRAL,
+} from '@/constants/emphasis';
+import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
+  EMPHASIS_ATTRIBUTES,
 } from '@/constants/session';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
@@ -96,8 +103,22 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
  * Reads the clustering inputs off the submitted form into a
  * {@link ClusteringOptions}, defaulting each field the same way
  * {@link parseRenderingConfig} does.
+ *
+ * Attribute emphasis is active when at least one submitted level is non-zero.
+ * An all-zero map takes the backend's unchanged no-emphasis path.
  */
 function parseClusteringConfig(formdata: FormData): ClusteringOptions {
+  // Emphasis levels are integers in -4..4; only non-zero axes are kept, so the
+  // stored map stays sparse and a missing key reads as "no emphasis".
+  const emphasis: Record<string, number> = {};
+  for (const attribute of EMPHASIS_ATTRIBUTES) {
+    const value = Number(formdata.get(`clustering-emphasis-${attribute}`));
+    const level = Number.isFinite(value)
+      ? Math.max(EMPHASIS_LEVEL_MIN, Math.min(EMPHASIS_LEVEL_MAX, value))
+      : EMPHASIS_LEVEL_NEUTRAL;
+    if (level !== EMPHASIS_LEVEL_NEUTRAL) emphasis[attribute] = level;
+  }
+
   return {
     method: (formdata.get('clustering-method') ??
       DEFAULT_CLUSTERING_CONFIG.method) as ClusteringMethod,
@@ -110,6 +131,8 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
     target_cluster_count:
       Number(formdata.get('clustering-target-cluster-count')) ||
       DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
+    enable_attribute_emphasis: Object.keys(emphasis).length > 0,
+    emphasis,
   };
 }
 
@@ -322,6 +345,7 @@ export function ControlContent() {
               step={1}
               minValue={0}
             />
+            <EmphasisControls />
           </ControlPropertySection>
         </div>
       </Show>

@@ -14,7 +14,27 @@ export interface ClusteringOptions {
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
+  /** Compatibility field for the backend/session schema. The UI derives it
+   * from whether {@link ClusteringOptions.emphasis} contains any entries. */
+  // snake_case to mirror the backend's serde field name verbatim.
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  enable_attribute_emphasis: boolean;
+  emphasis: EmphasisLevels;
 }
+
+/**
+ * Per-attribute emphasis levels (-4..4), keyed by O'Donovan attribute name
+ * (e.g. `serif`, `attention-grabbing`). Only non-zero entries are stored; a
+ * missing key means no emphasis.
+ *
+ * A non-zero level pulls that attribute out of the embedding and re-appends it
+ * as an explicit, standardised clustering axis whose strength is
+ * `reference * 2^level` (backend-side), where reference is the typical base-axis
+ * spread. So ±1–2 nudge grouping toward the attribute without unbalancing the
+ * tree, ±3–4 make it dominate, and negatives shrink it so fonts group as if it
+ * were ignored.
+ */
+export type EmphasisLevels = Partial<Record<string, number>>;
 
 export type FontSet =
   | 'system_fonts'

@@ -18,8 +18,9 @@ use crate::core::session::{
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use kodama::{linkage, Method as KodamaMethod};
-use ndarray::{Array2, Axis};
+use ndarray::{concatenate, Array1, Array2, Axis};
 use petal_decomposition::PcaBuilder;
+use std::collections::{BTreeMap, HashMap};
 
 /// Clusters every analysed font in the active session and persists the labels.
 ///
@@ -41,6 +42,14 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
+    // The enable switch gates the whole feature: when off, hand the feature
+    // builder an empty map so it takes the plain no-emphasis path, while the
+    // stored levels stay untouched in the session.
+    let emphasis = if config.enable_attribute_emphasis {
+        config.emphasis.clone()
+    } else {
+        BTreeMap::new()
+    };
     let session_dir_for_first = session_dir.clone();
 
     let (points, ids) =
@@ -58,11 +67,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             )
             .map_err(|e| AppError::Processing(e.to_string()))?;
 
-            let points = if n_samples < 2 || n_features <= preprocessing_dimensions {
-                data
-            } else {
-                pca_embedding(data, preprocessing_dimensions)?
-            };
+            let points = build_cluster_features(data, preprocessing_dimensions, &emphasis)?;
 
             Ok((points, ids))
         })
@@ -137,6 +142,205 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     })?;
 
     Ok(())
+}
+
+/// `(attribute-name, level)` pairs for the non-zero emphasis axes.
+///
+/// Iteration order is the map's key order (`BTreeMap` iterates sorted), so the
+/// orthonormalisation in [`build_cluster_features`] is deterministic. Levels are
+/// clamped to the UI's `-4..=4` range so a hand-edited `config.json` cannot blow
+/// up the `2^level` weighting.
+fn active_emphasis(emphasis: &BTreeMap<String, i8>) -> Vec<(String, i8)> {
+    emphasis
+        .iter()
+        .filter(|(_, &level)| level != 0)
+        .map(|(name, &level)| (name.clone(), level.clamp(-4, 4)))
+        .collect()
+}
+
+/// Builds the feature matrix fed to clustering, honouring attribute emphasis.
+///
+/// Without emphasis (the default) this reproduces the historical pipeline:
+/// reduce the embeddings to `dimensions` principal components (or pass them
+/// through when there are too few samples/features to reduce).
+///
+/// With one or more non-zero emphasis levels, each emphasised attribute
+/// direction is made an **explicit clustering axis** instead of being reweighted
+/// inside the embedding (where PCA can rotate it away). Concretely:
+/// 1. the active attribute directions are orthonormalised (Gram-Schmidt) into a
+///    basis `Q`, so overlapping attributes (e.g. serif/cursive) are not
+///    double-counted;
+/// 2. every embedding is split into its attribute coordinates `C = X Qᵀ` and the
+///    residual `X - C Q` (the geometry with those attributes removed);
+/// 3. the residual is PCA-reduced to `dimensions` — the model's own structure,
+///    minus the controlled attributes;
+/// 4. each attribute coordinate is **standardised** and appended as its own axis
+///    scaled by `reference * 2^level`, where `reference` is the *typical* base
+///    axis spread (mean of the base columns' stds).
+///
+/// The reference scaling is what makes the level a meaningful knob: the raw
+/// `x·q` coordinate is ~10× narrower than a base axis (measured on this model),
+/// so scaling only by `2^level` leaves the axis imperceptible across the whole
+/// `-4..=4` range. Anchoring level `0` to a typical visual axis makes `±1–2` a
+/// nudge that shifts grouping without unbalancing the tree, `±3–4` dominate, and
+/// negatives shrink the attribute toward zero (fonts group as if it were
+/// ignored). The appended columns survive into the distance metric untouched by
+/// PCA. A missing or malformed `attribute_directions.json` logs a warning and
+/// falls back to the no-emphasis pipeline, so clustering never fails on account
+/// of emphasis.
+fn build_cluster_features(
+    data: Array2<f32>,
+    dimensions: usize,
+    emphasis: &BTreeMap<String, i8>,
+) -> Result<Array2<f32>> {
+    let (n_samples, n_features) = data.dim();
+    let reduce = |data: Array2<f32>| -> Result<Array2<f32>> {
+        if n_samples < 2 || n_features <= dimensions {
+            Ok(data)
+        } else {
+            pca_embedding(data, dimensions)
+        }
+    };
+
+    let active = active_emphasis(emphasis);
+    if active.is_empty() || n_samples < 2 {
+        return reduce(data);
+    }
+
+    let directions = match load_attribute_directions(n_features) {
+        Ok(directions) => directions,
+        Err(e) => {
+            println!("⚠️ Clusterer: attribute emphasis skipped: {e}");
+            return reduce(data);
+        }
+    };
+
+    // Keep only attributes the asset actually carries, preserving their levels.
+    let (vectors, levels): (Vec<Vec<f32>>, Vec<i8>) = active
+        .iter()
+        .filter_map(|(name, level)| match directions.get(name) {
+            Some(direction) => Some((direction.clone(), *level)),
+            None => {
+                println!("⚠️ Clusterer: no direction for attribute '{name}', skipped");
+                None
+            }
+        })
+        .unzip();
+    if vectors.is_empty() {
+        return reduce(data);
+    }
+
+    // Q: orthonormal rows spanning the emphasised attribute subspace.
+    let basis = orthonormal_basis(&vectors);
+    // C = X Qᵀ (per-font attribute coordinates); residual removes that subspace.
+    let coords = data.dot(&basis.t());
+    let residual = &data - &coords.dot(&basis);
+
+    let base = reduce(residual)?;
+
+    // Reference scale = the *typical* base-axis spread (mean of the base columns'
+    // stds). Anchoring to the strongest axis (PC1) instead makes even level 1
+    // outweigh the whole visual base, collapsing the cloud onto one axis and
+    // skewing the dendrogram (measured: PC1-ref level 1 pushed 39% of merges to
+    // the low-height end vs 18% baseline). The mean keeps level ±1–2 a nudge that
+    // shifts grouping without breaking the tree, while ±3–4 still dominate.
+    let reference = ((0..base.ncols())
+        .map(|column| column_std(&base, column))
+        .sum::<f32>()
+        / base.ncols().max(1) as f32)
+        .max(1e-6);
+
+    // Append each attribute coordinate as its own axis: standardise to unit
+    // variance, then weight by `reference * 2^level` so the level reads as
+    // "strength relative to the model's strongest visual axis".
+    let mut attribute_axes = coords;
+    for (column, level) in levels.iter().enumerate() {
+        let mean = attribute_axes.column(column).mean().unwrap_or(0.0);
+        let std = column_std(&attribute_axes, column).max(1e-6);
+        let scale = reference * 2f32.powi(i32::from(*level)) / std;
+        attribute_axes
+            .column_mut(column)
+            .mapv_inplace(|value| (value - mean) * scale);
+    }
+
+    concatenate(Axis(1), &[base.view(), attribute_axes.view()])
+        .map_err(|e| AppError::Processing(e.to_string()))
+}
+
+/// Population standard deviation of one column of `data` (`0.0` when empty).
+fn column_std(data: &Array2<f32>, column: usize) -> f32 {
+    let column = data.column(column);
+    let n = column.len();
+    if n == 0 {
+        return 0.0;
+    }
+    let mean = column.sum() / n as f32;
+    (column.iter().map(|value| (value - mean).powi(2)).sum::<f32>() / n as f32).sqrt()
+}
+
+/// Orthonormalises `vectors` (modified Gram-Schmidt) into a `(k, dim)` matrix
+/// whose rows are mutually orthogonal unit vectors, in input order.
+///
+/// A vector that is linearly dependent on the ones before it collapses to a
+/// zero row, so its later attribute axis contributes nothing rather than
+/// double-counting a shared direction.
+fn orthonormal_basis(vectors: &[Vec<f32>]) -> Array2<f32> {
+    let dim = vectors[0].len();
+    let mut basis: Vec<Array1<f32>> = Vec::with_capacity(vectors.len());
+    for vector in vectors {
+        let mut residual = Array1::from(vector.clone());
+        for previous in &basis {
+            let projection = residual.dot(previous);
+            residual = &residual - &(previous * projection);
+        }
+        let norm = residual.dot(&residual).sqrt();
+        if norm > 1e-6 {
+            residual /= norm;
+        } else {
+            residual.fill(0.0);
+        }
+        basis.push(residual);
+    }
+
+    let mut matrix = Array2::zeros((basis.len(), dim));
+    for (row, vector) in basis.iter().enumerate() {
+        matrix.row_mut(row).assign(vector);
+    }
+    matrix
+}
+
+/// Loads `attribute_directions.json` from the model directory as
+/// `name -> direction vector`, validating the dimensionality.
+///
+/// The asset is model-coupled and lives beside `model.onnx`; regenerate it with
+/// `distill/export_attribute_directions.py` whenever the deployed model changes.
+fn load_attribute_directions(expected_dim: usize) -> Result<HashMap<String, Vec<f32>>> {
+    #[derive(serde::Deserialize)]
+    struct DirectionsFile {
+        dim: usize,
+        attributes: HashMap<String, DirectionEntry>,
+    }
+    #[derive(serde::Deserialize)]
+    struct DirectionEntry {
+        direction: Vec<f32>,
+    }
+
+    let path = crate::core::analyzer::resolve_model_dir()?.join("attribute_directions.json");
+    let raw = std::fs::read_to_string(&path)
+        .map_err(|e| AppError::Io(format!("{} unreadable: {e}", path.display())))?;
+    let parsed: DirectionsFile =
+        serde_json::from_str(&raw).map_err(|e| AppError::Processing(e.to_string()))?;
+    if parsed.dim != expected_dim {
+        return Err(AppError::Processing(format!(
+            "attribute directions are {}-d but embeddings are {}-d",
+            parsed.dim, expected_dim
+        )));
+    }
+    Ok(parsed
+        .attributes
+        .into_iter()
+        .map(|(name, entry)| (name, entry.direction))
+        .collect())
 }
 
 /// Reduces `data` to at most `dimensions` principal components.
@@ -488,5 +692,91 @@ fn kodama_method(method: ClusteringMethod) -> KodamaMethod {
         ClusteringMethod::Ward => KodamaMethod::Ward,
         ClusteringMethod::Centroid => KodamaMethod::Centroid,
         ClusteringMethod::Median => KodamaMethod::Median,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// With no emphasis the feature builder must reproduce the plain PCA path
+    /// exactly, so existing sessions cluster identically.
+    #[test]
+    fn features_without_emphasis_match_pca() {
+        let data = Array2::from_shape_vec(
+            (4, 6),
+            vec![
+                1.0, 0.0, 0.2, 0.9, 0.1, 0.4, //
+                0.0, 1.0, 0.8, 0.1, 0.7, 0.3, //
+                0.5, 0.5, 0.1, 0.6, 0.2, 0.9, //
+                0.9, 0.2, 0.4, 0.3, 0.8, 0.1, //
+            ],
+        )
+        .unwrap();
+        let out = build_cluster_features(data.clone(), 3, &BTreeMap::new()).unwrap();
+        let expected = pca_embedding(data, 3).unwrap();
+        assert_eq!(out, expected);
+    }
+
+    /// Gram-Schmidt yields mutually orthogonal unit rows and collapses a
+    /// dependent input to a zero row (so it cannot double-count a direction).
+    #[test]
+    fn orthonormal_basis_orthogonalises_and_drops_dependents() {
+        let basis = orthonormal_basis(&[
+            vec![2.0, 0.0, 0.0],
+            vec![1.0, 3.0, 0.0], // becomes the y axis
+            vec![4.0, 0.0, 0.0], // dependent on the first → zero row
+        ]);
+        // rows 0 and 1 are unit norm; row 2 collapsed.
+        assert!((basis.row(0).dot(&basis.row(0)).sqrt() - 1.0).abs() < 1e-5);
+        assert!((basis.row(1).dot(&basis.row(1)).sqrt() - 1.0).abs() < 1e-5);
+        assert!(basis.row(2).dot(&basis.row(2)) < 1e-9);
+        // and the two surviving rows are orthogonal.
+        assert!(basis.row(0).dot(&basis.row(1)).abs() < 1e-5);
+    }
+
+    /// A non-zero level appends exactly one standardised attribute axis whose
+    /// scale is `reference * 2^level`. The reference and standardisation are
+    /// identical across levels, so the appended column is zero-mean and a
+    /// level `+2` axis is exactly `2×` a level `+1` axis, elementwise. Uses the
+    /// on-disk asset; skips when `models/` is not present (CI).
+    #[test]
+    fn emphasis_appends_standardised_scaled_attribute_axis() {
+        if load_attribute_directions(512).is_err() {
+            return; // developer-local asset; skip on CI
+        }
+
+        // Eight arbitrary rows in embedding space.
+        let mut values = Vec::with_capacity(8 * 512);
+        for row in 0..8 {
+            for col in 0..512 {
+                values.push(((row * 7 + col) % 13) as f32 * 0.01 - 0.06);
+            }
+        }
+        let data = Array2::from_shape_vec((8, 512), values).unwrap();
+
+        let out1 =
+            build_cluster_features(data.clone(), 3, &BTreeMap::from([("serif".to_string(), 1)]))
+                .unwrap();
+        let out2 =
+            build_cluster_features(data, 3, &BTreeMap::from([("serif".to_string(), 2)])).unwrap();
+
+        // One appended column beyond the (rank-limited) PCA base.
+        assert!(out1.ncols() >= 2 && out2.ncols() == out1.ncols());
+        let last = out1.ncols() - 1;
+
+        // Appended axis is standardised → zero mean.
+        let mean1: f32 = out1.column(last).sum() / out1.nrows() as f32;
+        assert!(mean1.abs() < 1e-4, "appended axis should be zero-mean");
+
+        // And level +2 is exactly 2× level +1 (same reference & standardisation).
+        for row in 0..out1.nrows() {
+            let a = out1[(row, last)];
+            let b = out2[(row, last)];
+            assert!(
+                (b - 2.0 * a).abs() < 1e-3,
+                "row {row}: level+2 {b} != 2 * level+1 {a}"
+            );
+        }
     }
 }

@@ -17,7 +17,57 @@ export const DEFAULT_CLUSTERING_CONFIG: ClusteringOptions = {
   preprocessing_dimensions: 16,
   distance_threshold: 0.5,
   target_cluster_count: 0,
+  enable_attribute_emphasis: false,
+  emphasis: {},
 };
+
+/**
+ * The 37 O'Donovan crowdsourced font attributes (the set FontCLIP adopts),
+ * as offered in the clustering emphasis controls. The eight most typographically
+ * telling ones lead; the remaining 29 follow in the dataset's own order. Each
+ * name must match a key in the model's `attribute_directions.json`.
+ */
+export const EMPHASIS_ATTRIBUTES = [
+  'serif',
+  'cursive',
+  'italic',
+  'formal',
+  'delicate',
+  'playful',
+  'legible',
+  'thin',
+  'angular',
+  'artistic',
+  'attention-grabbing',
+  'attractive',
+  'bad',
+  'boring',
+  'calm',
+  'capitals',
+  'charming',
+  'clumsy',
+  'complex',
+  'disorderly',
+  'display',
+  'dramatic',
+  'fresh',
+  'friendly',
+  'gentle',
+  'graceful',
+  'happy',
+  'modern',
+  'monospace',
+  'pretentious',
+  'sharp',
+  'sloppy',
+  'soft',
+  'strong',
+  'technical',
+  'warm',
+  'wide',
+] as const;
+
+export type EmphasisAttribute = (typeof EMPHASIS_ATTRIBUTES)[number];
 
 export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
   rendering: DEFAULT_RENDERING_CONFIG,

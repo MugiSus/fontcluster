@@ -739,7 +739,7 @@ fn write_session_config_atomic(session: &SessionConfig, dir: &Path) -> Result<()
 /// Replaces `config.json` inside a packed session document, copying every
 /// other entry verbatim (no re-compression). Written to a temp file first and
 /// atomically persisted, like [`pack_dir_to_document`].
-fn rewrite_document_config(document_path: &Path, session: &SessionConfig) -> Result<()> {
+pub(crate) fn rewrite_document_config(document_path: &Path, session: &SessionConfig) -> Result<()> {
     let file = fs::File::open(document_path).map_err(|e| {
         crate::error::AppError::Io(format!(
             "Failed to open session document {}: {}",
