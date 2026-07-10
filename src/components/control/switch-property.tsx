@@ -33,7 +33,7 @@ export function SwitchProperty(props: SwitchPropertyProps) {
       {...rest}
       class={cn('relative flex h-8 items-center pr-1.5', local.class)}
     >
-      <SwitchLabel class='absolute inset-y-0 left-2 flex items-center text-xs font-medium capitalize text-muted-foreground'>
+      <SwitchLabel class='absolute inset-0 flex items-center pl-2 text-xs font-medium capitalize text-muted-foreground'>
         {local.label}
       </SwitchLabel>
       <SwitchControl class='ml-auto'>

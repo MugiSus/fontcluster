@@ -38,7 +38,17 @@ export const en = {
     targetClusters: 'target clusters',
     emphasis: {
       title: 'attributes',
-      enable: 'emphasize attributes',
+      equalizerTitle: 'Attribute equalizer',
+      description:
+        'Shape how strongly each visual attribute influences clustering. Positive levels emphasize an attribute; negative levels reduce its influence.',
+      preset: 'Preset',
+      done: 'Done',
+      range: 'Range: -4 to +4',
+      presets: {
+        default: 'Default',
+        none: 'None',
+        custom: 'Custom',
+      },
       attributes: {
         'serif': 'serif',
         'cursive': 'cursive',

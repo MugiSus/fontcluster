@@ -14,11 +14,8 @@ export interface ClusteringOptions {
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;
-  /**
-   * Master switch for attribute emphasis. When `false`, the backend ignores
-   * {@link ClusteringOptions.emphasis} entirely (the levels are kept so they
-   * survive a disabled run) and the UI disables the per-attribute inputs.
-   */
+  /** Compatibility field for the backend/session schema. The UI derives it
+   * from whether {@link ClusteringOptions.emphasis} contains any entries. */
   // snake_case to mirror the backend's serde field name verbatim.
   // eslint-disable-next-line @typescript-eslint/naming-convention
   enable_attribute_emphasis: boolean;

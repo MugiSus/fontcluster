@@ -26,7 +26,17 @@ export const ja: Dictionary = {
     targetClusters: '目標クラスタ数',
     emphasis: {
       title: '属性',
-      enable: '属性を重視する',
+      equalizerTitle: '属性イコライザー',
+      description:
+        '各視覚属性がクラスタリングに与える影響を調整します。正の値は属性を強調し、負の値は影響を抑えます。',
+      preset: 'プリセット',
+      done: '完了',
+      range: '範囲: -4〜+4',
+      presets: {
+        default: 'デフォルト',
+        none: 'なし',
+        custom: 'カスタム',
+      },
       attributes: {
         'serif': 'セリフ',
         'cursive': '筆記体',
