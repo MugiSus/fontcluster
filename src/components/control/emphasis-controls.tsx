@@ -159,7 +159,7 @@ export function EmphasisControls() {
               {(attribute) => {
                 const label = t.controlPanel.equalizer.attributes[attribute];
                 return (
-                  <div class='contents'>
+                  <>
                     <output class='justify-self-center text-xs font-bold tabular-nums'>
                       {levels[attribute] === 0
                         ? '±'
@@ -190,7 +190,7 @@ export function EmphasisControls() {
                     <span class='min-w-0 break-words text-center text-xxs leading-tight text-muted-foreground'>
                       {label()}
                     </span>
-                  </div>
+                  </>
                 );
               }}
             </For>
