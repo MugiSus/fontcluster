@@ -30,6 +30,11 @@ import { appState } from '@/store';
 import { runProcessingJobs } from '@/actions';
 import { useI18n } from '@/i18n';
 import {
+  EMPHASIS_LEVEL_MAX,
+  EMPHASIS_LEVEL_MIN,
+  EMPHASIS_LEVEL_NEUTRAL,
+} from '@/constants/emphasis';
+import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
   EMPHASIS_ATTRIBUTES,
@@ -108,8 +113,10 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
   const emphasis: Record<string, number> = {};
   for (const attribute of EMPHASIS_ATTRIBUTES) {
     const value = Number(formdata.get(`clustering-emphasis-${attribute}`));
-    const level = Number.isFinite(value) ? Math.max(-4, Math.min(4, value)) : 0;
-    if (level !== 0) emphasis[attribute] = level;
+    const level = Number.isFinite(value)
+      ? Math.max(EMPHASIS_LEVEL_MIN, Math.min(EMPHASIS_LEVEL_MAX, value))
+      : EMPHASIS_LEVEL_NEUTRAL;
+    if (level !== EMPHASIS_LEVEL_NEUTRAL) emphasis[attribute] = level;
   }
 
   return {

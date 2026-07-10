@@ -1,10 +1,12 @@
 import type { ValidComponent } from 'solid-js';
-import { splitProps } from 'solid-js';
+import { createMemo, splitProps } from 'solid-js';
 
 import type { PolymorphicProps } from '@kobalte/core/polymorphic';
 import * as SliderPrimitive from '@kobalte/core/slider';
 
 import { cn } from '@/lib/utils';
+
+const SLIDER_TRACK_RADIUS = '0.25rem';
 
 type SliderProps<T extends ValidComponent = 'div'> =
   SliderPrimitive.SliderRootProps<T> & { class?: string | undefined };
@@ -43,18 +45,52 @@ const SliderTrack = <T extends ValidComponent = 'div'>(
 };
 
 type SliderFillProps<T extends ValidComponent = 'div'> =
-  SliderPrimitive.SliderFillProps<T> & { class?: string | undefined };
+  SliderPrimitive.SliderFillProps<T> & {
+    class?: string | undefined;
+    /** Draws a single-value fill between this origin and the current value. */
+    originValue?: number | undefined;
+  };
 
 const SliderFill = <T extends ValidComponent = 'div'>(
   props: PolymorphicProps<T, SliderFillProps<T>>,
 ) => {
-  const [local, others] = splitProps(props as SliderFillProps, ['class']);
+  const [local, others] = splitProps(props as SliderFillProps, [
+    'class',
+    'originValue',
+    'style',
+  ]);
+  const context = SliderPrimitive.useSliderContext();
+  const originStyle = createMemo(() => {
+    if (local.originValue === undefined) return local.style;
+
+    const value = context.state.values()[0] ?? local.originValue;
+    const start = context.state.getValuePercent(
+      Math.min(value, local.originValue),
+    );
+    const end = context.state.getValuePercent(
+      Math.max(value, local.originValue),
+    );
+
+    if (context.state.orientation() === 'vertical') {
+      return {
+        top: `calc(${(1 - end) * 100}% - ${SLIDER_TRACK_RADIUS})`,
+        bottom: `calc(${start * 100}% - ${SLIDER_TRACK_RADIUS})`,
+      };
+    }
+
+    return {
+      left: `calc(${start * 100}% - ${SLIDER_TRACK_RADIUS})`,
+      right: `calc(${(1 - end) * 100}% - ${SLIDER_TRACK_RADIUS})`,
+    };
+  });
+
   return (
     <SliderPrimitive.Fill
       class={cn(
         'absolute rounded-full bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full',
         local.class,
       )}
+      style={originStyle() ?? {}}
       {...others}
     />
   );

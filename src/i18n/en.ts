@@ -43,7 +43,6 @@ export const en = {
         'Shape how strongly each visual attribute influences clustering. Positive levels emphasize an attribute; negative levels reduce its influence.',
       preset: 'Preset',
       done: 'Done',
-      range: 'Range: -4 to +4',
       presets: {
         default: 'Default',
         none: 'None',

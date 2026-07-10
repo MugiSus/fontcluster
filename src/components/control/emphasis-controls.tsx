@@ -12,52 +12,61 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import {
   Slider,
   SliderFill,
   SliderThumb,
   SliderTrack,
 } from '@/components/ui/slider';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  EMPHASIS_LEVEL_MAX,
+  EMPHASIS_LEVEL_MIN,
+  EMPHASIS_LEVEL_NEUTRAL,
+  EMPHASIS_LEVEL_STEP,
+  EMPHASIS_LEVEL_TICKS,
+  EMPHASIS_PRESETS,
+  type EmphasisPreset,
+} from '@/constants/emphasis';
+import { EMPHASIS_ATTRIBUTES } from '@/constants/session';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
-import {
-  EMPHASIS_ATTRIBUTES,
-  type EmphasisAttribute,
-} from '@/constants/session';
 
 /**
- * Modal equalizer for the 37 O'Donovan attribute-emphasis levels (-4..4).
+ * Modal form control for the 37 O'Donovan attribute-emphasis levels.
  *
- * The store is the draft value of this form control. Hidden inputs remain next
- * to the trigger (outside the dialog portal), so `parseClusteringConfig` keeps
- * owning the conversion from UI values to the persisted sparse map.
+ * `levels` is the single draft state. Hidden inputs expose that draft to the
+ * enclosing processing form, while preset constants remain immutable inputs.
  */
 export function EmphasisControls() {
   const { t } = useI18n();
   const savedClustering = appState.session.algorithm.clustering;
 
-  const defaultLevels = Object.fromEntries(
+  const currentLevels = Object.fromEntries(
     EMPHASIS_ATTRIBUTES.map((attribute) => [
       attribute,
       savedClustering.enable_attribute_emphasis
-        ? (savedClustering.emphasis?.[attribute] ?? 0)
-        : 0,
+        ? (savedClustering.emphasis?.[attribute] ?? EMPHASIS_LEVEL_NEUTRAL)
+        : EMPHASIS_LEVEL_NEUTRAL,
     ]),
-  ) as Record<EmphasisAttribute, number>;
-  const noneLevels = Object.fromEntries(
-    EMPHASIS_ATTRIBUTES.map((attribute) => [attribute, 0]),
-  ) as Record<EmphasisAttribute, number>;
+  ) as EmphasisPreset;
 
-  const [levels, setLevels] = createStore({ ...defaultLevels });
+  const [levels, setLevels] = createStore({ ...currentLevels });
   const [isOpen, setIsOpen] = createSignal(false);
 
   const selectedPreset = createMemo(() => {
-    if (EMPHASIS_ATTRIBUTES.every((attribute) => levels[attribute] === 0)) {
+    if (
+      EMPHASIS_ATTRIBUTES.every(
+        (attribute) => levels[attribute] === EMPHASIS_PRESETS.none[attribute],
+      )
+    ) {
       return 'none';
     }
     if (
       EMPHASIS_ATTRIBUTES.every(
-        (attribute) => levels[attribute] === defaultLevels[attribute],
+        (attribute) =>
+          levels[attribute] === EMPHASIS_PRESETS.default[attribute],
       )
     ) {
       return 'default';
@@ -83,127 +92,127 @@ export function EmphasisControls() {
           type='button'
           variant='ghost'
           size='sm'
-          class='group justify-start px-2 capitalize text-muted-foreground shadow-none hover:text-foreground'
+          class='group h-8 justify-start pl-2 pr-0.5 capitalize text-muted-foreground shadow-none hover:text-foreground'
         >
           <SlidersVerticalIcon />
           <span>{t.controlPanel.emphasis.title()}</span>
-          <span class='ml-auto text-xs font-medium uppercase tracking-wider text-foreground'>
+          <span class='ml-auto text-xs uppercase tracking-wider text-foreground'>
             {t.controlPanel.emphasis.presets[selectedPreset()]()}
           </span>
-          <ChevronRightIcon class='transition-transform group-hover:translate-x-1' />
+          <ChevronRightIcon />
         </DialogTrigger>
 
-        <DialogContent class='flex w-full max-w-lg flex-col gap-0 overflow-hidden p-0'>
-          <DialogHeader class='flex-row items-start gap-4 space-y-0 border-b px-6 py-4 pr-12 text-left'>
-            <div class='shrink-0 rounded-full bg-foreground p-2 text-background'>
-              <SlidersVerticalIcon />
-            </div>
-            <div class='flex-1'>
-              <DialogTitle class='font-bold'>
+        <DialogContent class='max-w-3xl gap-0 overflow-hidden p-0'>
+          <DialogHeader class='flex-row items-start gap-4 space-y-0 p-4 text-left'>
+            <SlidersVerticalIcon class='size-8 shrink-0' />
+            <div class='flex flex-col gap-2'>
+              <DialogTitle>
                 {t.controlPanel.emphasis.equalizerTitle()}
               </DialogTitle>
-              <DialogDescription class='mt-2 text-xs leading-relaxed'>
+              <DialogDescription>
                 {t.controlPanel.emphasis.description()}
               </DialogDescription>
             </div>
           </DialogHeader>
 
-          <div class='flex items-center gap-2 border-b px-6 py-4'>
+          <Separator />
+
+          <div class='flex items-center gap-2 p-4 py-2'>
             <span class='mr-2 text-xs font-bold'>
               {t.controlPanel.emphasis.preset()}
             </span>
-            <Button
-              type='button'
+            <ToggleGroup
+              aria-label={t.controlPanel.emphasis.preset()}
+              value={selectedPreset() === 'custom' ? null : selectedPreset()}
+              onChange={(preset) => {
+                if (preset === 'default' || preset === 'none') {
+                  setLevels({ ...EMPHASIS_PRESETS[preset] });
+                }
+              }}
               size='sm'
-              variant={selectedPreset() === 'default' ? 'secondary' : 'outline'}
-              class='h-8 rounded-full shadow-none'
-              onClick={() => setLevels({ ...defaultLevels })}
+              class='justify-start gap-2 *:text-xs'
             >
-              {t.controlPanel.emphasis.presets.default()}
-            </Button>
-            <Button
-              type='button'
-              size='sm'
-              variant={selectedPreset() === 'none' ? 'secondary' : 'outline'}
-              class='h-8 rounded-full shadow-none'
-              onClick={() => setLevels({ ...noneLevels })}
-            >
-              {t.controlPanel.emphasis.presets.none()}
-            </Button>
+              <ToggleGroupItem value='default'>
+                {t.controlPanel.emphasis.presets.default()}
+              </ToggleGroupItem>
+              <ToggleGroupItem value='none'>
+                {t.controlPanel.emphasis.presets.none()}
+              </ToggleGroupItem>
+            </ToggleGroup>
             <span class='ml-auto text-xs text-muted-foreground'>
               {t.controlPanel.emphasis.presets[selectedPreset()]()}
             </span>
           </div>
 
-          <div class='flex items-stretch gap-4 overflow-x-scroll p-6'>
-            <div
-              aria-hidden='true'
-              class='flex shrink-0 flex-col items-end justify-between py-6 text-xxs tabular-nums text-muted-foreground'
-            >
-              <span>+4</span>
-              <span>0</span>
-              <span>-4</span>
-            </div>
+          <Separator />
 
-            <For each={EMPHASIS_ATTRIBUTES}>
-              {(attribute) => {
-                const label = t.controlPanel.emphasis.attributes[attribute];
-                return (
-                  <div class='flex flex-col items-center'>
-                    <span class='mb-2 text-xs font-bold tabular-nums'>
-                      {levels[attribute] == 0
-                        ? '±'
-                        : levels[attribute] > 0
-                          ? '+'
-                          : ''}
-                      {levels[attribute]}
+          <div class='overflow-x-auto'>
+            <div class='grid auto-cols-[2rem] grid-flow-col grid-cols-[auto] grid-rows-[auto_auto_auto] items-center gap-2 p-4'>
+              <span aria-hidden='true' />
+              <div
+                aria-hidden='true'
+                class='flex flex-col justify-between self-stretch text-xxs tabular-nums text-muted-foreground'
+              >
+                <For each={EMPHASIS_LEVEL_TICKS}>
+                  {(level) => (
+                    <span class='flex items-center gap-2'>
+                      {level > EMPHASIS_LEVEL_NEUTRAL ? '+' : ''}
+                      {level}
+                      <span>—</span>
                     </span>
-                    <Slider
-                      value={[levels[attribute]]}
-                      onChange={(value) => setLevels(attribute, value[0] ?? 0)}
-                      minValue={-4}
-                      maxValue={4}
-                      step={1}
-                      orientation='vertical'
-                      getValueLabel={({ values }) =>
-                        `${label()}: ${values[0] ?? 0}`
-                      }
-                      class='h-48 flex-col'
-                    >
-                      <SliderTrack>
-                        <SliderFill
-                          style={
-                            levels[attribute] >= 0
-                              ? {
-                                  top: `calc(${50 - levels[attribute] * 12.5}% - 0.25rem)`,
-                                  bottom: 'calc(50% - 0.25rem)',
-                                }
-                              : {
-                                  top: 'calc(50% - 0.25rem)',
-                                  bottom: `calc(${50 + levels[attribute] * 12.5}% - 0.25rem)`,
-                                }
-                          }
-                        />
-                        <SliderThumb aria-label={label()} />
-                      </SliderTrack>
-                    </Slider>
-                    <span class='mt-4 text-center text-xxs leading-tight text-muted-foreground'>
-                      {label()}
-                    </span>
-                  </div>
-                );
-              }}
-            </For>
+                  )}
+                </For>
+              </div>
+              <span aria-hidden='true' />
+
+              <For each={EMPHASIS_ATTRIBUTES}>
+                {(attribute) => {
+                  const label = t.controlPanel.emphasis.attributes[attribute];
+                  return (
+                    <div class='contents'>
+                      <output class='justify-self-center text-xs font-bold tabular-nums'>
+                        {levels[attribute] > EMPHASIS_LEVEL_NEUTRAL ? '+' : ''}
+                        {levels[attribute]}
+                      </output>
+                      <Slider
+                        value={[levels[attribute]]}
+                        onChange={(value) =>
+                          setLevels(
+                            attribute,
+                            value[0] ?? EMPHASIS_LEVEL_NEUTRAL,
+                          )
+                        }
+                        minValue={EMPHASIS_LEVEL_MIN}
+                        maxValue={EMPHASIS_LEVEL_MAX}
+                        step={EMPHASIS_LEVEL_STEP}
+                        orientation='vertical'
+                        getValueLabel={({ values }) =>
+                          `${label()}: ${values[0] ?? EMPHASIS_LEVEL_NEUTRAL}`
+                        }
+                        class='h-48 flex-col'
+                      >
+                        <SliderTrack>
+                          <SliderFill originValue={EMPHASIS_LEVEL_NEUTRAL} />
+                          <SliderThumb aria-label={label()} />
+                        </SliderTrack>
+                      </Slider>
+                      <span class='min-w-0 break-words text-center text-xxs leading-tight text-muted-foreground'>
+                        {label()}
+                      </span>
+                    </div>
+                  );
+                }}
+              </For>
+            </div>
           </div>
 
-          <DialogFooter class='flex-row items-center justify-between space-x-0 border-t px-6 py-4 sm:justify-between sm:space-x-0'>
-            <span class='text-xs text-muted-foreground'>
-              {t.controlPanel.emphasis.range()}
-            </span>
+          <Separator />
+
+          <DialogFooter class='p-4'>
             <Button
               type='button'
               size='sm'
-              class='rounded-full px-4'
+              class='rounded-full'
               onClick={() => setIsOpen(false)}
             >
               {t.controlPanel.emphasis.done()}

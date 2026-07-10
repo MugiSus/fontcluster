@@ -31,7 +31,6 @@ export const ja: Dictionary = {
         '各視覚属性がクラスタリングに与える影響を調整します。正の値は属性を強調し、負の値は影響を抑えます。',
       preset: 'プリセット',
       done: '完了',
-      range: '範囲: -4〜+4',
       presets: {
         default: 'デフォルト',
         none: 'なし',
