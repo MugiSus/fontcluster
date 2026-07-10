@@ -4,7 +4,10 @@
 //! in the app's resources are copied into the `Generated` directory so the user
 //! sees a populated graph on first launch.
 
-use crate::core::{read_session_config_from_document, AppState, SESSION_DOCUMENT_EXTENSION};
+use crate::core::{
+    read_session_config_from_document, rewrite_document_config, AppState,
+    SESSION_DOCUMENT_EXTENSION,
+};
 use crate::error::Result;
 use std::fs;
 use tauri::AppHandle;
@@ -67,7 +70,16 @@ pub fn extract_example_session(app: &AppHandle) -> Result<Option<String>> {
                 e
             ))
         })?;
-        if let Ok(session) = read_session_config_from_document(&dest_path) {
+        // Re-stamp the copied example with the running app version so it is never
+        // pruned as "unsupported" on a later launch. This decouples the bundled
+        // document's baked-in version from the release version, so the example can
+        // be authored once and shipped as-is without hand-editing or a throwaway
+        // version bump after release.
+        if let Ok(mut session) = read_session_config_from_document(&dest_path) {
+            let app_version = env!("CARGO_PKG_VERSION").to_string();
+            session.app_version = app_version.clone();
+            session.modified_app_version = app_version;
+            rewrite_document_config(&dest_path, &session)?;
             restored_sessions.push(session);
         }
     }
