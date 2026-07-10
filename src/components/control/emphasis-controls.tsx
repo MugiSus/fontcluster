@@ -103,7 +103,7 @@ export function EmphasisControls() {
 
         <DialogContent class='w-fit max-w-[calc(100vw-16rem)] gap-0 overflow-hidden p-0 shadow'>
           <DialogHeader class='flex-row items-center gap-4 space-y-0 px-4 py-6 text-left'>
-            <SlidersVerticalIcon class='size-4' />
+            <SlidersVerticalIcon class='size-5' />
             <div class='flex flex-col gap-2'>
               <DialogTitle>{t.controlPanel.equalizer.heading()}</DialogTitle>
               <DialogDescription>
