@@ -172,7 +172,10 @@ export function EmphasisControls() {
                     <Slider
                       value={[levels[attribute]]}
                       onChange={(value) =>
-                        setLevels(attribute, value[0] ?? EMPHASIS_LEVEL_NEUTRAL)
+                        setLevels(
+                          attribute,
+                          Math.round(value[0] ?? EMPHASIS_LEVEL_NEUTRAL),
+                        )
                       }
                       minValue={EMPHASIS_LEVEL_MIN}
                       maxValue={EMPHASIS_LEVEL_MAX}
