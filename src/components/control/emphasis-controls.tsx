@@ -186,6 +186,20 @@ export function EmphasisControls() {
                       }
                       class='h-60 flex-col'
                     >
+                      <div
+                        aria-hidden='true'
+                        class='pointer-events-none absolute inset-y-0 left-1.5 flex flex-col items-end justify-between'
+                      >
+                        <div class='h-0 w-3 border-t' />
+                        <div class='h-0 w-1 border-t' />
+                        <div class='h-0 w-2 border-t' />
+                        <div class='h-0 w-1 border-t' />
+                        <div class='h-0 w-3 border-t' />
+                        <div class='h-0 w-1 border-t' />
+                        <div class='h-0 w-2 border-t' />
+                        <div class='h-0 w-1 border-t' />
+                        <div class='h-0 w-3 border-t' />
+                      </div>
                       <SliderTrack>
                         <SliderFill originValue={EMPHASIS_LEVEL_NEUTRAL} />
                         <SliderThumb aria-label={label()} />
