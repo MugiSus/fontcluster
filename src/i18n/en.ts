@@ -36,9 +36,9 @@ export const en = {
     preprocessDimensions: 'preprocess dimensions',
     groupingThreshold: 'threshold',
     targetClusters: 'target clusters',
-    emphasis: {
-      title: 'attributes equalizer',
-      equalizerTitle: 'Attribute Equalizer (Beta)',
+    equalizer: {
+      title: 'attribute equalizer',
+      heading: 'Attribute Equalizer (Beta)',
       description:
         'Shape how strongly each visual attribute influences clustering. Positive levels emphasize an attribute; negative levels reduce its influence.',
       preset: 'Preset',

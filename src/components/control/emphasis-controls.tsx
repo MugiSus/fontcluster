@@ -94,9 +94,9 @@ export function EmphasisControls() {
           class='group h-8 justify-start pl-2 pr-0.5 capitalize text-muted-foreground shadow-none hover:text-foreground'
         >
           <SlidersVerticalIcon class='!size-3.5' />
-          <span>{t.controlPanel.emphasis.title()}</span>
+          <span>{t.controlPanel.equalizer.title()}</span>
           <span class='ml-auto text-sm text-foreground'>
-            {t.controlPanel.emphasis.presets[selectedPreset()]()}
+            {t.controlPanel.equalizer.presets[selectedPreset()]()}
           </span>
           <ChevronRightIcon />
         </DialogTrigger>
@@ -105,11 +105,9 @@ export function EmphasisControls() {
           <DialogHeader class='flex-row items-center gap-4 space-y-0 px-4 py-6 text-left'>
             <SlidersVerticalIcon class='size-4' />
             <div class='flex flex-col gap-2'>
-              <DialogTitle>
-                {t.controlPanel.emphasis.equalizerTitle()}
-              </DialogTitle>
+              <DialogTitle>{t.controlPanel.equalizer.heading()}</DialogTitle>
               <DialogDescription>
-                {t.controlPanel.emphasis.description()}
+                {t.controlPanel.equalizer.description()}
               </DialogDescription>
             </div>
           </DialogHeader>
@@ -118,10 +116,10 @@ export function EmphasisControls() {
 
           <div class='flex items-center gap-2 p-4 py-2'>
             <span class='mr-2 text-xs font-bold'>
-              {t.controlPanel.emphasis.preset()}
+              {t.controlPanel.equalizer.preset()}
             </span>
             <ToggleGroup
-              aria-label={t.controlPanel.emphasis.preset()}
+              aria-label={t.controlPanel.equalizer.preset()}
               value={selectedPreset() === 'custom' ? null : selectedPreset()}
               onChange={(preset) => {
                 if (preset === 'default' || preset === 'none') {
@@ -132,14 +130,14 @@ export function EmphasisControls() {
               class='justify-start gap-2 *:px-2.5 *:text-xs'
             >
               <ToggleGroupItem value='default'>
-                {t.controlPanel.emphasis.presets.default()}
+                {t.controlPanel.equalizer.presets.default()}
               </ToggleGroupItem>
               <ToggleGroupItem value='none'>
-                {t.controlPanel.emphasis.presets.none()}
+                {t.controlPanel.equalizer.presets.none()}
               </ToggleGroupItem>
             </ToggleGroup>
             <span class='ml-auto text-xs text-muted-foreground'>
-              {t.controlPanel.emphasis.presets[selectedPreset()]()}
+              {t.controlPanel.equalizer.presets[selectedPreset()]()}
             </span>
           </div>
 
@@ -159,7 +157,7 @@ export function EmphasisControls() {
 
             <For each={EMPHASIS_ATTRIBUTES}>
               {(attribute) => {
-                const label = t.controlPanel.emphasis.attributes[attribute];
+                const label = t.controlPanel.equalizer.attributes[attribute];
                 return (
                   <div class='contents'>
                     <output class='justify-self-center text-xs font-bold tabular-nums'>
@@ -218,7 +216,7 @@ export function EmphasisControls() {
               class='h-8 rounded-full'
               onClick={() => setIsOpen(false)}
             >
-              {t.controlPanel.emphasis.done()}
+              {t.controlPanel.equalizer.done()}
             </Button>
           </DialogFooter>
         </DialogContent>
