@@ -145,62 +145,68 @@ export function EmphasisControls() {
 
           <Separator />
 
-          <div class='overflow-x-auto'>
-            <div class='grid auto-cols-[48px] grid-flow-col grid-cols-[auto] grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-4 p-4'>
-              <span aria-hidden='true' />
-              <div
-                aria-hidden='true'
-                class='flex flex-col justify-between self-stretch px-2 text-xs tabular-nums leading-[0px] text-muted-foreground'
-              >
-                <span>+{EMPHASIS_LEVEL_MAX}</span>
-                <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>
-                <span>{EMPHASIS_LEVEL_MIN}</span>
-              </div>
-              <span aria-hidden='true' />
-
-              <For each={EMPHASIS_ATTRIBUTES}>
-                {(attribute) => {
-                  const label = t.controlPanel.emphasis.attributes[attribute];
-                  return (
-                    <div class='contents'>
-                      <output class='justify-self-center text-xs font-bold tabular-nums'>
-                        {levels[attribute] === 0
-                          ? '±'
-                          : levels[attribute] > 0
-                            ? '+'
-                            : ''}
-                        {levels[attribute]}
-                      </output>
-                      <Slider
-                        value={[levels[attribute]]}
-                        onChange={(value) =>
-                          setLevels(
-                            attribute,
-                            value[0] ?? EMPHASIS_LEVEL_NEUTRAL,
-                          )
-                        }
-                        minValue={EMPHASIS_LEVEL_MIN}
-                        maxValue={EMPHASIS_LEVEL_MAX}
-                        step={EMPHASIS_LEVEL_STEP}
-                        orientation='vertical'
-                        getValueLabel={({ values }) =>
-                          `${label()}: ${values[0] ?? EMPHASIS_LEVEL_NEUTRAL}`
-                        }
-                        class='h-48 flex-col'
-                      >
-                        <SliderTrack>
-                          <SliderFill originValue={EMPHASIS_LEVEL_NEUTRAL} />
-                          <SliderThumb aria-label={label()} />
-                        </SliderTrack>
-                      </Slider>
-                      <span class='min-w-0 break-words text-center text-xxs leading-tight text-muted-foreground'>
-                        {label()}
-                      </span>
-                    </div>
-                  );
-                }}
-              </For>
+          <div class='relative grid auto-cols-[48px] grid-flow-col grid-rows-[auto_auto_auto] items-center gap-x-1 gap-y-6 overflow-x-auto px-1 py-6'>
+            <span aria-hidden='true' />
+            <div
+              aria-hidden='true'
+              class='flex flex-col items-end justify-between self-stretch px-2 text-xs tabular-nums leading-[0px] text-muted-foreground'
+            >
+              <span>+{EMPHASIS_LEVEL_MAX}</span>
+              <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>
+              <span>{EMPHASIS_LEVEL_MIN}</span>
             </div>
+            <span aria-hidden='true' />
+
+            <For each={EMPHASIS_ATTRIBUTES}>
+              {(attribute) => {
+                const label = t.controlPanel.emphasis.attributes[attribute];
+                return (
+                  <div class='contents'>
+                    <output class='justify-self-center text-xs font-bold tabular-nums'>
+                      {levels[attribute] === 0
+                        ? '±'
+                        : levels[attribute] > 0
+                          ? '+'
+                          : ''}
+                      {levels[attribute]}
+                    </output>
+                    <Slider
+                      value={[levels[attribute]]}
+                      onChange={(value) =>
+                        setLevels(attribute, value[0] ?? EMPHASIS_LEVEL_NEUTRAL)
+                      }
+                      minValue={EMPHASIS_LEVEL_MIN}
+                      maxValue={EMPHASIS_LEVEL_MAX}
+                      step={EMPHASIS_LEVEL_STEP}
+                      orientation='vertical'
+                      getValueLabel={({ values }) =>
+                        `${label()}: ${values[0] ?? EMPHASIS_LEVEL_NEUTRAL}`
+                      }
+                      class='h-60 flex-col'
+                    >
+                      <SliderTrack>
+                        <SliderFill originValue={EMPHASIS_LEVEL_NEUTRAL} />
+                        <SliderThumb aria-label={label()} />
+                      </SliderTrack>
+                    </Slider>
+                    <span class='min-w-0 break-words text-center text-xxs leading-tight text-muted-foreground'>
+                      {label()}
+                    </span>
+                  </div>
+                );
+              }}
+            </For>
+
+            <span aria-hidden='true' />
+            <div
+              aria-hidden='true'
+              class='flex flex-col justify-between self-stretch px-2 text-xs tabular-nums leading-[0px] text-muted-foreground'
+            >
+              <span>+{EMPHASIS_LEVEL_MAX}</span>
+              <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>
+              <span>{EMPHASIS_LEVEL_MIN}</span>
+            </div>
+            <span aria-hidden='true' />
           </div>
 
           <Separator />
