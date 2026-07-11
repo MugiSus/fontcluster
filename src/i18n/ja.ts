@@ -122,6 +122,9 @@ export const ja: Dictionary = {
       copy: 'コピー',
       applyToPlugins: 'プラグインへ適用',
     },
+    selectedFontInfo: {
+      previewAlt: '{{name}} のプレビュー',
+    },
     utilityControls: {
       undo: {
         title: '取り消す',

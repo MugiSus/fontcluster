@@ -22,6 +22,7 @@ import {
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './gl/image-layer';
 import { SelectedFontActions } from './selected-font-actions';
+import { GraphSelectedFontInfo } from './selected-font-info';
 import {
   type GraphCoordinate,
   type GraphPointLabel,
@@ -436,6 +437,8 @@ export function GraphViewer(props: GraphViewerProps) {
         size={svgSize}
         getPointByKey={getSelectedActionAnchorPoint}
       />
+
+      <GraphSelectedFontInfo selectedKey={selection.selectedKey} />
     </div>
   );
 }

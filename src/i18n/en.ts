@@ -134,6 +134,9 @@ export const en = {
       copy: 'Copy family name',
       applyToPlugins: 'Apply to plugins',
     },
+    selectedFontInfo: {
+      previewAlt: 'Font preview for {{name}}',
+    },
     utilityControls: {
       undo: {
         title: 'Undo',
