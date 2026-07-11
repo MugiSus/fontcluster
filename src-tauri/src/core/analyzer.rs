@@ -221,9 +221,7 @@ fn load_session(model_path: &Path) -> Result<Session> {
         .with_optimization_level(GraphOptimizationLevel::Level3)
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = builder
-        .with_intra_threads(
-            std::thread::available_parallelism().map_or(1, |threads| threads.get().min(4)),
-        )
+        .with_intra_threads(std::thread::available_parallelism().map_or(1, |threads| threads.get()))
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = builder
         .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
