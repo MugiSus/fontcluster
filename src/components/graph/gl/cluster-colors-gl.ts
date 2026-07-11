@@ -41,3 +41,15 @@ export function getClusterColor({
 export function getBackgroundColor({ isDark }: { isDark?: boolean }): number {
   return isDark ? BACKGROUND_DARK : BACKGROUND_LIGHT;
 }
+
+// Scatter-grid hairline grays: one step off the theme background, in the
+// background's own hue family so the grid recedes instead of tinting. The σ=0
+// mean cross draws them at full strength; minor lines fade further towards
+// the background in the grid layer.
+const GRID_LIGHT = 0xd9d9e2;
+const GRID_DARK = 0x2c2f3d;
+
+/** Returns the 0xRRGGBB scatter-grid line color for the theme. */
+export function getScatterGridColor({ isDark }: { isDark?: boolean }): number {
+  return isDark ? GRID_DARK : GRID_LIGHT;
+}

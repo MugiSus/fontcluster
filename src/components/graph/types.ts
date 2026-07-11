@@ -28,6 +28,20 @@ export interface GraphPointData {
   y: number;
 }
 
+/**
+ * One σ gridline of the scatter layout, spanning the full graph extent
+ * perpendicular to its axis.
+ */
+export interface ScatterGridLine {
+  /** `'x'`: vertical line at graph-x `position`; `'y'`: horizontal line at
+   *  graph-y `position`. */
+  axis: 'x' | 'y';
+  /** Graph-space coordinate of the line along its axis. */
+  position: number;
+  /** Standardised value (σ) the line marks; `0` is the collection mean. */
+  sigma: number;
+}
+
 interface GraphPointLabelBase {
   /** Graph-point key (sample safe name) of the labelled font. */
   key: string;

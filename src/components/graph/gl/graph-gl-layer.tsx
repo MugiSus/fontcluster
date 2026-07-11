@@ -9,6 +9,7 @@ import {
   type GraphPointData,
   type GraphPointLabel,
   type GraphViewBox,
+  type ScatterGridLine,
 } from '@/components/graph/types';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
 
@@ -33,6 +34,7 @@ interface GraphGlLayerProps {
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
+  scatterGridLines: Accessor<ScatterGridLine[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -68,6 +70,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     pointLabels: () => props.pointLabels(),
+    scatterGridLines: () => props.scatterGridLines(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

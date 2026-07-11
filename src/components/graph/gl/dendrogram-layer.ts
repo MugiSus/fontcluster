@@ -107,7 +107,7 @@ export const dendrogramAliasGlowOpacityForRank = (
  * The layer keeps `resolution`, `diffuse` and `opacity` uniforms in sync via the
  * effects below (the same values `LineMaterial` exposed as `.resolution` etc.).
  */
-function createFatLineMaterial(options: {
+export function createFatLineMaterial(options: {
   color: number;
   linewidth: number;
   opacity: number;

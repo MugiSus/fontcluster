@@ -10,7 +10,11 @@ import {
   type RadialDendrogramLayout,
 } from './dendrogram-layout';
 import { collectVisibleRadialImageKeys } from './radial-image-visibility';
-import { type GraphPointData, type GraphVisibleBounds } from './types';
+import {
+  type GraphPointData,
+  type GraphVisibleBounds,
+  type ScatterGridLine,
+} from './types';
 
 const MAX_NEAREST_FONT_ITEMS = 60;
 
@@ -27,9 +31,26 @@ const MAX_NEAREST_FONT_ITEMS = 60;
  */
 const SYMLOG_CONSTANT = 1.25;
 
+/** Integer σ levels the scatter grid marks, clipped to each axis's extent. */
+const SIGMA_GRID_LEVELS = [-4, -3, -2, -1, 0, 1, 2, 3, 4];
+
+const NO_GRID_LINES: ScatterGridLine[] = [];
+
 interface FontPointIndexes {
   byKey: Map<string, GraphPointData>;
   byFamilyName: Map<string, GraphPointData[]>;
+}
+
+interface AxisProjection {
+  project: (value: number) => number;
+  /** Data extent of the axis; null when degenerate (empty or single-valued). */
+  domain: [number, number] | null;
+}
+
+interface FontPointState {
+  points: GraphPointData[];
+  /** σ gridlines of the scatter layout; empty in the dendrogram layout. */
+  gridLines: ScatterGridLine[];
 }
 
 /**
@@ -39,17 +60,42 @@ interface FontPointIndexes {
  * a far outlier sets the edge without crushing the bulk into a central blob.
  * A degenerate (empty or single-valued) axis parks every point at the centre.
  */
-function createAxisProjection(values: number[]): (value: number) => number {
+function createAxisProjection(values: number[]): AxisProjection {
   const [min, max] = extent(values);
-  if (min == null || max == null) {
-    return () => GRAPH_SIZE / 2;
+  if (min == null || max == null || min === max) {
+    return { project: () => GRAPH_SIZE / 2, domain: null };
   }
 
   const scale = scaleSymlog<number, number>()
     .domain([min, max])
     .range([0, GRAPH_SIZE])
     .constant(SYMLOG_CONSTANT);
-  return (value) => scale(value);
+  return { project: (value) => scale(value), domain: [min, max] };
+}
+
+/**
+ * The σ gridlines of one scatter axis: integer σ levels clipped to the data
+ * extent, projected through the axis's own symlog scale — so their spacing
+ * tightens towards the edges exactly where the layout compresses its tails,
+ * and the σ=0 line marks the collection mean.
+ */
+function sigmaGridLines(
+  axis: ScatterGridLine['axis'],
+  projection: AxisProjection,
+): ScatterGridLine[] {
+  if (!projection.domain) return NO_GRID_LINES;
+  const [min, max] = projection.domain;
+  return SIGMA_GRID_LEVELS.filter((sigma) => sigma >= min && sigma <= max).map(
+    (sigma) => ({
+      axis,
+      sigma,
+      // Graph space is y-down; match the point projection's flip.
+      position:
+        axis === 'x'
+          ? projection.project(sigma)
+          : GRAPH_SIZE - projection.project(sigma),
+    }),
+  );
 }
 
 /**
@@ -64,9 +110,9 @@ function createAxisProjection(values: number[]): (value: number) => number {
 function createFontPointState(
   data: Record<string, FontItem>,
   radial: RadialDendrogramLayout | null,
-): GraphPointData[] {
+): FontPointState {
   if (radial) {
-    return Object.values(data).flatMap((item) => {
+    const points = Object.values(data).flatMap((item) => {
       const position = radial.positionByKey.get(item.meta.safe_name);
       return position
         ? [
@@ -79,6 +125,7 @@ function createFontPointState(
           ]
         : [];
     });
+    return { points, gridLines: NO_GRID_LINES };
   }
 
   const located = Object.values(data).flatMap((item) => {
@@ -87,16 +134,24 @@ function createFontPointState(
   });
 
   // Each axis is projected independently through its own symlog scale.
-  const projectX = createAxisProjection(located.map(({ x }) => x));
-  const projectY = createAxisProjection(located.map(({ y }) => y));
+  const projectionX = createAxisProjection(located.map(({ x }) => x));
+  const projectionY = createAxisProjection(located.map(({ y }) => y));
 
-  return located.map(({ item, x, y }) => ({
+  const points = located.map(({ item, x, y }) => ({
     key: item.meta.safe_name,
     item,
-    x: projectX(x),
+    x: projectionX.project(x),
     // Graph space is y-down; flip so a higher score sits nearer the top.
-    y: GRAPH_SIZE - projectY(y),
+    y: GRAPH_SIZE - projectionY.project(y),
   }));
+
+  return {
+    points,
+    gridLines: [
+      ...sigmaGridLines('x', projectionX),
+      ...sigmaGridLines('y', projectionY),
+    ],
+  };
 }
 
 function getSelectableFontPointData(
@@ -146,7 +201,7 @@ const fontPointIndex = createRoot(() => {
     const byKey = new Map<string, GraphPointData>();
     const byFamilyName = new Map<string, GraphPointData[]>();
 
-    for (const point of state()) {
+    for (const point of state().points) {
       byKey.set(point.key, point);
 
       const familyName = point.item.meta.family_name;
@@ -161,14 +216,15 @@ const fontPointIndex = createRoot(() => {
     return { byKey, byFamilyName };
   });
   const selectablePoints = createMemo(() =>
-    getSelectableFontPointData(state(), appState.fonts.filteredKeys),
+    getSelectableFontPointData(state().points, appState.fonts.filteredKeys),
   );
   const selectableTree = createMemo(() =>
     createSelectableFontPointTree(selectablePoints()),
   );
 
   return {
-    points: state,
+    points: () => state().points,
+    gridLines: () => state().gridLines,
     selectablePoints,
     getPointByKey: (key: string) => indexes().byKey.get(key),
     getPointsByFamilyName: (familyName: string): readonly GraphPointData[] =>
@@ -187,6 +243,9 @@ const fontPointIndex = createRoot(() => {
 });
 
 export const fontPoints = fontPointIndex.points;
+
+/** σ gridlines of the scatter layout; empty in the dendrogram layout. */
+export const scatterGridLines = fontPointIndex.gridLines;
 
 export const getGraphPointByKey = fontPointIndex.getPointByKey;
 

@@ -19,6 +19,7 @@ import {
   type GraphPointData,
   type GraphPointLabel,
   type GraphViewBox,
+  type ScatterGridLine,
 } from '@/components/graph/types';
 import {
   type DendrogramArc,
@@ -37,6 +38,7 @@ import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
+import { createScatterGridLayer } from './scatter-grid-layer';
 
 // Colors come straight from the CSS variables as sRGB, so disable three's
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the CSS theme.
@@ -68,6 +70,7 @@ export interface UseGraphGlRendererProps {
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
+  scatterGridLines: Accessor<ScatterGridLine[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -142,6 +145,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         halo.visible = false;
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
+        scatterGridLayer.visible = true;
         dendrogramLayer.visible = true;
         pointLabelLayer.visible = showLabels;
         ringLayer.visible = true;
@@ -160,6 +164,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = true;
       dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
+      scatterGridLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = false;
       ringLayer.visible = false;
@@ -169,11 +174,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.render(scene, camera);
       renderer.setClearColor(getBackgroundColor({ isDark: isDarkMode }), 1);
 
-      // 2) Background + dendrogram edges to the screen. These are the
-      //    backplate; draw them before the composite so the glow sits above
-      //    them but below the sharp content drawn last.
+      // 2) Background + backplate (σ grid + dendrogram edges) to the screen.
+      //    Drawn before the composite so the glow sits above them but below
+      //    the sharp content drawn last.
       halo.visible = false;
       dendrogramAliasHaloLayer.halo.visible = false;
+      scatterGridLayer.visible = true;
       dendrogramLayer.visible = true;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
@@ -186,6 +192,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       //    glow/background isn't wiped.
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
+      scatterGridLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = showLabels;
       ringLayer.visible = true;
@@ -197,6 +204,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       renderer.autoClear = previousAutoClear;
 
       // Leave the scene in a sane default for any stray render.
+      scatterGridLayer.visible = true;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
     };
@@ -408,6 +416,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
     const compositor = createGlowCompositor();
+    const scatterGridLayer = createScatterGridLayer({
+      lines: props.scatterGridLines,
+      isDark,
+      resolution: props.size,
+      requestRender: scheduleRender,
+    });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
       arcs: props.dendrogramArcs,
@@ -464,6 +478,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
+    scene.add(scatterGridLayer);
     scene.add(dendrogramLayer);
     scene.add(pointLabelLayer);
     scene.add(pointLayer.core);

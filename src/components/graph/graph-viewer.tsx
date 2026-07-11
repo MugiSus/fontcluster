@@ -17,6 +17,7 @@ import {
   fontPoints,
   getGraphPointByKey,
   getGraphPointsByFamilyName,
+  scatterGridLines,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './gl/image-layer';
@@ -388,6 +389,7 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           pointLabels={pointLabels}
+          scatterGridLines={scatterGridLines}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />
