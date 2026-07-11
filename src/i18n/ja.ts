@@ -107,6 +107,7 @@ export const ja: Dictionary = {
       showSamples: 'サンプル',
       showFontNames: 'フォント名',
       glowMode: '光彩',
+      dendrogramMode: 'デンドログラム',
       filter: '絞り込み',
     },
     filterDock: {

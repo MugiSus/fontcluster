@@ -8,6 +8,7 @@ import {
   TagIcon,
   TelescopeIcon,
   TypeIcon,
+  WaypointsIcon,
   ZoomInIcon,
 } from 'lucide-solid';
 import { createMemo, Show } from 'solid-js';
@@ -32,11 +33,16 @@ interface GraphBottomToolbarProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showDendrogram: boolean;
+  /** Whether the scatter layout has data to show (some font carries a
+   *  `clustering.two` coordinate); the dendrogram toggle hides without it. */
+  isScatterAvailable: boolean;
   isFilterOpen: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
+  onToggleDendrogram: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
   onZoomOut?: (() => void) | undefined;
@@ -227,6 +233,44 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           <TooltipContent>{t.graph.bottomToolbar.glowMode()}</TooltipContent>
         </Tooltip>
       </ToggleGroup>
+
+      {/*
+        Rendered only while the scatter layout has data (some font carries a
+        `clustering.two` coordinate), rather than passing `disabled`: Kobalte's
+        ToggleGroup.Item bakes `disabled` into its selection behavior once at
+        mount, so an item mounted disabled (the toolbar mounts before the
+        session loads) would stay unclickable even after the data arrives.
+      */}
+      <Show when={props.isScatterAvailable}>
+        <div class='w-6 border-t' />
+
+        <ToggleGroup
+          multiple
+          class='flex-col'
+          value={props.showDendrogram ? ['dendrogram'] : []}
+          onChange={(values: string[]) => {
+            if (values.includes('dendrogram') !== props.showDendrogram) {
+              props.onToggleDendrogram();
+            }
+          }}
+          showDot
+          dotSide='right'
+        >
+          <Tooltip placement='left'>
+            <TooltipTrigger
+              as={ToggleGroupItem<'button'>}
+              value='dendrogram'
+              class={toggleItemClass}
+              aria-label={t.graph.bottomToolbar.dendrogramMode()}
+            >
+              <WaypointsIcon class='size-4' />
+            </TooltipTrigger>
+            <TooltipContent>
+              {t.graph.bottomToolbar.dendrogramMode()}
+            </TooltipContent>
+          </Tooltip>
+        </ToggleGroup>
+      </Show>
 
       <div class='w-6 border-t' />
 

@@ -119,6 +119,7 @@ export const en = {
       showSamples: 'Show samples',
       showFontNames: 'Show font names',
       glowMode: 'Glow mode',
+      dendrogramMode: 'Dendrogram',
       filter: 'Filter',
     },
     filterDock: {
