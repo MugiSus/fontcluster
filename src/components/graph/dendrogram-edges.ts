@@ -7,7 +7,11 @@ import {
   radialDendrogramLayout,
 } from './dendrogram-layout';
 import { getGraphPointByKey } from './font-point-index';
-import { type GraphCoordinate, type GraphPointData } from './types';
+import {
+  type GraphCoordinate,
+  type GraphPointData,
+  type GraphPointLabel,
+} from './types';
 
 /**
  * Derives the dendrogram-mode line segments from the session's full merge
@@ -85,20 +89,6 @@ export interface DendrogramNodeDot extends GraphPointData {
 /** A merge node as a graph-point alias of its representative font. */
 export type DendrogramImageAnchor = DendrogramNodeDot;
 
-/** One leaf's name label, placed radially just outside the leaf ring. */
-export interface DendrogramLeafLabel {
-  /** Graph-point key (sample safe name) of the leaf's font. */
-  key: string;
-  /** The font name drawn as the label. */
-  text: string;
-  /** Polar angle of the leaf on the ring (graph space, y-down). */
-  angle: number;
-  /** Ring radius of the leaf. */
-  radius: number;
-  /** Palette slot of the leaf's font; undefined when it lacks clustering. */
-  colorIndex: number | undefined;
-}
-
 interface DendrogramTree {
   edges: DendrogramEdge[];
   arcs: DendrogramArc[];
@@ -109,8 +99,8 @@ interface DendrogramTree {
   imageAnchors: DendrogramImageAnchor[];
   /** One dot per visible merge node, in merge order. */
   dots: DendrogramNodeDot[];
-  /** One name label per visible leaf, in leaf order. */
-  labels: DendrogramLeafLabel[];
+  /** One radial name label per visible leaf, in leaf order. */
+  labels: GraphPointLabel[];
   /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
   ids: string[];
 }
@@ -120,7 +110,7 @@ const NO_EDGES: DendrogramEdge[] = [];
 const NO_ARCS: DendrogramArc[] = [];
 const NO_ANCHORS: DendrogramImageAnchor[] = [];
 const NO_DOTS: DendrogramNodeDot[] = [];
-const NO_LABELS: DendrogramLeafLabel[] = [];
+const NO_LABELS: GraphPointLabel[] = [];
 
 /** Two points closer than this (in graph units) count as coincident. */
 const COINCIDENT_EPSILON = 1e-6;
@@ -162,7 +152,7 @@ const dendrogramTree = createRoot(() => {
 
     // A name label at every visible leaf. The canonical name-table font name
     // is used as-is (names are recorded in English).
-    const labels: DendrogramLeafLabel[] = [];
+    const labels: GraphPointLabel[] = [];
     for (const [index, id] of dendrogram.ids.entries()) {
       const leaf = nodes[index]!;
       if (!leaf.center) continue;
@@ -171,8 +161,10 @@ const dendrogramTree = createRoot(() => {
       labels.push({
         key: id,
         text: fontName,
+        x: leaf.center.x,
+        y: leaf.center.y,
+        orientation: 'radial',
         angle: leaf.angle,
-        radius: leaf.radius,
         colorIndex: leaf.clustering?.color_index,
       });
     }
@@ -346,11 +338,11 @@ export const dendrogramNodeDots = (): DendrogramNodeDot[] =>
   dendrogramTree()?.dots ?? NO_DOTS;
 
 /**
- * One name label per visible leaf (see {@link DendrogramLeafLabel}), in leaf
- * order. Empty when the dendrogram mode is inactive or the session has no
- * recorded dendrogram.
+ * One radial name label per visible leaf (see {@link GraphPointLabel}), in
+ * leaf order. Empty when the dendrogram mode is inactive or the session has
+ * no recorded dendrogram.
  */
-export const dendrogramLeafLabels = (): DendrogramLeafLabel[] =>
+export const dendrogramLeafLabels = (): GraphPointLabel[] =>
   dendrogramTree()?.labels ?? NO_LABELS;
 
 /**

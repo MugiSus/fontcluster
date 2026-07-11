@@ -17,17 +17,17 @@ import { useColorMode } from '@kobalte/core';
 import {
   type GraphCoordinate,
   type GraphPointData,
+  type GraphPointLabel,
   type GraphViewBox,
 } from '@/components/graph/types';
 import {
   type DendrogramArc,
   type DendrogramEdge,
   type DendrogramImageAnchor,
-  type DendrogramLeafLabel,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
-import { createDendrogramLabelLayer } from './dendrogram-label-layer';
+import { createPointLabelLayer } from './point-label-layer';
 import {
   createDendrogramLayer,
   dendrogramAliasGlowOpacityForRank,
@@ -67,7 +67,7 @@ export interface UseGraphGlRendererProps {
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
-  dendrogramLeafLabels: Accessor<DendrogramLeafLabel[]>;
+  pointLabels: Accessor<GraphPointLabel[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -143,7 +143,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         dendrogramLayer.visible = true;
-        dendrogramLabelLayer.visible = showLabels;
+        pointLabelLayer.visible = showLabels;
         ringLayer.visible = true;
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
@@ -161,7 +161,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
       dendrogramLayer.visible = false;
-      dendrogramLabelLayer.visible = false;
+      pointLabelLayer.visible = false;
       ringLayer.visible = false;
       imageLayer.visible = false;
       renderer.setRenderTarget(compositor.target);
@@ -187,7 +187,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
       dendrogramLayer.visible = false;
-      dendrogramLabelLayer.visible = showLabels;
+      pointLabelLayer.visible = showLabels;
       ringLayer.visible = true;
       imageLayer.visible = true;
       // eslint-disable-next-line @typescript-eslint/naming-convention -- captures three.js renderer.autoClear to restore after render
@@ -421,8 +421,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       pixelRatio,
       requestRender: scheduleRender,
     });
-    const dendrogramLabelLayer = createDendrogramLabelLayer({
-      labels: props.dendrogramLeafLabels,
+    const pointLabelLayer = createPointLabelLayer({
+      labels: props.pointLabels,
       // The image layer's screen-space thinning + viewport cull set the label
       // density too (`imageKeys` is computed whether or not images are shown).
       visibleKeys: props.imageKeys,
@@ -465,7 +465,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     scene.add(dendrogramLayer);
-    scene.add(dendrogramLabelLayer);
+    scene.add(pointLabelLayer);
     scene.add(pointLayer.core);
     scene.add(pointLayer.halo);
     scene.add(dendrogramAliasHaloLayer.halo);

@@ -3,11 +3,11 @@ import {
   type DendrogramArc,
   type DendrogramEdge,
   type DendrogramImageAnchor,
-  type DendrogramLeafLabel,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import {
   type GraphPointData,
+  type GraphPointLabel,
   type GraphViewBox,
 } from '@/components/graph/types';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
@@ -32,7 +32,7 @@ interface GraphGlLayerProps {
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
-  dendrogramLeafLabels: Accessor<DendrogramLeafLabel[]>;
+  pointLabels: Accessor<GraphPointLabel[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -67,7 +67,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramArcs: () => props.dendrogramArcs(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
-    dendrogramLeafLabels: () => props.dendrogramLeafLabels(),
+    pointLabels: () => props.pointLabels(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

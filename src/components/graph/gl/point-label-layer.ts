@@ -2,9 +2,9 @@ import { type Accessor, createEffect, onCleanup } from 'solid-js';
 import { type Object3D } from 'three';
 import { BatchedText, Text } from 'troika-three-text';
 import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
-import { type DendrogramLeafLabel } from '@/components/graph/dendrogram-edges';
-import { polarPoint } from '@/components/graph/dendrogram-layout';
+import { type GraphPointLabel } from '@/components/graph/types';
 import { getClusterColor } from './cluster-colors-gl';
+import { BOX_HEIGHT_PX } from './image-layer';
 
 /** Label glyph em-height in CSS px, held constant on zoom. */
 const FONT_SIZE_PX = 10;
@@ -30,9 +30,9 @@ const GEIST_FONT_URL = URL.createObjectURL(
   ),
 );
 
-export interface DendrogramLabelLayerProps {
-  /** The leaf labels to draw, in leaf order. */
-  labels: Accessor<DendrogramLeafLabel[]>;
+export interface PointLabelLayerProps {
+  /** The point labels to draw (see {@link GraphPointLabel}). */
+  labels: Accessor<GraphPointLabel[]>;
   /** Keys picked by the screen-space image thinning (and viewport cull);
    *  only their labels show, so label density follows the image density. */
   visibleKeys: Accessor<Set<string>>;
@@ -53,27 +53,26 @@ export interface DendrogramLabelLayerProps {
 }
 
 /**
- * The dendrogram mode's leaf name labels: font names laid out radially just
- * outside the leaf ring, so the tree reads as a labelled circular dendrogram.
+ * The graph's font-name labels. Radial labels (the dendrogram layout) lay out
+ * along their leaf's spoke, so the tree reads as a labelled circular
+ * dendrogram; labels on the left semicircle are flipped 180° and end-anchored
+ * (the classic radial label rule) so no name renders upside down. Horizontal
+ * labels (the scatter layout) hang centred below their point.
  *
  * Rendering uses troika's SDF text — glyph layout and SDF atlas generation
  * run asynchronously in a worker, and the (experimental) `BatchedText` draws
- * all labels in a single call, so the layer scales to thousands of leaves.
- * Labels on the left semicircle are flipped 180° and end-anchored (the
- * classic radial label rule) so no name renders upside down.
+ * all labels in a single call, so the layer scales to thousands of points.
  *
  * Labels keep a constant screen size: the glyph em-height is authored in CSS
  * px and each member scales by the world-per-px zoom factor — a matrix-only
  * update, so zooming never re-runs the worker layout. Density is delegated to
- * the image layer's screen-space hex thinning (`visibleKeys`): every leaf
+ * the image layer's screen-space thinning (`visibleKeys`): every point
  * keeps a laid-out member, but only the thinned/in-viewport ones are visible
  * (via fill opacity, again avoiding relayout while panning). Each label takes
- * its leaf's cluster color and the standard dimmed opacity when filtered out.
- * The render loop owns the layer's visibility across the glow passes.
+ * its point's cluster color and the standard dimmed opacity when filtered
+ * out. The render loop owns the layer's visibility across the glow passes.
  */
-export function createDendrogramLabelLayer(
-  props: DendrogramLabelLayerProps,
-): Object3D {
+export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   const batched = new BatchedText();
   batched.frustumCulled = false;
   // Above the points, below the highlight rings and sample images.
@@ -97,7 +96,6 @@ export function createDendrogramLabelLayer(
       const member = new Text();
       member.font = GEIST_FONT_URL;
       member.fontSize = FONT_SIZE_PX;
-      member.anchorY = 'middle';
       batched.addText(member);
       members.push(member);
     }
@@ -109,25 +107,34 @@ export function createDendrogramLabelLayer(
 
     for (const [index, label] of labels.entries()) {
       const member = members[index]!;
-      // A label reads outward along its leaf's spoke; on the left semicircle
-      // it flips 180° and end-anchors so it never renders upside down.
-      const isFlipped = Math.cos(label.angle) < 0;
       member.text = label.text;
-      member.anchorX = isFlipped ? 'right' : 'left';
-      // World Y is the negated graph Y (graph space is y-down), so a graph
-      // polar angle θ becomes a rotation of -θ around world Z.
-      member.rotation.z = isFlipped ? Math.PI - label.angle : -label.angle;
       member.color = getClusterColor({ colorIndex: label.colorIndex, isDark });
+      if (label.orientation === 'radial') {
+        // A label reads outward along its leaf's spoke; on the left
+        // semicircle it flips 180° and end-anchors so it never renders
+        // upside down.
+        const isFlipped = Math.cos(label.angle) < 0;
+        member.anchorX = isFlipped ? 'right' : 'left';
+        member.anchorY = 'middle';
+        // World Y is the negated graph Y (graph space is y-down), so a graph
+        // polar angle θ becomes a rotation of -θ around world Z.
+        member.rotation.z = isFlipped ? Math.PI - label.angle : -label.angle;
+      } else {
+        member.anchorX = 'center';
+        member.anchorY = 'top';
+        member.rotation.z = 0;
+      }
     }
     batched.sync();
     props.requestRender();
   });
 
   // Placement: the glyphs are authored in CSS px, so scaling by the
-  // world-per-px zoom keeps them a constant screen size; the ring gap scales
-  // the same way. When samples are shown, use a fixed extra gap
+  // world-per-px zoom keeps them a constant screen size; the point gap scales
+  // the same way. When samples are shown, radial labels use a fixed extra gap
   // instead of an angle-dependent rectangle projection, so text-to-core
-  // distance stays uniform around the ring.
+  // distance stays uniform around the ring; horizontal labels clear the image
+  // box's half height instead.
   // Matrix-only updates — zooming and panning never resync the worker.
   createEffect(() => {
     const zoom = props.zoom();
@@ -135,13 +142,19 @@ export function createDendrogramLabelLayer(
     const forcedImageLabelKeys = props.forcedImageLabelKeys();
     for (const [index, label] of props.labels().entries()) {
       const member = members[index]!;
-      const gapPx =
-        MARGIN_PX +
-        (showImages || forcedImageLabelKeys.has(label.key)
-          ? SAMPLE_IMAGE_EXTRA_GAP_PX
-          : 0);
-      const position = polarPoint(label.angle, label.radius + gapPx * zoom);
-      member.position.set(position.x, -position.y, 0);
+      const hasImageBox = showImages || forcedImageLabelKeys.has(label.key);
+      if (label.orientation === 'radial') {
+        const gap =
+          (MARGIN_PX + (hasImageBox ? SAMPLE_IMAGE_EXTRA_GAP_PX : 0)) * zoom;
+        member.position.set(
+          label.x + Math.cos(label.angle) * gap,
+          -(label.y + Math.sin(label.angle) * gap),
+          0,
+        );
+      } else {
+        const gap = (MARGIN_PX + (hasImageBox ? BOX_HEIGHT_PX / 2 : 0)) * zoom;
+        member.position.set(label.x, -(label.y + gap), 0);
+      }
       member.scale.set(zoom, zoom, 1);
     }
     props.requestRender();

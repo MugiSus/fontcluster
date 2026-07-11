@@ -12,6 +12,7 @@ import {
   dendrogramNodeDots,
   getDendrogramAncestry,
 } from './dendrogram-edges';
+import { radialDendrogramLayout } from './dendrogram-layout';
 import {
   fontPoints,
   getGraphPointByKey,
@@ -22,6 +23,7 @@ import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './gl/image-layer';
 import { SelectedFontActions } from './selected-font-actions';
 import {
   type GraphCoordinate,
+  type GraphPointLabel,
   type GraphToolMode,
   type GraphVisibleBounds,
 } from './types';
@@ -145,6 +147,22 @@ export function GraphViewer(props: GraphViewerProps) {
     if (selectedAnchor) anchors.set(selectedAnchor.key, selectedAnchor);
     return [...anchors.values()];
   });
+
+  // The GL layer's name labels follow the layout actually in effect: the
+  // radial leaf labels while the dendrogram is drawn, otherwise one
+  // horizontal label under every scatter point.
+  const pointLabels = createMemo<GraphPointLabel[]>(() =>
+    radialDendrogramLayout()
+      ? dendrogramLeafLabels()
+      : fontPoints().map((point) => ({
+          key: point.key,
+          text: point.item.meta.font_name,
+          x: point.x,
+          y: point.y,
+          orientation: 'horizontal' as const,
+          colorIndex: point.item.computed?.clustering?.color_index,
+        })),
+  );
 
   // When the selection came from a merge-node sample, the floating actions
   // anchor on that node's alias point instead of the represented font's ring
@@ -369,7 +387,7 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramArcs={dendrogramArcs}
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
-          dendrogramLeafLabels={dendrogramLeafLabels}
+          pointLabels={pointLabels}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />
