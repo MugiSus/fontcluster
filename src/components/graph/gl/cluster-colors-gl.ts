@@ -42,12 +42,11 @@ export function getBackgroundColor({ isDark }: { isDark?: boolean }): number {
   return isDark ? BACKGROUND_DARK : BACKGROUND_LIGHT;
 }
 
-// Scatter-grid hairline grays: one step off the theme background, in the
-// background's own hue family so the grid recedes instead of tinting. The σ=0
-// mean cross draws them at full strength; minor lines fade further towards
-// the background in the grid layer.
-const GRID_LIGHT = 0xd9d9e2;
-const GRID_DARK = 0x2c2f3d;
+// Scatter-grid hairline grays: the `--border` values in index.css as sRGB hex,
+// so the σ=0 mean cross draws exactly border-border; minor lines lerp halfway
+// towards the background in the grid layer (visually border-border/50).
+const GRID_LIGHT = 0xd6dee9;
+const GRID_DARK = 0x333338;
 
 /** Returns the 0xRRGGBB scatter-grid line color for the theme. */
 export function getScatterGridColor({ isDark }: { isDark?: boolean }): number {
