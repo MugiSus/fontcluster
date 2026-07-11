@@ -4,7 +4,6 @@ import { BatchedText, Text } from 'troika-three-text';
 import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
 import { type GraphPointLabel } from '@/components/graph/types';
 import { getClusterColor } from './cluster-colors-gl';
-import { BOX_HEIGHT_PX } from './image-layer';
 
 /** Label glyph em-height in CSS px, held constant on zoom. */
 const FONT_SIZE_PX = 10;
@@ -56,8 +55,8 @@ export interface PointLabelLayerProps {
  * The graph's font-name labels. Radial labels (the dendrogram layout) lay out
  * along their leaf's spoke, so the tree reads as a labelled circular
  * dendrogram; labels on the left semicircle are flipped 180° and end-anchored
- * (the classic radial label rule) so no name renders upside down. Horizontal
- * labels (the scatter layout) hang centred below their point.
+ * (the classic radial label rule) so no name renders upside down. Diagonal
+ * labels (the scatter layout) read 45° down and right from their point.
  *
  * Rendering uses troika's SDF text — glyph layout and SDF atlas generation
  * run asynchronously in a worker, and the (experimental) `BatchedText` draws
@@ -88,8 +87,9 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
    * Applies layout-specific alignment as member transforms. Every glyph block
    * stays center/middle anchored in Troika; its already-computed block width or
    * height moves that center so radial text begins after the outward gap and
-   * horizontal text begins below its point. Consequently a layout-mode change
-   * touches only position, rotation and scale, never worker-owned text layout.
+   * diagonal text begins down-right of its point. Consequently a layout-mode
+   * change touches only position, rotation and scale, never worker-owned text
+   * layout.
    */
   const updateMemberTransforms = () => {
     const zoom = props.zoom();
@@ -116,13 +116,18 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
         );
         member.rotation.z = isFlipped ? Math.PI - label.angle : -label.angle;
       } else {
+        const angle = -Math.PI / 4;
         const gap =
           (MARGIN_PX +
-            (hasImageBox ? BOX_HEIGHT_PX / 2 : 0) +
-            (blockBounds ? (blockBounds[3] - blockBounds[1]) / 2 : 0)) *
+            (hasImageBox ? 20 : 0) +
+            (blockBounds ? (blockBounds[2] - blockBounds[0]) / 2 : 0)) *
           zoom;
-        member.position.set(label.x, -(label.y + gap), 0);
-        member.rotation.z = 0;
+        member.position.set(
+          label.x + Math.cos(angle) * gap,
+          -(label.y + Math.sin(angle) * gap),
+          0,
+        );
+        member.rotation.z = -angle;
       }
       member.scale.set(zoom, zoom, 1);
     }

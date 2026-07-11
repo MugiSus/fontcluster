@@ -56,8 +56,8 @@ interface GraphPointLabelBase {
 
 /**
  * One font-name label of the GL label layer. Radial labels read outward along
- * their leaf's dendrogram spoke; horizontal labels hang centred below their
- * scatter point.
+ * their leaf's dendrogram spoke; diagonal labels read 45° down and right from
+ * their scatter point.
  */
 export type GraphPointLabel =
   | (GraphPointLabelBase & {
@@ -65,4 +65,4 @@ export type GraphPointLabel =
       /** Polar angle of the leaf on the ring (graph space, y-down). */
       angle: number;
     })
-  | (GraphPointLabelBase & { orientation: 'horizontal' });
+  | (GraphPointLabelBase & { orientation: 'diagonal' });

@@ -151,7 +151,7 @@ export function GraphViewer(props: GraphViewerProps) {
 
   // The GL layer's name labels follow the layout actually in effect: the
   // radial leaf labels while the dendrogram is drawn, otherwise one
-  // horizontal label under every scatter point.
+  // down-right diagonal label from every scatter point.
   const pointLabels = createMemo<GraphPointLabel[]>(() =>
     radialDendrogramLayout()
       ? dendrogramLeafLabels()
@@ -160,7 +160,7 @@ export function GraphViewer(props: GraphViewerProps) {
           text: point.item.meta.font_name,
           x: point.x,
           y: point.y,
-          orientation: 'horizontal' as const,
+          orientation: 'diagonal' as const,
           colorIndex: point.item.computed?.clustering?.color_index,
         })),
   );
