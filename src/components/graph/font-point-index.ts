@@ -1,10 +1,10 @@
 import { createMemo, createRoot } from 'solid-js';
 import { quadtree, type Quadtree } from 'd3-quadtree';
-import { extent } from 'd3-array';
+import { extent, range } from 'd3-array';
 import { scaleSymlog } from 'd3-scale';
 import { appState } from '@/store';
 import { type FontItem } from '@/types/font';
-import { GRAPH_SIZE } from './constants';
+import { GRAPH_PADDING, GRAPH_SIZE } from './constants';
 import {
   radialDendrogramLayout,
   type RadialDendrogramLayout,
@@ -31,9 +31,6 @@ const MAX_NEAREST_FONT_ITEMS = 60;
  */
 const SYMLOG_CONSTANT = 1.25;
 
-/** Integer σ levels the scatter grid marks, clipped to each axis's extent. */
-const SIGMA_GRID_LEVELS = [-4, -3, -2, -1, 0, 1, 2, 3, 4];
-
 const NO_GRID_LINES: ScatterGridLine[] = [];
 
 interface FontPointIndexes {
@@ -43,8 +40,9 @@ interface FontPointIndexes {
 
 interface AxisProjection {
   project: (value: number) => number;
-  /** Data extent of the axis; null when degenerate (empty or single-valued). */
-  domain: [number, number] | null;
+  /** σ extent visible through the graph's padded guide area; null when the
+   *  source axis is degenerate (empty or single-valued). */
+  gridDomain: [number, number] | null;
 }
 
 interface FontPointState {
@@ -63,39 +61,44 @@ interface FontPointState {
 function createAxisProjection(values: number[]): AxisProjection {
   const [min, max] = extent(values);
   if (min == null || max == null || min === max) {
-    return { project: () => GRAPH_SIZE / 2, domain: null };
+    return { project: () => GRAPH_SIZE / 2, gridDomain: null };
   }
 
   const scale = scaleSymlog<number, number>()
     .domain([min, max])
     .range([0, GRAPH_SIZE])
     .constant(SYMLOG_CONSTANT);
-  return { project: (value) => scale(value), domain: [min, max] };
+  return {
+    project: (value) => scale(value),
+    gridDomain: [
+      scale.invert(-GRAPH_PADDING),
+      scale.invert(GRAPH_SIZE + GRAPH_PADDING),
+    ],
+  };
 }
 
 /**
- * The σ gridlines of one scatter axis: integer σ levels clipped to the data
- * extent, projected through the axis's own symlog scale — so their spacing
- * tightens towards the edges exactly where the layout compresses its tails,
- * and the σ=0 line marks the collection mean.
+ * The σ gridlines of one scatter axis: every integer σ level whose projected
+ * position falls within the graph's padded guide area, including levels just
+ * beyond the data extent. They use the axis's own symlog scale, so their
+ * spacing tightens towards the edges exactly where the layout compresses its
+ * tails, and the σ=0 line marks the collection mean.
  */
 function sigmaGridLines(
   axis: ScatterGridLine['axis'],
   projection: AxisProjection,
 ): ScatterGridLine[] {
-  if (!projection.domain) return NO_GRID_LINES;
-  const [min, max] = projection.domain;
-  return SIGMA_GRID_LEVELS.filter((sigma) => sigma >= min && sigma <= max).map(
-    (sigma) => ({
-      axis,
-      sigma,
-      // Graph space is y-down; match the point projection's flip.
-      position:
-        axis === 'x'
-          ? projection.project(sigma)
-          : GRAPH_SIZE - projection.project(sigma),
-    }),
-  );
+  if (!projection.gridDomain) return NO_GRID_LINES;
+  const [min, max] = projection.gridDomain;
+  return range(Math.ceil(min), Math.floor(max) + 1).map((sigma) => ({
+    axis,
+    sigma,
+    // Graph space is y-down; match the point projection's flip.
+    position:
+      axis === 'x'
+        ? projection.project(sigma)
+        : GRAPH_SIZE - projection.project(sigma),
+  }));
 }
 
 /**
@@ -232,7 +235,12 @@ const fontPointIndex = createRoot(() => {
     findSelectablePoint: (x: number, y: number, radius: number) =>
       selectableTree().find(x, y, radius),
     getVisibleImageKeys: (bounds: GraphVisibleBounds, scale: number) =>
-      collectVisibleRadialImageKeys(selectablePoints(), bounds, scale),
+      collectVisibleRadialImageKeys(
+        selectablePoints(),
+        bounds,
+        scale,
+        radialDendrogramLayout() ? 24 : 60,
+      ),
     getNearestSelectableFontItems: (selectedKey: string) => {
       const selectedPoint = indexes().byKey.get(selectedKey);
       if (!selectedPoint) return [];

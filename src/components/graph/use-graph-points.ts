@@ -100,6 +100,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
       selectableDendrogramAnchors(),
       bounds,
       imageZoomFactor(),
+      24,
     );
   });
 

@@ -4,7 +4,7 @@ import { Color, Group, type Object3D } from 'three';
 import { type LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
-import { GRAPH_SIZE } from '@/components/graph/constants';
+import { GRAPH_PADDING, GRAPH_SIZE } from '@/components/graph/constants';
 import { type ScatterGridLine } from '@/components/graph/types';
 import { getBackgroundColor, getScatterGridColor } from './cluster-colors-gl';
 import { createFatLineMaterial } from './dendrogram-layer';
@@ -71,8 +71,22 @@ export function createScatterGridLayer(props: ScatterGridLayerProps): Object3D {
       // World Y is the negated graph Y (graph space is y-down).
       const positions = gridLines.flatMap((line) =>
         line.axis === 'x'
-          ? [line.position, 0, 0, line.position, -GRAPH_SIZE, 0]
-          : [0, -line.position, 0, GRAPH_SIZE, -line.position, 0],
+          ? [
+              line.position,
+              GRAPH_PADDING,
+              0,
+              line.position,
+              -(GRAPH_SIZE + GRAPH_PADDING),
+              0,
+            ]
+          : [
+              -GRAPH_PADDING,
+              -line.position,
+              0,
+              GRAPH_SIZE + GRAPH_PADDING,
+              -line.position,
+              0,
+            ],
       );
       const colors = gridLines.flatMap((line) => {
         const { r, g, b } = line.sigma === 0 ? meanColor : minorColor;

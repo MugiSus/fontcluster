@@ -1,7 +1,6 @@
 import { GRAPH_SIZE } from './constants';
 import { type GraphVisibleBounds } from './types';
 
-const DETAIL_IMAGE_GAP_PX = 24;
 const CENTER = GRAPH_SIZE / 2;
 
 interface DetailPoint {
@@ -20,9 +19,9 @@ interface BucketCandidate {
  *
  * The graph is laid out from the center, so screen-space square or hex grids
  * thin unrelated angular neighborhoods together. This rule bins points in
- * polar space instead: radius is divided into `DETAIL_IMAGE_GAP_PX` bands,
+ * polar space instead: radius is divided into `detailImageGapPx` bands,
  * then each band is divided into a whole number of angular slots whose arc
- * length at that band is approximately `DETAIL_IMAGE_GAP_PX`. Rounding the slot
+ * length at that band is approximately `detailImageGapPx`. Rounding the slot
  * count keeps the ring evenly divided, so no narrow seam slot survives at the
  * `theta = 0` wrap. The point closest to each polar slot center is selected.
  * This is display-only derived data; hit testing and
@@ -32,8 +31,9 @@ export function collectVisibleRadialImageKeys(
   points: readonly DetailPoint[],
   bounds: GraphVisibleBounds,
   scale: number,
+  detailImageGapPx: number,
 ): Set<string> {
-  const gap = Math.max(DETAIL_IMAGE_GAP_PX * scale, Number.EPSILON);
+  const gap = Math.max(detailImageGapPx * scale, Number.EPSILON);
   const buckets = new Map<number, Map<number, BucketCandidate>>();
 
   for (const point of points) {
