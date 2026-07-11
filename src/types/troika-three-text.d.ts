@@ -39,6 +39,11 @@ declare module 'troika-three-text' {
     color: number | string | null;
     /** Fill opacity, on top of the material opacity. */
     fillOpacity: number;
+    /** Latest worker-computed text layout; null before the first sync. */
+    readonly textRenderInfo: {
+      /** Whole text block as [minX, minY, maxX, maxY]. */
+      readonly blockBounds: readonly [number, number, number, number];
+    } | null;
     /**
      * Schedules the async re-layout after property changes; `callback` fires
      * when the result has been applied (also dispatched as `synccomplete`).

@@ -76,7 +76,7 @@ export function GraphUtilityControls() {
         </TooltipTrigger>
         <TooltipContent>{t.graph.utilityControls.theme.title()}</TooltipContent>
       </Tooltip>
-      
+
       <Tooltip>
         <TooltipTrigger as='div' class='rounded-full'>
           <Button

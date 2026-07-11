@@ -80,85 +80,100 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   batched.material.depthTest = false;
   batched.material.depthWrite = false;
 
-  // Worker syncs land outside Solid's tracking; repaint when the glyphs do.
-  batched.addEventListener('synccomplete', () => props.requestRender());
+  /** Member pool keyed by the font key, so changing layout-specific label
+   *  order never assigns another font's text geometry to an existing member. */
+  const members = new Map<string, Text>();
 
-  /** Member pool, index-aligned with the label list. */
-  const members: Text[] = [];
-
-  // Text, orientation and color follow the label set / theme — the only
-  // member properties whose change costs an async worker relayout (`sync`).
-  createEffect(() => {
-    const labels = props.labels();
-    const isDark = props.isDark();
-
-    while (members.length < labels.length) {
-      const member = new Text();
-      member.font = GEIST_FONT_URL;
-      member.fontSize = FONT_SIZE_PX;
-      batched.addText(member);
-      members.push(member);
-    }
-    while (members.length > labels.length) {
-      const member = members.pop()!;
-      batched.removeText(member);
-      member.dispose();
-    }
-
-    for (const [index, label] of labels.entries()) {
-      const member = members[index]!;
-      member.text = label.text;
-      member.color = getClusterColor({ colorIndex: label.colorIndex, isDark });
-      if (label.orientation === 'radial') {
-        // A label reads outward along its leaf's spoke; on the left
-        // semicircle it flips 180° and end-anchors so it never renders
-        // upside down.
-        const isFlipped = Math.cos(label.angle) < 0;
-        member.anchorX = isFlipped ? 'right' : 'left';
-        member.anchorY = 'middle';
-        // World Y is the negated graph Y (graph space is y-down), so a graph
-        // polar angle θ becomes a rotation of -θ around world Z.
-        member.rotation.z = isFlipped ? Math.PI - label.angle : -label.angle;
-      } else {
-        member.anchorX = 'center';
-        member.anchorY = 'top';
-        member.rotation.z = 0;
-      }
-    }
-    batched.sync();
-    props.requestRender();
-  });
-
-  // Placement: the glyphs are authored in CSS px, so scaling by the
-  // world-per-px zoom keeps them a constant screen size; the point gap scales
-  // the same way. When samples are shown, radial labels use a fixed extra gap
-  // instead of an angle-dependent rectangle projection, so text-to-core
-  // distance stays uniform around the ring; horizontal labels clear the image
-  // box's half height instead.
-  // Matrix-only updates — zooming and panning never resync the worker.
-  createEffect(() => {
+  /**
+   * Applies layout-specific alignment as member transforms. Every glyph block
+   * stays center/middle anchored in Troika; its already-computed block width or
+   * height moves that center so radial text begins after the outward gap and
+   * horizontal text begins below its point. Consequently a layout-mode change
+   * touches only position, rotation and scale, never worker-owned text layout.
+   */
+  const updateMemberTransforms = () => {
     const zoom = props.zoom();
     const showImages = props.showImages();
     const forcedImageLabelKeys = props.forcedImageLabelKeys();
-    for (const [index, label] of props.labels().entries()) {
-      const member = members[index]!;
+
+    for (const label of props.labels()) {
+      const member = members.get(label.key);
+      if (!member) continue;
+      const blockBounds = member.textRenderInfo?.blockBounds;
       const hasImageBox = showImages || forcedImageLabelKeys.has(label.key);
+
       if (label.orientation === 'radial') {
         const gap =
-          (MARGIN_PX + (hasImageBox ? SAMPLE_IMAGE_EXTRA_GAP_PX : 0)) * zoom;
+          (MARGIN_PX +
+            (hasImageBox ? SAMPLE_IMAGE_EXTRA_GAP_PX : 0) +
+            (blockBounds ? (blockBounds[2] - blockBounds[0]) / 2 : 0)) *
+          zoom;
+        const isFlipped = Math.cos(label.angle) < 0;
         member.position.set(
           label.x + Math.cos(label.angle) * gap,
           -(label.y + Math.sin(label.angle) * gap),
           0,
         );
+        member.rotation.z = isFlipped ? Math.PI - label.angle : -label.angle;
       } else {
-        const gap = (MARGIN_PX + (hasImageBox ? BOX_HEIGHT_PX / 2 : 0)) * zoom;
+        const gap =
+          (MARGIN_PX +
+            (hasImageBox ? BOX_HEIGHT_PX / 2 : 0) +
+            (blockBounds ? (blockBounds[3] - blockBounds[1]) / 2 : 0)) *
+          zoom;
         member.position.set(label.x, -(label.y + gap), 0);
+        member.rotation.z = 0;
       }
       member.scale.set(zoom, zoom, 1);
     }
     props.requestRender();
+  };
+
+  // Worker syncs land outside Solid's tracking. New or changed text gets its
+  // final bounds asynchronously, so apply the corresponding transform before
+  // repainting the completed batch.
+  batched.addEventListener('synccomplete', updateMemberTransforms);
+
+  // Text and color follow the label set / theme. Only actual text changes
+  // require an async worker relayout (`sync`); alignment remains fixed.
+  createEffect(() => {
+    const labels = props.labels();
+    const isDark = props.isDark();
+    let shouldSync = false;
+
+    const labelKeys = new Set(labels.map((label) => label.key));
+    for (const [key, member] of members) {
+      if (labelKeys.has(key)) continue;
+      batched.removeText(member);
+      member.dispose();
+      members.delete(key);
+      shouldSync = true;
+    }
+
+    for (const label of labels) {
+      let member = members.get(label.key);
+      if (!member) {
+        member = new Text();
+        member.font = GEIST_FONT_URL;
+        member.fontSize = FONT_SIZE_PX;
+        member.anchorX = 'center';
+        member.anchorY = 'middle';
+        batched.addText(member);
+        members.set(label.key, member);
+        shouldSync = true;
+      }
+      if (member.text !== label.text) {
+        member.text = label.text;
+        shouldSync = true;
+      }
+      member.color = getClusterColor({ colorIndex: label.colorIndex, isDark });
+    }
+    if (shouldSync) batched.sync();
+    props.requestRender();
   });
+
+  // Zoom, image clearance and layout-mode changes are matrix-only updates.
+  createEffect(() => updateMemberTransforms());
 
   // Visibility (the image thinning's pick + viewport cull, plus forced image
   // label exceptions) and the standard active/dimmed rule, via fill opacity:
@@ -169,8 +184,8 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
     const activeKeys = props.activeKeys();
     const showFontNames = props.showFontNames();
     const forcedImageLabelKeys = props.forcedImageLabelKeys();
-    for (const [index, label] of props.labels().entries()) {
-      const member = members[index]!;
+    for (const label of props.labels()) {
+      const member = members.get(label.key)!;
       const isVisible =
         (showFontNames && visibleKeys.has(label.key)) ||
         forcedImageLabelKeys.has(label.key);
@@ -184,7 +199,8 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   });
 
   onCleanup(() => {
-    for (const member of members) member.dispose();
+    batched.removeEventListener('synccomplete', updateMemberTransforms);
+    for (const member of members.values()) member.dispose();
     batched.material.dispose();
     batched.dispose();
   });
