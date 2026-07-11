@@ -186,16 +186,27 @@ impl FontRenderer {
             let image = rendered_glyph.image;
             let dst_x = (rendered_glyph.x - min_x) as usize;
             let dst_y = (rendered_glyph.y - min_y) as usize;
+            let glyph_width = image.placement.width as usize;
+            let glyph_height = image.placement.height as usize;
             let (source_stride, alpha_offset, pixel_stride) = match image.content {
-                Content::Mask => (image.placement.width as usize, 0, 1),
-                Content::Color | Content::SubpixelMask => {
-                    (image.placement.width as usize * 4, 3, 4)
-                }
+                Content::Mask => (glyph_width, 0, 1),
+                Content::Color | Content::SubpixelMask => (glyph_width * 4, 3, 4),
             };
-            for row in 0..image.placement.height as i32 {
-                let source_row = row as usize * source_stride;
-                let target_row = (dst_y + row as usize) * width as usize;
-                for col in 0..image.placement.width as usize {
+            // A corrupt face can return a pixel buffer shorter than its
+            // placement advertises; skip it rather than index out of bounds.
+            if dst_x + glyph_width > width as usize
+                || dst_y + glyph_height > height as usize
+                || image.data.len() < source_stride * glyph_height
+            {
+                eprintln!(
+                    "❌ Skipping glyph whose placement exceeds its canvas or pixel buffer"
+                );
+                continue;
+            }
+            for row in 0..glyph_height {
+                let source_row = row * source_stride;
+                let target_row = (dst_y + row) * width as usize;
+                for col in 0..glyph_width {
                     let alpha = image.data[source_row + alpha_offset + col * pixel_stride];
                     let target_index = (target_row + dst_x + col) * 2;
                     la8_pixels[target_index] = 255;
