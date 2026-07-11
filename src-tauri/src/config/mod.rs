@@ -340,6 +340,13 @@ pub struct ClusteringData {
     /// Palette slot of this font's cluster (its [`ClusterStat::color_index`]),
     /// stamped per font so drawables read the color without a cluster lookup.
     pub color_index: usize,
+    /// 2-D scatter coordinate of this font: the clustering feature matrix
+    /// (attribute emphasis included) reduced to two principal components, each
+    /// axis standardised to zero mean / unit variance. `None` for sessions
+    /// clustered before this field existed — the scatter layout is unavailable
+    /// until they re-cluster.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub two: Option<[f32; 2]>,
 }
 
 /// Descriptive metadata extracted from a single font face.

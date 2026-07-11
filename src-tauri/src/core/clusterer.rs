@@ -52,27 +52,39 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     };
     let session_dir_for_first = session_dir.clone();
 
-    let (points, ids) =
-        tokio::task::spawn_blocking(move || -> Result<(Array2<f32>, Vec<String>)> {
-            let (vectors, ids) = load_sample_vectors(&session_dir_for_first)?;
-            if vectors.is_empty() {
-                return Ok((Array2::zeros((0, 0)), ids));
-            }
+    let ClusterInputs {
+        points,
+        scatter,
+        ids,
+    } = tokio::task::spawn_blocking(move || -> Result<ClusterInputs> {
+        let (vectors, ids) = load_sample_vectors(&session_dir_for_first)?;
+        if vectors.is_empty() {
+            return Ok(ClusterInputs {
+                points: Array2::zeros((0, 0)),
+                scatter: Vec::new(),
+                ids,
+            });
+        }
 
-            let n_samples = vectors.len();
-            let n_features = vectors[0].len();
-            let data = Array2::from_shape_vec(
-                (n_samples, n_features),
-                vectors.into_iter().flatten().collect(),
-            )
-            .map_err(|e| AppError::Processing(e.to_string()))?;
+        let n_samples = vectors.len();
+        let n_features = vectors[0].len();
+        let data = Array2::from_shape_vec(
+            (n_samples, n_features),
+            vectors.into_iter().flatten().collect(),
+        )
+        .map_err(|e| AppError::Processing(e.to_string()))?;
 
-            let points = build_cluster_features(data, preprocessing_dimensions, &emphasis)?;
+        let points = build_cluster_features(data, preprocessing_dimensions, &emphasis)?;
+        let scatter = scatter_projection(&points)?;
 
-            Ok((points, ids))
+        Ok(ClusterInputs {
+            points,
+            scatter,
+            ids,
         })
-        .await
-        .map_err(|e| AppError::Processing(e.to_string()))??;
+    })
+    .await
+    .map_err(|e| AppError::Processing(e.to_string()))??;
 
     if points.is_empty() {
         return Ok(());
@@ -120,6 +132,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
                 // Every point lands in an active cluster, so `labels[i]` is a
                 // valid index into the per-label colors.
                 color_index: color_by_label[labels[i] as usize],
+                two: Some(scatter[i]),
             });
             save_computed_data(&session_dir_for_second, &meta.safe_name, &computed)?;
             progress_events::increase_numerator(
@@ -142,6 +155,15 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     })?;
 
     Ok(())
+}
+
+/// Output of the feature stage of [`cluster_all`]: the clustering feature
+/// matrix, the per-font 2-D scatter coordinates, and the font ids, all in the
+/// same row order.
+struct ClusterInputs {
+    points: Array2<f32>,
+    scatter: Vec<[f32; 2]>,
+    ids: Vec<String>,
 }
 
 /// `(attribute-name, level)` pairs for the non-zero emphasis axes.
@@ -267,6 +289,37 @@ fn build_cluster_features(
         .map_err(|e| AppError::Processing(e.to_string()))
 }
 
+/// Projects the clustering feature matrix to the per-font 2-D scatter
+/// coordinate ([`crate::config::ClusteringData::two`]).
+///
+/// Takes the top two principal components of the same emphasis-aware feature
+/// matrix the clustering runs on, so scatter distances are a rank-2 linear
+/// approximation of the clustered distances and attribute emphasis carries
+/// over: levels ±1–2 tilt the projection, ±3–4 give the attribute enough
+/// variance to become effectively an axis of the plot. Each output axis is
+/// standardised to zero mean / unit variance so the frontend's outlier
+/// compression sees a stable scale regardless of model or emphasis magnitude.
+/// Degenerate inputs (a lone sample, fewer than three features) skip PCA and
+/// standardise the columns that exist; a missing or constant axis reads 0.
+fn scatter_projection(points: &Array2<f32>) -> Result<Vec<[f32; 2]>> {
+    let (n_samples, n_features) = points.dim();
+    let projected = if n_samples >= 2 && n_features > 2 {
+        pca_embedding(points.clone(), 2)?
+    } else {
+        points.clone()
+    };
+
+    let mut scatter = vec![[0.0f32; 2]; n_samples];
+    for column in 0..projected.ncols().min(2) {
+        let mean = projected.column(column).mean().unwrap_or(0.0);
+        let std = column_std(&projected, column).max(1e-6);
+        for (row, value) in projected.column(column).iter().enumerate() {
+            scatter[row][column] = (value - mean) / std;
+        }
+    }
+    Ok(scatter)
+}
+
 /// Population standard deviation of one column of `data` (`0.0` when empty).
 fn column_std(data: &Array2<f32>, column: usize) -> f32 {
     let column = data.column(column);
@@ -361,6 +414,16 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
     }
 
     let dimensions = dimensions.clamp(1, n_samples.min(n_features));
+
+    // petal's SVD asserts a C-contiguous (standard layout) input, but not
+    // every caller provides one: `concatenate(Axis(1), ..)` (the emphasis
+    // feature matrix) builds its result by appending columns, which leaves it
+    // F-ordered. Normalise the layout before fitting.
+    let data = if data.is_standard_layout() {
+        data
+    } else {
+        data.as_standard_layout().to_owned()
+    };
 
     PcaBuilder::new(dimensions)
         .build()
@@ -716,6 +779,73 @@ mod tests {
         let out = build_cluster_features(data.clone(), 3, &BTreeMap::new()).unwrap();
         let expected = pca_embedding(data, 3).unwrap();
         assert_eq!(out, expected);
+    }
+
+    /// Both scatter axes come out standardised: zero mean, unit variance.
+    #[test]
+    fn scatter_projection_standardises_axes() {
+        let data = Array2::from_shape_vec(
+            (6, 4),
+            vec![
+                1.0, 0.2, 0.5, 0.9, //
+                0.1, 0.8, 0.3, 0.2, //
+                0.7, 0.4, 0.9, 0.1, //
+                0.3, 0.6, 0.2, 0.8, //
+                0.9, 0.1, 0.7, 0.4, //
+                0.2, 0.9, 0.4, 0.6, //
+            ],
+        )
+        .unwrap();
+        let scatter = scatter_projection(&data).unwrap();
+        assert_eq!(scatter.len(), 6);
+        for axis in 0..2 {
+            let mean = scatter.iter().map(|p| p[axis]).sum::<f32>() / 6.0;
+            let variance =
+                scatter.iter().map(|p| (p[axis] - mean).powi(2)).sum::<f32>() / 6.0;
+            assert!(mean.abs() < 1e-4, "axis {axis} mean {mean}");
+            assert!((variance - 1.0).abs() < 1e-3, "axis {axis} variance {variance}");
+        }
+    }
+
+    /// The emphasis path's feature matrix comes out of `concatenate(Axis(1), ..)`
+    /// F-ordered, and petal's SVD asserts standard layout — the projection must
+    /// normalise the layout instead of panicking (regression: `is_standard_layout`
+    /// assertion failure on emphasised sessions).
+    #[test]
+    fn scatter_projection_accepts_f_order_features() {
+        let base = Array2::from_shape_vec(
+            (5, 2),
+            (0..10).map(|value| value as f32 * 0.13).collect(),
+        )
+        .unwrap();
+        let extra = Array2::from_shape_vec(
+            (5, 2),
+            (0..10).map(|value| ((value * 7) % 5) as f32).collect(),
+        )
+        .unwrap();
+        let data = concatenate(Axis(1), &[base.view(), extra.view()]).unwrap();
+        assert!(
+            !data.is_standard_layout(),
+            "concatenate along Axis(1) is expected to reproduce the F-order input"
+        );
+
+        let scatter = scatter_projection(&data).unwrap();
+        assert_eq!(scatter.len(), 5);
+        assert!(scatter
+            .iter()
+            .all(|point| point.iter().all(|value| value.is_finite())));
+    }
+
+    /// A single-feature matrix skips PCA: the lone column standardises into x
+    /// and the missing y axis reads zero.
+    #[test]
+    fn scatter_projection_handles_single_feature() {
+        let data = Array2::from_shape_vec((3, 1), vec![1.0, 2.0, 3.0]).unwrap();
+        let scatter = scatter_projection(&data).unwrap();
+        assert!(scatter.iter().all(|p| p[1] == 0.0));
+        let mean = scatter.iter().map(|p| p[0]).sum::<f32>() / 3.0;
+        assert!(mean.abs() < 1e-5);
+        assert!(scatter[0][0] < scatter[1][0] && scatter[1][0] < scatter[2][0]);
     }
 
     /// Gram-Schmidt yields mutually orthogonal unit rows and collapses a

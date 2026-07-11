@@ -55,6 +55,14 @@ export interface ClusteringData {
    * stamped per font by the backend so drawables need no cluster lookup.
    */
   color_index: number;
+  /**
+   * 2-D scatter coordinate: the clustering feature matrix (attribute emphasis
+   * included) reduced to two principal components, each axis standardised to
+   * zero mean / unit variance. Absent for sessions clustered before the
+   * scatter layout existed — the dendrogram toggle stays locked on until they
+   * re-cluster.
+   */
+  two?: [number, number];
 }
 
 export interface ComputedData {
