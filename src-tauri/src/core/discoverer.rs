@@ -11,8 +11,8 @@ use crate::config::FontSource;
 use crate::core::AppState;
 use crate::error::{AppError, Result};
 use fontdb::{FaceInfo, Source};
+use rayon::prelude::*;
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use swash::{FontRef, StringId};
 
@@ -113,14 +113,10 @@ impl Discoverer {
         map
     }
 
-    /// Reads a face's bytes along with the on-disk path it came from.
-    ///
-    /// In-memory ([`Source::Binary`]) faces are rejected because the renderer
-    /// needs a path to reopen the face later.
-    fn source_bytes_and_path(source: &Source) -> Result<(Vec<u8>, PathBuf)> {
+    /// Returns the on-disk path a face can be reopened from for rendering.
+    fn source_path(source: &Source) -> Result<PathBuf> {
         match source {
-            Source::File(path) => Ok((fs::read(path)?, path.clone())),
-            Source::SharedFile(path, data) => Ok((data.as_ref().as_ref().to_vec(), path.clone())),
+            Source::File(path) | Source::SharedFile(path, _) => Ok(path.clone()),
             Source::Binary(_) => Err(AppError::Font(
                 "Font source has no file path and cannot be rendered later".into(),
             )),
@@ -278,21 +274,25 @@ impl Discoverer {
         // re-derived here, since `state` itself is only borrowed.
         let is_cancelled = state.is_cancelled.clone();
         let discovered = tokio::task::spawn_blocking(move || -> Result<DiscoveryResult> {
-            let mut all_metas = Vec::new();
-            for face in font_faces {
-                if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
-                    return Ok(DiscoveryResult {
-                        discovered_fonts: HashMap::new(),
-                        render_sources: HashMap::new(),
-                    });
-                }
-
-                if let Ok((data, path)) = Self::source_bytes_and_path(&face.source) {
-                    if let Ok(meta) = Self::analyze_font_data(&data, face.index, &text, path, &face)
-                    {
-                        all_metas.push(meta);
+            let all_metas = font_faces
+                .into_par_iter()
+                .filter_map(|face| {
+                    if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                        return None;
                     }
-                }
+                    let path = Self::source_path(&face.source).ok()?;
+                    db.with_face_data(face.id, |data, index| {
+                        Self::analyze_font_data(data, index, &text, path, &face)
+                    })?
+                    .ok()
+                })
+                .collect::<Vec<_>>();
+
+            if is_cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                return Ok(DiscoveryResult {
+                    discovered_fonts: HashMap::new(),
+                    render_sources: HashMap::new(),
+                });
             }
 
             println!(
@@ -311,7 +311,6 @@ impl Discoverer {
                 families.entry(family_name).or_default().push(meta);
             }
 
-            use rayon::prelude::*;
             let target_weights_ref = &target_weights;
             let session_dir_ref = &session_dir;
 
