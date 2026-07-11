@@ -144,6 +144,17 @@ export const refreshPluginConnections = async () => {
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
+/**
+ * Switches the graph between the radial dendrogram (on) and the 2-D scatter
+ * layout (off). Leaving the dendrogram also drops any merge-node sample
+ * selection — those nodes have no position in the scatter layout.
+ */
+export const setShowDendrogram = (show: boolean) =>
+  batch(() => {
+    setAppState('ui', 'showDendrogram', show);
+    if (!show) setAppState('ui', 'selectedDendrogramNode', null);
+  });
+
 export const setVisibleGraphClusters = (clusterIds: number[]) =>
   setAppState('ui', 'visibleGraphClusters', clusterIds);
 

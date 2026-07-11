@@ -32,6 +32,11 @@ export interface AppState {
     listPreviewText: string;
     activeGraphWeights: FontWeight[];
     visibleGraphClusters: number[];
+    /** Graph layout mode: the radial dendrogram (default) or, when off, the
+     *  2-D scatter plot of each font's `clustering.two` coordinate. Lives in
+     *  the store (not graph-component state) because the module-level layout
+     *  memos (`dendrogram-layout`, `font-point-index`) derive from it. */
+    showDendrogram: boolean;
     /** Dendrogram node index of the selected merge-node sample. Null when the
      *  selection is a plain font (or nothing) — any plain font selection clears it. */
     selectedDendrogramNode: number | null;
@@ -101,6 +106,7 @@ export const [appState, setAppState] = createStore<AppState>({
     listPreviewText: '',
     activeGraphWeights: [400],
     visibleGraphClusters: [],
+    showDendrogram: true,
     selectedDendrogramNode: null,
   },
   plugins: {

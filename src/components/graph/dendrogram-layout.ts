@@ -13,8 +13,10 @@ import { type GraphCoordinate } from './types';
  *
  * Only leaves present in the current display data take part (hidden leaves
  * give up their arc); a merge whose subtree is entirely hidden has no
- * position. Null when the dendrogram mode is off or the session has no
- * recorded dendrogram — the regular map layout applies then.
+ * position. Null when the dendrogram toggle is off or the session has no
+ * recorded dendrogram — the scatter layout applies then, and every
+ * dendrogram-derived drawable (edges, arcs, dots, labels, anchors) empties
+ * downstream.
  */
 
 export interface RadialDendrogramLayout {
@@ -65,6 +67,7 @@ export function arcPoints(
 
 export const radialDendrogramLayout = createRoot(() => {
   const memo = createMemo<RadialDendrogramLayout | null>(() => {
+    if (!appState.ui.showDendrogram) return null;
     const dendrogram = appState.dendrogram;
     if (!dendrogram) return null;
 
