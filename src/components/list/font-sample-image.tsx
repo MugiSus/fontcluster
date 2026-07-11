@@ -41,20 +41,21 @@ export function ListFontSampleImage(props: ListFontSampleImageProps) {
               props.item.computed?.clustering?.color_index,
             ),
           )}
-        >
-          {props.item.computed?.clustering?.k}
-        </div>
+        />
         <div class='text-sm font-semibold text-muted-foreground'>
           {props.item.meta.font_name}
         </div>
       </div>
       <div
-        class='absolute bottom-0 right-0 flex size-8 items-center justify-center bg-foreground font-extrabold text-background'
+        class='absolute bottom-0 right-0 flex size-8 items-center justify-center bg-foreground text-sm font-extrabold text-background'
         style={{
           'font-weight': props.item.meta.weight,
         }}
       >
         {WEIGHT_LABELS[props.item.meta.weight as FontWeight].short}
+      </div>
+      <div class='absolute bottom-0 left-0 flex size-8 items-center justify-center bg-foreground font-extrabold text-background'>
+        {props.item.computed?.clustering?.k}
       </div>
     </div>
   );
