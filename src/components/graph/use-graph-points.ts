@@ -26,6 +26,8 @@ interface UseGraphPointsProps {
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
   isMoving: Accessor<boolean>;
+  showImages: Accessor<boolean>;
+  showFontNames: Accessor<boolean>;
 }
 
 export function useGraphPoints(props: UseGraphPointsProps) {
@@ -76,7 +78,10 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     const bounds = imageVisibleBounds();
     if (!bounds) return new Set<string>();
 
-    return getVisibleImageKeys(bounds, imageZoomFactor());
+    // Labels follow this same thinning, so pack them denser when they are the
+    // only detail shown (images off, names on).
+    const isDenseLabelSpacing = !props.showImages() && props.showFontNames();
+    return getVisibleImageKeys(bounds, imageZoomFactor(), isDenseLabelSpacing);
   });
 
   const selectableDendrogramAnchors = createMemo(() =>

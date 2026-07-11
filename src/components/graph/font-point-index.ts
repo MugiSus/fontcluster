@@ -234,12 +234,24 @@ const fontPointIndex = createRoot(() => {
       indexes().byFamilyName.get(familyName) ?? [],
     findSelectablePoint: (x: number, y: number, radius: number) =>
       selectableTree().find(x, y, radius),
-    getVisibleImageKeys: (bounds: GraphVisibleBounds, scale: number) =>
+    getVisibleImageKeys: (
+      bounds: GraphVisibleBounds,
+      scale: number,
+      // With images hidden and only name labels drawn, the labels are the sole
+      // detail this thinning gates, so halve the gap to show twice as many.
+      denseLabelSpacing = false,
+    ) =>
       collectVisibleRadialImageKeys(
         selectablePoints(),
         bounds,
         scale,
-        radialDendrogramLayout() ? 24 : 60,
+        radialDendrogramLayout()
+          ? denseLabelSpacing
+            ? 16
+            : 32
+          : denseLabelSpacing
+            ? 48
+            : 64,
       ),
     getNearestSelectableFontItems: (selectedKey: string) => {
       const selectedPoint = indexes().byKey.get(selectedKey);

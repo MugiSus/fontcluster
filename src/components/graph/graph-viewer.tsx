@@ -70,6 +70,8 @@ export function GraphViewer(props: GraphViewerProps) {
     viewBox: viewport.viewBox,
     zoomFactor: viewport.zoomFactor,
     isMoving: viewport.isMoving,
+    showImages: () => props.showImages,
+    showFontNames: () => props.showFontNames,
   });
   // Hit-test for the merge-node samples: the image box around each visible
   // anchor (the same set the GL layer draws — see the memo below), nearest
