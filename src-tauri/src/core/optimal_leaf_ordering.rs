@@ -8,8 +8,27 @@
 //! leaves. The final endpoint choice also includes the first/last seam because
 //! FontCluster draws the leaves on a ring. The tree topology, merge heights and
 //! representatives stay intact.
+//!
+//! Each merge's endpoint-cost table is filled with the paper's two-phase
+//! minimization: for one left outer endpoint, first the best "left path +
+//! bridge" cost into every right inner endpoint, then the best completion for
+//! every right outer endpoint. Splitting the recurrence this way removes a
+//! factor of n and bounds the whole program by the paper's O(n³) worst case,
+//! with a data-independent operation count — a per-cell candidate search with
+//! branch-and-bound pruning is O(n⁴) whenever the pruning bound goes loose,
+//! which real embedding distances (near-uniform in high dimensions) reliably
+//! trigger. The inner loops are contiguous slice scans, and table rows are
+//! written independently, so large merges fan out across rayon's thread pool
+//! without affecting the result. The optimal inner endpoints are re-derived
+//! during the backtrack — an O(n²) total argmin — instead of being stored per
+//! cell, which drops the largest side table of the forward pass.
 
 use crate::config::DendrogramMerge;
+use rayon::prelude::*;
+
+/// Endpoint-table cells (`|left leaves| × |right leaves|`) below which a merge
+/// is processed serially; larger merges split their rows across rayon.
+const PARALLEL_CELL_THRESHOLD: usize = 4096;
 
 /// Reorients `merges` in place to minimize cyclic adjacent-leaf distance.
 ///
@@ -97,9 +116,9 @@ pub(super) fn optimize_leaf_order(
         ranges[node] = [ranges[left][0], ranges[right][1]];
     }
 
-    // Square the original condensed matrix in traversal order. OLO reads the
-    // same distances many times, so this O(n²) buffer avoids repeated condensed
-    // index arithmetic in the hot dynamic-programming loop.
+    // Square the original condensed matrix in traversal order. The dynamic
+    // program reads the same distances many times, so this O(n²) buffer avoids
+    // repeated condensed index arithmetic in the hot loops.
     let mut distances = vec![0.0f32; leaf_count * leaf_count];
     for sorted_left in 0..leaf_count {
         for sorted_right in (sorted_left + 1)..leaf_count {
@@ -119,118 +138,77 @@ pub(super) fn optimize_leaf_order(
 
     // `cost[a, b]` is the best path through the subtree whose outer leaves are
     // `a` and `b`. A leaf pair has one unique lowest common ancestor, so one
-    // n×n table covers all subtree states. `inner_endpoints` stores the two
-    // leaves joined across that ancestor and gives exact backtracking instead
-    // of recomputing decisions after the cost pass.
+    // n×n table covers all subtree states.
     let mut cost = vec![0.0f64; leaf_count * leaf_count];
-    let mut inner_endpoints = vec![(u32::MAX, u32::MAX); leaf_count * leaf_count];
 
-    for (merge_index, [left, right]) in sorted_children.iter().copied().enumerate() {
-        let mut left_endpoint_pairs = [([0usize; 2], [0usize; 2]); 2];
-        let left_pair_count = if left < leaf_count {
-            left_endpoint_pairs[0] = (ranges[left], ranges[left]);
-            1
-        } else {
-            let [left_left, left_right] = sorted_children[left - leaf_count];
-            left_endpoint_pairs[0] = (ranges[left_left], ranges[left_right]);
-            left_endpoint_pairs[1] = (ranges[left_right], ranges[left_left]);
-            2
-        };
+    for [left, right] in sorted_children.iter().copied() {
+        let [left_start, boundary] = ranges[left];
+        let right_end = ranges[right][1];
+        let right_len = right_end - boundary;
 
-        let mut right_endpoint_pairs = [([0usize; 2], [0usize; 2]); 2];
-        let right_pair_count = if right < leaf_count {
-            right_endpoint_pairs[0] = (ranges[right], ranges[right]);
-            1
-        } else {
-            let [right_left, right_right] = sorted_children[right - leaf_count];
-            // The right subtree is traversed from its inner endpoint to its
-            // outer endpoint, so store these as `(outer, inner)` ranges.
-            right_endpoint_pairs[0] = (ranges[right_right], ranges[right_left]);
-            right_endpoint_pairs[1] = (ranges[right_left], ranges[right_right]);
-            2
-        };
+        {
+            // This merge writes rows `left_start..boundary` (at columns
+            // `boundary..right_end`) and only reads rows `boundary..right_end`,
+            // so the table splits into one mutable and one shared region.
+            let (head, tail) = cost.split_at_mut(boundary * leaf_count);
+            let left_rows = &mut head[left_start * leaf_count..];
+            let right_rows = &tail[..right_len * leaf_count];
 
-        for &(u_range, m_range) in &left_endpoint_pairs[..left_pair_count] {
-            for &(w_range, k_range) in &right_endpoint_pairs[..right_pair_count] {
-                let mut minimum_bridge_distance = f64::INFINITY;
-                for m in m_range[0]..m_range[1] {
-                    for k in k_range[0]..k_range[1] {
-                        minimum_bridge_distance =
-                            minimum_bridge_distance.min(f64::from(distances[m * leaf_count + k]));
+            // Fills row `u` of the endpoint table. Phase 1: for every right
+            // inner endpoint `k`, the cheapest left path plus bridge,
+            // `min over m of cost[u, m] + d(m, k)`. Phase 2: every right outer
+            // endpoint `w` completes as `min over k of phase1[k] + cost[w, k]`.
+            let fill_row = |u: usize, row_u: &mut [f64], head_costs: &mut Vec<f64>| {
+                let [m0, m1] = partner_range(left, u, leaf_count, &sorted_children, &ranges);
+
+                head_costs.clear();
+                for k in boundary..right_end {
+                    let bridges = &distances[k * leaf_count + m0..k * leaf_count + m1];
+                    let mut best = f64::INFINITY;
+                    for (path, bridge) in row_u[m0..m1].iter().copied().zip(bridges) {
+                        best = best.min(path + f64::from(*bridge));
                     }
+                    head_costs.push(best);
                 }
 
-                // For a fixed right outer endpoint, visit candidate inner
-                // endpoints by their already-known subtree cost. Combined
-                // with the minimum bridge distance this supplies a valid lower
-                // bound and prunes the otherwise quartic recurrence heavily.
-                let sorted_k_by_w = (w_range[0]..w_range[1])
-                    .map(|w| {
-                        let mut candidates = (k_range[0]..k_range[1]).collect::<Vec<_>>();
-                        candidates.sort_unstable_by(|a, b| {
-                            cost[w * leaf_count + *a]
-                                .total_cmp(&cost[w * leaf_count + *b])
-                                .then_with(|| a.cmp(b))
-                        });
-                        candidates
-                    })
-                    .collect::<Vec<_>>();
-
-                for u in u_range[0]..u_range[1] {
-                    let mut sorted_m = (m_range[0]..m_range[1]).collect::<Vec<_>>();
-                    sorted_m.sort_unstable_by(|a, b| {
-                        cost[u * leaf_count + *a]
-                            .total_cmp(&cost[u * leaf_count + *b])
-                            .then_with(|| a.cmp(b))
-                    });
-
-                    for w in w_range[0]..w_range[1] {
-                        let sorted_k = &sorted_k_by_w[w - w_range[0]];
-                        let cheapest_k = sorted_k[0];
-                        let mut best_cost = f64::INFINITY;
-                        let mut best_inner = (usize::MAX, usize::MAX);
-
-                        for &m in &sorted_m {
-                            let left_cost = cost[u * leaf_count + m];
-                            if left_cost
-                                + cost[w * leaf_count + cheapest_k]
-                                + minimum_bridge_distance
-                                >= best_cost
-                            {
-                                break;
-                            }
-
-                            for &k in sorted_k {
-                                let right_cost = cost[w * leaf_count + k];
-                                if left_cost + right_cost + minimum_bridge_distance >= best_cost {
-                                    break;
-                                }
-                                let candidate = left_cost
-                                    + right_cost
-                                    + f64::from(distances[m * leaf_count + k]);
-                                if candidate < best_cost {
-                                    best_cost = candidate;
-                                    best_inner = (m, k);
-                                }
-                            }
-                        }
-
-                        debug_assert!(best_inner.0 != usize::MAX);
-                        cost[u * leaf_count + w] = best_cost;
-                        cost[w * leaf_count + u] = best_cost;
-                        inner_endpoints[u * leaf_count + w] =
-                            (best_inner.0 as u32, best_inner.1 as u32);
-                        inner_endpoints[w * leaf_count + u] =
-                            (best_inner.1 as u32, best_inner.0 as u32);
+                for w in boundary..right_end {
+                    let [k0, k1] = partner_range(right, w, leaf_count, &sorted_children, &ranges);
+                    let row_w = &right_rows[(w - boundary) * leaf_count..][..leaf_count];
+                    let mut best = f64::INFINITY;
+                    for (head_cost, tail_cost) in head_costs[k0 - boundary..k1 - boundary]
+                        .iter()
+                        .zip(&row_w[k0..k1])
+                    {
+                        best = best.min(head_cost + tail_cost);
                     }
+                    row_u[w] = best;
+                }
+            };
+
+            if (boundary - left_start) * right_len >= PARALLEL_CELL_THRESHOLD {
+                left_rows
+                    .par_chunks_mut(leaf_count)
+                    .enumerate()
+                    .for_each_init(
+                        || Vec::with_capacity(right_len),
+                        |head_costs, (offset, row_u)| {
+                            fill_row(left_start + offset, row_u, head_costs)
+                        },
+                    );
+            } else {
+                let mut head_costs = Vec::with_capacity(right_len);
+                for (offset, row_u) in left_rows.chunks_mut(leaf_count).enumerate() {
+                    fill_row(left_start + offset, row_u, &mut head_costs);
                 }
             }
         }
 
-        debug_assert_eq!(
-            ranges[leaf_count + merge_index],
-            [ranges[left][0], ranges[right][1]]
-        );
+        // Later merges and the backtrack read both orientations of every pair.
+        for w in boundary..right_end {
+            for u in left_start..boundary {
+                cost[w * leaf_count + u] = cost[u * leaf_count + w];
+            }
+        }
     }
 
     let [root_left, root_right] = sorted_children[merges.len() - 1];
@@ -249,7 +227,10 @@ pub(super) fn optimize_leaf_order(
 
     // Backtrack the chosen endpoint state and apply only child swaps. Node ids
     // remain stable, so all persisted merge metadata and every cluster cut are
-    // unchanged.
+    // unchanged. Each node's optimal inner endpoints are re-derived from the
+    // children's costs — the argmin over `partner(first) × partner(last)`,
+    // O(n²) summed over the whole tree — so the forward pass stores no
+    // per-cell endpoints.
     let mut pending = vec![(root, best_root.0, best_root.1)];
     while let Some((node, first_leaf, last_leaf)) = pending.pop() {
         if node < leaf_count {
@@ -259,26 +240,81 @@ pub(super) fn optimize_leaf_order(
 
         let merge_index = node - leaf_count;
         let [sorted_left, sorted_right] = sorted_children[merge_index];
-        let original_left = merges[merge_index].left;
-        let original_right = merges[merge_index].right;
         let first_is_left =
             ranges[sorted_left][0] <= first_leaf && first_leaf < ranges[sorted_left][1];
         let (first_child, second_child) = if first_is_left {
-            (original_left, original_right)
+            (sorted_left, sorted_right)
         } else {
             debug_assert!(
                 ranges[sorted_right][0] <= first_leaf && first_leaf < ranges[sorted_right][1]
             );
-            (original_right, original_left)
+            (sorted_right, sorted_left)
         };
 
-        let (first_inner, second_inner) = inner_endpoints[first_leaf * leaf_count + last_leaf];
-        debug_assert_ne!(first_inner, u32::MAX);
-        merges[merge_index].left = first_child;
-        merges[merge_index].right = second_child;
+        let [m0, m1] = partner_range(
+            first_child,
+            first_leaf,
+            leaf_count,
+            &sorted_children,
+            &ranges,
+        );
+        let [k0, k1] = partner_range(
+            second_child,
+            last_leaf,
+            leaf_count,
+            &sorted_children,
+            &ranges,
+        );
+        let mut best = f64::INFINITY;
+        let mut best_inner = (m0, k0);
+        for m in m0..m1 {
+            let head_cost = cost[first_leaf * leaf_count + m];
+            for k in k0..k1 {
+                let candidate = head_cost
+                    + f64::from(distances[m * leaf_count + k])
+                    + cost[k * leaf_count + last_leaf];
+                if candidate < best {
+                    best = candidate;
+                    best_inner = (m, k);
+                }
+            }
+        }
 
-        pending.push((second_child, second_inner as usize, last_leaf));
-        pending.push((first_child, first_leaf, first_inner as usize));
+        let original_left = merges[merge_index].left;
+        let original_right = merges[merge_index].right;
+        let (original_first, original_second) = if first_is_left {
+            (original_left, original_right)
+        } else {
+            (original_right, original_left)
+        };
+        merges[merge_index].left = original_first;
+        merges[merge_index].right = original_second;
+
+        pending.push((second_child, best_inner.1, last_leaf));
+        pending.push((first_child, first_leaf, best_inner.0));
+    }
+}
+
+/// The admissible partner endpoints inside `node` when one path endpoint is
+/// the leaf `endpoint`: a path through a merge enters one child and leaves
+/// through the other, so the partner lies in the opposite child's leaf range;
+/// a leaf is its own partner.
+fn partner_range(
+    node: usize,
+    endpoint: usize,
+    leaf_count: usize,
+    sorted_children: &[[usize; 2]],
+    ranges: &[[usize; 2]],
+) -> [usize; 2] {
+    if node < leaf_count {
+        [endpoint, endpoint + 1]
+    } else {
+        let [first, second] = sorted_children[node - leaf_count];
+        if endpoint < ranges[first][1] {
+            ranges[second]
+        } else {
+            ranges[first]
+        }
     }
 }
 
@@ -511,6 +547,68 @@ mod tests {
             let optimized_cost =
                 cyclic_cost(&leaf_order(&tree, points.len()), &distances, points.len());
             assert!((optimized_cost - exhaustive_minimum).abs() < 1e-6);
+        }
+    }
+
+    /// Perf/equivalence probe on deterministic pseudo-random inputs: prints
+    /// wall time, final cyclic cost and an order hash per size. Run with
+    /// `cargo test --release -- --ignored --nocapture stress_random_probe`.
+    #[test]
+    #[ignore]
+    fn stress_random_probe() {
+        use kodama::{linkage, Method};
+
+        for &(n, dims, seed) in &[
+            (40usize, 12usize, 1u64),
+            (150, 12, 2),
+            (400, 12, 3),
+            (800, 12, 4),
+            (1200, 12, 5),
+            (2400, 12, 6),
+            (4800, 12, 7),
+        ] {
+            let mut state = seed;
+            let mut next = move || {
+                state = state
+                    .wrapping_mul(6364136223846793005)
+                    .wrapping_add(1442695040888963407);
+                ((state >> 33) as f32) / ((1u64 << 31) as f32) - 0.5
+            };
+            let points: Vec<Vec<f32>> = (0..n)
+                .map(|_| (0..dims).map(|_| next()).collect())
+                .collect();
+            let mut condensed = Vec::with_capacity(n * (n - 1) / 2);
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    condensed.push(
+                        points[i]
+                            .iter()
+                            .zip(&points[j])
+                            .map(|(a, b)| (a - b) * (a - b))
+                            .sum::<f32>()
+                            .sqrt(),
+                    );
+                }
+            }
+            let mut workspace = condensed.clone();
+            let steps = linkage(&mut workspace, n, Method::Average);
+            let mut merges: Vec<DendrogramMerge> = steps
+                .steps()
+                .iter()
+                .map(|step| merge(step.cluster1, step.cluster2, step.dissimilarity, 0))
+                .collect();
+
+            let start = std::time::Instant::now();
+            optimize_leaf_order(&mut merges, &condensed, n);
+            let elapsed = start.elapsed();
+
+            let order = leaf_order(&merges, n);
+            let cost = cyclic_cost(&order, &condensed, n);
+            let hash = order.iter().fold(0u64, |acc, &leaf| {
+                acc.wrapping_mul(1099511628211)
+                    .wrapping_add(leaf as u64 + 1)
+            });
+            println!("n={n} time={elapsed:?} cost={cost:.9} hash={hash:016x}");
         }
     }
 

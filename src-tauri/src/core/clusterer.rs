@@ -92,7 +92,12 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     }
 
     let n_samples = points.nrows();
-    let (labels, join_heights, merges, stats) = agglomerative_clustering(points, &config)?;
+    // Linkage plus leaf ordering is CPU-bound (up to O(n³)); run it off the
+    // async runtime like the other heavy stages.
+    let (labels, join_heights, merges, stats) =
+        tokio::task::spawn_blocking(move || agglomerative_clustering(points, &config))
+            .await
+            .map_err(|e| AppError::Processing(e.to_string()))??;
     let n_clusters = stats.clusters.len();
 
     progress_events::reset_progress(events, state, ProgressStage::Clustering);
@@ -329,7 +334,12 @@ fn column_std(data: &Array2<f32>, column: usize) -> f32 {
         return 0.0;
     }
     let mean = column.sum() / n as f32;
-    (column.iter().map(|value| (value - mean).powi(2)).sum::<f32>() / n as f32).sqrt()
+    (column
+        .iter()
+        .map(|value| (value - mean).powi(2))
+        .sum::<f32>()
+        / n as f32)
+        .sqrt()
 }
 
 /// Orthonormalises `vectors` (modified Gram-Schmidt) into a `(k, dim)` matrix
@@ -844,10 +854,16 @@ mod tests {
         assert_eq!(scatter.len(), 6);
         for axis in 0..2 {
             let mean = scatter.iter().map(|p| p[axis]).sum::<f32>() / 6.0;
-            let variance =
-                scatter.iter().map(|p| (p[axis] - mean).powi(2)).sum::<f32>() / 6.0;
+            let variance = scatter
+                .iter()
+                .map(|p| (p[axis] - mean).powi(2))
+                .sum::<f32>()
+                / 6.0;
             assert!(mean.abs() < 1e-4, "axis {axis} mean {mean}");
-            assert!((variance - 1.0).abs() < 1e-3, "axis {axis} variance {variance}");
+            assert!(
+                (variance - 1.0).abs() < 1e-3,
+                "axis {axis} variance {variance}"
+            );
         }
     }
 
@@ -857,11 +873,9 @@ mod tests {
     /// assertion failure on emphasised sessions).
     #[test]
     fn scatter_projection_accepts_f_order_features() {
-        let base = Array2::from_shape_vec(
-            (5, 2),
-            (0..10).map(|value| value as f32 * 0.13).collect(),
-        )
-        .unwrap();
+        let base =
+            Array2::from_shape_vec((5, 2), (0..10).map(|value| value as f32 * 0.13).collect())
+                .unwrap();
         let extra = Array2::from_shape_vec(
             (5, 2),
             (0..10).map(|value| ((value * 7) % 5) as f32).collect(),

@@ -198,9 +198,7 @@ impl FontRenderer {
                 || dst_y + glyph_height > height as usize
                 || image.data.len() < source_stride * glyph_height
             {
-                eprintln!(
-                    "❌ Skipping glyph whose placement exceeds its canvas or pixel buffer"
-                );
+                eprintln!("❌ Skipping glyph whose placement exceeds its canvas or pixel buffer");
                 continue;
             }
             for row in 0..glyph_height {

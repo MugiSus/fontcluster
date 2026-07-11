@@ -789,12 +789,14 @@ pub(crate) fn rewrite_document_config(document_path: &Path, session: &SessionCon
         }
         let options =
             SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
-        writer.start_file(SESSION_CONFIG_FILE, options).map_err(|e| {
-            crate::error::AppError::Processing(format!(
-                "Failed to start zip entry {}: {}",
-                SESSION_CONFIG_FILE, e
-            ))
-        })?;
+        writer
+            .start_file(SESSION_CONFIG_FILE, options)
+            .map_err(|e| {
+                crate::error::AppError::Processing(format!(
+                    "Failed to start zip entry {}: {}",
+                    SESSION_CONFIG_FILE, e
+                ))
+            })?;
         writer.write_all(serde_json::to_string_pretty(session)?.as_bytes())?;
         writer.finish().map_err(|e| {
             crate::error::AppError::Processing(format!(
