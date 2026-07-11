@@ -102,19 +102,38 @@ impl Analyzer {
             MODEL_BATCH_SIZE
         );
 
+        let mut pending_progress = 0;
         for chunk in png_files.chunks(MODEL_BATCH_SIZE) {
             if state.is_cancelled.load(Ordering::Relaxed) {
+                if pending_progress > 0 {
+                    progress_events::increase_numerator(
+                        events,
+                        state,
+                        ProgressStage::Analysis,
+                        pending_progress as i32,
+                    );
+                }
                 return Ok(());
             }
 
             let batch = prepare_batch(chunk, &self.spec);
-            progress_events::decrease_denominator(
-                events,
-                state,
-                ProgressStage::Analysis,
-                batch.failed_count as i32,
-            );
+            if batch.failed_count > 0 {
+                progress_events::decrease_denominator(
+                    events,
+                    state,
+                    ProgressStage::Analysis,
+                    batch.failed_count as i32,
+                );
+            }
             if state.is_cancelled.load(Ordering::Relaxed) {
+                if pending_progress > 0 {
+                    progress_events::increase_numerator(
+                        events,
+                        state,
+                        ProgressStage::Analysis,
+                        pending_progress as i32,
+                    );
+                }
                 return Ok(());
             }
 
@@ -124,12 +143,18 @@ impl Analyzer {
 
             let prepared_count = batch.prepared_images.len();
             match self.process_prepared_images(batch.prepared_images) {
-                Ok(processed_count) => progress_events::increase_numerator(
-                    events,
-                    state,
-                    ProgressStage::Analysis,
-                    processed_count as i32,
-                ),
+                Ok(processed_count) => {
+                    pending_progress += processed_count;
+                    if pending_progress >= MODEL_BATCH_SIZE * 4 {
+                        progress_events::increase_numerator(
+                            events,
+                            state,
+                            ProgressStage::Analysis,
+                            pending_progress as i32,
+                        );
+                        pending_progress = 0;
+                    }
+                }
                 Err(e) => {
                     println!("❌ Analysis failed for batch: {}", e);
                     progress_events::decrease_denominator(
@@ -140,6 +165,15 @@ impl Analyzer {
                     );
                 }
             }
+        }
+
+        if pending_progress > 0 {
+            progress_events::increase_numerator(
+                events,
+                state,
+                ProgressStage::Analysis,
+                pending_progress as i32,
+            );
         }
 
         if state.is_cancelled.load(Ordering::Relaxed) {
@@ -187,12 +221,16 @@ fn load_session(model_path: &Path) -> Result<Session> {
         .with_optimization_level(GraphOptimizationLevel::Level3)
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = builder
-        .with_intra_threads(1)
+        .with_intra_threads(
+            std::thread::available_parallelism().map_or(1, |threads| threads.get().min(4)),
+        )
         .map_err(|err| AppError::Processing(err.to_string()))?;
     builder = builder
         .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
         .map_err(|err| AppError::Processing(err.to_string()))?;
-    let cache_dir = AppState::get_model_cache_dir()?.join(MODEL_REPO_DIR);
+    let cache_dir = AppState::get_model_cache_dir()?
+        .join(MODEL_REPO_DIR)
+        .join("cpu-gpu-low-precision");
     builder = configure_execution_providers(builder, &cache_dir)?;
 
     let session = builder
@@ -211,10 +249,11 @@ fn load_session(model_path: &Path) -> Result<Session> {
 
 /// Registers the platform's preferred execution provider.
 ///
-/// On Apple silicon this enables CoreML on the Neural Engine and points it at a
-/// persistent on-disk cache (`cache_dir`), so the expensive compile of a large
-/// model runs only on the first job rather than on every run. On every other
-/// target the builder is returned unchanged so the default CPU provider runs.
+/// On Apple silicon this enables CoreML on the GPU with low-precision
+/// accumulation and points it at a persistent on-disk cache (`cache_dir`), so
+/// the expensive compile of a large model runs only on the first job rather
+/// than on every run. On every other target the builder is returned unchanged
+/// so the default CPU provider runs.
 fn configure_execution_providers(
     builder: SessionBuilder,
     cache_dir: &Path,
@@ -229,7 +268,8 @@ fn configure_execution_providers(
             ))
         })?;
         let coreml = ep::CoreML::default()
-            .with_compute_units(ep::coreml::ComputeUnits::CPUAndNeuralEngine)
+            .with_compute_units(ep::coreml::ComputeUnits::CPUAndGPU)
+            .with_low_precision_accumulation_on_gpu(true)
             .with_model_format(ep::coreml::ModelFormat::MLProgram)
             .with_static_input_shapes(true)
             .with_specialization_strategy(ep::coreml::SpecializationStrategy::FastPrediction)
@@ -456,15 +496,32 @@ pub(crate) fn resolve_model_dir() -> Result<PathBuf> {
 ///
 /// The renderer writes a white coverage mask in the PNG alpha channel. This
 /// converts that mask to black ink on a white background, producing the
-/// `[0, 1]` grayscale input expected by the FontCLIP ONNX wrapper.
+/// `[0, 1]` grayscale input expected by the bundled ONNX model.
 fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
-    let dyn_img = image::open(path)
+    let image = image::open(path)
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
-    let resized = dyn_img.resize(spec.input_size, spec.input_size, FilterType::CatmullRom);
-    let rgba = resized.to_rgba8();
-    let gray_raw = rgba_mask_to_gray_on_white(&rgba);
-    let gray = image::GrayImage::from_raw(rgba.width(), rgba.height(), gray_raw)
-        .expect("RGBA mask to grayscale conversion should preserve buffer size");
+    let resized = image.resize(spec.input_size, spec.input_size, FilterType::CatmullRom);
+    let (width, height, gray_pixels) = match resized {
+        image::DynamicImage::ImageLumaA8(la8) => {
+            let pixels = la8
+                .as_raw()
+                .chunks_exact(2)
+                .map(|pixel| 255 - ((u16::from(pixel[0]) * u16::from(pixel[1]) + 127) / 255) as u8)
+                .collect();
+            (la8.width(), la8.height(), pixels)
+        }
+        image => {
+            let rgba = image.to_rgba8();
+            let pixels = rgba
+                .as_raw()
+                .chunks_exact(4)
+                .map(|pixel| 255 - ((u16::from(pixel[0]) * u16::from(pixel[3]) + 127) / 255) as u8)
+                .collect();
+            (rgba.width(), rgba.height(), pixels)
+        }
+    };
+    let gray = image::GrayImage::from_raw(width, height, gray_pixels)
+        .expect("Mask conversion should preserve pixel count");
 
     let processed = center_in_square(&gray, spec.input_size);
 
@@ -504,23 +561,10 @@ fn center_in_square(source: &image::GrayImage, target_size: u32) -> image::GrayI
     canvas
 }
 
-/// Converts the renderer's white alpha mask into grayscale black ink on white.
-fn rgba_mask_to_gray_on_white(rgba: &image::RgbaImage) -> Vec<u8> {
-    let mut gray = vec![255u8; rgba.width() as usize * rgba.height() as usize];
-    gray.par_iter_mut()
-        .zip(rgba.as_raw().par_chunks_exact(4))
-        .for_each(|(dst, src)| {
-            let alpha = src[3] as f32 / 255.0;
-            let coverage = src[0] as f32 * alpha;
-            *dst = (255.0 - coverage).round().clamp(0.0, 255.0) as u8;
-        });
-    gray
-}
-
 /// Fills an NCHW tensor from a grayscale image.
 ///
-/// Pixel values are scaled to `[0, 1]`; CLIP channel replication and
-/// normalisation are intentionally owned by the ONNX wrapper.
+/// Pixel values are scaled to `[0, 1]`; any further channel adaptation and
+/// normalisation are intentionally owned by the ONNX graph.
 fn fill_nchw_input(processed: &image::GrayImage, input: &mut Array4<f32>) -> Result<()> {
     let plane_len = processed.width() as usize * processed.height() as usize;
     let input_slice = input
@@ -528,11 +572,9 @@ fn fill_nchw_input(processed: &image::GrayImage, input: &mut Array4<f32>) -> Res
         .expect("Input tensor should be contiguous");
     let pixels = processed.as_raw();
 
-    input_slice.par_chunks_mut(plane_len).for_each(|plane| {
-        for (index, pixel) in pixels.iter().enumerate() {
-            plane[index] = *pixel as f32 / 255.0;
-        }
-    });
+    for (destination, pixel) in input_slice.iter_mut().take(plane_len).zip(pixels) {
+        *destination = *pixel as f32 / 255.0;
+    }
 
     Ok(())
 }

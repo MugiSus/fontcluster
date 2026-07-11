@@ -184,22 +184,20 @@ impl FontRenderer {
 
         for rendered_glyph in rendered {
             let image = rendered_glyph.image;
-            let dst_x = rendered_glyph.x - min_x;
-            let dst_y = rendered_glyph.y - min_y;
+            let dst_x = (rendered_glyph.x - min_x) as usize;
+            let dst_y = (rendered_glyph.y - min_y) as usize;
+            let (source_stride, alpha_offset, pixel_stride) = match image.content {
+                Content::Mask => (image.placement.width as usize, 0, 1),
+                Content::Color | Content::SubpixelMask => {
+                    (image.placement.width as usize * 4, 3, 4)
+                }
+            };
             for row in 0..image.placement.height as i32 {
-                for col in 0..image.placement.width as i32 {
-                    let x = dst_x + col;
-                    let y = dst_y + row;
-                    if x < 0 || y < 0 || x >= width as i32 || y >= height as i32 {
-                        continue;
-                    }
-
-                    let source_index = (row as u32 * image.placement.width + col as u32) as usize;
-                    let alpha = match image.content {
-                        Content::Mask => image.data[source_index],
-                        Content::Color | Content::SubpixelMask => image.data[source_index * 4 + 3],
-                    };
-                    let target_index = ((y as u32 * width + x as u32) * 2) as usize;
+                let source_row = row as usize * source_stride;
+                let target_row = (dst_y + row as usize) * width as usize;
+                for col in 0..image.placement.width as usize {
+                    let alpha = image.data[source_row + alpha_offset + col * pixel_stride];
+                    let target_index = (target_row + dst_x + col) * 2;
                     la8_pixels[target_index] = 255;
                     la8_pixels[target_index + 1] =
                         la8_pixels[target_index + 1].saturating_add(alpha);

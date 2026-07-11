@@ -13,7 +13,7 @@ use crate::core::{AppState, EventSink, FontRenderSource};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
 use std::collections::HashMap;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 /// Stateless façade for the rendering stage.
@@ -80,6 +80,7 @@ impl SampleRenderer {
 
         tokio::task::spawn_blocking(move || -> Result<()> {
             use rayon::prelude::*;
+            let completed_since_progress = AtomicUsize::new(0);
             tasks
                 .into_par_iter()
                 .for_each(|(family_name, target_weight)| {
@@ -119,12 +120,16 @@ impl SampleRenderer {
                     })();
 
                     match res {
-                        Ok(_) => progress_events::increase_numerator(
-                            &events,
-                            &state_clone,
-                            ProgressStage::Rendering,
-                            1,
-                        ),
+                        Ok(_) => {
+                            if completed_since_progress.fetch_add(1, Ordering::Relaxed) % 4 == 3 {
+                                progress_events::increase_numerator(
+                                    &events,
+                                    &state_clone,
+                                    ProgressStage::Rendering,
+                                    4,
+                                );
+                            }
+                        }
                         Err(e) => {
                             eprintln!("❌ Failed to process {}: {}", family_name, e);
                             let font_dir =
@@ -141,6 +146,15 @@ impl SampleRenderer {
                         }
                     }
                 });
+            let remainder = completed_since_progress.load(Ordering::Relaxed) % 4;
+            if remainder > 0 {
+                progress_events::increase_numerator(
+                    &events,
+                    &state_clone,
+                    ProgressStage::Rendering,
+                    remainder as i32,
+                );
+            }
             Ok(())
         })
         .await
