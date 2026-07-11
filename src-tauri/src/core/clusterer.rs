@@ -11,6 +11,7 @@ use crate::config::{
     ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
     DendrogramData, DendrogramMerge, ProgressStage,
 };
+use crate::core::optimal_leaf_ordering::optimize_leaf_order;
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
     save_dendrogram,
@@ -496,7 +497,12 @@ fn agglomerative_clustering(
         points
     };
 
-    let dendrogram = linkage(&mut condensed, n, kodama_method(config.method));
+    // `kodama` uses the condensed matrix as mutable workspace. Keep the
+    // original normalized leaf distances for the post-linkage leaf ordering.
+    let leaf_distances = condensed;
+    let mut linkage_distances = leaf_distances.clone();
+    let dendrogram = linkage(&mut linkage_distances, n, kodama_method(config.method));
+    drop(linkage_distances);
     // Every merge (full tree), plus per-leaf the height at which each point is
     // first absorbed — its isolation. A leaf is a direct operand of exactly
     // one merge, so this fills every entry in one pass.
@@ -544,6 +550,7 @@ fn agglomerative_clustering(
             join_heights[right] = step.dissimilarity;
         }
     }
+    optimize_leaf_order(&mut merges, &leaf_distances, n);
     let mut active_count = n;
     let target_cluster_count =
         (config.target_cluster_count > 0).then(|| config.target_cluster_count.clamp(1, n));
@@ -605,7 +612,7 @@ fn agglomerative_clustering(
         }
     }
 
-    let color_indices = assign_color_indices(&active_clusters, &dendrogram, n);
+    let color_indices = assign_color_indices(&active_clusters, &merges, n);
 
     let cluster_stats = active_clusters
         .iter()
@@ -662,10 +669,10 @@ const CLUSTER_COLOR_COUNT: usize = 8;
 /// Returns one palette slot per cluster, in `active_clusters` (label) order.
 fn assign_color_indices(
     active_clusters: &[(usize, Vec<usize>)],
-    dendrogram: &kodama::Dendrogram<f32>,
+    merges: &[DendrogramMerge],
     leaf_count: usize,
 ) -> Vec<usize> {
-    let node_count = leaf_count + dendrogram.steps().len();
+    let node_count = leaf_count + merges.len();
     let mut label_of_node = vec![usize::MAX; node_count];
     for (label, (node, _)) in active_clusters.iter().enumerate() {
         label_of_node[*node] = label;
@@ -681,9 +688,9 @@ fn assign_color_indices(
             ring_order.push(label_of_node[node]);
             continue;
         }
-        let step = &dendrogram.steps()[node - leaf_count];
-        stack.push(step.cluster2);
-        stack.push(step.cluster1);
+        let merge = &merges[node - leaf_count];
+        stack.push(merge.right);
+        stack.push(merge.left);
     }
 
     let cluster_count = ring_order.len();
@@ -761,6 +768,43 @@ fn kodama_method(method: ClusteringMethod) -> KodamaMethod {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cluster_colors_follow_the_final_oriented_ring_order() {
+        let leaf_count = 10;
+        let active_clusters = (0..leaf_count)
+            .map(|leaf| (leaf, vec![leaf]))
+            .collect::<Vec<_>>();
+        let children = [
+            (0, 8),
+            (10, 1),
+            (11, 9),
+            (12, 2),
+            (13, 3),
+            (14, 4),
+            (15, 5),
+            (16, 6),
+            (17, 7),
+        ];
+        let merges = children
+            .map(|(left, right)| DendrogramMerge {
+                left,
+                right,
+                height: 0.0,
+                representative: 0,
+            })
+            .to_vec();
+        let ring_order = [0, 8, 1, 9, 2, 3, 4, 5, 6, 7];
+
+        let colors = assign_color_indices(&active_clusters, &merges, leaf_count);
+
+        for rank in 0..ring_order.len() {
+            assert_ne!(
+                colors[ring_order[rank]],
+                colors[ring_order[(rank + 1) % ring_order.len()]]
+            );
+        }
+    }
 
     /// With no emphasis the feature builder must reproduce the plain PCA path
     /// exactly, so existing sessions cluster identically.

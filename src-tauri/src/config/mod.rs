@@ -249,8 +249,8 @@ pub struct DendrogramMerge {
 /// the UI can draw the parent-child structure over the graph.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DendrogramData {
-    /// Font ids (sample directory names) in leaf order; leaf `i` of the merge
-    /// tree is `ids[i]`.
+    /// Font ids (sample directory names) in leaf-index order; leaf node `i` is
+    /// `ids[i]`. Visual order comes from a left-first traversal of `merges`.
     pub ids: Vec<String>,
     /// Every merge in linkage order (ascending dissimilarity).
     pub merges: Vec<DendrogramMerge>,

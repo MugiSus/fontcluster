@@ -104,7 +104,8 @@ export interface DendrogramMerge {
  * directory), delivered alongside the session payload.
  */
 export interface DendrogramData {
-  /** Font safe names in leaf order; leaf `i` of the merge tree is `ids[i]`. */
+  /** Font safe names in leaf-index order; leaf node `i` is `ids[i]`. Visual
+   *  order comes from a left-first traversal of `merges`. */
   ids: string[];
   /** Every merge in linkage order (ascending dissimilarity). */
   merges: DendrogramMerge[];
