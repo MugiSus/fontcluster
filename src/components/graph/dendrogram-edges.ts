@@ -76,7 +76,11 @@ const NO_ANCHORS: DendrogramImageAnchor[] = [];
 const NO_DOTS: DendrogramNodeDot[] = [];
 const NO_LABELS: GraphPointLabel[] = [];
 const COINCIDENT_EPSILON = 1e-6;
-const HORIZONTAL_CURVE_SEGMENTS = 16;
+/** Pixel-error target used to adapt Cartesian curve tessellation to zoom. */
+const HORIZONTAL_CURVE_ERROR_PX = 0.25;
+const MIN_HORIZONTAL_CURVE_SEGMENTS = 8;
+const MAX_HORIZONTAL_CURVE_SEGMENTS = 256;
+const EQUAL_HEIGHT_CURVE_HANDLE_PX = 12;
 
 function isCoincident(a: GraphCoordinate, b: GraphCoordinate): boolean {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < COINCIDENT_EPSILON;
@@ -86,15 +90,38 @@ function isCoincident(a: GraphCoordinate, b: GraphCoordinate): boolean {
 function horizontalTreeCurvePoints(
   child: GraphCoordinate,
   parent: GraphCoordinate,
+  worldUnitsPerCssPixel: number,
 ): GraphCoordinate[] {
-  const middleX = (child.x + parent.x) / 2;
+  const deltaX = parent.x - child.x;
+  const deltaY = parent.y - child.y;
+  // Equal linkage heights place both nodes on one x coordinate. Give that
+  // degenerate case a small screen-fixed leftward handle so the endpoint
+  // derivative remains horizontal instead of collapsing to the zero vector.
+  const middleX =
+    Math.abs(deltaX) > COINCIDENT_EPSILON
+      ? (child.x + parent.x) / 2
+      : child.x -
+        Math.min(
+          Math.abs(deltaY) / 2,
+          EQUAL_HEIGHT_CURVE_HANDLE_PX * worldUnitsPerCssPixel,
+        );
+  const screenSpan =
+    Math.hypot(deltaX, deltaY) /
+    Math.max(worldUnitsPerCssPixel, Number.EPSILON);
+  const segmentCount = Math.max(
+    MIN_HORIZONTAL_CURVE_SEGMENTS,
+    Math.min(
+      MAX_HORIZONTAL_CURVE_SEGMENTS,
+      Math.ceil(Math.sqrt(screenSpan / HORIZONTAL_CURVE_ERROR_PX)),
+    ),
+  );
   return new CubicBezierCurve(
     new Vector2(child.x, child.y),
     new Vector2(middleX, child.y),
     new Vector2(middleX, parent.y),
     new Vector2(parent.x, parent.y),
   )
-    .getPoints(HORIZONTAL_CURVE_SEGMENTS)
+    .getPoints(segmentCount)
     .map(({ x, y }) => ({ x, y }));
 }
 
@@ -283,13 +310,19 @@ const dendrogramTree = createRoot(() => {
   return memo;
 });
 
-export const dendrogramEdges = (): DendrogramEdge[] => {
+export const dendrogramEdges = (
+  worldUnitsPerCssPixel = 1,
+): DendrogramEdge[] => {
   const tree = dendrogramTree();
   if (!tree) return NO_EDGES;
   if (tree.mode === 'radial-tree') return tree.edges;
 
   return tree.curves.flatMap((curve) => {
-    const points = horizontalTreeCurvePoints(curve.child, curve.parent);
+    const points = horizontalTreeCurvePoints(
+      curve.child,
+      curve.parent,
+      worldUnitsPerCssPixel,
+    );
     return points.slice(1).flatMap((point, index) => {
       const previous = points[index]!;
       return isCoincident(previous, point)
@@ -321,7 +354,10 @@ export const dendrogramLeafLabels = (): GraphPointLabel[] =>
   dendrogramTree()?.labels ?? NO_LABELS;
 
 /** Polyline from a leaf through every absorbing merge to the root. */
-export function getDendrogramAncestry(key: string | null): GraphCoordinate[] {
+export function getDendrogramAncestry(
+  key: string | null,
+  worldUnitsPerCssPixel = 1,
+): GraphCoordinate[] {
   const tree = dendrogramTree();
   if (!tree || !key) return NO_ANCESTRY;
   const leafIndex = tree.leafIndexByKey.get(key);
@@ -339,7 +375,11 @@ export function getDendrogramAncestry(key: string | null): GraphCoordinate[] {
     while (node.parent !== -1) {
       const parent = tree.nodes[node.parent];
       if (!parent?.center || !node.center) break;
-      const curve = horizontalTreeCurvePoints(node.center, parent.center);
+      const curve = horizontalTreeCurvePoints(
+        node.center,
+        parent.center,
+        worldUnitsPerCssPixel,
+      );
       for (let index = 1; index < curve.length; index += 1) {
         pushPoint(curve[index]!);
       }

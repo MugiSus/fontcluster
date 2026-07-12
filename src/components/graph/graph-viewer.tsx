@@ -121,8 +121,18 @@ export function GraphViewer(props: GraphViewerProps) {
     findDendrogramPoint,
   });
 
+  // Curve geometry only changes at half-octave zoom thresholds. Sampling uses
+  // the lower world-per-pixel bound, so every bucket is conservative while
+  // avoiding a full tree rebuild for every wheel event.
+  const dendrogramCurveZoom = createMemo(() => {
+    const zoom = viewport.zoomFactor();
+    return zoom > 0 ? 2 ** (Math.floor(Math.log2(zoom) * 2) / 2) : 1;
+  });
+  const visibleDendrogramEdges = createMemo(() =>
+    dendrogramEdges(dendrogramCurveZoom()),
+  );
   const dendrogramAncestry = createMemo(() =>
-    getDendrogramAncestry(selection.selectedKey()),
+    getDendrogramAncestry(selection.selectedKey(), dendrogramCurveZoom()),
   );
 
   const showPointCore = createMemo(
@@ -398,7 +408,7 @@ export function GraphViewer(props: GraphViewerProps) {
           showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}
           showPointCore={showPointCore}
-          dendrogramEdges={dendrogramEdges}
+          dendrogramEdges={visibleDendrogramEdges}
           dendrogramArcs={dendrogramArcs}
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
