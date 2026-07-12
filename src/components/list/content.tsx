@@ -17,7 +17,10 @@ import {
   setListPreviewText,
 } from '@/actions';
 import { type FontItem } from '@/types/font';
-import { getNearestSelectableFontItems } from '@/components/graph/font-point-index';
+import {
+  getGraphPointByKey,
+  getNearestSelectableFontItems,
+} from '@/components/graph/font-point-index';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
@@ -47,8 +50,13 @@ export function ListContent() {
       selectedKey: string,
       nextSelectedItem: FontItem | null,
       filteredKeysSize: number,
+      isSelectedPointPositioned: boolean,
     ) => {
-      if (!nextSelectedItem || filteredKeysSize === 0) {
+      if (
+        !nextSelectedItem ||
+        filteredKeysSize === 0 ||
+        !isSelectedPointPositioned
+      ) {
         setSelectedItem(nextSelectedItem);
         setNearestItems([]);
         return;
@@ -79,7 +87,12 @@ export function ListContent() {
       return;
     }
 
-    updateSelectedItem(selectedKey, nextSelectedItem, filteredKeys.size);
+    updateSelectedItem(
+      selectedKey,
+      nextSelectedItem,
+      filteredKeys.size,
+      getGraphPointByKey(selectedKey) !== undefined,
+    );
   });
 
   const handleNearestItemsScroll = () => {
