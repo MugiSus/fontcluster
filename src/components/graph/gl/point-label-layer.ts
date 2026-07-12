@@ -2,10 +2,7 @@ import { type Accessor, createEffect, onCleanup } from 'solid-js';
 import { type Object3D } from 'three';
 import { BatchedText, Text } from 'troika-three-text';
 import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
-import {
-  SAMPLE_IMAGE_BOX_HEIGHT_PX,
-  SAMPLE_IMAGE_BOX_WIDTH_PX,
-} from '@/components/graph/constants';
+import { SAMPLE_IMAGE_BOX_HEIGHT_PX } from '@/components/graph/constants';
 import { type GraphPointLabel } from '@/components/graph/types';
 import { getClusterColor } from './cluster-colors-gl';
 
@@ -123,7 +120,8 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
       } else if (label.orientation === 'rightward') {
         const gap =
           (MARGIN_PX +
-            (hasImageBox ? SAMPLE_IMAGE_BOX_WIDTH_PX / 2 : 0) +
+            // set to be SAMPLE_IMAGE_BOX_HEIGHT_PX, intentionally. temporary.
+            (hasImageBox ? SAMPLE_IMAGE_BOX_HEIGHT_PX / 2 : 0) +
             (blockBounds ? (blockBounds[2] - blockBounds[0]) / 2 : 0)) *
           zoom;
         member.position.set(label.x + gap, -label.y, 0);
