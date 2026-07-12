@@ -122,10 +122,12 @@ const fontPointIndex = createRoot(() => {
       // detail this thinning gates, so reduce the normal spacing.
       const isDenseLabelSpacing = !showImages && showFontNames;
       const detailImageGapPx =
-        appState.ui.graphMode === 'scatter-plot'
+        appState.ui.graphMode === 'scatter-plot' ||
+        appState.ui.graphMode === 'rectangular-treemap' ||
+        appState.ui.graphMode === 'voronoi-treemap'
           ? isDenseLabelSpacing
-            ? 48
-            : 64
+            ? 40
+            : 60
           : isDenseLabelSpacing
             ? 16
             : 32;
