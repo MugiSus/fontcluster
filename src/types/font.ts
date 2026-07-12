@@ -59,7 +59,7 @@ export interface ClusteringData {
    * 2-D scatter coordinate: the clustering feature matrix (attribute emphasis
    * included) reduced to two principal components, each axis standardised to
    * zero mean / unit variance. Absent for sessions clustered before the
-   * scatter layout existed — the dendrogram toggle stays locked on until they
+   * scatter layout existed, so scatter plot mode stays unavailable until they
    * re-cluster.
    */
   two?: [number, number];

@@ -1,6 +1,8 @@
 import {
+  ChartScatterIcon,
   FunnelIcon,
   HandIcon,
+  LayoutGridIcon,
   MaximizeIcon,
   MinusIcon,
   MousePointer2Icon,
@@ -11,8 +13,8 @@ import {
   WaypointsIcon,
   ZoomInIcon,
 } from 'lucide-solid';
-import { createMemo, Show } from 'solid-js';
-import { appState } from '@/store';
+import { createMemo, Match, Show, Switch } from 'solid-js';
+import { appState, type GraphMode } from '@/store';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,16 +35,14 @@ interface GraphBottomToolbarProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
-  showDendrogram: boolean;
-  /** Whether the scatter layout has data to show (some font carries a
-   *  `clustering.two` coordinate); the dendrogram toggle hides without it. */
-  isScatterAvailable: boolean;
+  graphMode: GraphMode;
+  canCycleGraphMode: boolean;
   isFilterOpen: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
-  onToggleDendrogram: () => void;
+  onCycleGraphMode: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
   onZoomOut?: (() => void) | undefined;
@@ -69,6 +69,16 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       appState.ui.visibleGraphClusters.length > 0
     );
   });
+  const graphModeLabel = () => {
+    switch (props.graphMode) {
+      case 'treemap':
+        return t.graph.bottomToolbar.treemapMode();
+      case 'scatter-plot':
+        return t.graph.bottomToolbar.scatterPlotMode();
+      default:
+        return t.graph.bottomToolbar.radialTreeMode();
+    }
+  };
 
   // ToggleGroup (multiple) owns the display toggles; derive its value from the
   // booleans and translate changes back into the individual toggle handlers.
@@ -234,42 +244,32 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
         </Tooltip>
       </ToggleGroup>
 
-      {/*
-        Rendered only while the scatter layout has data (some font carries a
-        `clustering.two` coordinate), rather than passing `disabled`: Kobalte's
-        ToggleGroup.Item bakes `disabled` into its selection behavior once at
-        mount, so an item mounted disabled (the toolbar mounts before the
-        session loads) would stay unclickable even after the data arrives.
-      */}
-      <Show when={props.isScatterAvailable}>
+      <Show when={props.canCycleGraphMode}>
         <div class='w-6 border-t' />
 
-        <ToggleGroup
-          multiple
-          class='flex-col'
-          value={props.showDendrogram ? ['dendrogram'] : []}
-          onChange={(values: string[]) => {
-            if (values.includes('dendrogram') !== props.showDendrogram) {
-              props.onToggleDendrogram();
-            }
-          }}
-          showDot
-          dotSide='right'
-        >
-          <Tooltip placement='left'>
-            <TooltipTrigger
-              as={ToggleGroupItem<'button'>}
-              value='dendrogram'
-              class={toggleItemClass}
-              aria-label={t.graph.bottomToolbar.dendrogramMode()}
-            >
-              <WaypointsIcon class='size-4' />
-            </TooltipTrigger>
-            <TooltipContent>
-              {t.graph.bottomToolbar.dendrogramMode()}
-            </TooltipContent>
-          </Tooltip>
-        </ToggleGroup>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={Button<'button'>}
+            variant='ghost'
+            size='icon'
+            class='size-8 rounded-md shadow-none'
+            aria-label={graphModeLabel()}
+            onClick={() => props.onCycleGraphMode()}
+          >
+            <Switch fallback={<WaypointsIcon class='size-4' />}>
+              <Match when={props.graphMode === 'treemap'}>
+                <LayoutGridIcon class='size-4' />
+              </Match>
+              <Match when={props.graphMode === 'scatter-plot'}>
+                <ChartScatterIcon class='size-4' />
+              </Match>
+              <Match when={props.graphMode === 'radial-tree'}>
+                <WaypointsIcon class='size-4' />
+              </Match>
+            </Switch>
+          </TooltipTrigger>
+          <TooltipContent>{graphModeLabel()}</TooltipContent>
+        </Tooltip>
       </Show>
 
       <div class='w-6 border-t' />

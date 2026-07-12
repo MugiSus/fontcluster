@@ -6,7 +6,7 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { check } from '@tauri-apps/plugin-updater';
 import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
-import { appState, setAppState } from './store';
+import { appState, setAppState, type GraphMode } from './store';
 import { getConnectedPlugins, sendFontToPlugin } from './lib/plugin-bridge';
 import { selectionHistory } from './selection-history';
 import {
@@ -144,15 +144,14 @@ export const refreshPluginConnections = async () => {
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
-/**
- * Switches the graph between the radial dendrogram (on) and the 2-D scatter
- * layout (off). Leaving the dendrogram also drops any merge-node sample
- * selection — those nodes have no position in the scatter layout.
- */
-export const setShowDendrogram = (show: boolean) =>
+/** Changes the graph layout and clears merge-node selection outside the radial
+ * tree, where dendrogram nodes are directly selectable. */
+export const setGraphMode = (mode: GraphMode) =>
   batch(() => {
-    setAppState('ui', 'showDendrogram', show);
-    if (!show) setAppState('ui', 'selectedDendrogramNode', null);
+    setAppState('ui', 'graphMode', mode);
+    if (mode !== 'radial-tree') {
+      setAppState('ui', 'selectedDendrogramNode', null);
+    }
   });
 
 export const setVisibleGraphClusters = (clusterIds: number[]) =>

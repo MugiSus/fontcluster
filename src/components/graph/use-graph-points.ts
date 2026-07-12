@@ -78,10 +78,14 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     const bounds = imageVisibleBounds();
     if (!bounds) return new Set<string>();
 
-    // Labels follow this same thinning, so pack them denser when they are the
-    // only detail shown (images off, names on).
-    const isDenseLabelSpacing = !props.showImages() && props.showFontNames();
-    return getVisibleImageKeys(bounds, imageZoomFactor(), isDenseLabelSpacing);
+    // Labels follow this same visibility set, so the point index can reserve
+    // the right amount of screen space for the active detail combination.
+    return getVisibleImageKeys(
+      bounds,
+      imageZoomFactor(),
+      props.showImages(),
+      props.showFontNames(),
+    );
   });
 
   const selectableDendrogramAnchors = createMemo(() =>

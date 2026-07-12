@@ -18,7 +18,7 @@ const GRID_OPACITY = 1;
 const MINOR_LINE_STRENGTH = 0.5;
 
 export interface ScatterGridLayerProps {
-  /** The σ gridlines to draw; empty in the dendrogram layout. */
+  /** The σ gridlines to draw; empty outside scatter-plot mode. */
   lines: Accessor<ScatterGridLine[]>;
   /** Whether the active theme is dark (picks the grid/background grays). */
   isDark: Accessor<boolean>;

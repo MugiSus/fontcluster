@@ -2,7 +2,7 @@ import { createMemo, createRoot } from 'solid-js';
 import { quadtree, type Quadtree } from 'd3-quadtree';
 import { extent, range } from 'd3-array';
 import { scaleSymlog } from 'd3-scale';
-import { appState } from '@/store';
+import { appState, type GraphMode } from '@/store';
 import { type FontItem } from '@/types/font';
 import { GRAPH_PADDING, GRAPH_SIZE } from './constants';
 import {
@@ -10,6 +10,11 @@ import {
   type RadialDendrogramLayout,
 } from './dendrogram-layout';
 import { collectVisibleRadialImageKeys } from './radial-image-visibility';
+import {
+  findTreemapLeafKey,
+  treemapLayout,
+  type TreemapLayout,
+} from './treemap-layout';
 import {
   type GraphPointData,
   type GraphVisibleBounds,
@@ -47,7 +52,7 @@ interface AxisProjection {
 
 interface FontPointState {
   points: GraphPointData[];
-  /** σ gridlines of the scatter layout; empty in the dendrogram layout. */
+  /** σ gridlines of the scatter layout; empty in both hierarchy layouts. */
   gridLines: ScatterGridLine[];
 }
 
@@ -102,21 +107,26 @@ function sigmaGridLines(
 }
 
 /**
- * The graph layout: with the dendrogram toggle on, every analysed font sits
- * on the radial tree's leaf ring; with it off, fonts sit at their
- * `clustering.two` scatter coordinate (the clustering feature space's top two
- * principal components), each axis passed through its own symlog projection.
- * Fonts without a scatter coordinate (sessions clustered before it existed)
- * produce no scatter point, and sessions without a recorded dendrogram
- * produce no dendrogram points.
+ * Projects every font through the selected graph mode. Radial-tree points sit
+ * on the dendrogram's leaf ring; treemap points sit at their equal-weight leaf
+ * cell centers; scatter-plot points use `clustering.two` (the clustering
+ * feature space's top two principal components), with each axis passed through
+ * its own symlog projection. A mode whose required source data is absent
+ * produces no points until `GraphContent` selects an available fallback.
  */
 function createFontPointState(
   data: Record<string, FontItem>,
+  mode: GraphMode,
   radial: RadialDendrogramLayout | null,
+  treemap: TreemapLayout | null,
 ): FontPointState {
-  if (radial) {
+  if (mode !== 'scatter-plot') {
+    const positionByKey =
+      mode === 'radial-tree' ? radial?.positionByKey : treemap?.positionByKey;
+    if (!positionByKey) return { points: [], gridLines: NO_GRID_LINES };
+
     const points = Object.values(data).flatMap((item) => {
-      const position = radial.positionByKey.get(item.meta.safe_name);
+      const position = positionByKey.get(item.meta.safe_name);
       return position
         ? [
             {
@@ -198,7 +208,12 @@ function findNearestFontItems(
 
 const fontPointIndex = createRoot(() => {
   const state = createMemo(() =>
-    createFontPointState(appState.fonts.displayData, radialDendrogramLayout()),
+    createFontPointState(
+      appState.fonts.displayData,
+      appState.ui.graphMode,
+      radialDendrogramLayout(),
+      treemapLayout(),
+    ),
   );
   const indexes = createMemo<FontPointIndexes>(() => {
     const byKey = new Map<string, GraphPointData>();
@@ -232,27 +247,38 @@ const fontPointIndex = createRoot(() => {
     getPointByKey: (key: string) => indexes().byKey.get(key),
     getPointsByFamilyName: (familyName: string): readonly GraphPointData[] =>
       indexes().byFamilyName.get(familyName) ?? [],
-    findSelectablePoint: (x: number, y: number, radius: number) =>
-      selectableTree().find(x, y, radius),
+    findSelectablePoint: (x: number, y: number, radius: number) => {
+      if (appState.ui.graphMode === 'treemap') {
+        const key = findTreemapLeafKey(x, y);
+        return key && appState.fonts.filteredKeys.has(key)
+          ? indexes().byKey.get(key)
+          : undefined;
+      }
+      return selectableTree().find(x, y, radius);
+    },
     getVisibleImageKeys: (
       bounds: GraphVisibleBounds,
       scale: number,
+      showImages: boolean,
+      showFontNames: boolean,
+    ) => {
       // With images hidden and only name labels drawn, the labels are the sole
-      // detail this thinning gates, so halve the gap to show twice as many.
-      denseLabelSpacing = false,
-    ) =>
-      collectVisibleRadialImageKeys(
+      // detail this thinning gates, so halve the non-treemap spacing.
+      const isDenseLabelSpacing = !showImages && showFontNames;
+      return collectVisibleRadialImageKeys(
         selectablePoints(),
         bounds,
         scale,
-        radialDendrogramLayout()
-          ? denseLabelSpacing
+        appState.ui.graphMode === 'radial-tree' ||
+          appState.ui.graphMode === 'treemap'
+          ? isDenseLabelSpacing
             ? 16
             : 32
-          : denseLabelSpacing
+          : isDenseLabelSpacing
             ? 48
             : 64,
-      ),
+      );
+    },
     getNearestSelectableFontItems: (selectedKey: string) => {
       const selectedPoint = indexes().byKey.get(selectedKey);
       if (!selectedPoint) return [];
@@ -264,7 +290,7 @@ const fontPointIndex = createRoot(() => {
 
 export const fontPoints = fontPointIndex.points;
 
-/** σ gridlines of the scatter layout; empty in the dendrogram layout. */
+/** σ gridlines of the scatter layout; empty in both hierarchy layouts. */
 export const scatterGridLines = fontPointIndex.gridLines;
 
 export const getGraphPointByKey = fontPointIndex.getPointByKey;

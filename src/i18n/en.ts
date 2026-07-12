@@ -119,7 +119,9 @@ export const en = {
       showSamples: 'Show samples',
       showFontNames: 'Show font names',
       glowMode: 'Glow mode',
-      dendrogramMode: 'Dendrogram',
+      radialTreeMode: 'Radial tree',
+      treemapMode: 'Treemap',
+      scatterPlotMode: 'Scatter plot',
       filter: 'Filter',
     },
     filterDock: {

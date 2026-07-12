@@ -1,4 +1,5 @@
 import { GraphBottomToolbar } from './bottom-toolbar';
+import { type GraphMode } from '@/store';
 import { type GraphToolMode } from './types';
 import { type ViewportZoomControls } from './graph-viewer';
 
@@ -7,15 +8,15 @@ interface GraphBottomControlsProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
-  showDendrogram: boolean;
-  isScatterAvailable: boolean;
+  graphMode: GraphMode;
+  canCycleGraphMode: boolean;
   isFilterOpen: boolean;
   zoomControls: ViewportZoomControls | null;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
-  onToggleDendrogram: () => void;
+  onCycleGraphMode: () => void;
   onToggleFilter: () => void;
 }
 
@@ -30,14 +31,14 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
         showImages={props.showImages}
         showFontNames={props.showFontNames}
         showGlow={props.showGlow}
-        showDendrogram={props.showDendrogram}
-        isScatterAvailable={props.isScatterAvailable}
+        graphMode={props.graphMode}
+        canCycleGraphMode={props.canCycleGraphMode}
         isFilterOpen={props.isFilterOpen}
         onToolModeChange={props.onToolModeChange}
         onToggleImages={props.onToggleImages}
         onToggleFontNames={props.onToggleFontNames}
         onToggleGlow={props.onToggleGlow}
-        onToggleDendrogram={props.onToggleDendrogram}
+        onCycleGraphMode={props.onCycleGraphMode}
         onToggleFilter={props.onToggleFilter}
         onZoomIn={props.zoomControls?.zoomIn}
         onZoomOut={props.zoomControls?.zoomOut}

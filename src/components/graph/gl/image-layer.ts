@@ -12,11 +12,11 @@ import {
   TextureLoader,
 } from 'three';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import {
+  SAMPLE_IMAGE_BOX_HEIGHT_PX,
+  SAMPLE_IMAGE_BOX_WIDTH_PX,
+} from '@/components/graph/constants';
 import { imageFragmentShader, imageVertexShader } from './image-shaders';
-
-/** The box (CSS px) a sample image is fit inside, matching the SVG masked rect. */
-export const BOX_WIDTH_PX = 128;
-export const BOX_HEIGHT_PX = 26;
 
 /** One sample image to draw, centered (in world space) on its point. */
 export interface ImageSpec {
@@ -94,13 +94,13 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
 
   /** Scales a mesh to the largest size fitting the box at the texture aspect. */
   const applyFit = (entry: ImageEntry) => {
-    let width = BOX_WIDTH_PX;
-    let height = BOX_HEIGHT_PX;
+    let width = SAMPLE_IMAGE_BOX_WIDTH_PX;
+    let height = SAMPLE_IMAGE_BOX_HEIGHT_PX;
     const aspect = entry.aspect;
     if (aspect && Number.isFinite(aspect) && aspect > 0) {
-      const boxAspect = BOX_WIDTH_PX / BOX_HEIGHT_PX;
-      if (aspect > boxAspect) height = BOX_WIDTH_PX / aspect;
-      else width = BOX_HEIGHT_PX * aspect;
+      const boxAspect = SAMPLE_IMAGE_BOX_WIDTH_PX / SAMPLE_IMAGE_BOX_HEIGHT_PX;
+      if (aspect > boxAspect) height = SAMPLE_IMAGE_BOX_WIDTH_PX / aspect;
+      else width = SAMPLE_IMAGE_BOX_HEIGHT_PX * aspect;
     }
     entry.mesh.scale.set(width * zoom, height * zoom, 1);
   };

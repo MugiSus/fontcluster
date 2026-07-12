@@ -2,9 +2,9 @@ import { type Accessor, createEffect, onCleanup } from 'solid-js';
 import { type Object3D } from 'three';
 import { BatchedText, Text } from 'troika-three-text';
 import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
+import { SAMPLE_IMAGE_BOX_HEIGHT_PX } from '@/components/graph/constants';
 import { type GraphPointLabel } from '@/components/graph/types';
 import { getClusterColor } from './cluster-colors-gl';
-import { BOX_HEIGHT_PX } from './image-layer';
 
 /** Label glyph em-height in CSS px, held constant on zoom. */
 const FONT_SIZE_PX = 10;
@@ -57,7 +57,7 @@ export interface PointLabelLayerProps {
  * along their leaf's spoke, so the tree reads as a labelled circular
  * dendrogram; labels on the left semicircle are flipped 180° and end-anchored
  * (the classic radial label rule) so no name renders upside down. Horizontal
- * labels (the scatter layout) hang centred below their point.
+ * labels (the treemap and scatter layouts) hang centred below their point.
  *
  * Rendering uses troika's SDF text — glyph layout and SDF atlas generation
  * run asynchronously in a worker, and the (experimental) `BatchedText` draws
@@ -118,7 +118,7 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
       } else {
         const gap =
           (MARGIN_PX +
-            (hasImageBox ? BOX_HEIGHT_PX / 2 : 0) +
+            (hasImageBox ? SAMPLE_IMAGE_BOX_HEIGHT_PX / 2 : 0) +
             (blockBounds ? (blockBounds[3] - blockBounds[1]) / 2 : 0)) *
           zoom;
         member.position.set(label.x, -(label.y + gap), 0);

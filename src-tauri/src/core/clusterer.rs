@@ -659,12 +659,13 @@ const CLUSTER_COLOR_COUNT: usize = 8;
 /// Assigns each active cluster a palette slot such that clusters drawn next to
 /// each other never share one.
 ///
-/// The UI's only layout is the radial dendrogram: leaves sit on a ring in
-/// left-first pre-order of the merge tree, so every cluster occupies one
-/// contiguous arc and two clusters are visually adjacent exactly when their
-/// arcs are consecutive on the ring (cyclically — the first and last arc touch
-/// at the seam). Walking the tree with the same traversal order as the UI
-/// yields that ring order.
+/// The palette's adjacency contract follows the radial-tree graph mode: leaves
+/// sit on a ring in left-first pre-order of the merge tree, so every cluster
+/// occupies one contiguous arc and two clusters are visually adjacent exactly
+/// when their arcs are consecutive on the ring (cyclically — the first and last
+/// arc touch at the seam). Walking the tree with the same traversal order as
+/// that mode yields the ring order. Other graph modes reuse these stable slots
+/// without changing the clustering result.
 ///
 /// Every cluster starts from its historical color, `label % palette` — labels
 /// are numbered by smallest member index, so the slots land on the ring in no

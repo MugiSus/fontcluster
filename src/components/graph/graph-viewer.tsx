@@ -14,13 +14,16 @@ import {
 } from './dendrogram-edges';
 import { radialDendrogramLayout } from './dendrogram-layout';
 import {
+  SAMPLE_IMAGE_BOX_HEIGHT_PX,
+  SAMPLE_IMAGE_BOX_WIDTH_PX,
+} from './constants';
+import {
   fontPoints,
   getGraphPointByKey,
   getGraphPointsByFamilyName,
   scatterGridLines,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
-import { BOX_HEIGHT_PX, BOX_WIDTH_PX } from './gl/image-layer';
 import { SelectedFontActions } from './selected-font-actions';
 import {
   type GraphCoordinate,
@@ -82,8 +85,8 @@ export function GraphViewer(props: GraphViewerProps) {
     y: number,
   ): DendrogramImageAnchor | null => {
     const zoom = viewport.zoomFactor();
-    const halfWidth = (BOX_WIDTH_PX / 2) * zoom;
-    const halfHeight = (BOX_HEIGHT_PX / 2) * zoom;
+    const halfWidth = (SAMPLE_IMAGE_BOX_WIDTH_PX / 2) * zoom;
+    const halfHeight = (SAMPLE_IMAGE_BOX_HEIGHT_PX / 2) * zoom;
     let nearest: DendrogramImageAnchor | null = null;
     let nearestDistance = Infinity;
     for (const anchor of dendrogramNodeImageAnchors()) {
@@ -152,8 +155,8 @@ export function GraphViewer(props: GraphViewerProps) {
   });
 
   // The GL layer's name labels follow the layout actually in effect: the
-  // radial leaf labels while the dendrogram is drawn, otherwise one
-  // horizontal label under every scatter point.
+  // radial leaf labels while the circular dendrogram is drawn, otherwise one
+  // horizontal label under every treemap or scatter point.
   const pointLabels = createMemo<GraphPointLabel[]>(() =>
     radialDendrogramLayout()
       ? dendrogramLeafLabels()

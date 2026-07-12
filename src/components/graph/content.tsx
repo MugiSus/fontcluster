@@ -2,10 +2,10 @@ import { batch, createEffect, createMemo, createSignal } from 'solid-js';
 import { GraphBottomControls } from './bottom-controls';
 import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
-import { appState } from '@/store';
+import { appState, type GraphMode } from '@/store';
 import {
   setActiveGraphWeights,
-  setShowDendrogram,
+  setGraphMode,
   setVisibleGraphClusters,
 } from '@/actions';
 import { type GraphToolMode } from './types';
@@ -27,6 +27,12 @@ export function GraphContent() {
       (item) => item.computed?.clustering?.two != null,
     ),
   );
+  const availableGraphModes = createMemo<GraphMode[]>(() => {
+    const modes: GraphMode[] = [];
+    if (appState.dendrogram) modes.push('radial-tree', 'treemap');
+    if (isScatterAvailable()) modes.push('scatter-plot');
+    return modes;
+  });
 
   createEffect(() => {
     const weights = sessionWeights();
@@ -38,15 +44,15 @@ export function GraphContent() {
     }
   });
 
-  // Landing in the scatter mode with no coordinates (switching to a session
-  // clustered before they existed) would show an empty graph with its toggle
-  // hidden; fall back to the dendrogram. Skipped while a session is still
-  // loading — the flag only clears once the fonts are in place, so a
-  // re-cluster refresh of a scatter-capable session never bounces the layout.
+  // Keep the selected mode valid for the loaded session. Skipping the cleared
+  // intermediate payload prevents session switches and re-cluster refreshes
+  // from changing modes before the replacement data arrives.
   createEffect(() => {
     if (appState.ui.isSessionLoading) return;
-    if (!isScatterAvailable() && !appState.ui.showDendrogram) {
-      setShowDendrogram(true);
+    const modes = availableGraphModes();
+    const fallbackMode = modes[0];
+    if (fallbackMode && !modes.includes(appState.ui.graphMode)) {
+      setGraphMode(fallbackMode);
     }
   });
 
@@ -64,17 +70,20 @@ export function GraphContent() {
         showImages={showImages()}
         showFontNames={showFontNames()}
         showGlow={showGlow()}
-        showDendrogram={appState.ui.showDendrogram}
-        isScatterAvailable={isScatterAvailable()}
+        graphMode={appState.ui.graphMode}
+        canCycleGraphMode={availableGraphModes().length > 1}
         isFilterOpen={isFilterOpen()}
         zoomControls={viewportZoomControls()}
         onToolModeChange={setToolMode}
         onToggleImages={() => setShowImages((shown) => !shown)}
         onToggleFontNames={() => setShowFontNames((shown) => !shown)}
         onToggleGlow={() => setShowGlow((shown) => !shown)}
-        onToggleDendrogram={() =>
-          setShowDendrogram(!appState.ui.showDendrogram)
-        }
+        onCycleGraphMode={() => {
+          const modes = availableGraphModes();
+          const nextMode =
+            modes[(modes.indexOf(appState.ui.graphMode) + 1) % modes.length];
+          if (nextMode) setGraphMode(nextMode);
+        }}
         onToggleFilter={() => setIsFilterOpen((open) => !open)}
       />
       <GraphFilterDock

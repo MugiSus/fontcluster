@@ -10,6 +10,8 @@ import { type DendrogramData, type SessionConfig } from './types/session';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
 import type { PluginConnection } from './lib/plugin-bridge';
 
+export type GraphMode = 'radial-tree' | 'treemap' | 'scatter-plot';
+
 export interface AppState {
   session: SessionConfig;
   sessionDirectory: string;
@@ -32,11 +34,9 @@ export interface AppState {
     listPreviewText: string;
     activeGraphWeights: FontWeight[];
     visibleGraphClusters: number[];
-    /** Graph layout mode: the radial dendrogram (default) or, when off, the
-     *  2-D scatter plot of each font's `clustering.two` coordinate. Lives in
-     *  the store (not graph-component state) because the module-level layout
-     *  memos (`dendrogram-layout`, `font-point-index`) derive from it. */
-    showDendrogram: boolean;
+    /** Active graph layout. Lives in the store because graph layout modules
+     *  derive their positions and visibility from the same mode. */
+    graphMode: GraphMode;
     /** Dendrogram node index of the selected merge-node sample. Null when the
      *  selection is a plain font (or nothing) — any plain font selection clears it. */
     selectedDendrogramNode: number | null;
@@ -106,7 +106,7 @@ export const [appState, setAppState] = createStore<AppState>({
     listPreviewText: '',
     activeGraphWeights: [400],
     visibleGraphClusters: [],
-    showDendrogram: true,
+    graphMode: 'radial-tree',
     selectedDendrogramNode: null,
   },
   plugins: {
