@@ -6,9 +6,10 @@
 //
 // Both programs share the same geometry (position / aColor / aState /
 // aOpacity); the core additionally reads aHideCore to drop the dot where a
-// sample image is drawn (the halo ignores it, so the glow stays). The
-// orchestrator shows the core or halo points per render pass (visibility),
-// rather than switching a uPass uniform — so each shader stays branch-free.
+// sample image is drawn and uShowCore to disable every dot for layouts that do
+// not need them (the halo ignores both, so the glow stays). The orchestrator
+// still shows the core or halo points per render pass rather than switching a
+// uPass uniform.
 //
 // `position` / projection uniforms are injected by three's ShaderMaterial, so
 // only the custom attributes are declared here.
@@ -21,6 +22,7 @@ attribute float aHideCore; // 1 = core hidden (this sample's image is drawn)
 
 uniform float uPixelRatio;
 uniform float uCore; // solid core diameter (CSS px)
+uniform float uShowCore; // 0 = hide every core dot, 1 = draw non-image cores
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -35,7 +37,9 @@ void main() {
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   // Hide the dot where the sample's image is shown — a zero point size skips
   // rasterization. The glow (halo program) ignores aHideCore, so it stays.
-  gl_PointSize = aHideCore > 0.5 ? 0.0 : uCore * scale * uPixelRatio;
+  gl_PointSize = uShowCore < 0.5 || aHideCore > 0.5
+    ? 0.0
+    : uCore * scale * uPixelRatio;
 }
 `;
 

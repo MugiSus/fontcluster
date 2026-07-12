@@ -1,4 +1,5 @@
 import { type Accessor } from 'solid-js';
+import { type GraphMode } from '@/store';
 import {
   type DendrogramArc,
   type DendrogramEdge,
@@ -11,9 +12,14 @@ import {
   type GraphViewBox,
   type ScatterGridLine,
 } from '@/components/graph/types';
+import {
+  type TreemapBoundary,
+  type TreemapLeafCell,
+} from '@/components/graph/treemap-layout';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
 
 interface GraphGlLayerProps {
+  graphMode: Accessor<GraphMode>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
@@ -35,20 +41,23 @@ interface GraphGlLayerProps {
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
   scatterGridLines: Accessor<ScatterGridLine[]>;
+  treemapCells: Accessor<TreemapLeafCell[]>;
+  treemapBoundaries: Accessor<TreemapBoundary[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
 
 /**
- * GPU-rendered graph: dendrogram edges, points + glow, selection/hover/family
- * rings and the cluster-tinted sample images. Sits behind the SVG, which owns
- * interaction, coordinate transforms and the zoom overlay.
+ * GPU-rendered graph: hierarchy/scatter backplates, points + glow,
+ * selection/hover/family rings and cluster-tinted sample images. Sits behind
+ * the SVG, which owns interaction, coordinate transforms and the zoom overlay.
  */
 export function GraphGlLayer(props: GraphGlLayerProps) {
   let canvas: HTMLCanvasElement | undefined;
 
   useGraphGlRenderer({
     getCanvas: () => canvas,
+    graphMode: () => props.graphMode(),
     size: () => props.size(),
     viewBox: () => props.viewBox(),
     zoomFactor: () => props.zoomFactor(),
@@ -71,6 +80,8 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     pointLabels: () => props.pointLabels(),
     scatterGridLines: () => props.scatterGridLines(),
+    treemapCells: () => props.treemapCells(),
+    treemapBoundaries: () => props.treemapBoundaries(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

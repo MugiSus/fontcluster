@@ -14,6 +14,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { useColorMode } from '@kobalte/core';
+import { type GraphMode } from '@/store';
 import {
   type GraphCoordinate,
   type GraphPointData,
@@ -27,6 +28,10 @@ import {
   type DendrogramImageAnchor,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
+import {
+  type TreemapBoundary,
+  type TreemapLeafCell,
+} from '@/components/graph/treemap-layout';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createPointLabelLayer } from './point-label-layer';
 import {
@@ -39,6 +44,7 @@ import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
 import { createScatterGridLayer } from './scatter-grid-layer';
+import { createTreemapLayer } from './treemap-layer';
 
 // Colors come straight from the CSS variables as sRGB, so disable three's
 // linear<->sRGB conversion to keep the rendered hues WYSIWYG with the CSS theme.
@@ -50,6 +56,7 @@ const NO_IMAGE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
+  graphMode: Accessor<GraphMode>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
@@ -71,6 +78,8 @@ export interface UseGraphGlRendererProps {
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
   scatterGridLines: Accessor<ScatterGridLine[]>;
+  treemapCells: Accessor<TreemapLeafCell[]>;
+  treemapBoundaries: Accessor<TreemapBoundary[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -79,13 +88,14 @@ export interface UseGraphGlRendererProps {
  * Orchestrates the GPU graph renderer.
  *
  * Responsibilities are split across composable layers — see
- * {@link createDendrogramLayer}, {@link createPointLayer},
- * {@link createRingLayer} and {@link createImageLayer}. Each layer is
- * constructed with accessors and owns its own reactive updates (Solid manages
- * its objects' lifecycle and teardown); this hook only derives their inputs
- * (e.g. the ring/image specs), wires the on-demand render loop, and owns the
- * renderer, scene, camera and glow compositor. It is a pure renderer of
- * derived state — it never mutates application state.
+ * {@link createDendrogramLayer}, {@link createTreemapLayer},
+ * {@link createPointLayer}, {@link createRingLayer} and
+ * {@link createImageLayer}. Each layer is constructed with accessors and owns
+ * its own reactive updates (Solid manages its objects' lifecycle and teardown);
+ * this hook only derives their inputs (e.g. the ring/image specs), wires the
+ * on-demand render loop, and owns the renderer, scene, camera and glow
+ * compositor. It is a pure renderer of derived state — it never mutates
+ * application state.
  */
 export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
   const { colorMode } = useColorMode();
@@ -146,6 +156,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         scatterGridLayer.visible = true;
+        treemapLayer.visible = true;
         dendrogramLayer.visible = true;
         pointLabelLayer.visible = showLabels;
         ringLayer.visible = true;
@@ -165,6 +176,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
       scatterGridLayer.visible = false;
+      treemapLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = false;
       ringLayer.visible = false;
@@ -180,6 +192,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = false;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = true;
+      treemapLayer.visible = true;
       dendrogramLayer.visible = true;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
@@ -193,6 +206,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = false;
+      treemapLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = showLabels;
       ringLayer.visible = true;
@@ -205,6 +219,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       // Leave the scene in a sane default for any stray render.
       scatterGridLayer.visible = true;
+      treemapLayer.visible = true;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
     };
@@ -422,6 +437,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       resolution: props.size,
       requestRender: scheduleRender,
     });
+    const treemapLayer = createTreemapLayer({
+      cells: props.treemapCells,
+      boundaries: props.treemapBoundaries,
+      isDark,
+      resolution: props.size,
+      requestRender: scheduleRender,
+    });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
       arcs: props.dendrogramArcs,
@@ -450,6 +472,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const pointLayer = createPointLayer({
       points: props.points,
+      showCore: () => props.graphMode() !== 'treemap',
       isDark,
       activePredicate,
       imageShownKeys,
@@ -459,6 +482,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const dendrogramAliasHaloLayer = createPointLayer({
       points: props.dendrogramNodeDots,
+      showCore: () => false,
       isDark,
       activePredicate,
       opacityForPoint: dendrogramAliasGlowOpacity,
@@ -479,6 +503,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     scene.add(scatterGridLayer);
+    scene.add(treemapLayer);
     scene.add(dendrogramLayer);
     scene.add(pointLabelLayer);
     scene.add(pointLayer.core);

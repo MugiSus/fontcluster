@@ -25,6 +25,7 @@ import {
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { SelectedFontActions } from './selected-font-actions';
+import { treemapLayout } from './treemap-layout';
 import {
   type GraphCoordinate,
   type GraphPointLabel,
@@ -374,6 +375,7 @@ export function GraphViewer(props: GraphViewerProps) {
         }
       >
         <GraphGlLayer
+          graphMode={() => appState.ui.graphMode}
           size={svgSize}
           viewBox={viewport.viewBox}
           zoomFactor={viewport.zoomFactor}
@@ -395,6 +397,8 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           pointLabels={pointLabels}
           scatterGridLines={scatterGridLines}
+          treemapCells={() => treemapLayout()?.leafCells ?? []}
+          treemapBoundaries={() => treemapLayout()?.boundaries ?? []}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />

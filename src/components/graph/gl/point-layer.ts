@@ -34,6 +34,8 @@ const FULL_OPACITY = () => 1;
 
 export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
+  /** Whether sharp core dots are drawn; the halo remains independent. */
+  showCore: Accessor<boolean>;
   /** Whether the active theme is dark (drives colors and the glow blend op). */
   isDark: Accessor<boolean>;
   /** Marks a point active (full) vs dimmed (filtered-out / inactive weight). */
@@ -89,6 +91,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     uniforms: {
       uPixelRatio: { value: 1 },
       uCore: { value: CORE },
+      uShowCore: { value: 1 },
     },
     vertexShader: coreVertexShader,
     fragmentShader: coreFragmentShader,
@@ -274,6 +277,13 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
   // glow keeps showing — only the core program reads aHideCore).
   createEffect(() => {
     setHiddenCores(props.points(), props.imageShownKeys());
+    props.requestRender();
+  });
+
+  // Layout-level core visibility is one uniform update; per-point image
+  // suppression remains independently encoded by aHideCore.
+  createEffect(() => {
+    coreMaterial.uniforms['uShowCore']!.value = props.showCore() ? 1 : 0;
     props.requestRender();
   });
 
