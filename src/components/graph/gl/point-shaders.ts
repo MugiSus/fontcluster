@@ -26,6 +26,7 @@ uniform float uShowCore; // 0 = hide every core dot, 1 = draw non-image cores
 
 varying vec3 vColor;
 varying float vAlpha;
+varying float vCoreVisible;
 
 void main() {
   bool dimmed = aState > 0.5;
@@ -33,21 +34,23 @@ void main() {
   // Dimmed (filtered-out / inactive) points are 0.75x the size and much fainter.
   float scale = dimmed ? 0.75 : 1.0;
   vAlpha = (dimmed ? 0.2 : 1.0) * aOpacity;
+  vCoreVisible = uShowCore * (1.0 - step(0.5, aHideCore));
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  // Hide the dot where the sample's image is shown — a zero point size skips
-  // rasterization. The glow (halo program) ignores aHideCore, so it stays.
-  gl_PointSize = uShowCore < 0.5 || aHideCore > 0.5
-    ? 0.0
-    : uCore * scale * uPixelRatio;
+  // WebGL may clamp zero-size points to its implementation minimum. Keep a
+  // hidden point at one device pixel and let the fragment shader discard it
+  // completely; the glow program ignores both core visibility inputs.
+  gl_PointSize = vCoreVisible < 0.5 ? 1.0 : uCore * scale * uPixelRatio;
 }
 `;
 
 export const coreFragmentShader = /* glsl */ `
 varying vec3 vColor;
 varying float vAlpha;
+varying float vCoreVisible;
 
 void main() {
+  if (vCoreVisible < 0.5) discard;
   vec2 uv = gl_PointCoord * 2.0 - 1.0;
   float dist = length(uv);
   if (dist > 1.0) discard;
