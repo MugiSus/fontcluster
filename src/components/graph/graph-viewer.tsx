@@ -399,6 +399,7 @@ export function GraphViewer(props: GraphViewerProps) {
           scatterGridLines={scatterGridLines}
           treemapCells={() => treemapLayout()?.leafCells ?? []}
           treemapBoundaries={() => treemapLayout()?.boundaries ?? []}
+          treemapClusterRects={() => treemapLayout()?.clusterRects ?? []}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />

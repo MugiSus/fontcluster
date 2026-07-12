@@ -30,6 +30,7 @@ import {
 } from '@/components/graph/dendrogram-edges';
 import {
   type TreemapBoundary,
+  type TreemapClusterRect,
   type TreemapLeafCell,
 } from '@/components/graph/treemap-layout';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
@@ -80,6 +81,7 @@ export interface UseGraphGlRendererProps {
   scatterGridLines: Accessor<ScatterGridLine[]>;
   treemapCells: Accessor<TreemapLeafCell[]>;
   treemapBoundaries: Accessor<TreemapBoundary[]>;
+  treemapClusterRects: Accessor<TreemapClusterRect[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -440,8 +442,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const treemapLayer = createTreemapLayer({
       cells: props.treemapCells,
       boundaries: props.treemapBoundaries,
+      clusterRects: props.treemapClusterRects,
       isDark,
       resolution: props.size,
+      zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
     const dendrogramLayer = createDendrogramLayer({

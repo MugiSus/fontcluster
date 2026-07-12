@@ -14,6 +14,7 @@ import {
 } from '@/components/graph/types';
 import {
   type TreemapBoundary,
+  type TreemapClusterRect,
   type TreemapLeafCell,
 } from '@/components/graph/treemap-layout';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
@@ -43,6 +44,7 @@ interface GraphGlLayerProps {
   scatterGridLines: Accessor<ScatterGridLine[]>;
   treemapCells: Accessor<TreemapLeafCell[]>;
   treemapBoundaries: Accessor<TreemapBoundary[]>;
+  treemapClusterRects: Accessor<TreemapClusterRect[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -82,6 +84,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     scatterGridLines: () => props.scatterGridLines(),
     treemapCells: () => props.treemapCells(),
     treemapBoundaries: () => props.treemapBoundaries(),
+    treemapClusterRects: () => props.treemapClusterRects(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

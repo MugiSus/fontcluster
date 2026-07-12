@@ -27,10 +27,20 @@ export interface TreemapBoundary {
   colorIndex: number | undefined;
 }
 
+/** Rectangle of one maximal final-cluster subtree. */
+export interface TreemapClusterRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  colorIndex: number;
+}
+
 export interface TreemapLayout {
   positionByKey: Map<string, GraphCoordinate>;
   leafCells: TreemapLeafCell[];
   boundaries: TreemapBoundary[];
+  clusterRects: TreemapClusterRect[];
 }
 
 interface TreemapNodeDatum {
@@ -155,8 +165,24 @@ const treemapLayoutState = createRoot(() => {
     }
 
     const boundaries: TreemapBoundary[] = [];
+    const clusterRects: TreemapClusterRect[] = [];
     root.eachBefore((node) => {
       const rectangularNode = node as TreemapRectNode;
+      if (
+        rectangularNode.data.clusterId !== undefined &&
+        rectangularNode.data.colorIndex !== undefined &&
+        rectangularNode.parent?.data.clusterId !==
+          rectangularNode.data.clusterId
+      ) {
+        clusterRects.push({
+          x0: rectangularNode.x0,
+          y0: rectangularNode.y0,
+          x1: rectangularNode.x1,
+          y1: rectangularNode.y1,
+          colorIndex: rectangularNode.data.colorIndex,
+        });
+      }
+
       const children = rectangularNode.children;
       if (rectangularNode.data.mergeIndex === null || children?.length !== 2) {
         return;
@@ -184,7 +210,7 @@ const treemapLayoutState = createRoot(() => {
       }
     });
 
-    return { positionByKey, leafCells, boundaries, root };
+    return { positionByKey, leafCells, boundaries, clusterRects, root };
   });
   return memo;
 });
