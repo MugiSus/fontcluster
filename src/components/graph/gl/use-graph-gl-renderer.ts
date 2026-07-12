@@ -68,6 +68,7 @@ export interface UseGraphGlRendererProps {
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
   showPointCore: Accessor<boolean>;
+  showTreemapBoundaries: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
@@ -141,6 +142,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // image labels while their sample images are drawn.
       const showLabels =
         props.showFontNames() || forcedImageLabelKeys().size > 0;
+      const showTreemapBoundaries = props.showTreemapBoundaries();
 
       // Glow off: draw the sharp content (core dots + rings + images + tree)
       // straight to the screen. The halo object is only used by the bloom path.
@@ -149,7 +151,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         scatterGridLayer.visible = true;
-        treemapLayer.visible = true;
+        treemapLayer.visible = showTreemapBoundaries;
         dendrogramLayer.visible = true;
         pointLabelLayer.visible = showLabels;
         ringLayer.visible = true;
@@ -185,7 +187,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = false;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = true;
-      treemapLayer.visible = true;
+      treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
@@ -212,7 +214,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       // Leave the scene in a sane default for any stray render.
       scatterGridLayer.visible = true;
-      treemapLayer.visible = true;
+      treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
     };
@@ -528,6 +530,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     createEffect(() => {
       props.glow();
       props.showFontNames();
+      props.showTreemapBoundaries();
       forcedImageLabelKeys();
       scheduleRender();
     });

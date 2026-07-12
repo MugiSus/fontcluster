@@ -51,6 +51,7 @@ interface GraphViewerProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showTreemapBoundaries: boolean;
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
   ) => void;
@@ -135,9 +136,13 @@ export function GraphViewer(props: GraphViewerProps) {
     getDendrogramAncestry(selection.selectedKey(), dendrogramCurveZoom()),
   );
 
-  const showPointCore = createMemo(
-    () => GRAPH_MODE_CAPABILITIES[appState.ui.graphMode].showPointCore,
-  );
+  const showPointCore = createMemo(() => {
+    const capabilities = GRAPH_MODE_CAPABILITIES[appState.ui.graphMode];
+    return (
+      capabilities.showPointCore ||
+      (capabilities.canShowTreemapBoundaries && !props.showTreemapBoundaries)
+    );
+  });
 
   const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
     () => {
@@ -172,8 +177,9 @@ export function GraphViewer(props: GraphViewerProps) {
   });
 
   // The GL layer's name labels follow the layout actually in effect: the
-  // tree leaf labels while a dendrogram is drawn, otherwise one horizontal
-  // label under every treemap or scatter point.
+  // tree leaf labels while a dendrogram is drawn. Map/scatter labels normally
+  // sit below each point; when treemap boundaries replace the point cores and
+  // the user hides samples, they occupy the exact core center instead.
   const pointLabels = createMemo<GraphPointLabel[]>(() =>
     dendrogramTreeLayout()
       ? dendrogramLeafLabels()
@@ -182,7 +188,13 @@ export function GraphViewer(props: GraphViewerProps) {
           text: point.item.meta.font_name,
           x: point.x,
           y: point.y,
-          orientation: 'horizontal' as const,
+          orientation:
+            GRAPH_MODE_CAPABILITIES[appState.ui.graphMode]
+              .canShowTreemapBoundaries &&
+            !showPointCore() &&
+            !props.showImages
+              ? ('centered' as const)
+              : ('horizontal' as const),
           colorIndex: point.item.computed?.clustering?.color_index,
         })),
   );
@@ -408,6 +420,7 @@ export function GraphViewer(props: GraphViewerProps) {
           showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}
           showPointCore={showPointCore}
+          showTreemapBoundaries={() => props.showTreemapBoundaries}
           dendrogramEdges={visibleDendrogramEdges}
           dendrogramArcs={dendrogramArcs}
           dendrogramNodeDots={dendrogramNodeDots}

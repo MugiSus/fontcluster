@@ -119,6 +119,7 @@ export const en = {
       showSamples: 'Show samples',
       showFontNames: 'Show font names',
       glowMode: 'Glow mode',
+      treemapBoundaries: 'Treemap boundaries',
       radialTreeMode: 'Radial tree',
       horizontalTreeMode: 'Horizontal tree',
       rectangularTreemapMode: 'Rectangular treemap',

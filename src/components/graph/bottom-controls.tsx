@@ -8,6 +8,7 @@ interface GraphBottomControlsProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showTreemapBoundaries: boolean;
   graphMode: GraphMode;
   canCycleGraphMode: boolean;
   isFilterOpen: boolean;
@@ -16,6 +17,7 @@ interface GraphBottomControlsProps {
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
+  onToggleTreemapBoundaries: () => void;
   onCycleGraphMode: () => void;
   onToggleFilter: () => void;
 }
@@ -31,6 +33,7 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
         showImages={props.showImages}
         showFontNames={props.showFontNames}
         showGlow={props.showGlow}
+        showTreemapBoundaries={props.showTreemapBoundaries}
         graphMode={props.graphMode}
         canCycleGraphMode={props.canCycleGraphMode}
         isFilterOpen={props.isFilterOpen}
@@ -38,6 +41,7 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
         onToggleImages={props.onToggleImages}
         onToggleFontNames={props.onToggleFontNames}
         onToggleGlow={props.onToggleGlow}
+        onToggleTreemapBoundaries={props.onToggleTreemapBoundaries}
         onCycleGraphMode={props.onCycleGraphMode}
         onToggleFilter={props.onToggleFilter}
         onZoomIn={props.zoomControls?.zoomIn}

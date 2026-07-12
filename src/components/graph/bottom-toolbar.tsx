@@ -9,6 +9,7 @@ import {
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
+  SquareDashedIcon,
   TagIcon,
   TelescopeIcon,
   TypeIcon,
@@ -19,6 +20,7 @@ import { createMemo, Match, Show, Switch } from 'solid-js';
 import { appState, type GraphMode } from '@/store';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { GRAPH_MODE_CAPABILITIES } from '@/lib/graph-modes';
 import { Button } from '@/components/ui/button';
 import {
   dotVariants,
@@ -37,6 +39,7 @@ interface GraphBottomToolbarProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showTreemapBoundaries: boolean;
   graphMode: GraphMode;
   canCycleGraphMode: boolean;
   isFilterOpen: boolean;
@@ -44,6 +47,7 @@ interface GraphBottomToolbarProps {
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
+  onToggleTreemapBoundaries: () => void;
   onCycleGraphMode: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
@@ -93,6 +97,9 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       props.showImages && 'images',
       props.showFontNames && 'fontNames',
       props.showGlow && 'glow',
+      GRAPH_MODE_CAPABILITIES[props.graphMode].canShowTreemapBoundaries &&
+        props.showTreemapBoundaries &&
+        'treemapBoundaries',
     ].filter(Boolean) as string[];
 
   const handleDisplayChange = (values: string[]) => {
@@ -102,6 +109,12 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       props.onToggleFontNames();
     }
     if (next.has('glow') !== props.showGlow) props.onToggleGlow();
+    if (
+      GRAPH_MODE_CAPABILITIES[props.graphMode].canShowTreemapBoundaries &&
+      next.has('treemapBoundaries') !== props.showTreemapBoundaries
+    ) {
+      props.onToggleTreemapBoundaries();
+    }
   };
 
   return (
@@ -248,6 +261,26 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           </TooltipTrigger>
           <TooltipContent>{t.graph.bottomToolbar.glowMode()}</TooltipContent>
         </Tooltip>
+
+        <Show
+          when={
+            GRAPH_MODE_CAPABILITIES[props.graphMode].canShowTreemapBoundaries
+          }
+        >
+          <Tooltip placement='left'>
+            <TooltipTrigger
+              as={ToggleGroupItem<'button'>}
+              value='treemapBoundaries'
+              class={toggleItemClass}
+              aria-label={t.graph.bottomToolbar.treemapBoundaries()}
+            >
+              <SquareDashedIcon class='size-4' />
+            </TooltipTrigger>
+            <TooltipContent>
+              {t.graph.bottomToolbar.treemapBoundaries()}
+            </TooltipContent>
+          </Tooltip>
+        </Show>
       </ToggleGroup>
 
       <Show when={props.canCycleGraphMode}>

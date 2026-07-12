@@ -60,7 +60,9 @@ export interface PointLabelLayerProps {
  * along their leaf's spoke, so the tree reads as a labelled circular
  * dendrogram; labels on the left semicircle are flipped 180° and end-anchored
  * (the classic radial label rule) so no name renders upside down. Horizontal
- * tree labels extend rightward; treemap and scatter labels hang below.
+ * tree labels extend rightward; treemap and scatter labels normally hang
+ * below, while treemap labels replace hidden cores at the point center when
+ * the user has hidden sample images.
  *
  * Rendering uses troika's SDF text — glyph layout and SDF atlas generation
  * run asynchronously in a worker, and the (experimental) `BatchedText` draws
@@ -125,6 +127,9 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
             (blockBounds ? (blockBounds[2] - blockBounds[0]) / 2 : 0)) *
           zoom;
         member.position.set(label.x + gap, -label.y, 0);
+        member.rotation.z = 0;
+      } else if (label.orientation === 'centered') {
+        member.position.set(label.x, -label.y, 0);
         member.rotation.z = 0;
       } else {
         const gap =

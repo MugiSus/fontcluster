@@ -107,6 +107,7 @@ export const ja: Dictionary = {
       showSamples: 'サンプル',
       showFontNames: 'フォント名',
       glowMode: '光彩',
+      treemapBoundaries: '境界線',
       radialTreeMode: '放射状ツリー',
       horizontalTreeMode: '水平ツリー',
       rectangularTreemapMode: '矩形ツリーマップ',
