@@ -1,5 +1,4 @@
 import { type Accessor } from 'solid-js';
-import { type GraphMode } from '@/store';
 import {
   type DendrogramArc,
   type DendrogramEdge,
@@ -10,17 +9,12 @@ import {
   type GraphPointData,
   type GraphPointLabel,
   type GraphViewBox,
-  type ScatterGridLine,
 } from '@/components/graph/types';
-import {
-  type TreemapBoundary,
-  type TreemapClusterRect,
-  type TreemapLeafCell,
-} from '@/components/graph/treemap-layout';
+import { type GraphLayout } from '@/components/graph/layouts/active-graph-layout';
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
 
 interface GraphGlLayerProps {
-  graphMode: Accessor<GraphMode>;
+  layout: Accessor<GraphLayout | null>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
@@ -36,15 +30,12 @@ interface GraphGlLayerProps {
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
+  showPointCore: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
-  scatterGridLines: Accessor<ScatterGridLine[]>;
-  treemapCells: Accessor<TreemapLeafCell[]>;
-  treemapBoundaries: Accessor<TreemapBoundary[]>;
-  treemapClusterRects: Accessor<TreemapClusterRect[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -59,7 +50,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
 
   useGraphGlRenderer({
     getCanvas: () => canvas,
-    graphMode: () => props.graphMode(),
+    layout: () => props.layout(),
     size: () => props.size(),
     viewBox: () => props.viewBox(),
     zoomFactor: () => props.zoomFactor(),
@@ -76,15 +67,12 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     showImages: () => props.showImages(),
     showFontNames: () => props.showFontNames(),
     glow: () => props.glow(),
+    showPointCore: () => props.showPointCore(),
     dendrogramEdges: () => props.dendrogramEdges(),
     dendrogramArcs: () => props.dendrogramArcs(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     pointLabels: () => props.pointLabels(),
-    scatterGridLines: () => props.scatterGridLines(),
-    treemapCells: () => props.treemapCells(),
-    treemapBoundaries: () => props.treemapBoundaries(),
-    treemapClusterRects: () => props.treemapClusterRects(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
     sessionDirectory: () => props.sessionDirectory(),
   });

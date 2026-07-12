@@ -30,7 +30,7 @@ import { GRAPH_SIZE } from '@/components/graph/constants';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { arcFragmentShader, arcVertexShader } from './arc-shaders';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
-import { fatLineFragmentShader, fatLineVertexShader } from './line-shaders';
+import { createFatLineMaterial } from './fat-line-material';
 import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
 /** Stroke width in CSS px; fat lines keep a solid core. */
@@ -93,42 +93,6 @@ export const dendrogramAliasGlowOpacityForRank = (
     ALIAS_GLOW_OPACITY_FAR,
   );
 
-/**
- * A `Line2` / `LineSegments2` material driven by our own fat-line shader
- * (see `line-shaders.ts`), which anti-aliases every stroke in-shader — the graph
- * renders without MSAA (`use-graph-gl-renderer`), so points, rings and these
- * edges all feather themselves. This replaces three's built-in `LineMaterial`,
- * whose fragment shader only hard-`discard`s past the stroke edge (leaving the
- * diagonal arcs and spokes to stair-step) and whose `alphaToCoverage` ramp
- * covers only the round caps and leans on MSAA for the long edges.
- *
- * `vertexColors` toggles the shader's `USE_COLOR` path: the edges carry a
- * per-segment color, the ancestry highlight takes the flat `diffuse` uniform.
- * The layer keeps `resolution`, `diffuse` and `opacity` uniforms in sync via the
- * effects below (the same values `LineMaterial` exposed as `.resolution` etc.).
- */
-export function createFatLineMaterial(options: {
-  color: number;
-  linewidth: number;
-  opacity: number;
-  hasVertexColors: boolean;
-}): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: {
-      diffuse: { value: new Color(options.color) },
-      opacity: { value: options.opacity },
-      linewidth: { value: options.linewidth },
-      resolution: { value: new Vector2(1, 1) },
-    },
-    vertexShader: fatLineVertexShader,
-    fragmentShader: fatLineFragmentShader,
-    vertexColors: options.hasVertexColors,
-    transparent: true,
-    depthTest: false,
-    blending: NormalBlending,
-  });
-}
-
 /** The selected font's merge-ancestry polyline and its stroke color. */
 export interface DendrogramHighlight {
   /** Graph-space (y-down) polyline: the point, then successive merge centroids. */
@@ -163,10 +127,9 @@ export interface DendrogramLayerProps {
 }
 
 /**
- * The radial dendrogram tree: the bracket arcs plus radial spokes (see
- * `dendrogram-edges.ts`) and a data dot at every merge
- * node. Rendered under the points (renderOrder -0.5) so the tree reads as a
- * backplate under the content.
+ * The active dendrogram tree: radial brackets or Cartesian branches (see
+ * `dendrogram-edges.ts`) plus a data dot at every merge node. Rendered under
+ * the points (renderOrder -0.5) so the tree reads as a backplate.
  *
  * Two visual encodings are baked into per-segment vertex colors:
  * - merges whose subtree lies inside one final cluster take that cluster's
@@ -218,6 +181,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     uniforms: {
       uPixelRatio: { value: 1 },
       uCore: { value: NODE_DOT_PX },
+      uShowCore: { value: 1 },
     },
     vertexShader: coreVertexShader,
     fragmentShader: coreFragmentShader,

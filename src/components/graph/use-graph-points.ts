@@ -7,6 +7,7 @@ import {
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { appState } from '@/store';
+import { collectVisibleCartesianImageKeys } from './cartesian-image-visibility';
 import {
   type DendrogramImageAnchor,
   dendrogramImageAnchors,
@@ -105,12 +106,19 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     const bounds = imageVisibleBounds();
     if (!bounds) return new Set<string>();
 
-    return collectVisibleRadialImageKeys(
-      selectableDendrogramAnchors(),
-      bounds,
-      imageZoomFactor(),
-      24,
-    );
+    return appState.ui.graphMode === 'radial-tree'
+      ? collectVisibleRadialImageKeys(
+          selectableDendrogramAnchors(),
+          bounds,
+          imageZoomFactor(),
+          24,
+        )
+      : collectVisibleCartesianImageKeys(
+          selectableDendrogramAnchorTree(),
+          bounds,
+          imageZoomFactor(),
+          24,
+        );
   });
 
   const isImageVisible = createSelector(

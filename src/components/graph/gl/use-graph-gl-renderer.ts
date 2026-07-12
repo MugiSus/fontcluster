@@ -14,13 +14,11 @@ import {
   WebGLRenderer,
 } from 'three';
 import { useColorMode } from '@kobalte/core';
-import { type GraphMode } from '@/store';
 import {
   type GraphCoordinate,
   type GraphPointData,
   type GraphPointLabel,
   type GraphViewBox,
-  type ScatterGridLine,
 } from '@/components/graph/types';
 import {
   type DendrogramArc,
@@ -28,11 +26,7 @@ import {
   type DendrogramImageAnchor,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
-import {
-  type TreemapBoundary,
-  type TreemapClusterRect,
-  type TreemapLeafCell,
-} from '@/components/graph/treemap-layout';
+import { type GraphLayout } from '@/components/graph/layouts/active-graph-layout';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createPointLabelLayer } from './point-label-layer';
 import {
@@ -57,7 +51,7 @@ const NO_IMAGE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
-  graphMode: Accessor<GraphMode>;
+  layout: Accessor<GraphLayout | null>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
@@ -73,15 +67,12 @@ export interface UseGraphGlRendererProps {
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
+  showPointCore: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
-  scatterGridLines: Accessor<ScatterGridLine[]>;
-  treemapCells: Accessor<TreemapLeafCell[]>;
-  treemapBoundaries: Accessor<TreemapBoundary[]>;
-  treemapClusterRects: Accessor<TreemapClusterRect[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
   sessionDirectory: Accessor<string>;
 }
@@ -434,18 +425,24 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // hook only constructs them, wires the render loop, and sizes the renderer.
     const compositor = createGlowCompositor();
     const scatterGridLayer = createScatterGridLayer({
-      lines: props.scatterGridLines,
+      lines: () => {
+        const layout = props.layout();
+        return layout?.mode === 'scatter-plot' ? layout.gridLines : [];
+      },
       isDark,
       resolution: props.size,
       requestRender: scheduleRender,
     });
     const treemapLayer = createTreemapLayer({
-      cells: props.treemapCells,
-      boundaries: props.treemapBoundaries,
-      clusterRects: props.treemapClusterRects,
+      layout: () => {
+        const layout = props.layout();
+        return layout?.mode === 'rectangular-treemap' ||
+          layout?.mode === 'voronoi-treemap'
+          ? layout
+          : null;
+      },
       isDark,
       resolution: props.size,
-      zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
     const dendrogramLayer = createDendrogramLayer({
@@ -476,7 +473,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const pointLayer = createPointLayer({
       points: props.points,
-      showCore: () => props.graphMode() !== 'treemap',
+      showCore: props.showPointCore,
       isDark,
       activePredicate,
       imageShownKeys,

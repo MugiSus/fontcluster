@@ -1,8 +1,8 @@
-// GLSL for the dendrogram's fat lines: a screen-space-width polyline shader that
+// GLSL for graph fat lines: a screen-space-width polyline shader that
 // anti-aliases itself, matching this pipeline's in-shader-AA convention (see
 // point-shaders.ts). It is a deliberately narrowed reimplementation of three's
-// `LineMaterial` (three/examples/jsm/lines) covering only what the dendrogram
-// uses — screen-space `linewidth`, round caps, optional per-segment vertex
+// `LineMaterial` (three/examples/jsm/lines) covering only what the graph layers
+// use — screen-space `linewidth`, round caps, optional per-segment vertex
 // colors — so it can bake anti-aliasing in as a first-class step instead of
 // patching three's built-in program through `onBeforeCompile`.
 //
@@ -26,6 +26,7 @@
 
 export const fatLineVertexShader = /* glsl */ `
 uniform float linewidth;
+uniform float lineoffset;
 uniform vec2 resolution;
 
 attribute vec3 instanceStart;
@@ -65,6 +66,7 @@ void main() {
   vec2 offset = vec2( dir.y, - dir.x );
   dir.x /= aspect;
   offset.x /= aspect;
+  vec2 centerOffset = offset;
 
   if ( position.x < 0.0 ) offset *= - 1.0;
 
@@ -78,10 +80,13 @@ void main() {
   // CSS-pixel width → clip space (÷ resolution.y, × clip.w after end select).
   offset *= linewidth;
   offset /= resolution.y;
+  centerOffset *= 2.0 * lineoffset;
+  centerOffset /= resolution.y;
 
   vec4 clip = ( position.y < 0.5 ) ? clipStart : clipEnd;
   offset *= clip.w;
-  clip.xy += offset;
+  centerOffset *= clip.w;
+  clip.xy += offset + centerOffset;
 
   gl_Position = clip;
 }

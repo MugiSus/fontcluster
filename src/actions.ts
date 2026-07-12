@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n';
 import { appState, setAppState, type GraphMode } from './store';
 import { getConnectedPlugins, sendFontToPlugin } from './lib/plugin-bridge';
 import { selectionHistory } from './selection-history';
+import { GRAPH_MODE_CAPABILITIES } from './lib/graph-modes';
 import {
   type FontItem,
   type FontItemRecord,
@@ -144,12 +145,12 @@ export const refreshPluginConnections = async () => {
 export const setActiveGraphWeights = (weights: FontWeight[]) =>
   setAppState('ui', 'activeGraphWeights', weights);
 
-/** Changes the graph layout and clears merge-node selection outside the radial
- * tree, where dendrogram nodes are directly selectable. */
+/** Changes the graph layout and clears merge-node selection outside layouts
+ * where dendrogram nodes are directly selectable. */
 export const setGraphMode = (mode: GraphMode) =>
   batch(() => {
     setAppState('ui', 'graphMode', mode);
-    if (mode !== 'radial-tree') {
+    if (!GRAPH_MODE_CAPABILITIES[mode].canSelectMergeNodes) {
       setAppState('ui', 'selectedDendrogramNode', null);
     }
   });

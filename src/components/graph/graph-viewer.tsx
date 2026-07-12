@@ -2,6 +2,7 @@ import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
+import { GRAPH_MODE_CAPABILITIES } from '@/lib/graph-modes';
 import { useElementSize } from '@/hooks/use-element-size';
 import {
   dendrogramArcs,
@@ -12,7 +13,10 @@ import {
   dendrogramNodeDots,
   getDendrogramAncestry,
 } from './dendrogram-edges';
-import { radialDendrogramLayout } from './dendrogram-layout';
+import {
+  activeGraphLayout,
+  dendrogramTreeLayout,
+} from './layouts/active-graph-layout';
 import {
   SAMPLE_IMAGE_BOX_HEIGHT_PX,
   SAMPLE_IMAGE_BOX_WIDTH_PX,
@@ -21,11 +25,9 @@ import {
   fontPoints,
   getGraphPointByKey,
   getGraphPointsByFamilyName,
-  scatterGridLines,
 } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { SelectedFontActions } from './selected-font-actions';
-import { treemapLayout } from './treemap-layout';
 import {
   type GraphCoordinate,
   type GraphPointLabel,
@@ -123,6 +125,10 @@ export function GraphViewer(props: GraphViewerProps) {
     getDendrogramAncestry(selection.selectedKey()),
   );
 
+  const showPointCore = createMemo(
+    () => GRAPH_MODE_CAPABILITIES[appState.ui.graphMode].showPointCore,
+  );
+
   const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
     () => {
       const nodeIndex = selection.selectedDendrogramNode();
@@ -156,10 +162,10 @@ export function GraphViewer(props: GraphViewerProps) {
   });
 
   // The GL layer's name labels follow the layout actually in effect: the
-  // radial leaf labels while the circular dendrogram is drawn, otherwise one
-  // horizontal label under every treemap or scatter point.
+  // tree leaf labels while a dendrogram is drawn, otherwise one horizontal
+  // label under every treemap or scatter point.
   const pointLabels = createMemo<GraphPointLabel[]>(() =>
-    radialDendrogramLayout()
+    dendrogramTreeLayout()
       ? dendrogramLeafLabels()
       : fontPoints().map((point) => ({
           key: point.key,
@@ -375,7 +381,7 @@ export function GraphViewer(props: GraphViewerProps) {
         }
       >
         <GraphGlLayer
-          graphMode={() => appState.ui.graphMode}
+          layout={activeGraphLayout}
           size={svgSize}
           viewBox={viewport.viewBox}
           zoomFactor={viewport.zoomFactor}
@@ -391,15 +397,12 @@ export function GraphViewer(props: GraphViewerProps) {
           showImages={() => props.showImages}
           showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}
+          showPointCore={showPointCore}
           dendrogramEdges={dendrogramEdges}
           dendrogramArcs={dendrogramArcs}
           dendrogramNodeDots={dendrogramNodeDots}
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           pointLabels={pointLabels}
-          scatterGridLines={scatterGridLines}
-          treemapCells={() => treemapLayout()?.leafCells ?? []}
-          treemapBoundaries={() => treemapLayout()?.boundaries ?? []}
-          treemapClusterRects={() => treemapLayout()?.clusterRects ?? []}
           dendrogramAncestry={dendrogramAncestry}
           sessionDirectory={() => appState.sessionDirectory}
         />

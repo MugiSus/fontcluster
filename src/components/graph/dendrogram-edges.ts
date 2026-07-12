@@ -1,11 +1,7 @@
 import { createMemo, createRoot } from 'solid-js';
-import { appState } from '@/store';
-import { type ClusteringData } from '@/types/font';
-import {
-  arcPoints,
-  polarPoint,
-  radialDendrogramLayout,
-} from './dendrogram-layout';
+import { CubicBezierCurve, Vector2 } from 'three';
+import { arcPoints, polarPoint } from './layouts/radial-tree-layout';
+import { dendrogramTreeLayout } from './layouts/active-graph-layout';
 import { getGraphPointByKey } from './font-point-index';
 import {
   type GraphCoordinate,
@@ -13,96 +9,64 @@ import {
   type GraphPointLabel,
 } from './types';
 
-/**
- * Derives the dendrogram-mode line segments from the session's full merge
- * tree (`appState.dendrogram`) and the radial layout (`dendrogram-layout`).
- *
- * Every merge draws as a bracket rather than a V: an arc at the merge's
- * radius spanning its children's angles, plus one radial spoke from each
- * child in to that arc — the classic circular-dendrogram elbow. Spokes and
- * arcs are separate GL draw specs so arcs can render as one analytic SDF quad
- * instead of many short chords.
- *
- * Leaves missing from the layout (not analysed, or hidden by a filter) simply
- * don't take part; a merge with a single visible child passes through as a
- * plain spoke.
- */
-
-/** One straight spoke segment of the radial tree, in graph space (y-down). */
+/** One straight branch segment of a dendrogram, in graph space (y-down). */
 export interface DendrogramEdge {
   x1: number;
   y1: number;
   x2: number;
   y2: number;
-  /** Zero-based rank of the merge this edge belongs to, in linkage order
-   *  (ascending dissimilarity). Edges are emitted in this order. */
   mergeIndex: number;
-  /** Palette slot shared by every visible point under the merged node;
-   *  undefined when the merge spans clusters or lacks clustering. */
+  colorIndex: number | undefined;
+}
+
+interface DendrogramBezier {
+  child: GraphCoordinate;
+  parent: GraphCoordinate;
+  mergeIndex: number;
   colorIndex: number | undefined;
 }
 
 /** One circular arc of the radial tree, in graph-space polar coordinates. */
 export interface DendrogramArc {
-  /** Start angle in radians, graph-space y-down. */
   angleFrom: number;
-  /** End angle in radians, graph-space y-down. */
   angleTo: number;
-  /** Arc radius in graph units. */
   radius: number;
-  /** Zero-based rank of the merge this arc belongs to. */
   mergeIndex: number;
-  /** Palette slot shared by every visible point under the merged node;
-   *  undefined when the merge spans clusters or lacks clustering. */
   colorIndex: number | undefined;
 }
 
-/** Resolved state of one dendrogram node (leaves first, then one per merge). */
-interface ClusterNode {
+interface PositionedDendrogramNode {
   center: GraphCoordinate | null;
   angle: number;
   radius: number;
-  /** Clustering shared by every visible leaf under this node; undefined when
-   *  the node spans clusters (or has unclustered leaves). */
-  clustering: ClusteringData | undefined;
-  /** Node index of the merge that absorbed this node; `-1` for the root. */
   parent: number;
-  /** Leaf index of this node's recorded representative font. */
-  rep: number;
+  representativeKey: string | null;
+  colorIndex: number | undefined;
+  mergeIndex: number | null;
+  height: number;
 }
 
-/** One merge-node alias of the radial tree, drawn as a data dot. */
+/** One merge-node alias, carrying the representative font's graph data. */
 export interface DendrogramNodeDot extends GraphPointData {
-  /** Unique graph-point key for this merge node alias. */
   key: string;
-  /** Dendrogram node index of the merge (leaf count + merge rank). */
   nodeIndex: number;
-  /** Sample folder name of the representative leaf's font. */
   safeName: string;
-  /** Representative font's palette slot, so merge nodes read like aliases of
-   *  the graph points whose sample they carry. */
   colorIndex: number | undefined;
-  /** Zero-based rank of the node's merge. */
   mergeIndex: number;
 }
 
-/** A merge node as a graph-point alias of its representative font. */
 export type DendrogramImageAnchor = DendrogramNodeDot;
 
 interface DendrogramTree {
+  mode: 'radial-tree' | 'horizontal-tree';
   edges: DendrogramEdge[];
+  curves: DendrogramBezier[];
   arcs: DendrogramArc[];
-  nodes: ClusterNode[];
-  leafIndexByKey: Map<string, number>;
-  /** Anchors at every visible merge node, carrying the node's
-   *  representative's sample. */
+  nodes: PositionedDendrogramNode[];
+  leafIndexByKey: ReadonlyMap<string, number>;
   imageAnchors: DendrogramImageAnchor[];
-  /** One dot per visible merge node, in merge order. */
   dots: DendrogramNodeDot[];
-  /** One radial name label per visible leaf, in leaf order. */
   labels: GraphPointLabel[];
-  /** Leaf order of the dendrogram (`ids[rep]` is a rep's safe name). */
-  ids: string[];
 }
 
 const NO_ANCESTRY: GraphCoordinate[] = [];
@@ -111,246 +75,252 @@ const NO_ARCS: DendrogramArc[] = [];
 const NO_ANCHORS: DendrogramImageAnchor[] = [];
 const NO_DOTS: DendrogramNodeDot[] = [];
 const NO_LABELS: GraphPointLabel[] = [];
-
-/** Two points closer than this (in graph units) count as coincident. */
 const COINCIDENT_EPSILON = 1e-6;
+const HORIZONTAL_CURVE_SEGMENTS = 16;
 
 function isCoincident(a: GraphCoordinate, b: GraphCoordinate): boolean {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < COINCIDENT_EPSILON;
 }
 
-/** Clustering of a node whose children carry `left`/`right`; mixing two
- *  different clusters (or anything unclustered) yields `undefined`. */
-function combineClustering(
-  left: ClusterNode,
-  right: ClusterNode,
-): ClusteringData | undefined {
-  if (!left.center) return right.clustering;
-  if (!right.center) return left.clustering;
-  return left.clustering?.k === right.clustering?.k
-    ? left.clustering
-    : undefined;
+/** Cubic link whose tangent is horizontal at both its child and parent. */
+function horizontalTreeCurvePoints(
+  child: GraphCoordinate,
+  parent: GraphCoordinate,
+): GraphCoordinate[] {
+  const middleX = (child.x + parent.x) / 2;
+  return new CubicBezierCurve(
+    new Vector2(child.x, child.y),
+    new Vector2(middleX, child.y),
+    new Vector2(middleX, parent.y),
+    new Vector2(parent.x, parent.y),
+  )
+    .getPoints(HORIZONTAL_CURVE_SEGMENTS)
+    .map(({ x, y }) => ({ x, y }));
 }
 
 const dendrogramTree = createRoot(() => {
   const memo = createMemo<DendrogramTree | null>(() => {
-    const radial = radialDendrogramLayout();
-    const dendrogram = appState.dendrogram;
-    if (!radial || !dendrogram) return null;
+    const layout = dendrogramTreeLayout();
+    if (!layout) return null;
+    const { topology } = layout;
 
-    const leafCount = dendrogram.ids.length;
-    // Nodes are indexed like the merges: leaves first, then one node per merge.
-    const nodes: ClusterNode[] = dendrogram.ids.map((id, index) => ({
-      center: radial.nodeCenters[index] ?? null,
-      angle: radial.nodeAngles[index] ?? Number.NaN,
-      radius: radial.nodeRadii[index] ?? 0,
-      clustering:
-        getGraphPointByKey(id)?.item.computed?.clustering ?? undefined,
-      parent: -1,
-      rep: index,
-    }));
+    const nodes: PositionedDendrogramNode[] = topology.nodes.map(
+      (node, nodeIndex) => ({
+        center: layout.nodeCenters[nodeIndex] ?? null,
+        angle:
+          layout.mode === 'radial-tree'
+            ? (layout.nodeAngles[nodeIndex] ?? Number.NaN)
+            : Number.NaN,
+        radius:
+          layout.mode === 'radial-tree'
+            ? (layout.nodeRadii[nodeIndex] ?? 0)
+            : 0,
+        parent: node?.parentIndex ?? -1,
+        representativeKey: node?.representativeKey ?? null,
+        colorIndex: node?.colorIndex,
+        mergeIndex: node?.mergeIndex ?? null,
+        height: node?.height ?? 0,
+      }),
+    );
 
-    // A name label at every visible leaf. The canonical name-table font name
-    // is used as-is (names are recorded in English).
     const labels: GraphPointLabel[] = [];
-    for (const [index, id] of dendrogram.ids.entries()) {
-      const leaf = nodes[index]!;
-      if (!leaf.center) continue;
-      const fontName = getGraphPointByKey(id)?.item.meta.font_name;
-      if (!fontName) continue;
-      labels.push({
-        key: id,
-        text: fontName,
-        x: leaf.center.x,
-        y: leaf.center.y,
-        orientation: 'radial',
-        angle: leaf.angle,
-        colorIndex: leaf.clustering?.color_index,
-      });
+    for (const leafIndex of topology.visibleLeafIndexes) {
+      const node = topology.nodes[leafIndex];
+      const positioned = nodes[leafIndex];
+      if (!node?.key || !positioned?.center) continue;
+      const point = getGraphPointByKey(node.key);
+      if (!point) continue;
+      labels.push(
+        layout.mode === 'radial-tree'
+          ? {
+              key: node.key,
+              text: point.item.meta.font_name,
+              x: positioned.center.x,
+              y: positioned.center.y,
+              orientation: 'radial',
+              angle: positioned.angle,
+              colorIndex: node.colorIndex,
+            }
+          : {
+              key: node.key,
+              text: point.item.meta.font_name,
+              x: positioned.center.x,
+              y: positioned.center.y,
+              orientation: 'rightward',
+              colorIndex: node.colorIndex,
+            },
+      );
     }
 
     const edges: DendrogramEdge[] = [];
+    const curves: DendrogramBezier[] = [];
     const arcs: DendrogramArc[] = [];
-    const pushPolyline = (
-      points: GraphCoordinate[],
+    const pushSegment = (
+      from: GraphCoordinate,
+      to: GraphCoordinate,
       mergeIndex: number,
       colorIndex: number | undefined,
     ) => {
-      for (const [index, point] of points.entries()) {
-        if (index === 0) continue;
-        const previous = points[index - 1]!;
-        // Degenerate chords happen when a child already sits on the merge's
-        // radius (equal heights); a zero-length fat line renders as a smear.
-        if (isCoincident(previous, point)) continue;
-        edges.push({
-          x1: previous.x,
-          y1: previous.y,
-          x2: point.x,
-          y2: point.y,
-          mergeIndex,
-          colorIndex,
-        });
-      }
+      if (isCoincident(from, to)) return;
+      edges.push({
+        x1: from.x,
+        y1: from.y,
+        x2: to.x,
+        y2: to.y,
+        mergeIndex,
+        colorIndex,
+      });
     };
 
-    for (const [mergeIndex, merge] of dendrogram.merges.entries()) {
-      const nodeIndex = leafCount + mergeIndex;
-      const left = nodes[merge.left];
-      const right = nodes[merge.right];
-      if (!left || !right) {
-        // Malformed indices; keep the node list aligned with the merge list.
-        nodes.push({
-          center: null,
-          angle: Number.NaN,
-          radius: 0,
-          clustering: undefined,
-          parent: -1,
-          rep: 0,
-        });
-        continue;
-      }
+    for (
+      let nodeIndex = topology.leafCount;
+      nodeIndex < topology.nodes.length;
+      nodeIndex += 1
+    ) {
+      const node = topology.nodes[nodeIndex];
+      const parent = nodes[nodeIndex];
+      if (!node || !parent?.center || node.mergeIndex === null) continue;
+      const children = node.children.flatMap((childIndex) => {
+        const child = nodes[childIndex];
+        return child?.center ? [child] : [];
+      });
 
-      const center = radial.nodeCenters[nodeIndex] ?? null;
-      const angle = radial.nodeAngles[nodeIndex] ?? Number.NaN;
-      const radius = radial.nodeRadii[nodeIndex] ?? 0;
-      const clustering = combineClustering(left, right);
-      const colorIndex = clustering?.color_index;
-
-      if (left.center && right.center) {
-        // The bracket: a spoke from each child in to the merge's radius, and
-        // the arc between the two elbows.
-        const leftElbow = polarPoint(left.angle, radius);
-        pushPolyline([left.center, leftElbow], mergeIndex, colorIndex);
-        pushPolyline(
-          [right.center, polarPoint(right.angle, radius)],
-          mergeIndex,
-          colorIndex,
-        );
-        if (
-          radius > COINCIDENT_EPSILON &&
-          Math.abs(right.angle - left.angle) > COINCIDENT_EPSILON
-        ) {
-          arcs.push({
-            angleFrom: left.angle,
-            angleTo: right.angle,
-            radius,
-            mergeIndex,
-            colorIndex,
+      if (layout.mode === 'radial-tree') {
+        if (children.length === 2) {
+          const [left, right] = children;
+          const leftElbow = polarPoint(left!.angle, parent.radius);
+          const rightElbow = polarPoint(right!.angle, parent.radius);
+          pushSegment(
+            left!.center!,
+            leftElbow,
+            node.mergeIndex,
+            node.colorIndex,
+          );
+          pushSegment(
+            right!.center!,
+            rightElbow,
+            node.mergeIndex,
+            node.colorIndex,
+          );
+          if (
+            parent.radius > COINCIDENT_EPSILON &&
+            Math.abs(right!.angle - left!.angle) > COINCIDENT_EPSILON
+          ) {
+            arcs.push({
+              angleFrom: left!.angle,
+              angleTo: right!.angle,
+              radius: parent.radius,
+              mergeIndex: node.mergeIndex,
+              colorIndex: node.colorIndex,
+            });
+          }
+        } else if (children.length === 1) {
+          pushSegment(
+            children[0]!.center!,
+            parent.center,
+            node.mergeIndex,
+            node.colorIndex,
+          );
+        }
+      } else {
+        for (const child of children) {
+          curves.push({
+            child: child.center!,
+            parent: parent.center,
+            mergeIndex: node.mergeIndex,
+            colorIndex: node.colorIndex,
           });
         }
-      } else if (center) {
-        // One side hidden: the merge passes through as a plain spoke.
-        const child = left.center ? left : right;
-        pushPolyline([child.center!, center], mergeIndex, colorIndex);
       }
-
-      left.parent = nodeIndex;
-      right.parent = nodeIndex;
-      nodes.push({
-        center,
-        angle,
-        radius,
-        clustering,
-        parent: -1,
-        rep: merge.representative,
-      });
     }
 
-    // An alias point at every visible merge node carrying its representative's
-    // sample — the same font deliberately repeats along the chain of merges
-    // it keeps representing. And one dot per visible merge node, sample or
-    // not, so every branch point reads as an actual point.
     const imageAnchors: DendrogramImageAnchor[] = [];
     const dots: DendrogramNodeDot[] = [];
-    for (const [nodeIndex, node] of nodes.entries()) {
-      if (nodeIndex < leafCount || !node.center) continue;
-      const merge = dendrogram.merges[nodeIndex - leafCount];
-      if (!merge || merge.height <= COINCIDENT_EPSILON) continue;
-      const safeName = dendrogram.ids[node.rep];
-      const representativePoint = safeName
-        ? getGraphPointByKey(safeName)
-        : undefined;
-      if (!representativePoint || !safeName) continue;
-      const alias = {
+    for (
+      let nodeIndex = topology.leafCount;
+      nodeIndex < nodes.length;
+      nodeIndex += 1
+    ) {
+      const node = nodes[nodeIndex];
+      if (
+        !node?.center ||
+        node.mergeIndex === null ||
+        node.height <= COINCIDENT_EPSILON ||
+        !node.representativeKey
+      ) {
+        continue;
+      }
+      const representativePoint = getGraphPointByKey(node.representativeKey);
+      if (!representativePoint) continue;
+      const alias: DendrogramNodeDot = {
         key: `dendrogram:${nodeIndex}`,
         nodeIndex,
-        safeName,
+        safeName: node.representativeKey,
         item: representativePoint.item,
         x: node.center.x,
         y: node.center.y,
         colorIndex:
           representativePoint.item.computed?.clustering?.color_index ??
-          node.clustering?.color_index,
-        mergeIndex: nodeIndex - leafCount,
+          node.colorIndex,
+        mergeIndex: node.mergeIndex,
       };
       dots.push(alias);
       imageAnchors.push(alias);
     }
 
-    const leafIndexByKey = new Map(
-      dendrogram.ids.map((id, index) => [id, index]),
-    );
-
     return {
+      mode: layout.mode,
       edges,
+      curves,
       arcs,
       nodes,
-      leafIndexByKey,
+      leafIndexByKey: topology.leafIndexByKey,
       imageAnchors,
       dots,
       labels,
-      ids: dendrogram.ids,
     };
   });
   return memo;
 });
 
-/**
- * One straight spoke segment per drawable radial tree edge, in graph space
- * (y-down), ordered by merge rank. Empty when the dendrogram mode is inactive
- * or the session has no recorded dendrogram.
- */
-export const dendrogramEdges = (): DendrogramEdge[] =>
-  dendrogramTree()?.edges ?? NO_EDGES;
+export const dendrogramEdges = (): DendrogramEdge[] => {
+  const tree = dendrogramTree();
+  if (!tree) return NO_EDGES;
+  if (tree.mode === 'radial-tree') return tree.edges;
 
-/**
- * One analytic circular arc per visible two-child merge, in graph-space polar
- * coordinates. Empty when the dendrogram mode is inactive or the session has no
- * recorded dendrogram.
- */
+  return tree.curves.flatMap((curve) => {
+    const points = horizontalTreeCurvePoints(curve.child, curve.parent);
+    return points.slice(1).flatMap((point, index) => {
+      const previous = points[index]!;
+      return isCoincident(previous, point)
+        ? []
+        : [
+            {
+              x1: previous.x,
+              y1: previous.y,
+              x2: point.x,
+              y2: point.y,
+              mergeIndex: curve.mergeIndex,
+              colorIndex: curve.colorIndex,
+            },
+          ];
+    });
+  });
+};
+
 export const dendrogramArcs = (): DendrogramArc[] =>
   dendrogramTree()?.arcs ?? NO_ARCS;
 
-/**
- * One image anchor per visible merge node (see
- * {@link DendrogramImageAnchor}), in node order. Empty when the dendrogram
- * mode is inactive or the session has no recorded dendrogram.
- */
 export const dendrogramImageAnchors = (): DendrogramImageAnchor[] =>
   dendrogramTree()?.imageAnchors ?? NO_ANCHORS;
 
-/**
- * One dot per visible merge node (see {@link DendrogramNodeDot}), in merge
- * order. Empty when the dendrogram mode is inactive or the session has no
- * recorded dendrogram.
- */
 export const dendrogramNodeDots = (): DendrogramNodeDot[] =>
   dendrogramTree()?.dots ?? NO_DOTS;
 
-/**
- * One radial name label per visible leaf (see {@link GraphPointLabel}), in
- * leaf order. Empty when the dendrogram mode is inactive or the session has
- * no recorded dendrogram.
- */
 export const dendrogramLeafLabels = (): GraphPointLabel[] =>
   dendrogramTree()?.labels ?? NO_LABELS;
 
-/**
- * The polyline of a font's merge ancestry, in graph space, following the same
- * brackets the tree draws: from the font's point radially in to each
- * absorbing merge's radius, then along that merge's arc to its angle, up to
- * the root at the centre. Empty when the font or the dendrogram is absent.
- */
+/** Polyline from a leaf through every absorbing merge to the root. */
 export function getDendrogramAncestry(key: string | null): GraphCoordinate[] {
   const tree = dendrogramTree();
   if (!tree || !key) return NO_ANCESTRY;
@@ -359,16 +329,26 @@ export function getDendrogramAncestry(key: string | null): GraphCoordinate[] {
   if (!leaf?.center) return NO_ANCESTRY;
 
   const points: GraphCoordinate[] = [leaf.center];
-  // Coincident joints (a merge at the same radius or angle) would put
-  // zero-length links into the fat-line strip; drop them as they appear.
   const pushPoint = (point: GraphCoordinate) => {
     const last = points[points.length - 1];
-    if (last && isCoincident(last, point)) return;
-    points.push(point);
+    if (!last || !isCoincident(last, point)) points.push(point);
   };
 
-  let angle = leaf.angle;
   let node = leaf;
+  if (tree.mode === 'horizontal-tree') {
+    while (node.parent !== -1) {
+      const parent = tree.nodes[node.parent];
+      if (!parent?.center || !node.center) break;
+      const curve = horizontalTreeCurvePoints(node.center, parent.center);
+      for (let index = 1; index < curve.length; index += 1) {
+        pushPoint(curve[index]!);
+      }
+      node = parent;
+    }
+    return points;
+  }
+
+  let angle = leaf.angle;
   while (node.parent !== -1) {
     const parent = tree.nodes[node.parent];
     if (!parent?.center) break;

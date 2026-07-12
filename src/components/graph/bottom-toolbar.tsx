@@ -1,6 +1,8 @@
 import {
   ChartScatterIcon,
+  CircleDotDashedIcon,
   FunnelIcon,
+  GitForkIcon,
   HandIcon,
   LayoutGridIcon,
   MaximizeIcon,
@@ -71,8 +73,12 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
   });
   const graphModeLabel = () => {
     switch (props.graphMode) {
-      case 'treemap':
-        return t.graph.bottomToolbar.treemapMode();
+      case 'horizontal-tree':
+        return t.graph.bottomToolbar.horizontalTreeMode();
+      case 'rectangular-treemap':
+        return t.graph.bottomToolbar.rectangularTreemapMode();
+      case 'voronoi-treemap':
+        return t.graph.bottomToolbar.voronoiTreemapMode();
       case 'scatter-plot':
         return t.graph.bottomToolbar.scatterPlotMode();
       default:
@@ -257,14 +263,20 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             onClick={() => props.onCycleGraphMode()}
           >
             <Switch fallback={<WaypointsIcon class='size-4' />}>
-              <Match when={props.graphMode === 'treemap'}>
+              <Match when={props.graphMode === 'rectangular-treemap'}>
                 <LayoutGridIcon class='size-4' />
+              </Match>
+              <Match when={props.graphMode === 'voronoi-treemap'}>
+                <CircleDotDashedIcon class='size-4' />
               </Match>
               <Match when={props.graphMode === 'scatter-plot'}>
                 <ChartScatterIcon class='size-4' />
               </Match>
               <Match when={props.graphMode === 'radial-tree'}>
                 <WaypointsIcon class='size-4' />
+              </Match>
+              <Match when={props.graphMode === 'horizontal-tree'}>
+                <GitForkIcon class='size-4 -rotate-90' />
               </Match>
             </Switch>
           </TooltipTrigger>

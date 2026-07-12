@@ -5,6 +5,11 @@ export const GRAPH_SIZE = 1000;
 export const SAMPLE_IMAGE_BOX_WIDTH_PX = 128;
 export const SAMPLE_IMAGE_BOX_HEIGHT_PX = 26;
 
+/** Base width for treemap hierarchy boundaries and the outer frame. */
+export const TREEMAP_BOUNDARY_WIDTH_PX = 1;
+/** Cluster outlines alone use this multiple of the base treemap width. */
+export const TREEMAP_CLUSTER_BOUNDARY_WIDTH_MULTIPLIER = 2;
+
 export const MIN_VIEWBOX_SIZE = 10;
 export const MAX_VIEWBOX_SIZE = 3000;
 

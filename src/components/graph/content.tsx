@@ -9,6 +9,7 @@ import {
   setVisibleGraphClusters,
 } from '@/actions';
 import { type GraphToolMode } from './types';
+import { availableGraphModes as collectAvailableGraphModes } from '@/lib/graph-modes';
 
 export function GraphContent() {
   const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
@@ -27,12 +28,12 @@ export function GraphContent() {
       (item) => item.computed?.clustering?.two != null,
     ),
   );
-  const availableGraphModes = createMemo<GraphMode[]>(() => {
-    const modes: GraphMode[] = [];
-    if (appState.dendrogram) modes.push('radial-tree', 'treemap');
-    if (isScatterAvailable()) modes.push('scatter-plot');
-    return modes;
-  });
+  const availableGraphModes = createMemo<GraphMode[]>(() =>
+    collectAvailableGraphModes(
+      appState.dendrogram !== null,
+      isScatterAvailable(),
+    ),
+  );
 
   createEffect(() => {
     const weights = sessionWeights();

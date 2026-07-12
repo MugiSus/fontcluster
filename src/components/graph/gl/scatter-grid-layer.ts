@@ -7,7 +7,7 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import { GRAPH_PADDING, GRAPH_SIZE } from '@/components/graph/constants';
 import { type ScatterGridLine } from '@/components/graph/types';
 import { getBackgroundColor, getScatterGridColor } from './cluster-colors-gl';
-import { createFatLineMaterial } from './dendrogram-layer';
+import { createFatLineMaterial } from './fat-line-material';
 
 /** Stroke width in CSS px — a hairline, like the dendrogram edges. */
 const GRID_WIDTH_PX = 1;

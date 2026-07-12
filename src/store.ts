@@ -9,8 +9,9 @@ import {
 import { type DendrogramData, type SessionConfig } from './types/session';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
 import type { PluginConnection } from './lib/plugin-bridge';
+import { type GraphMode } from './types/graph';
 
-export type GraphMode = 'radial-tree' | 'treemap' | 'scatter-plot';
+export type { GraphMode } from './types/graph';
 
 export interface AppState {
   session: SessionConfig;
