@@ -100,6 +100,8 @@ export function createRadialTreeLayout(
 
   return {
     mode: 'radial-tree',
+    width: GRAPH_SIZE,
+    height: GRAPH_SIZE,
     topology,
     positionByKey,
     nodeCenters,

@@ -4,7 +4,6 @@ import { type LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import {
-  GRAPH_SIZE,
   TREEMAP_BOUNDARY_WIDTH_PX,
   TREEMAP_CLUSTER_BOUNDARY_WIDTH_MULTIPLIER,
 } from '@/components/graph/constants';
@@ -183,9 +182,9 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
       layout.mode === 'rectangular-treemap'
         ? [
             [0, 0],
-            [GRAPH_SIZE, 0],
-            [GRAPH_SIZE, GRAPH_SIZE],
-            [0, GRAPH_SIZE],
+            [layout.width, 0],
+            [layout.width, layout.height],
+            [0, layout.height],
           ]
         : layout.framePolygon;
     const framePositions: number[] = [];

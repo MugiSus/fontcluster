@@ -1,11 +1,13 @@
 import { cluster, hierarchy, type HierarchyPointNode } from 'd3-hierarchy';
-import { GRAPH_SIZE } from '@/components/graph/constants';
 import {
   type DendrogramHierarchyDatum,
   type DendrogramTopology,
 } from '@/components/graph/dendrogram-topology';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { type GraphLayoutBase } from './types';
+
+const HORIZONTAL_TREE_WIDTH = 1500;
+const HORIZONTAL_TREE_HEIGHT = 900;
 
 export interface HorizontalTreeLayout
   extends GraphLayoutBase<'horizontal-tree'> {
@@ -21,7 +23,7 @@ export function createHorizontalTreeLayout(
   topology: DendrogramTopology,
 ): HorizontalTreeLayout {
   const root = cluster<DendrogramHierarchyDatum>()
-    .size([GRAPH_SIZE, GRAPH_SIZE])
+    .size([HORIZONTAL_TREE_HEIGHT, HORIZONTAL_TREE_WIDTH])
     .separation(() => 1)(
     hierarchy(topology.rootData, (datum) => datum.children),
   ) as HierarchyPointNode<DendrogramHierarchyDatum>;
@@ -36,9 +38,9 @@ export function createHorizontalTreeLayout(
     nodeCenters[nodeIndex] = {
       x:
         node.key !== null
-          ? GRAPH_SIZE
+          ? HORIZONTAL_TREE_WIDTH
           : topology.maxHeight > 0
-            ? GRAPH_SIZE * (1 - node.height / topology.maxHeight)
+            ? HORIZONTAL_TREE_WIDTH * (1 - node.height / topology.maxHeight)
             : 0,
       y: hierarchyNode.x,
     };
@@ -53,6 +55,8 @@ export function createHorizontalTreeLayout(
 
   return {
     mode: 'horizontal-tree',
+    width: HORIZONTAL_TREE_WIDTH,
+    height: HORIZONTAL_TREE_HEIGHT,
     topology,
     positionByKey,
     nodeCenters,

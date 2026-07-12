@@ -79,6 +79,8 @@ export function createScatterPlotLayout(
 
   return {
     mode: 'scatter-plot',
+    width: GRAPH_SIZE,
+    height: GRAPH_SIZE,
     positionByKey,
     gridLines: [
       ...sigmaGridLines('x', projectionX),

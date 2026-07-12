@@ -4,13 +4,15 @@ import {
   treemapBinary,
   type HierarchyRectangularNode,
 } from 'd3-hierarchy';
-import { GRAPH_SIZE } from '@/components/graph/constants';
 import {
   type DendrogramHierarchyDatum,
   type DendrogramTopology,
 } from '@/components/graph/dendrogram-topology';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { type GraphLayoutBase } from './types';
+
+const RECTANGULAR_TREEMAP_WIDTH = 1500;
+const RECTANGULAR_TREEMAP_HEIGHT = 900;
 
 export interface RectangularTreemapLeafCell {
   readonly key: string;
@@ -55,7 +57,7 @@ export function createRectangularTreemapLayout(
 ): RectangularTreemapLayout {
   const root = treemap<DendrogramHierarchyDatum>()
     .tile(treemapBinary)
-    .size([GRAPH_SIZE, GRAPH_SIZE])(
+    .size([RECTANGULAR_TREEMAP_WIDTH, RECTANGULAR_TREEMAP_HEIGHT])(
     hierarchy(topology.rootData, (datum) => datum.children).sum((datum) =>
       datum.nodeIndex >= 0 && topology.nodes[datum.nodeIndex]?.key ? 1 : 0,
     ),
@@ -128,6 +130,8 @@ export function createRectangularTreemapLayout(
 
   return {
     mode: 'rectangular-treemap',
+    width: RECTANGULAR_TREEMAP_WIDTH,
+    height: RECTANGULAR_TREEMAP_HEIGHT,
     positionByKey,
     leafCells,
     boundaries,

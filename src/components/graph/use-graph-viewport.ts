@@ -1,8 +1,15 @@
-import { type Accessor, createMemo, createSignal, onCleanup } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+  untrack,
+} from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import {
   GRAPH_PADDING,
-  GRAPH_SIZE,
   MAX_WHEEL_DELTA,
   PINCH_ZOOM_DELTA_BASE,
   ZOOM_FACTOR_RATIO,
@@ -24,6 +31,8 @@ import {
 interface UseGraphViewportProps {
   getSvgElement: () => SVGSVGElement | undefined;
   svgSize: Accessor<{ width: number; height: number }>;
+  graphWidth: Accessor<number>;
+  graphHeight: Accessor<number>;
 }
 
 export interface GraphViewportController {
@@ -76,12 +85,15 @@ function getNormalizedWheelDelta(
 export function useGraphViewport(
   props: UseGraphViewportProps,
 ): GraphViewportController {
-  const initialViewBox: GraphViewBox = {
+  const graphWidth = createMemo(() => props.graphWidth());
+  const graphHeight = createMemo(() => props.graphHeight());
+  const resetViewBox = createMemo<GraphViewBox>(() => ({
     x: -GRAPH_PADDING,
     y: -GRAPH_PADDING,
-    width: GRAPH_SIZE + GRAPH_PADDING * 2,
-    height: GRAPH_SIZE + GRAPH_PADDING * 2,
-  };
+    width: graphWidth() + GRAPH_PADDING * 2,
+    height: graphHeight() + GRAPH_PADDING * 2,
+  }));
+  const initialViewBox = untrack(resetViewBox);
 
   const [viewBox, setViewBox] = createSignal(initialViewBox);
   const [isDragging, setIsDragging] = createSignal(false);
@@ -103,6 +115,18 @@ export function useGraphViewport(
     });
   };
 
+  createEffect(
+    on(
+      resetViewBox,
+      (nextViewBox) => {
+        // Keep layout geometry and its camera framing in the same paint.
+        latestViewBox = nextViewBox;
+        setViewBox(nextViewBox);
+      },
+      { defer: true },
+    ),
+  );
+
   const finishInteraction = debounce(() => {
     setIsInteracting(false);
   }, 250);
@@ -123,7 +147,11 @@ export function useGraphViewport(
     const currentViewBox = viewBox();
     const currentSize = props.svgSize();
     if (currentSize.width <= 0 || currentSize.height <= 0) {
-      return currentViewBox.width / initialViewBox.width;
+      const resetBounds = resetViewBox();
+      return Math.max(
+        currentViewBox.width / resetBounds.width,
+        currentViewBox.height / resetBounds.height,
+      );
     }
 
     return Math.max(
@@ -305,7 +333,7 @@ export function useGraphViewport(
 
   const handleReset = () => {
     startInteractionTimer();
-    queueViewBoxUpdate(initialViewBox);
+    queueViewBoxUpdate(resetViewBox());
   };
 
   return {

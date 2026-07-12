@@ -178,6 +178,8 @@ export function createVoronoiTreemapLayout(
 
   return {
     mode: 'voronoi-treemap',
+    width: GRAPH_SIZE,
+    height: GRAPH_SIZE,
     positionByKey,
     leafCells,
     boundaries,

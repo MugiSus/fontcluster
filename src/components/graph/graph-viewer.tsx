@@ -18,6 +18,7 @@ import {
   dendrogramTreeLayout,
 } from './layouts/active-graph-layout';
 import {
+  GRAPH_SIZE,
   SAMPLE_IMAGE_BOX_HEIGHT_PX,
   SAMPLE_IMAGE_BOX_WIDTH_PX,
 } from './constants';
@@ -71,6 +72,8 @@ export function GraphViewer(props: GraphViewerProps) {
   const viewport = useGraphViewport({
     getSvgElement: () => svgElement,
     svgSize,
+    graphWidth: () => activeGraphLayout()?.width ?? GRAPH_SIZE,
+    graphHeight: () => activeGraphLayout()?.height ?? GRAPH_SIZE,
   });
   const graph = useGraphPoints({
     svgSize,
