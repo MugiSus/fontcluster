@@ -20,12 +20,8 @@ export interface HorizontalTreeLayout
 export function createHorizontalTreeLayout(
   topology: DendrogramTopology,
 ): HorizontalTreeLayout {
-  // Keep the right quarter of the graph free for screen-fixed sample boxes and
-  // horizontal font-name labels; the initial viewport's 50-unit padding alone
-  // is smaller than even half of a 128px sample box.
-  const treeWidth = GRAPH_SIZE * 0.75;
   const root = cluster<DendrogramHierarchyDatum>()
-    .size([GRAPH_SIZE, treeWidth])
+    .size([GRAPH_SIZE, GRAPH_SIZE])
     .separation(() => 1)(
     hierarchy(topology.rootData, (datum) => datum.children),
   ) as HierarchyPointNode<DendrogramHierarchyDatum>;
@@ -40,9 +36,9 @@ export function createHorizontalTreeLayout(
     nodeCenters[nodeIndex] = {
       x:
         node.key !== null
-          ? treeWidth
+          ? GRAPH_SIZE
           : topology.maxHeight > 0
-            ? treeWidth * (1 - node.height / topology.maxHeight)
+            ? GRAPH_SIZE * (1 - node.height / topology.maxHeight)
             : 0,
       y: hierarchyNode.x,
     };
