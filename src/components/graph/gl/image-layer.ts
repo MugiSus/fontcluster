@@ -11,7 +11,6 @@ import {
   type Texture,
   TextureLoader,
 } from 'three';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import {
   SAMPLE_IMAGE_BOX_HEIGHT_PX,
   SAMPLE_IMAGE_BOX_WIDTH_PX,
@@ -41,15 +40,17 @@ export interface ImageSpec {
  * aspect ratio (the SVG `xMidYMid meet` behaviour).
  *
  * Meshes are pooled by font key, and textures are cached by sample name so
- * revisiting a font does not reload it. The shown set, session and zoom all
- * follow their accessors via effects; `requestRender` repaints once an async
- * texture arrives (and after each reactive update).
+ * revisiting a font does not reload it. The shown set, image-source identity
+ * and zoom all follow their accessors via effects; `requestRender` repaints
+ * once an async texture arrives (and after each reactive update).
  */
 export interface ImageLayerProps {
   /** The images to show; meshes are pooled by `spec.key` across updates. */
   specs: Accessor<ImageSpec[]>;
-  /** Session the pooled meshes / cached textures belong to (drops all on change). */
-  sessionDirectory: Accessor<string>;
+  /** Image-source identity for pooled meshes / textures (drops all on change). */
+  sessionKey: Accessor<string>;
+  /** Resolves a sample folder name to a URL loadable by three.js. */
+  sampleImageUrl: (safeName: string) => string | undefined;
   /** World-units-per-CSS-pixel factor so the box stays constant on zoom. */
   zoom: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
@@ -79,10 +80,10 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
   const textureCache = new Map<string, Texture>();
   const entries = new Map<string, ImageEntry>();
   let zoom = 1;
-  // The session the pooled meshes / cached textures belong to. The same
-  // `safeName` maps to a different file in another session, so everything is
-  // dropped when this changes (see update) to avoid mixing old and new images.
-  let currentSession: string | null = null;
+  // The image source the pooled meshes / cached textures belong to. The same
+  // `safeName` may map to a different image under another key, so everything
+  // is dropped when it changes (see update) to avoid mixing the sources.
+  let currentSessionKey: string | null = null;
 
   const aspectOf = (texture: Texture): number | undefined => {
     const image = texture.image as
@@ -107,7 +108,8 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
 
   const createEntry = (
     spec: ImageSpec,
-    sessionDirectory: string,
+    sessionKey: string,
+    url: string,
   ): ImageEntry => {
     const material = new ShaderMaterial({
       uniforms: {
@@ -133,13 +135,10 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
       material.uniforms['uMap']!.value = cached;
       entry.aspect = aspectOf(cached);
     } else {
-      const url = convertFileSrc(
-        `${sessionDirectory}/samples/${spec.safeName}/sample.png`,
-      );
       textureLoader.load(url, (texture) => {
-        // Drop loads that resolve after a session switch — caching them would
-        // reintroduce the old session's image under this safeName.
-        if (sessionDirectory !== currentSession) {
+        // Drop loads that resolve after an image-source switch — caching them
+        // would reintroduce the old source's image under this safeName.
+        if (sessionKey !== currentSessionKey) {
           texture.dispose();
           return;
         }
@@ -159,11 +158,11 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
   };
 
   /** Shows exactly `specs`, creating/removing pooled meshes as needed. */
-  const update = (specs: ImageSpec[], sessionDirectory: string) => {
-    // On a session switch, drop every pooled mesh and cached texture: the same
-    // safeName / font key refers to a different file now, so reusing them would
-    // mix the previous session's images with the new ones.
-    if (sessionDirectory !== currentSession) {
+  const update = (specs: ImageSpec[], sessionKey: string) => {
+    // On an image-source switch, drop every pooled mesh and cached texture: the
+    // same safeName / font key may refer to a different image now, so reusing
+    // them would mix the previous source's images with the new ones.
+    if (sessionKey !== currentSessionKey) {
       for (const entry of entries.values()) {
         group.remove(entry.mesh);
         entry.material.dispose();
@@ -171,7 +170,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
       entries.clear();
       for (const texture of textureCache.values()) texture.dispose();
       textureCache.clear();
-      currentSession = sessionDirectory;
+      currentSessionKey = sessionKey;
     }
 
     const wanted = new Set(specs.map((spec) => spec.key));
@@ -185,7 +184,9 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     }
 
     for (const spec of specs) {
-      if (!sessionDirectory || !spec.safeName) continue;
+      if (!spec.safeName) continue;
+      const url = props.sampleImageUrl(spec.safeName);
+      if (!url) continue;
       let entry = entries.get(spec.key);
       if (entry && entry.safeName !== spec.safeName) {
         group.remove(entry.mesh);
@@ -194,7 +195,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
         entry = undefined;
       }
       if (!entry) {
-        entry = createEntry(spec, sessionDirectory);
+        entry = createEntry(spec, sessionKey, url);
         entries.set(spec.key, entry);
       }
       (entry.material.uniforms['uColor']!.value as Color).set(spec.color);
@@ -204,9 +205,9 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     }
   };
 
-  // Shown set / session follow their accessors.
+  // Shown set / image-source identity follow their accessors.
   createEffect(() => {
-    update(props.specs(), props.sessionDirectory());
+    update(props.specs(), props.sessionKey());
     requestRender();
   });
   // Keep every image's box constant in CSS pixels across zoom.

@@ -6,21 +6,23 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { check } from '@tauri-apps/plugin-updater';
 import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
-import { appState, setAppState, type GraphMode } from './store';
+import {
+  setGraphSessionPayload,
+  type GraphSessionPayload,
+} from '@/actions/graph';
+import { appState, setAppState } from './store';
 import { getConnectedPlugins, sendFontToPlugin } from './lib/plugin-bridge';
 import { selectionHistory } from './selection-history';
-import { GRAPH_MODE_CAPABILITIES } from './lib/graph-modes';
-import {
-  type FontItem,
-  type FontItemRecord,
-  type FontWeight,
-} from './types/font';
-import {
-  type SessionConfig,
-  type AlgorithmConfig,
-  type DendrogramData,
-  type ProcessStatus,
-} from './types/session';
+import { type FontItem } from './types/font';
+import { type AlgorithmConfig, type ProcessStatus } from './types/session';
+
+export {
+  setActiveGraphWeights,
+  setGraphMode,
+  setSelectedDendrogramNodeSample,
+  setSelectedFontKey,
+  setVisibleGraphClusters,
+} from '@/actions/graph';
 
 // --- Session loading ---
 
@@ -40,24 +42,13 @@ export const loadSession = async (id: string) => {
     setAppState('fonts', 'data', reconcile({}));
   });
   try {
-    const { config, directory, fonts, dendrogram } = await invoke<{
-      config: SessionConfig;
-      directory: string;
-      fonts: FontItemRecord;
-      dendrogram: DendrogramData | null;
-    }>('load_session', { sessionId: id });
-
-    batch(() => {
-      setAppState('session', {
-        ...config,
-        status: {
-          ...config.status,
-          samples_amount: Object.keys(fonts).length,
-        },
-      });
-      setAppState('sessionDirectory', directory || '');
-      setAppState('dendrogram', dendrogram ?? null);
-      setAppState('fonts', 'data', reconcile(fonts));
+    const payload = await invoke<GraphSessionPayload>('load_session', {
+      sessionId: id,
+    });
+    setGraphSessionPayload({
+      ...payload,
+      directory: payload.directory || '',
+      dendrogram: payload.dendrogram ?? null,
     });
   } catch (error) {
     console.error('Failed to load session:', error);
@@ -68,33 +59,6 @@ export const loadSession = async (id: string) => {
 
 /** Reloads the currently active session (e.g. after a job mutates it). */
 export const refreshSession = () => loadSession(appState.session.session_id);
-
-// Actions
-
-export const setSelectedFontKey = (key: string | null) => {
-  batch(() => {
-    setAppState('ui', 'selectedFontKey', key);
-    // A plain font selection supersedes any merge-node sample selection.
-    setAppState('ui', 'selectedDendrogramNode', null);
-  });
-  selectionHistory.commitDebounced();
-};
-
-/**
- * Selects a dendrogram merge node's exemplar sample: the represented font
- * becomes the selected font, and the node index drives the dendrogram's
- * subtree highlight until a plain selection replaces it.
- */
-export const setSelectedDendrogramNodeSample = (
-  nodeIndex: number,
-  key: string,
-) => {
-  batch(() => {
-    setAppState('ui', 'selectedFontKey', key);
-    setAppState('ui', 'selectedDendrogramNode', nodeIndex);
-  });
-  selectionHistory.commitDebounced();
-};
 
 export const setHoveredFontKey = (key: string | null) =>
   setAppState('ui', 'hoveredFontKey', key);
@@ -141,22 +105,6 @@ export const refreshPluginConnections = async () => {
     setAppState('plugins', 'connections', []);
   }
 };
-
-export const setActiveGraphWeights = (weights: FontWeight[]) =>
-  setAppState('ui', 'activeGraphWeights', weights);
-
-/** Changes the graph layout and clears merge-node selection outside layouts
- * where dendrogram nodes are directly selectable. */
-export const setGraphMode = (mode: GraphMode) =>
-  batch(() => {
-    setAppState('ui', 'graphMode', mode);
-    if (!GRAPH_MODE_CAPABILITIES[mode].canSelectMergeNodes) {
-      setAppState('ui', 'selectedDendrogramNode', null);
-    }
-  });
-
-export const setVisibleGraphClusters = (clusterIds: number[]) =>
-  setAppState('ui', 'visibleGraphClusters', clusterIds);
 
 export const setCurrentSessionId = async (id: string) => {
   const isSessionSwitch = appState.session.session_id !== id;

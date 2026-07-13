@@ -7,11 +7,19 @@ import {
   setActiveGraphWeights,
   setGraphMode,
   setVisibleGraphClusters,
-} from '@/actions';
-import { type GraphToolMode } from './types';
+} from '@/actions/graph';
+import { type FontItem } from '@/types/font';
+import { type CopySelectedFont, type GraphToolMode } from './types';
 import { availableGraphModes as collectAvailableGraphModes } from '@/lib/graph-modes';
 
-export function GraphContent() {
+interface GraphContentProps {
+  sessionKey: string;
+  sampleImageUrl: (safeName: string) => string | undefined;
+  copySelectedFont: CopySelectedFont;
+  applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
+}
+
+export function GraphContent(props: GraphContentProps) {
   const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
@@ -66,6 +74,10 @@ export function GraphContent() {
         showFontNames={showFontNames()}
         showGlow={showGlow()}
         showTreemapBoundaries={showTreemapBoundaries()}
+        sessionKey={props.sessionKey}
+        sampleImageUrl={props.sampleImageUrl}
+        copySelectedFont={props.copySelectedFont}
+        applySelectedFont={props.applySelectedFont}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
       <GraphBottomControls

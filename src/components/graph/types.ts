@@ -21,6 +21,13 @@ export interface GraphVisibleBounds {
   maxY: number;
 }
 
+export interface CopySelectedFontOptions {
+  isFontName: boolean;
+  showToast: boolean;
+}
+
+export type CopySelectedFont = (options: CopySelectedFontOptions) => void;
+
 export interface GraphPointData {
   key: string;
   item: FontItem;

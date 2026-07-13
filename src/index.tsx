@@ -1,6 +1,7 @@
 /* @refresh reload */
 import { render } from 'solid-js/web';
 import { ColorModeProvider, ColorModeScript } from '@kobalte/core';
+import { locale } from '@tauri-apps/plugin-os';
 
 import '@fontsource-variable/geist';
 import '@fontsource-variable/noto-sans-jp';
@@ -16,7 +17,7 @@ function Root() {
       <ColorModeScript storageType={themeStorageManager.type} />
       <ColorModeProvider storageManager={themeStorageManager}>
         <div class='flex h-screen flex-col overflow-hidden overscroll-none bg-background font-sans'>
-          <I18nProvider>
+          <I18nProvider readSystemLocale={locale}>
             <App />
           </I18nProvider>
         </div>
