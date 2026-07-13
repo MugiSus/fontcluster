@@ -8,7 +8,7 @@ import {
 } from './types/font';
 import { type DendrogramData, type SessionConfig } from './types/session';
 import { DEFAULT_SESSION_CONFIG } from './constants/session';
-import type { PluginConnection } from './lib/plugin-bridge';
+import type { PluginConnection } from './types/plugin';
 import { type GraphMode } from './types/graph';
 
 export type { GraphMode } from './types/graph';
