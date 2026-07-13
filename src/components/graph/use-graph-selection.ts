@@ -1,12 +1,15 @@
 import { createSelector, createSignal } from 'solid-js';
-import { emit } from '@tauri-apps/api/event';
 import {
   setSelectedDendrogramNodeSample,
   setSelectedFontKey as setCommittedSelectedFontKey,
-} from '@/actions';
+} from '@/actions/graph';
 import { appState } from '@/store';
 import { type DendrogramImageAnchor } from './dendrogram-edges';
-import { type GraphCoordinate, type GraphPointData } from './types';
+import {
+  type CopySelectedFont,
+  type GraphCoordinate,
+  type GraphPointData,
+} from './types';
 
 interface UseGraphSelectionProps {
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
@@ -24,6 +27,7 @@ interface UseGraphSelectionProps {
     y: number,
     radius: number,
   ) => DendrogramImageAnchor | null;
+  copySelectedFont: CopySelectedFont;
 }
 
 /** What a pointer position resolves to: a font, optionally via the dendrogram
@@ -113,9 +117,9 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
       setSelectedDendrogramNodeSample(target.nodeIndex, target.key);
     }
     if (event && (event.shiftKey || event.ctrlKey || event.metaKey)) {
-      emit('copy_family_name', {
-        toast: false,
+      props.copySelectedFont({
         isFontName: event.ctrlKey || event.metaKey,
+        showToast: false,
       });
     }
   };

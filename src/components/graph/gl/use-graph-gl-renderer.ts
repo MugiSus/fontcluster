@@ -75,7 +75,8 @@ export interface UseGraphGlRendererProps {
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
   dendrogramAncestry: Accessor<GraphCoordinate[]>;
-  sessionDirectory: Accessor<string>;
+  sessionKey: Accessor<string>;
+  sampleImageUrl: (safeName: string) => string | undefined;
 }
 
 /**
@@ -501,7 +502,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const imageLayer = createImageLayer({
       specs: imageSpecs,
-      sessionDirectory: props.sessionDirectory,
+      sessionKey: props.sessionKey,
+      sampleImageUrl: props.sampleImageUrl,
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });

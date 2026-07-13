@@ -1,3 +1,7 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { emit } from '@tauri-apps/api/event';
+import { applyFontToPlugins } from '@/actions';
+import { appState } from '@/store';
 import { GraphContent } from './content';
 import { GraphPanelReopenControls } from './panel-reopen-controls';
 import { GraphUtilityControls } from './utility-controls';
@@ -18,7 +22,22 @@ export function GraphPanel(props: GraphPanelProps) {
         isLeftInset={props.isLeftInset}
       />
       <GraphUtilityControls />
-      <GraphContent />
+      <GraphContent
+        sessionKey={appState.sessionDirectory}
+        sampleImageUrl={(safeName) => {
+          const directory = appState.sessionDirectory;
+          return directory
+            ? convertFileSrc(`${directory}/samples/${safeName}/sample.png`)
+            : undefined;
+        }}
+        copySelectedFont={(options) => {
+          void emit('copy_family_name', {
+            toast: options.showToast,
+            isFontName: options.isFontName,
+          });
+        }}
+        applySelectedFont={applyFontToPlugins}
+      />
     </section>
   );
 }

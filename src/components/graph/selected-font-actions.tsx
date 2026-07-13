@@ -7,12 +7,10 @@ import {
   Show,
 } from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
-import { emit } from '@tauri-apps/api/event';
 import { toast } from 'solid-sonner';
 import { CopyIcon, Plug2Icon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
-import { applyFontToPlugins } from '@/actions';
 import { type FontItem } from '@/types/font';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +18,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { type GraphPointData, type GraphViewBox } from './types';
+import {
+  type CopySelectedFont,
+  type GraphPointData,
+  type GraphViewBox,
+} from './types';
 
 /** Delay before the actions fade in once the selection settles. */
 const REVEAL_DELAY_MS = 200;
@@ -36,6 +38,8 @@ interface SelectedFontActionsProps {
   viewBox: Accessor<GraphViewBox>;
   size: Accessor<{ width: number; height: number }>;
   getPointByKey: (key: string) => GraphPointData | undefined;
+  copySelectedFont: CopySelectedFont;
+  applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
 }
 
 /**
@@ -87,14 +91,16 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
   onCleanup(() => revealAfterDelay.clear());
 
   const handleCopy = (event: MouseEvent) => {
-    emit('copy_family_name', {
-      toast: true,
+    props.copySelectedFont({
       isFontName: event.ctrlKey || event.metaKey,
+      showToast: true,
     });
   };
 
-  const handleApply = (item: FontItem) =>
-    applyFontToPlugins(item)
+  const handleApply = (item: FontItem) => {
+    const applySelectedFont = props.applySelectedFont;
+    if (!applySelectedFont) return;
+    applySelectedFont(item)
       .then(() =>
         toast.success(t.plugins.toasts.applied({ name: item.meta.font_name })),
       )
@@ -102,6 +108,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
         console.error('Failed to send font to plugins:', error);
         toast.error(t.plugins.toasts.applyFailed());
       });
+  };
 
   return (
     <Show when={isReady() && projected()}>
@@ -122,7 +129,10 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
               onMouseUp={(event) => event.stopPropagation()}
             >
               <Show
-                when={appState.plugins.isConnected}
+                when={
+                  appState.plugins.isConnected &&
+                  props.applySelectedFont !== undefined
+                }
                 fallback={
                   <Tooltip>
                     <TooltipTrigger as='div' class='rounded-full'>

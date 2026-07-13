@@ -2,6 +2,7 @@ import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
+import { type FontItem } from '@/types/font';
 import { GRAPH_MODE_CAPABILITIES } from '@/lib/graph-modes';
 import { useElementSize } from '@/hooks/use-element-size';
 import {
@@ -30,6 +31,7 @@ import {
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { SelectedFontActions } from './selected-font-actions';
 import {
+  type CopySelectedFont,
   type GraphCoordinate,
   type GraphPointLabel,
   type GraphToolMode,
@@ -53,6 +55,10 @@ interface GraphViewerProps {
   showFontNames: boolean;
   showGlow: boolean;
   showTreemapBoundaries: boolean;
+  sessionKey: string;
+  sampleImageUrl: (safeName: string) => string | undefined;
+  copySelectedFont: CopySelectedFont;
+  applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
   onViewportZoomControlsChange?: (
     controls: ViewportZoomControls | null,
   ) => void;
@@ -123,6 +129,7 @@ export function GraphViewer(props: GraphViewerProps) {
     findSelectablePoint: graph.findSelectablePoint,
     findDendrogramAnchor,
     findDendrogramPoint,
+    copySelectedFont: (options) => props.copySelectedFont(options),
   });
 
   // Curve geometry only changes at half-octave zoom thresholds. Sampling uses
@@ -430,7 +437,8 @@ export function GraphViewer(props: GraphViewerProps) {
           dendrogramImageAnchors={dendrogramNodeImageAnchors}
           pointLabels={pointLabels}
           dendrogramAncestry={dendrogramAncestry}
-          sessionDirectory={() => appState.sessionDirectory}
+          sessionKey={() => props.sessionKey}
+          sampleImageUrl={props.sampleImageUrl}
         />
         <svg
           ref={(el) => {
@@ -474,6 +482,8 @@ export function GraphViewer(props: GraphViewerProps) {
         viewBox={viewport.viewBox}
         size={svgSize}
         getPointByKey={getSelectedActionAnchorPoint}
+        copySelectedFont={props.copySelectedFont}
+        applySelectedFont={props.applySelectedFont}
       />
     </div>
   );

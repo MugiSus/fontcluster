@@ -2,8 +2,8 @@
  * i18n provider.
  *
  * The selected language is owned by {@link I18nProvider}. The effective locale
- * is derived from that selection and, for `system`, from the OS locale exposed
- * by Tauri's official OS plugin.
+ * is derived from that selection and, for `system`, from the locale reader
+ * supplied by the application entry point.
  */
 import {
   type Accessor,
@@ -14,7 +14,6 @@ import {
   createSignal,
   useContext,
 } from 'solid-js';
-import { locale as getSystemLocale } from '@tauri-apps/plugin-os';
 import * as i18n from '@solid-primitives/i18n';
 import { makePersisted } from '@solid-primitives/storage';
 import { en } from './en';
@@ -43,7 +42,11 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue>();
 
-export function I18nProvider(props: ParentProps) {
+interface I18nProviderProps extends ParentProps {
+  readSystemLocale: () => Promise<string | null>;
+}
+
+export function I18nProvider(props: I18nProviderProps) {
   // The selection is owned by this signal; makePersisted mirrors it to
   // localStorage (matching the theme manager) without duplicating the source of
   // truth. An unknown stored value falls back to `system`.
@@ -63,7 +66,7 @@ export function I18nProvider(props: ParentProps) {
   );
 
   const [systemLocale] = createResource<Locale>(async () => {
-    const tag = await getSystemLocale().catch((error) => {
+    const tag = await props.readSystemLocale().catch((error) => {
       console.error('Failed to get system locale:', error);
       return null;
     });

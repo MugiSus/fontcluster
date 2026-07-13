@@ -38,7 +38,8 @@ interface GraphGlLayerProps {
   dendrogramImageAnchors: Accessor<DendrogramImageAnchor[]>;
   pointLabels: Accessor<GraphPointLabel[]>;
   dendrogramAncestry: Accessor<{ x: number; y: number }[]>;
-  sessionDirectory: Accessor<string>;
+  sessionKey: Accessor<string>;
+  sampleImageUrl: (safeName: string) => string | undefined;
 }
 
 /**
@@ -76,7 +77,8 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     dendrogramImageAnchors: () => props.dendrogramImageAnchors(),
     pointLabels: () => props.pointLabels(),
     dendrogramAncestry: () => props.dendrogramAncestry(),
-    sessionDirectory: () => props.sessionDirectory(),
+    sessionKey: () => props.sessionKey(),
+    sampleImageUrl: (safeName) => props.sampleImageUrl(safeName),
   });
 
   return (
