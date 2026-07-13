@@ -22,6 +22,11 @@ export const en = {
     scrollLeft: 'Scroll left',
     scrollRight: 'Scroll right',
   },
+  webViewer: {
+    loading: 'Opening the FontCluster sample...',
+    loadFailed: 'The FontCluster sample could not be opened.',
+    retry: 'Try again',
+  },
   panels: {
     control: 'control',
     list: 'list',
