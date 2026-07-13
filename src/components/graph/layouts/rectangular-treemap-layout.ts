@@ -51,16 +51,20 @@ type RectangularNode = HierarchyRectangularNode<DendrogramHierarchyDatum> & {
   children?: RectangularNode[];
 };
 
-/** Equal-leaf-weight rectangular projection of the shared linkage topology. */
+/** Representative-win-weighted rectangular projection of the linkage tree. */
 export function createRectangularTreemapLayout(
   topology: DendrogramTopology,
 ): RectangularTreemapLayout {
   const root = treemap<DendrogramHierarchyDatum>()
     .tile(treemapBinary)
     .size([RECTANGULAR_TREEMAP_WIDTH, RECTANGULAR_TREEMAP_HEIGHT])(
-    hierarchy(topology.rootData, (datum) => datum.children).sum((datum) =>
-      datum.nodeIndex >= 0 && topology.nodes[datum.nodeIndex]?.key ? 1 : 0,
-    ),
+    hierarchy(topology.rootData, (datum) => datum.children).sum((datum) => {
+      if (datum.nodeIndex < 0 || !topology.nodes[datum.nodeIndex]?.key)
+        return 0;
+      return (
+        (topology.representativeWinCountByLeafIndex[datum.nodeIndex] ?? 0) + 1
+      );
+    }),
   ) as RectangularNode;
 
   const positionByKey = new Map<string, GraphCoordinate>();

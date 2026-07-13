@@ -23,6 +23,7 @@ export interface DendrogramTopology {
   readonly nodes: readonly (DendrogramTopologyNode | null)[];
   readonly roots: readonly number[];
   readonly visibleLeafIndexes: readonly number[];
+  readonly representativeWinCountByLeafIndex: readonly number[];
   readonly leafIndexByKey: ReadonlyMap<string, number>;
   readonly rootData: DendrogramHierarchyDatum;
   readonly leafCount: number;
@@ -42,6 +43,9 @@ export function createDendrogramTopology(
   const { ids, merges } = dendrogram;
   const leafCount = ids.length;
   const nodeCount = leafCount + merges.length;
+  const representativeWinCountByLeafIndex = new Array<number>(leafCount).fill(
+    0,
+  );
   const parentIndexes = new Array<number | null>(nodeCount).fill(null);
   const nodes: (DendrogramTopologyNode | null)[] = ids.map((key, index) => {
     const clustering = displayData[key]?.computed?.clustering ?? undefined;
@@ -62,6 +66,10 @@ export function createDendrogramTopology(
   });
 
   for (const [mergeIndex, merge] of merges.entries()) {
+    const winCount = representativeWinCountByLeafIndex[merge.representative];
+    if (winCount !== undefined) {
+      representativeWinCountByLeafIndex[merge.representative] = winCount + 1;
+    }
     const index = leafCount + mergeIndex;
     const childIndexes = [merge.left, merge.right].filter(
       (childIndex) => childIndex >= 0 && childIndex < index,
@@ -135,6 +143,7 @@ export function createDendrogramTopology(
     visibleLeafIndexes: finalizedNodes.flatMap((node, index) =>
       node?.key ? [index] : [],
     ),
+    representativeWinCountByLeafIndex,
     leafIndexByKey: new Map(ids.map((id, index) => [id, index])),
     rootData,
     leafCount,

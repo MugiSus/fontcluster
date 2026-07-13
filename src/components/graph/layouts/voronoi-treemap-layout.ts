@@ -85,7 +85,7 @@ function sharedPolygonSegment(
   return null;
 }
 
-/** Hierarchical equal-leaf-weight Voronoi partition clipped to a circle. */
+/** Hierarchical representative-win-weighted partition clipped to a circle. */
 export function createVoronoiTreemapLayout(
   topology: DendrogramTopology,
 ): VoronoiTreemapLayout {
@@ -101,14 +101,19 @@ export function createVoronoiTreemapLayout(
     },
   );
   const root = hierarchy(topology.rootData, (datum) => datum.children).sum(
-    (datum) =>
-      datum.nodeIndex >= 0 && topology.nodes[datum.nodeIndex]?.key ? 1 : 0,
+    (datum) => {
+      if (datum.nodeIndex < 0 || !topology.nodes[datum.nodeIndex]?.key)
+        return 0;
+      return (
+        (topology.representativeWinCountByLeafIndex[datum.nodeIndex] ?? 0) + 1
+      );
+    },
   ) as VoronoiHierarchyNode<DendrogramHierarchyDatum>;
 
   voronoiTreemap<DendrogramHierarchyDatum>()
     .clip(framePolygon)
     .prng(randomLcg(RANDOM_SEED))
-    .minWeightRatio(1 / topology.visibleLeafIndexes.length)
+    .minWeightRatio(1 / root.value!)
     .convergenceRatio(CONVERGENCE_RATIO)
     .maxIterationCount(MAX_ITERATION_COUNT)(root);
 
