@@ -81,6 +81,7 @@ const HORIZONTAL_CURVE_ERROR_PX = 0.25;
 const MIN_HORIZONTAL_CURVE_SEGMENTS = 8;
 const MAX_HORIZONTAL_CURVE_SEGMENTS = 256;
 const EQUAL_HEIGHT_CURVE_HANDLE_PX = 12;
+const HORIZONTAL_CURVE_HANDLE_RATIO = 0.6;
 
 function isCoincident(a: GraphCoordinate, b: GraphCoordinate): boolean {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < COINCIDENT_EPSILON;
@@ -94,17 +95,25 @@ function horizontalTreeCurvePoints(
 ): GraphCoordinate[] {
   const deltaX = parent.x - child.x;
   const deltaY = parent.y - child.y;
-  // Equal linkage heights place both nodes on one x coordinate. Give that
-  // degenerate case a small screen-fixed leftward handle so the endpoint
-  // derivative remains horizontal instead of collapsing to the zero vector.
-  const middleX =
-    Math.abs(deltaX) > COINCIDENT_EPSILON
-      ? (child.x + parent.x) / 2
-      : child.x -
-        Math.min(
-          Math.abs(deltaY) / 2,
-          EQUAL_HEIGHT_CURVE_HANDLE_PX * worldUnitsPerCssPixel,
-        );
+  // Reach each handle past the midpoint toward the opposite node so the
+  // horizontal tangents run longer and the middle transition steepens into a
+  // tighter S-curve. Equal linkage heights collapse both nodes onto one x
+  // coordinate; give that degenerate case a small screen-fixed leftward handle
+  // so the endpoint derivative stays horizontal instead of collapsing to zero.
+  let childHandleX: number;
+  let parentHandleX: number;
+  if (Math.abs(deltaX) > COINCIDENT_EPSILON) {
+    childHandleX = child.x + deltaX * HORIZONTAL_CURVE_HANDLE_RATIO;
+    parentHandleX = parent.x - deltaX * HORIZONTAL_CURVE_HANDLE_RATIO;
+  } else {
+    childHandleX =
+      child.x -
+      Math.min(
+        Math.abs(deltaY) / 2,
+        EQUAL_HEIGHT_CURVE_HANDLE_PX * worldUnitsPerCssPixel,
+      );
+    parentHandleX = childHandleX;
+  }
   const screenSpan =
     Math.hypot(deltaX, deltaY) /
     Math.max(worldUnitsPerCssPixel, Number.EPSILON);
@@ -117,8 +126,8 @@ function horizontalTreeCurvePoints(
   );
   return new CubicBezierCurve(
     new Vector2(child.x, child.y),
-    new Vector2(middleX, child.y),
-    new Vector2(middleX, parent.y),
+    new Vector2(childHandleX, child.y),
+    new Vector2(parentHandleX, parent.y),
     new Vector2(parent.x, parent.y),
   )
     .getPoints(segmentCount)
