@@ -21,8 +21,8 @@ const CLUSTER_DARK = [
 /** Tailwind `text-zinc-500`, used for unclustered points (no cluster). */
 const UNCLUSTERED = 0xa0a0a4;
 // Hex equivalents of the `--background` HSL values in index.css.
-const BACKGROUND_LIGHT = 0xfdfdfe;
-const BACKGROUND_DARK = 0x0e0f13;
+const BACKGROUND_LIGHT = 0xffffff;
+const BACKGROUND_DARK = 0x000000;
 
 /** Returns the 0xRRGGBB color for a font's palette slot in the given theme. */
 export function getClusterColor({
