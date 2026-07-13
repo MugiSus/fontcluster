@@ -1,13 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { FontMetadata } from '@/types/font';
+import type { PluginConnection } from '@/types/plugin';
 
-export interface PluginConnection {
-  plugin_id: string;
-  plugin_name: string;
-  host: string;
-  document_name: string | null;
-  last_seen: string;
-}
+export type { PluginConnection } from '@/types/plugin';
 
 interface PluginConnectionsResponse {
   plugins: PluginConnection[];
