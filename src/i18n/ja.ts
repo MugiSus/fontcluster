@@ -10,6 +10,11 @@ export const ja: Dictionary = {
     scrollLeft: '左へスクロール',
     scrollRight: '右へスクロール',
   },
+  webViewer: {
+    loading: 'FontCluster のサンプルを開いています...',
+    loadFailed: 'FontCluster のサンプルを開けませんでした。',
+    retry: '再試行',
+  },
   panels: {
     control: '制御',
     list: 'リスト',
