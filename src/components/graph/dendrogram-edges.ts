@@ -81,7 +81,7 @@ const HORIZONTAL_CURVE_ERROR_PX = 0.25;
 const MIN_HORIZONTAL_CURVE_SEGMENTS = 8;
 const MAX_HORIZONTAL_CURVE_SEGMENTS = 256;
 const EQUAL_HEIGHT_CURVE_HANDLE_PX = 12;
-const HORIZONTAL_CURVE_HANDLE_RATIO = 0.6;
+const HORIZONTAL_CURVE_HANDLE_RATIO = 0.5;
 
 function isCoincident(a: GraphCoordinate, b: GraphCoordinate): boolean {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < COINCIDENT_EPSILON;
