@@ -118,6 +118,7 @@ export function ListFontItem(props: ListFontItemProps) {
           )}
           src={sampleSrc()}
           alt={t.list.fontPreviewAlt({ name: meta().font_name })}
+          crossorigin='anonymous'
           decoding='async'
         />
       </div>
