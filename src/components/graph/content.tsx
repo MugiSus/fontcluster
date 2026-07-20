@@ -75,6 +75,7 @@ export function GraphContent(props: GraphContentProps) {
         showFontNames={showFontNames()}
         showGlow={showGlow()}
         showTreemapBoundaries={showTreemapBoundaries()}
+        showHud={props.showHud}
         sessionKey={props.sessionKey}
         sampleImageUrl={props.sampleImageUrl}
         copySelectedFont={props.copySelectedFont}

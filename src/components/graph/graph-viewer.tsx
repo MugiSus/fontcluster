@@ -55,6 +55,7 @@ interface GraphViewerProps {
   showFontNames: boolean;
   showGlow: boolean;
   showTreemapBoundaries: boolean;
+  showHud: boolean;
   sessionKey: string;
   sampleImageUrl: (safeName: string) => string | undefined;
   copySelectedFont: CopySelectedFont;
@@ -476,15 +477,17 @@ export function GraphViewer(props: GraphViewerProps) {
         </svg>
       </Show>
 
-      <SelectedFontActions
-        selectedKey={selection.selectedKey}
-        isSelecting={selection.isSelecting}
-        viewBox={viewport.viewBox}
-        size={svgSize}
-        getPointByKey={getSelectedActionAnchorPoint}
-        copySelectedFont={props.copySelectedFont}
-        applySelectedFont={props.applySelectedFont}
-      />
+      <Show when={props.showHud}>
+        <SelectedFontActions
+          selectedKey={selection.selectedKey}
+          isSelecting={selection.isSelecting}
+          viewBox={viewport.viewBox}
+          size={svgSize}
+          getPointByKey={getSelectedActionAnchorPoint}
+          copySelectedFont={props.copySelectedFont}
+          applySelectedFont={props.applySelectedFont}
+        />
+      </Show>
     </div>
   );
 }
