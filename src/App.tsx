@@ -1,5 +1,6 @@
-import { Show } from 'solid-js';
+import { createSignal, onCleanup, onMount, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
+import { listen } from '@tauri-apps/api/event';
 import { platform } from '@tauri-apps/plugin-os';
 import { ClipboardListener } from './components/clipboard-listener';
 import { useAppEvents } from './actions';
@@ -19,7 +20,15 @@ function App() {
     list: true,
     chat: false,
   });
+  const [isInterfaceVisible, setIsInterfaceVisible] = createSignal(true);
   useAppEvents();
+
+  onMount(() => {
+    const unlistenPromise = listen('toggle-interface-requested', () => {
+      setIsInterfaceVisible((visible) => !visible);
+    });
+    onCleanup(() => void unlistenPromise.then((unlisten) => unlisten()));
+  });
 
   const closePanel = (panel: CollapsiblePanelKey) => {
     setPanelState(panel, false);
@@ -34,21 +43,21 @@ function App() {
       <Toaster position='bottom-center' />
       <ClipboardListener />
       <div class='flex h-full min-h-0'>
-        <Show when={panelState.control}>
+        <Show when={isInterfaceVisible() && panelState.control}>
           <ControlPanel
             isLeftInset={isMac && !isFullscreen()}
             onClose={() => closePanel('control')}
           />
         </Show>
 
-        <Show when={panelState.list}>
+        <Show when={isInterfaceVisible() && panelState.list}>
           <ListPanel
             onClose={() => closePanel('list')}
             isLeftInset={isMac && !isFullscreen() && !panelState.control}
           />
         </Show>
 
-        <Show when={panelState.chat}>
+        <Show when={isInterfaceVisible() && panelState.chat}>
           <ChatPanel
             isLeftInset={
               isMac &&
@@ -61,6 +70,7 @@ function App() {
         </Show>
 
         <GraphPanel
+          showHud={isInterfaceVisible()}
           panelState={panelState}
           onReopenPanel={openPanel}
           isLeftInset={

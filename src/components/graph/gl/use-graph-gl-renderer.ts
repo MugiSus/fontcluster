@@ -133,6 +133,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // below only schedule a frame when those inputs change. `rafId` is the lone
     // piece of genuine mutable state: the dedupe token for the pending frame.
     let rafId: number | undefined;
+    let hasRenderedFrame = false;
 
     const renderFrame = () => {
       rafId = undefined;
@@ -159,6 +160,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
+        hasRenderedFrame = true;
+        canvas.style.visibility = '';
         return;
       }
 
@@ -218,6 +221,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
+      hasRenderedFrame = true;
+      canvas.style.visibility = '';
     };
     const scheduleRender = () => {
       if (rafId !== undefined) return;
@@ -542,8 +547,19 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     createEffect(() => {
       const { width, height } = props.size();
       if (width <= 0 || height <= 0) return;
-      renderer.setPixelRatio(pixelRatio());
-      renderer.setSize(width, height, false);
+      const nextPixelRatio = pixelRatio();
+      const isCanvasSizeChanging =
+        canvas.style.width !== `${width}px` ||
+        canvas.style.height !== `${height}px` ||
+        renderer.getPixelRatio() !== nextPixelRatio;
+      if (hasRenderedFrame && isCanvasSizeChanging) {
+        canvas.style.visibility = 'hidden';
+      }
+      renderer.setPixelRatio(nextPixelRatio);
+      // The renderer owns both the drawing buffer and the canvas CSS size.
+      // Letting `size-full` resize the CSS box first stretches the previous
+      // framebuffer until ResizeObserver updates the drawing buffer.
+      renderer.setSize(width, height, true);
       // Size the glow buffer from the actual drawing-buffer resolution
       // (getDrawingBufferSize already folds in pixelRatio); the compositor then
       // applies its own GLOW_SCALE. The point sprite + line layers track pixel

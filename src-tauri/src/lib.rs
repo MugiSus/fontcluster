@@ -62,6 +62,13 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         true,
         Some("CmdOrCtrl+Shift+Z"),
     )?;
+    let toggle_interface = MenuItem::with_id(
+        app,
+        "toggle_interface",
+        "Toggle Interface",
+        true,
+        Some("Cmd+."),
+    )?;
 
     let edit_menu = Submenu::with_items(
         app,
@@ -96,7 +103,8 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         ],
     )?;
     let file_menu = Submenu::with_items(app, "File", true, &[&undo_history, &redo_history])?;
-    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu])
+    let view_menu = Submenu::with_items(app, "View", true, &[&toggle_interface])?;
+    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &view_menu])
 }
 
 /// Translates menu clicks into events the webview listens for.
@@ -111,6 +119,8 @@ fn handle_menu(app: &AppHandle, event: tauri::menu::MenuEvent) {
         let _ = app.emit("undo-history-requested", ());
     } else if event.id().as_ref() == "redo_history" {
         let _ = app.emit("redo-history-requested", ());
+    } else if event.id().as_ref() == "toggle_interface" {
+        let _ = app.emit("toggle-interface-requested", ());
     }
 }
 

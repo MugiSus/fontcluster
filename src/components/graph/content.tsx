@@ -1,4 +1,4 @@
-import { batch, createEffect, createMemo, createSignal } from 'solid-js';
+import { batch, createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { GraphBottomControls } from './bottom-controls';
 import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
@@ -17,6 +17,7 @@ interface GraphContentProps {
   sampleImageUrl: (safeName: string) => string | undefined;
   copySelectedFont: CopySelectedFont;
   applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
+  showHud: boolean;
 }
 
 export function GraphContent(props: GraphContentProps) {
@@ -80,37 +81,39 @@ export function GraphContent(props: GraphContentProps) {
         applySelectedFont={props.applySelectedFont}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
-      <GraphBottomControls
-        toolMode={toolMode()}
-        showImages={showImages()}
-        showFontNames={showFontNames()}
-        showGlow={showGlow()}
-        showTreemapBoundaries={showTreemapBoundaries()}
-        graphMode={appState.ui.graphMode}
-        canCycleGraphMode={availableGraphModes().length > 1}
-        isFilterOpen={isFilterOpen()}
-        zoomControls={viewportZoomControls()}
-        onToolModeChange={setToolMode}
-        onToggleImages={() => setShowImages((shown) => !shown)}
-        onToggleFontNames={() => setShowFontNames((shown) => !shown)}
-        onToggleGlow={() => setShowGlow((shown) => !shown)}
-        onToggleTreemapBoundaries={() =>
-          setShowTreemapBoundaries((shown) => !shown)
-        }
-        onCycleGraphMode={() => {
-          const modes = availableGraphModes();
-          const nextMode =
-            modes[(modes.indexOf(appState.ui.graphMode) + 1) % modes.length];
-          if (nextMode) setGraphMode(nextMode);
-        }}
-        onToggleFilter={() => setIsFilterOpen((open) => !open)}
-      />
-      <GraphFilterDock
-        isOpen={isFilterOpen()}
-        weights={sessionWeights()}
-        onWeightsChange={setActiveGraphWeights}
-        onClose={() => setIsFilterOpen(false)}
-      />
+      <Show when={props.showHud}>
+        <GraphBottomControls
+          toolMode={toolMode()}
+          showImages={showImages()}
+          showFontNames={showFontNames()}
+          showGlow={showGlow()}
+          showTreemapBoundaries={showTreemapBoundaries()}
+          graphMode={appState.ui.graphMode}
+          canCycleGraphMode={availableGraphModes().length > 1}
+          isFilterOpen={isFilterOpen()}
+          zoomControls={viewportZoomControls()}
+          onToolModeChange={setToolMode}
+          onToggleImages={() => setShowImages((shown) => !shown)}
+          onToggleFontNames={() => setShowFontNames((shown) => !shown)}
+          onToggleGlow={() => setShowGlow((shown) => !shown)}
+          onToggleTreemapBoundaries={() =>
+            setShowTreemapBoundaries((shown) => !shown)
+          }
+          onCycleGraphMode={() => {
+            const modes = availableGraphModes();
+            const nextMode =
+              modes[(modes.indexOf(appState.ui.graphMode) + 1) % modes.length];
+            if (nextMode) setGraphMode(nextMode);
+          }}
+          onToggleFilter={() => setIsFilterOpen((open) => !open)}
+        />
+        <GraphFilterDock
+          isOpen={isFilterOpen()}
+          weights={sessionWeights()}
+          onWeightsChange={setActiveGraphWeights}
+          onClose={() => setIsFilterOpen(false)}
+        />
+      </Show>
     </div>
   );
 }
