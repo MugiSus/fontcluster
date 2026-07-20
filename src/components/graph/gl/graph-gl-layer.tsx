@@ -84,7 +84,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
   return (
     <canvas
       ref={(element) => (canvas = element)}
-      class='pointer-events-none absolute inset-0 size-full'
+      class='pointer-events-none absolute left-0 top-0'
     />
   );
 }
