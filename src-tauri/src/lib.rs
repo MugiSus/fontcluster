@@ -53,7 +53,7 @@ fn create_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         "toggle_interface",
         "Toggle Interface",
         true,
-        Some("Cmd+."),
+        Some("F11"),
     )?;
 
     let edit_menu = Submenu::with_items(
