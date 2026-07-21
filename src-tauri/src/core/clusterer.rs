@@ -352,7 +352,7 @@ enum ScatterRotation {
 }
 
 /// The rotation [`rotate_scatter_2d`] uses. Flip this to compare the two looks.
-const SCATTER_ROTATION: ScatterRotation = ScatterRotation::Promax;
+const SCATTER_ROTATION: ScatterRotation = ScatterRotation::Varimax;
 
 /// Rotates the 2-D PCA `scores` for the scatter using the configured
 /// [`SCATTER_ROTATION`]; see [`rotate_scatter_2d_with`] for the mechanics.
