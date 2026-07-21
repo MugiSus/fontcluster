@@ -1,7 +1,6 @@
 import {
   ChartScatterIcon,
   CircleDotDashedIcon,
-  FunnelIcon,
   GitForkIcon,
   HandIcon,
   LayoutGridIcon,
@@ -9,6 +8,7 @@ import {
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
+  SearchIcon,
   SquareDashedIcon,
   TagIcon,
   TelescopeIcon,
@@ -334,7 +334,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           aria-label={t.graph.bottomToolbar.filter()}
           onClick={() => props.onToggleFilter()}
         >
-          <FunnelIcon class='size-4' />
+          <SearchIcon class='size-4' />
           {/*
             Mark the active filter with a small neutral dot rather than a
             primary-filled button: a lone primary surface here would pull the
