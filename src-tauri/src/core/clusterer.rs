@@ -32,14 +32,55 @@ use std::collections::{BTreeMap, HashMap};
 pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()> {
     let session_dir = state.get_session_dir()?;
 
-    let config = {
+    // Clustering is a full replacement of downstream output. Clear the prior
+    // dendrogram and per-font assignments first so fonts omitted after an
+    // analysis failure cannot retain results from another embedding space.
+    let cleanup_dir = session_dir.clone();
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let dendrogram_path = cleanup_dir.join("dendrogram.json");
+        if dendrogram_path.exists() {
+            std::fs::remove_file(&dendrogram_path)?;
+        }
+        let samples_dir = cleanup_dir.join("samples");
+        if let Ok(entries) = std::fs::read_dir(&samples_dir) {
+            for entry in entries.filter_map(|entry| entry.ok()) {
+                let sample_dir = entry.path();
+                if !sample_dir.is_dir() {
+                    continue;
+                }
+                let Some(id) = sample_dir.file_name().and_then(|name| name.to_str()) else {
+                    continue;
+                };
+                let Ok(mut computed) = load_computed_data(&cleanup_dir, id) else {
+                    continue;
+                };
+                computed.clustering = None;
+                save_computed_data(&cleanup_dir, id, &computed)?;
+            }
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|error| AppError::Processing(error.to_string()))??;
+    state.update_status(|status| {
+        status.clusters_amount = 0;
+        status.samples_amount = 0;
+        status.clustering_stats = ClusteringStats::default();
+    })?;
+
+    let (config, model_id) = {
         let guard = state
             .current_session
             .lock()
             .map_err(|_| AppError::Processing("Lock poisoned".into()))?;
         guard
             .as_ref()
-            .map(|s| s.algorithm.clustering.clone())
+            .map(|s| {
+                (
+                    s.algorithm.clustering.clone(),
+                    s.algorithm.analysis.model_id.clone(),
+                )
+            })
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
@@ -75,7 +116,7 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
         )
         .map_err(|e| AppError::Processing(e.to_string()))?;
 
-        let points = build_cluster_features(data, preprocessing_dimensions, &emphasis)?;
+        let points = build_cluster_features(data, preprocessing_dimensions, &emphasis, &model_id)?;
         let scatter = scatter_projection(&points)?;
 
         Ok(ClusterInputs {
@@ -88,7 +129,9 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
     .map_err(|e| AppError::Processing(e.to_string()))??;
 
     if points.is_empty() {
-        return Ok(());
+        return Err(AppError::Processing(
+            "No analyzed font vectors are available for clustering".into(),
+        ));
     }
 
     let n_samples = points.nrows();
@@ -220,6 +263,7 @@ fn build_cluster_features(
     data: Array2<f32>,
     dimensions: usize,
     emphasis: &BTreeMap<String, i8>,
+    model_id: &str,
 ) -> Result<Array2<f32>> {
     let (n_samples, n_features) = data.dim();
     let reduce = |data: Array2<f32>| -> Result<Array2<f32>> {
@@ -235,7 +279,7 @@ fn build_cluster_features(
         return reduce(data);
     }
 
-    let directions = match load_attribute_directions(n_features) {
+    let directions = match load_attribute_directions(n_features, model_id) {
         Ok(directions) => directions,
         Err(e) => {
             println!("⚠️ Clusterer: attribute emphasis skipped: {e}");
@@ -378,7 +422,10 @@ fn orthonormal_basis(vectors: &[Vec<f32>]) -> Array2<f32> {
 ///
 /// The asset is model-coupled and lives beside `model.onnx`; regenerate it with
 /// `distill/export_attribute_directions.py` whenever the deployed model changes.
-fn load_attribute_directions(expected_dim: usize) -> Result<HashMap<String, Vec<f32>>> {
+fn load_attribute_directions(
+    expected_dim: usize,
+    model_id: &str,
+) -> Result<HashMap<String, Vec<f32>>> {
     #[derive(serde::Deserialize)]
     struct DirectionsFile {
         dim: usize,
@@ -389,7 +436,9 @@ fn load_attribute_directions(expected_dim: usize) -> Result<HashMap<String, Vec<
         direction: Vec<f32>,
     }
 
-    let path = crate::core::analyzer::resolve_model_dir()?.join("attribute_directions.json");
+    let path = crate::core::resolve_model(model_id)?
+        .directory
+        .join("attribute_directions.json");
     let raw = std::fs::read_to_string(&path)
         .map_err(|e| AppError::Io(format!("{} unreadable: {e}", path.display())))?;
     let parsed: DirectionsFile =
@@ -831,7 +880,13 @@ mod tests {
             ],
         )
         .unwrap();
-        let out = build_cluster_features(data.clone(), 3, &BTreeMap::new()).unwrap();
+        let out = build_cluster_features(
+            data.clone(),
+            3,
+            &BTreeMap::new(),
+            crate::config::DEFAULT_MODEL_ID,
+        )
+        .unwrap();
         let expected = pca_embedding(data, 3).unwrap();
         assert_eq!(out, expected);
     }
@@ -928,13 +983,10 @@ mod tests {
     /// scale is `reference * 2^level`. The reference and standardisation are
     /// identical across levels, so the appended column is zero-mean and a
     /// level `+2` axis is exactly `2×` a level `+1` axis, elementwise. Uses the
-    /// on-disk asset; skips when `models/` is not present (CI).
+    /// installed model asset from Application Support.
     #[test]
+    #[ignore = "requires mobilenet-v4-medium-v1 installed in Application Support"]
     fn emphasis_appends_standardised_scaled_attribute_axis() {
-        if load_attribute_directions(512).is_err() {
-            return; // developer-local asset; skip on CI
-        }
-
         // Eight arbitrary rows in embedding space.
         let mut values = Vec::with_capacity(8 * 512);
         for row in 0..8 {
@@ -944,11 +996,20 @@ mod tests {
         }
         let data = Array2::from_shape_vec((8, 512), values).unwrap();
 
-        let out1 =
-            build_cluster_features(data.clone(), 3, &BTreeMap::from([("serif".to_string(), 1)]))
-                .unwrap();
-        let out2 =
-            build_cluster_features(data, 3, &BTreeMap::from([("serif".to_string(), 2)])).unwrap();
+        let out1 = build_cluster_features(
+            data.clone(),
+            3,
+            &BTreeMap::from([("serif".to_string(), 1)]),
+            crate::config::DEFAULT_MODEL_ID,
+        )
+        .unwrap();
+        let out2 = build_cluster_features(
+            data,
+            3,
+            &BTreeMap::from([("serif".to_string(), 2)]),
+            crate::config::DEFAULT_MODEL_ID,
+        )
+        .unwrap();
 
         // One appended column beyond the (rank-limited) PCA base.
         assert!(out1.ncols() >= 2 && out2.ncols() == out1.ncols());

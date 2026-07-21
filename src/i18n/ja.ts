@@ -28,6 +28,8 @@ export const ja: Dictionary = {
     generateNew: 'グラフを新しく生成',
     recalculate: '再計算',
     fonts: 'フォント',
+    model: 'モデル',
+    modelDownloadRequired: '「生成」を押すとダウンロードします',
     textSize: 'テキストサイズ',
     linkageMethod: '連結法',
     preprocessDimensions: '前処理次元数',
@@ -228,6 +230,10 @@ export const ja: Dictionary = {
   jobs: {
     toasts: {
       started: 'ジョブを開始しました（"{{text}}"）',
+      modelDownloadStarted: 'モデル「{{model}}」をダウンロードしています...',
+      modelDownloadProgress: 'ダウンロード {{percent}}%',
+      modelDownloadCompleted: 'モデル「{{model}}」を利用できます',
+      modelDownloadFailed: 'モデル「{{model}}」をダウンロードできませんでした',
       completed: '処理が完了しました',
       view: '表示',
       failed: 'ジョブが失敗しました: {{error}}',

@@ -46,7 +46,6 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "models/**/*",
       "resources/google_fonts_popularity.json",
       "resources/example/"
     ],

@@ -10,11 +10,12 @@
 
 use crate::commands::progress::progress_events;
 use crate::config::{
-    AlgorithmConfig, ClusteringConfig, FontSet, ProcessStatus, ProgressStage, RenderingConfig,
+    AlgorithmConfig, AnalysisConfig, ClusteringConfig, FontSet, ProcessStatus, ProgressStage,
+    RenderingConfig,
 };
 use crate::core::{
-    clusterer, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader, RunningJob,
-    SampleRenderer, StdoutEventSink,
+    clusterer, ensure_model, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader,
+    RunningJob, SampleRenderer, StdoutEventSink,
 };
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
@@ -41,11 +42,12 @@ pub struct RunJobsRequest {
     pub override_status: Option<ProcessStatus>,
 }
 
-/// Partial algorithm config: each half is `Some` only when it should be
-/// changed, so a re-run can update clustering without re-rendering.
+/// Partial algorithm config. The backend compares each supplied stage with the
+/// persisted config and invalidates from the earliest changed stage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmConfigPatch {
     pub rendering: Option<RenderingConfig>,
+    pub analysis: Option<AnalysisConfig>,
     pub clustering: Option<ClusteringConfig>,
 }
 
@@ -142,6 +144,17 @@ pub async fn run_jobs(
                     }
                 }
                 app.emit(&message.event, message.payload)?;
+                continue;
+            }
+
+            if message.event.starts_with("model_download_") {
+                let mut payload = message.payload;
+                if let (Some(session_id), Some(object)) =
+                    (session_id.as_ref(), payload.as_object_mut())
+                {
+                    object.insert("sessionId".into(), Value::String(session_id.clone()));
+                }
+                app.emit(&message.event, payload)?;
                 continue;
             }
 
@@ -265,16 +278,39 @@ pub async fn run_jobs_pipeline(
             .algorithm
             .rendering
             .ok_or_else(|| AppError::Processing("Missing rendering config".into()))?;
+        let analysis = request
+            .algorithm
+            .analysis
+            .ok_or_else(|| AppError::Processing("Missing analysis config".into()))?;
         let clustering = request
             .algorithm
             .clustering
             .ok_or_else(|| AppError::Processing("Missing clustering config".into()))?;
         state.initialize_session(AlgorithmConfig {
             rendering,
+            analysis,
             clustering,
         })?
     };
     events.emit_string("session_started", id.clone())?;
+
+    // Model installation is job preparation rather than UI state. It happens
+    // before rendering so network/integrity failures do not waste a render
+    // pass, and the worker's process boundary keeps native inference isolated.
+    let model_id = {
+        let guard = state.current_session.lock().unwrap();
+        guard.as_ref().unwrap().algorithm.analysis.model_id.clone()
+    };
+    // `ensure_model` owns a reqwest blocking client, filesystem lock, and
+    // streamed file writes. Its complete lifecycle, including client drop,
+    // must stay outside this async runtime.
+    let model_install_id = model_id.clone();
+    let model_install_events = events.clone();
+    tokio::task::spawn_blocking(move || ensure_model(&model_install_id, &model_install_events))
+        .await
+        .map_err(|error| {
+            AppError::Processing(format!("Model installation task failed: {error}"))
+        })??;
 
     // When resuming from a midpoint, clear the progress of the resume stage and
     // every later stage so the UI stops showing stale results that are about to
@@ -282,7 +318,7 @@ pub async fn run_jobs_pipeline(
     // are reused as-is.
     let resume_status = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
+        guard.as_ref().unwrap().status.process_status
     };
     for &stage in stages_to_reset(&resume_status) {
         progress_events::reset_progress(&events, state, stage);
@@ -291,12 +327,13 @@ pub async fn run_jobs_pipeline(
     // Step 0: Render samples
     let status = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
+        guard.as_ref().unwrap().status.process_status
     };
     if status == ProcessStatus::Empty {
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
         }
+        state.reset_rendering_outputs()?;
         println!("🖼️ Starting sample rendering...");
         events.emit_unit("font_rendering_start")?;
 
@@ -342,7 +379,7 @@ pub async fn run_jobs_pipeline(
     // Step 3: Vectors
     let status = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
+        guard.as_ref().unwrap().status.process_status
     };
     if status == ProcessStatus::Rendered {
         if state.is_cancelled.load(Ordering::Relaxed) {
@@ -350,7 +387,7 @@ pub async fn run_jobs_pipeline(
         }
         println!("📐 Starting analysis...");
         events.emit_unit("analysis_start")?;
-        let analyzer = Analyzer::new()?;
+        let analyzer = Analyzer::new(&model_id)?;
         analyzer.analyze_all(&events, state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
@@ -362,7 +399,7 @@ pub async fn run_jobs_pipeline(
     // Step 4: Clustering
     let status = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
+        guard.as_ref().unwrap().status.process_status
     };
     if status == ProcessStatus::Analyzed {
         if state.is_cancelled.load(Ordering::Relaxed) {
@@ -384,11 +421,14 @@ pub async fn run_jobs_pipeline(
 
     let final_status = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status.clone()
+        guard.as_ref().unwrap().status.process_status
     };
-    if final_status == ProcessStatus::Clustered {
-        state.finalize_session(&id)?;
+    if final_status != ProcessStatus::Clustered {
+        return Err(AppError::Processing(format!(
+            "Processing stopped before clustering completed (status: {final_status:?})"
+        )));
     }
+    state.finalize_session(&id)?;
 
     events.emit_string("all_jobs_complete", id)?;
     Ok("Success".into())

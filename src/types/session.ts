@@ -53,8 +53,13 @@ export interface RenderingOptions {
   font_size: number;
 }
 
+export interface AnalysisOptions {
+  model_id: string;
+}
+
 export interface AlgorithmConfig {
   rendering: RenderingOptions;
+  analysis: AnalysisOptions;
   clustering: ClusteringOptions;
 }
 

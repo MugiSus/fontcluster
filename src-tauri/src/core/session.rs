@@ -444,31 +444,63 @@ impl AppState {
 
     /// Applies a partial config update before (re-)running a session.
     ///
-    /// When `status` indicates a re-run from an already-rendered stage
-    /// (`Rendered`/`Analyzed`), the rendering config is left untouched so
-    /// existing samples stay valid and only clustering settings are changed.
+    /// The persisted process status is moved back to the earliest stage whose
+    /// inputs changed: rendering invalidates everything, a model change keeps
+    /// rendered samples, and clustering changes keep rendered samples and
+    /// vectors. `status` can explicitly request an earlier restart point, but
+    /// can never override a still-earlier config invalidation.
     pub fn update_session_config(
         &self,
         algorithm: AlgorithmConfigPatch,
         status: Option<ProcessStatus>,
     ) -> Result<()> {
         self.update_session(|session| {
-            let update_clustering_only = matches!(
-                status,
-                Some(ProcessStatus::Rendered | ProcessStatus::Analyzed)
-            );
+            let mut resume_status = status
+                .unwrap_or(session.status.process_status)
+                .min(session.status.process_status);
 
-            if !update_clustering_only {
-                if let Some(rendering) = algorithm.rendering {
-                    session.algorithm.rendering = rendering;
+            if let Some(rendering) = algorithm.rendering {
+                if rendering != session.algorithm.rendering {
+                    resume_status = resume_status.min(ProcessStatus::Empty);
                 }
+                session.algorithm.rendering = rendering;
+            }
+            if let Some(analysis) = algorithm.analysis {
+                if analysis != session.algorithm.analysis {
+                    resume_status = resume_status.min(ProcessStatus::Rendered);
+                }
+                session.algorithm.analysis = analysis;
             }
             if let Some(clustering) = algorithm.clustering {
+                if clustering != session.algorithm.clustering {
+                    resume_status = resume_status.min(ProcessStatus::Analyzed);
+                }
                 session.algorithm.clustering = clustering;
             }
-            if let Some(s) = status {
-                session.status.process_status = s;
-            }
+            session.status.process_status = resume_status;
+        })
+    }
+
+    /// Removes every output owned by the rendering stage before it is run
+    /// again. Discovery writes fresh metadata into the recreated `samples`
+    /// directory, so fonts removed by a changed font set or weight selection
+    /// cannot survive into analysis.
+    pub fn reset_rendering_outputs(&self) -> Result<()> {
+        let session_dir = self.get_session_dir()?;
+        let samples_dir = session_dir.join("samples");
+        if samples_dir.exists() {
+            fs::remove_dir_all(&samples_dir)?;
+        }
+        fs::create_dir_all(&samples_dir)?;
+        let dendrogram_path = session_dir.join(DENDROGRAM_FILE);
+        if dendrogram_path.exists() {
+            fs::remove_file(dendrogram_path)?;
+        }
+        self.update_session(|session| {
+            session.discovered_fonts.clear();
+            session.status.clusters_amount = 0;
+            session.status.samples_amount = 0;
+            session.status.clustering_stats = Default::default();
         })
     }
 

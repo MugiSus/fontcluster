@@ -180,6 +180,7 @@ const loadLatestSessionId = async () => {
 
 export function useAppEvents() {
   const { t } = useI18n();
+  const activeModelDownloads = new Map<string, string>();
 
   const handleAppUpdateCheck = async (options?: { isManual?: boolean }) => {
     try {
@@ -249,6 +250,82 @@ export function useAppEvents() {
 
     listenWithCleanup<string>('clustering_complete', (event) => {
       console.log('Clustering completed for session:', event.payload);
+    });
+
+    listenWithCleanup<{
+      sessionId: string;
+      modelId: string;
+      totalBytes: number;
+    }>('model_download_started', (event) => {
+      const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
+      activeModelDownloads.set(toastId, event.payload.sessionId);
+      toast.loading(
+        t.jobs.toasts.modelDownloadStarted({ model: event.payload.modelId }),
+        { id: toastId },
+      );
+    });
+
+    listenWithCleanup<{
+      sessionId: string;
+      modelId: string;
+      downloadedBytes: number;
+      totalBytes: number;
+    }>('model_download_progress', (event) => {
+      const percent = event.payload.totalBytes
+        ? Math.min(
+            100,
+            Math.round(
+              (event.payload.downloadedBytes / event.payload.totalBytes) * 100,
+            ),
+          )
+        : 0;
+      toast.loading(
+        t.jobs.toasts.modelDownloadStarted({ model: event.payload.modelId }),
+        {
+          id: `model-download-${event.payload.sessionId}-${event.payload.modelId}`,
+          description: t.jobs.toasts.modelDownloadProgress({
+            percent: String(percent),
+          }),
+        },
+      );
+    });
+
+    listenWithCleanup<{
+      sessionId: string;
+      modelId: string;
+      totalBytes: number;
+    }>('model_download_completed', (event) => {
+      const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
+      activeModelDownloads.delete(toastId);
+      toast.success(
+        t.jobs.toasts.modelDownloadCompleted({
+          model: event.payload.modelId,
+        }),
+        { id: toastId },
+      );
+    });
+
+    listenWithCleanup<{ sessionId: string; modelId: string; error: string }>(
+      'model_download_failed',
+      (event) => {
+        const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
+        activeModelDownloads.delete(toastId);
+        toast.error(
+          t.jobs.toasts.modelDownloadFailed({ model: event.payload.modelId }),
+          {
+            id: toastId,
+            description: event.payload.error,
+          },
+        );
+      },
+    );
+
+    listenWithCleanup<string | null>('jobs_cancelled', (event) => {
+      for (const [toastId, sessionId] of activeModelDownloads) {
+        if (event.payload !== null && event.payload !== sessionId) continue;
+        toast.dismiss(toastId);
+        activeModelDownloads.delete(toastId);
+      }
     });
 
     listenWithCleanup<string>('all_jobs_complete', (event) => {

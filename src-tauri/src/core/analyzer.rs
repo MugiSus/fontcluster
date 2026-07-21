@@ -9,7 +9,7 @@
 
 use crate::commands::progress::progress_events;
 use crate::config::ProgressStage;
-use crate::core::{AppState, EventSink};
+use crate::core::{resolve_model, AppState, EventSink};
 use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
@@ -29,7 +29,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{atomic::Ordering, Mutex};
 
-const MODEL_REPO_DIR: &str = "mobilenet-v4-medium";
 const MODEL_FILE_NAME: &str = "model.onnx";
 const DEFAULT_INPUT_SIZE: u32 = 224;
 const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
@@ -59,15 +58,16 @@ struct BatchResult {
 }
 
 impl Analyzer {
-    /// Locates and loads the bundled ONNX model, returning a ready analyzer.
-    pub fn new() -> Result<Self> {
-        let model_dir = resolve_model_dir()?;
-        let model_path = model_dir.join(MODEL_FILE_NAME);
+    /// Locates and loads the selected installed ONNX model.
+    pub fn new(model_id: &str) -> Result<Self> {
+        let model = resolve_model(model_id)?;
+        let model_path = model.directory.join(MODEL_FILE_NAME);
 
         Ok(Self {
-            session: Mutex::new(load_session(&model_path)?),
+            session: Mutex::new(load_session(&model_path, model_id)?),
             spec: ModelSpec {
                 input_size: DEFAULT_INPUT_SIZE,
+                output_dimensions: model.manifest.inference.output_shape[1],
             },
         })
     }
@@ -81,12 +81,29 @@ impl Analyzer {
     /// unchanged) if the job is cancelled mid-way.
     pub async fn analyze_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
+        let samples_dir = session_dir.join("samples");
         let png_files = collect_sample_paths(session_dir).await?;
 
         println!("🔍 Analyzer: Found {} images to process", png_files.len());
+        // A re-analysis may switch to another 512-dimensional embedding
+        // space. Remove every previous vector first so a failed batch cannot
+        // silently leave a mixture of old and new model outputs.
+        for entry in fs::read_dir(samples_dir)? {
+            let vector_path = entry?.path().join("vector.bin");
+            if vector_path.exists() {
+                fs::remove_file(&vector_path).map_err(|error| {
+                    AppError::Io(format!(
+                        "Failed to remove old feature vector {}: {error}",
+                        vector_path.display()
+                    ))
+                })?;
+            }
+        }
+
         if png_files.is_empty() {
-            println!("⚠️ Analyzer: No images found");
-            return Ok(());
+            return Err(AppError::Processing(
+                "Analysis produced no embeddings because no sample images were rendered".into(),
+            ));
         }
 
         progress_events::reset_progress(events, state, ProgressStage::Analysis);
@@ -103,6 +120,8 @@ impl Analyzer {
         );
 
         let mut pending_progress = 0;
+        let mut processed_total = 0;
+        let mut first_inference_error = None;
         for chunk in png_files.chunks(MODEL_BATCH_SIZE) {
             if state.is_cancelled.load(Ordering::Relaxed) {
                 if pending_progress > 0 {
@@ -144,6 +163,7 @@ impl Analyzer {
             let prepared_count = batch.prepared_images.len();
             match self.process_prepared_images(batch.prepared_images) {
                 Ok(processed_count) => {
+                    processed_total += processed_count;
                     pending_progress += processed_count;
                     if pending_progress >= MODEL_BATCH_SIZE * 4 {
                         progress_events::increase_numerator(
@@ -157,6 +177,9 @@ impl Analyzer {
                 }
                 Err(e) => {
                     println!("❌ Analysis failed for batch: {}", e);
+                    if first_inference_error.is_none() {
+                        first_inference_error = Some(e.to_string());
+                    }
                     progress_events::decrease_denominator(
                         events,
                         state,
@@ -178,6 +201,14 @@ impl Analyzer {
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok(());
+        }
+        if processed_total == 0 {
+            return Err(AppError::Processing(format!(
+                "Analysis produced no embeddings{}",
+                first_inference_error
+                    .map(|error| format!(": {error}"))
+                    .unwrap_or_default()
+            )));
         }
 
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Analyzed)?;
@@ -205,12 +236,12 @@ impl Analyzer {
             .run(inputs![tensor])
             .map_err(|err| AppError::Processing(err.to_string()))?;
 
-        extract_embeddings(&outputs, prepared_images.len())
+        extract_embeddings(&outputs, prepared_images.len(), self.spec.output_dimensions)
     }
 }
 
 /// Builds and commits an ONNX session for the model at `model_path`.
-fn load_session(model_path: &Path) -> Result<Session> {
+fn load_session(model_path: &Path, model_id: &str) -> Result<Session> {
     println!(
         "🚀 Analyzer: loading ONNX model from {}",
         model_path.display()
@@ -227,7 +258,7 @@ fn load_session(model_path: &Path) -> Result<Session> {
         .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
         .map_err(|err| AppError::Processing(err.to_string()))?;
     let cache_dir = AppState::get_model_cache_dir()?
-        .join(MODEL_REPO_DIR)
+        .join(model_id)
         .join("cpu-gpu-low-precision");
     builder = configure_execution_providers(builder, &cache_dir)?;
 
@@ -441,60 +472,14 @@ fn preprocess_images(
 #[derive(Debug, Clone)]
 struct ModelSpec {
     input_size: u32,
-}
-
-/// Finds the directory containing the ONNX model.
-///
-/// Searches development paths, the bundled resources directory (via
-/// `FONTCLUSTER_RESOURCE_DIR` or relative to the executable), and accepts the
-/// first location holding a non-empty `model.onnx`.
-///
-/// `pub(crate)` because model-coupled assets (the clusterer's
-/// `attribute_directions.json`) live beside the model file.
-pub(crate) fn resolve_model_dir() -> Result<PathBuf> {
-    let mut roots = vec![PathBuf::from("src-tauri/models"), PathBuf::from("models")];
-
-    if let Ok(resource_dir) = std::env::var("FONTCLUSTER_RESOURCE_DIR") {
-        roots.push(PathBuf::from(resource_dir).join("models"));
-    }
-
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(exe_dir) = exe.parent() {
-            roots.push(exe_dir.join("../Resources/models"));
-            roots.push(exe_dir.join("models"));
-        }
-    }
-
-    for root in roots {
-        let model_dir = root.join(MODEL_REPO_DIR);
-        let model_path = model_dir.join(MODEL_FILE_NAME);
-        if !model_path.exists() {
-            continue;
-        }
-
-        let metadata = fs::metadata(&model_path).map_err(|e| {
-            AppError::Io(format!(
-                "Failed to read model metadata {}: {}",
-                model_path.display(),
-                e
-            ))
-        })?;
-        if metadata.len() > 0 {
-            return Ok(model_dir);
-        }
-    }
-
-    Err(AppError::Processing(format!(
-        "Could not find {}/{} under src-tauri/models, models, or bundled resources.",
-        MODEL_REPO_DIR, MODEL_FILE_NAME
-    )))
+    output_dimensions: usize,
 }
 
 /// Loads and preprocesses one image into the model's NCHW input tensor.
 ///
 /// The renderer writes a white coverage mask in the PNG alpha channel. This
 /// converts that mask to black ink on a white background, producing the
-/// `[0, 1]` grayscale input expected by the bundled ONNX model.
+/// `[0, 1]` grayscale input expected by the model API.
 fn preprocess_image(path: &Path, spec: &ModelSpec) -> Result<Array4<f32>> {
     let image = image::open(path)
         .map_err(|e| AppError::Image(format!("Failed to open image {}: {}", path.display(), e)))?;
@@ -586,6 +571,7 @@ fn fill_nchw_input(processed: &image::GrayImage, input: &mut Array4<f32>) -> Res
 fn extract_embeddings(
     outputs: &ort::session::SessionOutputs<'_>,
     expected_count: usize,
+    expected_dimensions: usize,
 ) -> Result<Vec<Vec<f32>>> {
     let output = outputs
         .get(PREFERRED_EMBEDDING_OUTPUT_NAME)
@@ -614,6 +600,12 @@ fn extract_embeddings(
         return Err(AppError::Processing(format!(
             "Output '{}' batch size {} is smaller than expected {}",
             PREFERRED_EMBEDDING_OUTPUT_NAME, shape[0], expected_count
+        )));
+    }
+    if shape[1] != expected_dimensions {
+        return Err(AppError::Processing(format!(
+            "Output '{}' has {} features, expected {}",
+            PREFERRED_EMBEDDING_OUTPUT_NAME, shape[1], expected_dimensions
         )));
     }
 

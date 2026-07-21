@@ -40,6 +40,8 @@ export const en = {
     generateNew: 'Generate new graph',
     recalculate: 'Recalculate',
     fonts: 'fonts',
+    model: 'model',
+    modelDownloadRequired: 'Downloads when Generate is pressed',
     textSize: 'text size',
     linkageMethod: 'linkage method',
     preprocessDimensions: 'preprocess dimensions',
@@ -239,6 +241,10 @@ export const en = {
   jobs: {
     toasts: {
       started: 'Job started: "{{text}}"',
+      modelDownloadStarted: 'Downloading model "{{model}}"...',
+      modelDownloadProgress: '{{percent}}% downloaded',
+      modelDownloadCompleted: 'Model "{{model}}" is ready',
+      modelDownloadFailed: 'Failed to download model "{{model}}"',
       completed: 'Job completed successfully!',
       view: 'View',
       failed: 'Job failed: {{error}}',

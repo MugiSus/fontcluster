@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
+/// Default model for new sessions and sessions created before model selection.
+pub const DEFAULT_MODEL_ID: &str = "mobilenet-v4-medium-v1";
+
 /// Text rendered into a sample image when the user has not chosen their own.
 pub const DEFAULT_RENDERING_TEXT: &str = "A";
 /// Font size, in pixels, used for sample rendering by default.
@@ -40,16 +43,35 @@ pub struct SessionConfig {
 
 /// User-tunable parameters that fully determine a session's output.
 ///
-/// Split into the two halves of the pipeline: how samples are rendered and how
-/// the resulting feature vectors are clustered.
+/// Split by pipeline stage: sample rendering, feature extraction, and
+/// clustering.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AlgorithmConfig {
     pub rendering: RenderingConfig,
+    /// Feature-extraction model. Sessions written before model selection use
+    /// [`DEFAULT_MODEL_ID`].
+    #[serde(default)]
+    pub analysis: AnalysisConfig,
     pub clustering: ClusteringConfig,
 }
 
+/// Parameters controlling feature extraction.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AnalysisConfig {
+    /// Stable model identifier declared by its release bundle.
+    pub model_id: String,
+}
+
+impl Default for AnalysisConfig {
+    fn default() -> Self {
+        Self {
+            model_id: DEFAULT_MODEL_ID.to_string(),
+        }
+    }
+}
+
 /// Parameters controlling which fonts are sampled and how they are drawn.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RenderingConfig {
     /// Glyphs rendered into each sample image.
     pub text: String,
@@ -101,7 +123,7 @@ impl Default for FontSet {
 /// `distance_threshold` and `target_cluster_count` are alternative stop
 /// criteria for cutting the dendrogram; a positive `target_cluster_count`
 /// takes precedence (see [`crate::core::clusterer`]).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ClusteringConfig {
     /// Linkage method used to merge clusters.
     pub method: ClusteringMethod,
@@ -174,7 +196,7 @@ impl Default for ClusteringConfig {
 ///
 /// The job pipeline advances strictly through these in order, so the value
 /// also acts as a resume point when re-running an unfinished session.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum ProcessStatus {
     #[default]
@@ -396,6 +418,20 @@ pub enum FontSource {
 pub struct FontData {
     pub meta: FontMetadata,
     pub computed: Option<ComputedData>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn algorithm_config_without_analysis_uses_default_model() {
+        let mut serialized = serde_json::to_value(AlgorithmConfig::default()).unwrap();
+        serialized.as_object_mut().unwrap().remove("analysis");
+
+        let parsed: AlgorithmConfig = serde_json::from_value(serialized).unwrap();
+        assert_eq!(parsed.analysis.model_id, DEFAULT_MODEL_ID);
+    }
 }
 
 impl FontMetadata {

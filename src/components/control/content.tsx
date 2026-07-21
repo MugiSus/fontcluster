@@ -1,6 +1,16 @@
-import { createSignal, onCleanup, Show } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+} from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { toast } from 'solid-sonner';
+import { listen } from '@tauri-apps/api/event';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -15,11 +25,12 @@ import {
   TextFieldInput,
   TextFieldLabel,
 } from '@/components/ui/text-field';
-import { PlusIcon, TypeIcon } from 'lucide-solid';
+import { DownloadIcon, PlusIcon, TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '@/components/weight-selector';
 import { type FontWeight } from '@/types/font';
 import {
   type AlgorithmConfig,
+  type AnalysisOptions,
   type RenderingOptions,
   type ClusteringOptions,
   type ProcessStatus,
@@ -48,6 +59,8 @@ import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
+import { listModels } from '@/lib/models';
+import type { ModelCatalogEntry } from '@/types/model';
 
 // Ordered list of selectable font sets; `system_fonts` stays first so the
 // divider after it (see itemComponent) lands in the right place. Labels are
@@ -139,6 +152,60 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
 export function ControlContent() {
   const { t } = useI18n();
   const fontSetLabel = (fontSet: FontSet) => t.controlPanel.fontSets[fontSet]();
+  const [modelCatalog, { refetch: refetchModels }] = createResource(listModels);
+  const [selectedModelId, setSelectedModelId] = createSignal(
+    appState.session.algorithm.analysis.model_id,
+  );
+
+  createEffect(
+    on(
+      () => appState.session.session_id,
+      () => setSelectedModelId(appState.session.algorithm.analysis.model_id),
+    ),
+  );
+
+  const modelOptions = createMemo<ModelCatalogEntry[]>(() => {
+    const models = modelCatalog()?.models ?? [];
+    const missingIds = [
+      appState.session.algorithm.analysis.model_id,
+      selectedModelId(),
+    ].filter(
+      (id, index, ids) =>
+        ids.indexOf(id) === index && !models.some((model) => model.id === id),
+    );
+    return [
+      ...models,
+      ...missingIds.map(
+        (id): ModelCatalogEntry => ({
+          id,
+          name: id,
+          description: '',
+          downloadSize: 0,
+          availability: 'not_downloaded',
+        }),
+      ),
+    ];
+  });
+  const selectedModel = createMemo<ModelCatalogEntry>(
+    () =>
+      modelOptions().find((model) => model.id === selectedModelId()) ??
+      modelOptions()[0]!,
+  );
+
+  createEffect(() => {
+    const warning = modelCatalog()?.warning;
+    if (warning) console.warn('Failed to refresh model releases:', warning);
+  });
+
+  onMount(() => {
+    const unlistenPromise = listen('model_download_completed', () => {
+      void refetchModels();
+    });
+    onCleanup(async () => {
+      const unlisten = await unlistenPromise;
+      unlisten();
+    });
+  });
 
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
   const clearRunCooldown = debounce(() => {
@@ -164,6 +231,11 @@ export function ControlContent() {
 
     const formdata = new FormData(formRef);
     const rendering = parseRenderingConfig(formdata);
+    const analysis: AnalysisOptions = {
+      model_id:
+        (formdata.get('analysis-model-id') as string) ||
+        appState.session.algorithm.analysis.model_id,
+    };
     const clustering = parseClusteringConfig(formdata);
 
     const sessionId =
@@ -172,14 +244,15 @@ export function ControlContent() {
         ? appState.session.session_id || undefined
         : undefined;
 
-    // Re-rendering is expensive, so steps past 'empty' reuse the existing
-    // render and only re-cluster; a full run (or a restart from 'empty') redoes
-    // both.
-    const shouldRecomputeRendering =
-      options?.override == null || options.override === 'empty';
-    const algorithm: Partial<AlgorithmConfig> = shouldRecomputeRendering
-      ? { rendering, clustering }
-      : { clustering };
+    // Each stage submits only the inputs it owns. The backend remains the
+    // authority that compares them with persisted values and chooses the
+    // earliest invalidated pipeline stage.
+    const algorithm: Partial<AlgorithmConfig> =
+      options?.override === 'analyzed'
+        ? { clustering }
+        : options?.override === 'rendered'
+          ? { analysis, clustering }
+          : { rendering, analysis, clustering };
 
     toast.info(t.jobs.toasts.started({ text: rendering.text }));
 
@@ -278,7 +351,61 @@ export function ControlContent() {
               appState.session.status.process_status !== 'rendered'
             }
             onStepRun={() => handleRun({ override: 'rendered' })}
-          />
+          >
+            <TextProperty label={t.controlPanel.model()} class='mr-1 gap-0.5'>
+              <Select<ModelCatalogEntry>
+                name='analysis-model-id'
+                multiple={false}
+                options={modelOptions()}
+                optionValue='id'
+                optionTextValue='name'
+                disallowEmptySelection
+                value={selectedModel()}
+                onChange={(model) => {
+                  if (model) setSelectedModelId(model.id);
+                }}
+                itemComponent={(props) => (
+                  <SelectItem item={props.item} class='pr-8'>
+                    <span class='flex min-w-0 items-center gap-2'>
+                      <span class='truncate'>{props.item.rawValue.name}</span>
+                      <Show
+                        when={
+                          props.item.rawValue.availability === 'not_downloaded'
+                        }
+                      >
+                        <DownloadIcon
+                          class='size-3.5 shrink-0 text-muted-foreground'
+                          aria-label={t.controlPanel.modelDownloadRequired()}
+                        />
+                      </Show>
+                    </span>
+                  </SelectItem>
+                )}
+              >
+                <SelectHiddenSelect />
+                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                  <SelectValue<ModelCatalogEntry> class='mr-2.5 min-w-0 flex-1 text-right'>
+                    {(state) => (
+                      <span class='flex min-w-0 items-center justify-end gap-1.5'>
+                        <span class='truncate'>
+                          {state.selectedOption().name}
+                        </span>
+                        <Show
+                          when={
+                            state.selectedOption().availability ===
+                            'not_downloaded'
+                          }
+                        >
+                          <DownloadIcon class='size-3.5 shrink-0 text-muted-foreground' />
+                        </Show>
+                      </span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </TextProperty>
+          </ControlPropertySection>
 
           <ControlPropertySection
             title={t.controlPanel.sections.cluster()}

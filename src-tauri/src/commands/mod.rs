@@ -8,12 +8,14 @@
 
 pub mod font;
 pub mod jobs;
+pub mod model;
 pub mod plugin;
 pub mod progress;
 pub mod session;
 
 pub use font::*;
 pub use jobs::*;
+pub use model::*;
 pub use plugin::*;
 pub use progress::*;
 pub use session::*;

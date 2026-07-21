@@ -74,6 +74,3 @@ temp/
 *.njsproj
 *.sln
 *.sw?
-
-# Large model — kept local only on this branch, not committed (too heavy to bundle)
-src-tauri/models/fontclip-vit-b32/
