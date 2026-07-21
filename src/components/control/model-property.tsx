@@ -29,6 +29,10 @@ type ModelPropertyProps = {
   sessionId: string;
 };
 
+type ModelOption = Omit<ModelCatalogEntry, 'availability'> & {
+  availability: ModelCatalogEntry['availability'] | 'unknown';
+};
+
 /**
  * Model catalog adapter and form control for the analysis stage.
  *
@@ -37,7 +41,7 @@ type ModelPropertyProps = {
  * so the download indicator reflects backend-owned availability.
  */
 export function ModelProperty(props: ModelPropertyProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [catalog, { refetch }] = createResource(listModels);
   const [selectedModelId, setSelectedModelId] = createSignal<string>();
 
@@ -48,7 +52,7 @@ export function ModelProperty(props: ModelPropertyProps) {
     ),
   );
 
-  const options = createMemo<ModelCatalogEntry[]>(() => {
+  const options = createMemo<ModelOption[]>(() => {
     const models = catalog()?.models ?? [];
     const selectedId = selectedModelId() ?? props.modelId;
     const missingIds = [props.modelId, selectedId].filter(
@@ -58,17 +62,17 @@ export function ModelProperty(props: ModelPropertyProps) {
     return [
       ...models,
       ...missingIds.map(
-        (id): ModelCatalogEntry => ({
+        (id): ModelOption => ({
           id,
           name: id,
           description: '',
           downloadSize: 0,
-          availability: 'not_downloaded',
+          availability: 'unknown',
         }),
       ),
     ];
   });
-  const selectedModel = createMemo<ModelCatalogEntry>(() => {
+  const selectedModel = createMemo<ModelOption>(() => {
     const selectedId = selectedModelId() ?? props.modelId;
     return options().find((model) => model.id === selectedId) ?? options()[0]!;
   });
@@ -90,7 +94,7 @@ export function ModelProperty(props: ModelPropertyProps) {
 
   return (
     <TextProperty label={t.controlPanel.model()} class='mr-1 gap-0.5'>
-      <Select<ModelCatalogEntry>
+      <Select<ModelOption>
         name='analysis-model-id'
         multiple={false}
         options={options()}
@@ -103,8 +107,10 @@ export function ModelProperty(props: ModelPropertyProps) {
         }}
         itemComponent={(selectProps) => (
           <SelectItem item={selectProps.item} class='pr-8'>
-            <span class='flex min-w-0 items-center gap-2'>
-              <span class='truncate'>{selectProps.item.rawValue.name}</span>
+            <span class='flex w-full min-w-0 items-center gap-2'>
+              <span class='min-w-0 flex-1 truncate'>
+                {selectProps.item.rawValue.name}
+              </span>
               <Show
                 when={
                   selectProps.item.rawValue.availability === 'not_downloaded'
@@ -114,6 +120,14 @@ export function ModelProperty(props: ModelPropertyProps) {
                   class='size-3.5 shrink-0 text-muted-foreground'
                   aria-label={t.controlPanel.modelDownloadRequired()}
                 />
+                <span class='ml-auto shrink-0 text-xs text-muted-foreground'>
+                  {(
+                    selectProps.item.rawValue.downloadSize / 1_000_000
+                  ).toLocaleString(locale(), {
+                    maximumFractionDigits: 1,
+                  })}{' '}
+                  MB
+                </span>
               </Show>
             </span>
           </SelectItem>
@@ -121,7 +135,7 @@ export function ModelProperty(props: ModelPropertyProps) {
       >
         <SelectHiddenSelect />
         <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-          <SelectValue<ModelCatalogEntry> class='mr-2.5 min-w-0 flex-1 text-right'>
+          <SelectValue<ModelOption> class='mr-2.5 min-w-0 flex-1 text-right'>
             {(state) => (
               <span class='flex min-w-0 items-center justify-end gap-1.5'>
                 <span class='truncate'>{state.selectedOption().name}</span>
