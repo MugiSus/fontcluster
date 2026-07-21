@@ -261,7 +261,7 @@ export function useAppEvents() {
       activeModelDownloads.set(toastId, event.payload.sessionId);
       toast.loading(
         t.jobs.toasts.modelDownloadStarted({ model: event.payload.modelId }),
-        { id: toastId },
+        { id: toastId, duration: Infinity },
       );
     });
 
@@ -286,6 +286,7 @@ export function useAppEvents() {
           description: t.jobs.toasts.modelDownloadProgress({
             percent: String(percent),
           }),
+          duration: Infinity,
         },
       );
     });
@@ -297,11 +298,12 @@ export function useAppEvents() {
     }>('model_download_completed', (event) => {
       const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
       activeModelDownloads.delete(toastId);
+      toast.dismiss(toastId);
       toast.success(
         t.jobs.toasts.modelDownloadCompleted({
           model: event.payload.modelId,
         }),
-        { id: toastId },
+        { duration: 5000 },
       );
     });
 
@@ -310,11 +312,12 @@ export function useAppEvents() {
       (event) => {
         const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
         activeModelDownloads.delete(toastId);
+        toast.dismiss(toastId);
         toast.error(
           t.jobs.toasts.modelDownloadFailed({ model: event.payload.modelId }),
           {
-            id: toastId,
             description: event.payload.error,
+            duration: 8000,
           },
         );
       },
