@@ -30,7 +30,7 @@ export const ja: Dictionary = {
     fonts: 'フォント',
     model: 'モデル',
     modelDownloadRequired: '「生成」を押すとダウンロードします',
-    modelParameters: '{{count}}M パラメータ',
+    modelParameters: '{{count}}M params',
     textSize: 'テキストサイズ',
     linkageMethod: '連結法',
     preprocessDimensions: '前処理次元数',
