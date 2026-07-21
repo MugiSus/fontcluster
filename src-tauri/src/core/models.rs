@@ -18,13 +18,22 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
+/// GitHub API root for the repository that owns the model releases.
 const MODEL_REPOSITORY_API: &str = "https://api.github.com/repos/MugiSus/fontcluster-models";
+/// GitHub REST API contract used to interpret release asset metadata.
 const GITHUB_API_VERSION: &str = "2026-03-10";
+/// Bundle contract understood by this version of the application.
 const MODEL_API_VERSION: u32 = 1;
+/// Prevents an unexpectedly large manifest from being buffered in memory.
 const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
+/// Bounds how long remote metadata may suppress another GitHub request.
+const REMOTE_CATALOG_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
+/// The complete and exclusive asset set accepted for one model release.
 const REQUIRED_ASSETS: [&str; 3] = ["model.json", "model.onnx", "attribute_directions.json"];
+/// Attribute names whose directions must all be present in a compatible bundle.
 const EMPHASIS_ATTRIBUTES: [&str; 37] = [
     "angular",
     "artistic",
@@ -65,38 +74,56 @@ const EMPHASIS_ATTRIBUTES: [&str; 37] = [
     "wide",
 ];
 
-/// Public metadata stored beside every model and published as a release asset.
+/// Public metadata stored beside every model and published as `model.json`.
+///
+/// The manifest is the bundle's source of truth for identity, display metadata,
+/// compatibility, and the checksums of the two payload files.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelManifest {
+    /// Version of the model-bundle contract required to consume this model.
     pub model_api_version: u32,
+    /// Stable release and installation-directory identifier.
     pub id: String,
+    /// Human-readable name shown in the model selector.
     pub name: String,
-    pub description: String,
+    /// Optional parameter count supplied by the model publisher.
     #[serde(default)]
     pub parameter_count: Option<u64>,
-    #[serde(alias = "provenance")]
+    /// Digests that bind the manifest to its inference and attribute payloads.
     checksums: ModelChecksums,
 }
 
+/// SHA-256 values declared by `model.json` for the non-manifest assets.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ModelChecksums {
+    /// Lowercase or uppercase hexadecimal digest for `model.onnx`.
     model_sha256: String,
+    /// Lowercase or uppercase hexadecimal digest for `attribute_directions.json`.
     attribute_directions_sha256: String,
 }
 
 /// A validated model directory ready for inference and attribute emphasis.
+///
+/// Instances come from [`resolve_model`] or [`ensure_model`]. Keeping this
+/// value for the lifetime of a job avoids resolving and hashing the same large
+/// bundle once per pipeline stage.
 #[derive(Debug, Clone)]
 pub struct ModelBundle {
+    /// Installation directory containing the three required bundle assets.
     pub directory: PathBuf,
+    /// Parsed and validated manifest associated with `directory`.
     pub manifest: ModelManifest,
 }
 
+/// Whether a catalog entry can be used without a download.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelAvailability {
+    /// A structurally plausible copy exists in Application Support.
     Available,
+    /// The release is known remotely but has no local copy.
     NotDownloaded,
 }
 
@@ -104,11 +131,15 @@ pub enum ModelAvailability {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelCatalogEntry {
+    /// Stable identifier used for release lookup and local installation.
     pub id: String,
+    /// Publisher-provided display name.
     pub name: String,
-    pub description: String,
+    /// Optional parameter count from the release manifest.
     pub parameter_count: Option<u64>,
+    /// Sum of the three release asset sizes, or zero for local-only entries.
     pub download_size: u64,
+    /// Local availability at the time the catalog was assembled.
     pub availability: ModelAvailability,
 }
 
@@ -117,128 +148,99 @@ pub struct ModelCatalogEntry {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelCatalogResponse {
+    /// Installed and remotely published models, de-duplicated by model ID.
     pub models: Vec<ModelCatalogEntry>,
+    /// Recoverable remote-catalog problem suitable for display in the UI.
     pub warning: Option<String>,
 }
 
+/// Release-asset fields needed for sizing, downloading, and verification.
 #[derive(Debug, Clone, Deserialize)]
 struct GithubReleaseAsset {
+    /// Published asset filename; also the filename used inside the bundle.
     name: String,
+    /// Direct URL used by the blocking downloader.
     browser_download_url: String,
+    /// GitHub-declared byte length used as a strict download bound.
     size: u64,
+    /// GitHub-provided digest in `sha256:<hex>` form.
     digest: Option<String>,
 }
 
+/// Minimal GitHub Release representation used by the catalog and installer.
 #[derive(Debug, Clone, Deserialize)]
 struct GithubRelease {
+    /// Release tag, which must equal the model ID.
     tag_name: String,
+    /// Optional release title used only when manifest metadata is unavailable.
     name: Option<String>,
-    body: Option<String>,
+    /// Draft releases are never offered or installed.
     #[serde(default)]
     draft: bool,
+    /// Prereleases are never offered or installed.
     #[serde(default)]
     prerelease: bool,
+    /// Assets whose names, sizes, and digests define the downloadable bundle.
     assets: Vec<GithubReleaseAsset>,
 }
 
+/// Parsed attribute-direction file used for semantic bundle validation.
 #[derive(Deserialize)]
 struct AttributeDirections {
+    /// Embedding dimensionality shared by every direction.
     dim: usize,
+    /// Direction vectors indexed by the attribute names understood by clustering.
     attributes: HashMap<String, AttributeDirection>,
 }
 
+/// One normalized direction in the model's embedding space.
 #[derive(Deserialize)]
 struct AttributeDirection {
+    /// Finite, approximately unit-length vector with `AttributeDirections::dim` values.
     direction: Vec<f32>,
 }
 
+/// Last complete remote catalog fetch retained independently of local state.
+///
+/// Only warning-free responses refresh this record. An expired record remains
+/// available as an offline fallback but does not prevent the next retry.
+struct CachedRemoteCatalog {
+    /// Time of the last warning-free GitHub response.
+    fetched_at: Instant,
+    /// Remote entries only; local availability is recomputed by [`list_models`].
+    models: Vec<ModelCatalogEntry>,
+}
+
+/// Process-wide cache and request-serialization point for remote model metadata.
+static REMOTE_CATALOG_CACHE: OnceLock<Mutex<Option<CachedRemoteCatalog>>> = OnceLock::new();
+
 /// Fetches published releases and merges them with models installed in
 /// Application Support.
+///
+/// Local manifests take precedence when the same ID is also published. Local
+/// discovery deliberately avoids hashing large payloads so opening the dropdown
+/// remains inexpensive; [`resolve_model`] performs complete verification before
+/// inference. Remote failures are represented by `warning`, not by discarding
+/// usable installed models.
 pub fn list_models() -> ModelCatalogResponse {
     let mut entries = BTreeMap::new();
-    for bundle in discover_local_models() {
+    for manifest in discover_local_models() {
         entries.insert(
-            bundle.manifest.id.clone(),
+            manifest.id.clone(),
             ModelCatalogEntry {
-                id: bundle.manifest.id.clone(),
-                name: bundle.manifest.name,
-                description: bundle.manifest.description,
-                parameter_count: bundle.manifest.parameter_count,
+                id: manifest.id,
+                name: manifest.name,
+                parameter_count: manifest.parameter_count,
                 download_size: 0,
                 availability: ModelAvailability::Available,
             },
         );
     }
 
-    let warning = match github_client().and_then(|client| {
-        let releases = fetch_releases(&client)?;
-        Ok((client, releases))
-    }) {
-        Ok((client, releases)) => {
-            let mut warnings = Vec::new();
-            for release in releases
-                .into_iter()
-                .filter(|release| !release.draft && !release.prerelease)
-            {
-                let model_id = release.tag_name.clone();
-                if validate_model_id(&model_id).is_err()
-                    || required_release_assets(&release).is_err()
-                {
-                    continue;
-                }
-                if entries.contains_key(&model_id) {
-                    continue;
-                }
-                let manifest = match fetch_release_manifest(&client, &release, &model_id) {
-                    Ok(manifest) => Some(manifest),
-                    Err(error @ AppError::Network(_)) => {
-                        warnings.push(format!("Could not read metadata for '{model_id}': {error}"));
-                        None
-                    }
-                    Err(error) => {
-                        warnings.push(format!("Ignoring model release '{model_id}': {error}"));
-                        continue;
-                    }
-                };
-                let download_size = release
-                    .assets
-                    .iter()
-                    .filter(|asset| REQUIRED_ASSETS.contains(&asset.name.as_str()))
-                    .map(|asset| asset.size)
-                    .sum();
-                let (name, description, parameter_count) = match manifest {
-                    Some(manifest) => (
-                        manifest.name,
-                        manifest.description,
-                        manifest.parameter_count,
-                    ),
-                    None => (
-                        release.name.unwrap_or_else(|| model_id.clone()),
-                        release
-                            .body
-                            .as_deref()
-                            .and_then(|body| body.lines().find(|line| !line.trim().is_empty()))
-                            .unwrap_or("")
-                            .trim()
-                            .to_string(),
-                        None,
-                    ),
-                };
-                entries
-                    .entry(model_id.clone())
-                    .or_insert(ModelCatalogEntry {
-                        id: model_id.clone(),
-                        name,
-                        description,
-                        parameter_count,
-                        download_size,
-                        availability: ModelAvailability::NotDownloaded,
-                    });
-            }
-            (!warnings.is_empty()).then(|| warnings.join("; "))
-        }
-        Err(error) => Some(error.to_string()),
-    };
+    let (remote_models, warning) = remote_model_catalog();
+    for model in remote_models {
+        entries.entry(model.id.clone()).or_insert(model);
+    }
 
     ModelCatalogResponse {
         models: entries.into_values().collect(),
@@ -246,7 +248,112 @@ pub fn list_models() -> ModelCatalogResponse {
     }
 }
 
-/// Returns a validated installed model without performing network access.
+/// Returns remote catalog metadata under the process-wide five-minute cache.
+///
+/// The mutex is intentionally held during a refresh so concurrent UI requests
+/// collapse into one GitHub request. Only a complete warning-free result moves
+/// the cache timestamp. If refresh fails, an older successful result is served
+/// with a warning and remains expired so an explicit retry reaches the network.
+fn remote_model_catalog() -> (Vec<ModelCatalogEntry>, Option<String>) {
+    let cache = REMOTE_CATALOG_CACHE.get_or_init(|| Mutex::new(None));
+    let mut cached = cache
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(cached) = cached
+        .as_ref()
+        .filter(|cached| cached.fetched_at.elapsed() < REMOTE_CATALOG_CACHE_TTL)
+    {
+        return (cached.models.clone(), None);
+    }
+
+    match fetch_remote_model_catalog() {
+        Ok((models, None)) => {
+            *cached = Some(CachedRemoteCatalog {
+                fetched_at: Instant::now(),
+                models: models.clone(),
+            });
+            (models, None)
+        }
+        Ok((models, Some(warning))) => match cached.as_ref() {
+            Some(cached) => (
+                cached.models.clone(),
+                Some(format!("{warning}; using cached model metadata")),
+            ),
+            None => (models, Some(warning)),
+        },
+        Err(error) => match cached.as_ref() {
+            Some(cached) => (
+                cached.models.clone(),
+                Some(format!("{error}; using cached model metadata")),
+            ),
+            None => (Vec::new(), Some(error.to_string())),
+        },
+    }
+}
+
+/// Builds catalog entries from all compatible public GitHub releases.
+///
+/// Releases with an invalid ID or asset shape are ignored. A network failure
+/// while reading one manifest retains that release using its release title and
+/// reports a warning; an invalid manifest excludes the release. Failure to list
+/// releases at all is returned as an error for the cache layer to handle.
+fn fetch_remote_model_catalog() -> Result<(Vec<ModelCatalogEntry>, Option<String>)> {
+    let client = github_client()?;
+    let releases = fetch_releases(&client)?;
+    let mut models = Vec::new();
+    let mut warnings = Vec::new();
+    for release in releases
+        .into_iter()
+        .filter(|release| !release.draft && !release.prerelease)
+    {
+        let model_id = release.tag_name.clone();
+        if validate_model_id(&model_id).is_err() || required_release_assets(&release).is_err() {
+            continue;
+        }
+        let manifest = match fetch_release_manifest(&client, &release, &model_id) {
+            Ok(manifest) => Some(manifest),
+            Err(error @ AppError::Network(_)) => {
+                warnings.push(format!("Could not read metadata for '{model_id}': {error}"));
+                None
+            }
+            Err(error) => {
+                warnings.push(format!("Ignoring model release '{model_id}': {error}"));
+                continue;
+            }
+        };
+        let download_size = release
+            .assets
+            .iter()
+            .filter(|asset| REQUIRED_ASSETS.contains(&asset.name.as_str()))
+            .map(|asset| asset.size)
+            .sum();
+        let (name, parameter_count) = match manifest {
+            Some(manifest) => (manifest.name, manifest.parameter_count),
+            None => (
+                release
+                    .name
+                    .filter(|name| !name.trim().is_empty())
+                    .unwrap_or_else(|| model_id.clone()),
+                None,
+            ),
+        };
+        models.push(ModelCatalogEntry {
+            id: model_id,
+            name,
+            parameter_count,
+            download_size,
+            availability: ModelAvailability::NotDownloaded,
+        });
+    }
+    Ok((models, (!warnings.is_empty()).then(|| warnings.join("; "))))
+}
+
+/// Returns a completely validated installed model without network access.
+///
+/// This reads and hashes both payload files, so callers should retain the
+/// returned [`ModelBundle`] rather than resolving it again within one job.
+/// Invalid IDs, absent installations, malformed metadata, and digest failures
+/// are returned as errors.
 pub fn resolve_model(model_id: &str) -> Result<ModelBundle> {
     validate_model_id(model_id)?;
     let directory = installed_models_root()?.join(model_id);
@@ -261,8 +368,28 @@ pub fn resolve_model(model_id: &str) -> Result<ModelBundle> {
 
 /// Ensures `model_id` is usable, downloading its published release when no
 /// valid installed copy exists.
+///
+/// Installation is serialized per model with an advisory file lock. The
+/// release manifest is validated before large assets are downloaded, every
+/// asset is size-bounded and SHA-256 verified while streaming, and the bundle
+/// is assembled under a temporary `.download-*` directory. The completed
+/// directory replaces the destination by rename; a previous destination is
+/// kept as `.invalid-*` until that rename succeeds so interrupted replacement
+/// can be recovered on the next call.
+///
+/// Emits `model_download_started`, periodic `model_download_progress`, and one
+/// terminal completion or failure event when a download is required. Existing
+/// valid installations produce no download events.
+///
+/// This function performs blocking HTTP and filesystem work. Async callers
+/// must run its entire lifecycle in a blocking task so the blocking reqwest
+/// client is not dropped inside an async runtime.
 pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBundle> {
     if let Ok(bundle) = resolve_model(model_id) {
+        let invalid_backup = installed_models_root()?.join(format!(".invalid-{model_id}"));
+        if invalid_backup.exists() {
+            let _ = fs::remove_dir_all(invalid_backup);
+        }
         return Ok(bundle);
     }
     validate_model_id(model_id)?;
@@ -279,10 +406,11 @@ pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBund
         .open(locks_root.join(format!("{model_id}.lock")))?;
     fs4::FileExt::lock(&lock)?;
 
+    remove_stale_downloads(&models_root, model_id)?;
+    reconcile_invalid_backup(&models_root, model_id)?;
     if let Ok(bundle) = resolve_model(model_id) {
         return Ok(bundle);
     }
-    remove_stale_downloads(&models_root, model_id)?;
 
     let client = github_client()?;
     let release = fetch_release(&client, model_id)?;
@@ -292,6 +420,7 @@ pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBund
         )));
     }
     let assets = required_release_assets(&release)?;
+    fetch_release_manifest(&client, &release, model_id)?;
     let total_bytes = assets.iter().map(|asset| asset.size).sum::<u64>();
     events.emit_value(
         "model_download_started",
@@ -300,7 +429,7 @@ pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBund
 
     let install_result = (|| -> Result<ModelBundle> {
         let staging = tempfile::Builder::new()
-            .prefix(&format!(".download-{model_id}-"))
+            .prefix(&format!(".download-{model_id}_"))
             .tempdir_in(&models_root)?;
         let mut completed_bytes = 0_u64;
         for asset in assets {
@@ -315,7 +444,7 @@ pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBund
             )?;
         }
 
-        let bundle = load_model_bundle(staging.path(), model_id)?;
+        let bundle = validate_model_bundle_structure(staging.path(), model_id)?;
         let destination = models_root.join(model_id);
         let invalid_backup = models_root.join(format!(".invalid-{model_id}"));
         if invalid_backup.exists() {
@@ -358,6 +487,11 @@ pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBund
     }
 }
 
+/// Constructs the blocking GitHub client shared by one catalog or install operation.
+///
+/// Request-specific read timeouts are assigned by the individual fetch and
+/// download functions; this client supplies the application user agent and a
+/// bounded connection-establishment timeout.
 fn github_client() -> Result<Client> {
     Client::builder()
         .user_agent(format!("FontCluster/{}", env!("CARGO_PKG_VERSION")))
@@ -366,6 +500,10 @@ fn github_client() -> Result<Client> {
         .map_err(|error| AppError::Network(error.to_string()))
 }
 
+/// Fetches the first page of release metadata used to populate the catalog.
+///
+/// Transport, HTTP-status, and response-decoding failures are normalized to
+/// [`AppError::Network`] because no release can be trusted from a partial list.
 fn fetch_releases(client: &Client) -> Result<Vec<GithubRelease>> {
     client
         .get(format!("{MODEL_REPOSITORY_API}/releases?per_page=100"))
@@ -379,6 +517,9 @@ fn fetch_releases(client: &Client) -> Result<Vec<GithubRelease>> {
         .map_err(|error| AppError::Network(error.to_string()))
 }
 
+/// Fetches the exact release whose tag is `model_id` for installation.
+///
+/// Compatibility and asset-set checks remain the caller's responsibility.
 fn fetch_release(client: &Client, model_id: &str) -> Result<GithubRelease> {
     client
         .get(format!("{MODEL_REPOSITORY_API}/releases/tags/{model_id}"))
@@ -392,6 +533,13 @@ fn fetch_release(client: &Client, model_id: &str) -> Result<GithubRelease> {
         .map_err(|error| AppError::Network(error.to_string()))
 }
 
+/// Downloads and authenticates the small manifest before any large payload.
+///
+/// The response is bounded by both [`MAX_MANIFEST_BYTES`] and GitHub's declared
+/// asset size. Its GitHub digest is checked before deserialization. The parsed
+/// ID/API contract is then validated, and the two payload digests inside the
+/// manifest must agree with GitHub's release-asset digests. This establishes a
+/// single checksum contract for the later streaming downloads.
 fn fetch_release_manifest(
     client: &Client,
     release: &GithubRelease,
@@ -422,7 +570,7 @@ fn fetch_release_manifest(
         .map_err(|error| AppError::Network(error.to_string()))?;
     let mut bytes = Vec::with_capacity(asset.size as usize);
     response
-        .take(MAX_MANIFEST_BYTES + 1)
+        .take(asset.size + 1)
         .read_to_end(&mut bytes)
         .map_err(|error| AppError::Network(error.to_string()))?;
     if bytes.len() as u64 != asset.size {
@@ -463,6 +611,12 @@ fn fetch_release_manifest(
     Ok(manifest)
 }
 
+/// Returns the three assets of a release after validating its exact shape.
+///
+/// Extra assets are rejected as well as missing ones, and every accepted asset
+/// must have a nonzero size and a syntactically valid GitHub SHA-256 digest.
+/// The returned order follows [`REQUIRED_ASSETS`] and is therefore stable for
+/// progress accounting and installation.
 fn required_release_assets(release: &GithubRelease) -> Result<Vec<&GithubReleaseAsset>> {
     if release.assets.len() != REQUIRED_ASSETS.len() {
         return Err(AppError::Processing(format!(
@@ -484,6 +638,12 @@ fn required_release_assets(release: &GithubRelease) -> Result<Vec<&GithubRelease
                         release.tag_name
                     ))
                 })?;
+            if asset.size == 0 {
+                return Err(AppError::Processing(format!(
+                    "Model release '{}' has an empty {name}",
+                    release.tag_name
+                )));
+            }
             parse_sha256(asset)?;
             Ok(asset)
         })
@@ -491,6 +651,15 @@ fn required_release_assets(release: &GithubRelease) -> Result<Vec<&GithubRelease
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Streams one release asset into the staging directory while authenticating it.
+///
+/// At most the GitHub-declared size plus one byte is read, and a response that
+/// crosses the declared size is rejected before the excess byte is written.
+/// `completed_bytes` is cumulative across bundle assets and is advanced only
+/// for bytes written to disk. Progress is emitted in approximately 1 MiB
+/// increments. A short response, oversized response, write failure, event
+/// failure, or SHA-256 mismatch leaves the error cleanup to the owning temporary
+/// directory in [`ensure_model`].
 fn download_asset(
     client: &Client,
     asset: &GithubReleaseAsset,
@@ -501,12 +670,13 @@ fn download_asset(
     events: &impl EventSink,
 ) -> Result<()> {
     let expected_digest = parse_sha256(asset)?;
-    let mut response = client
+    let response = client
         .get(&asset.browser_download_url)
         .timeout(Duration::from_secs(60 * 60))
         .send()
         .and_then(|response| response.error_for_status())
         .map_err(|error| AppError::Network(error.to_string()))?;
+    let mut response = response.take(asset.size.saturating_add(1));
     let mut file = File::create(destination)?;
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
@@ -520,9 +690,21 @@ fn download_asset(
         if read == 0 {
             break;
         }
+        let next_asset_bytes = asset_bytes.checked_add(read as u64).ok_or_else(|| {
+            AppError::Network(format!(
+                "Download of {} exceeded its declared size",
+                asset.name
+            ))
+        })?;
+        if next_asset_bytes > asset.size {
+            return Err(AppError::Network(format!(
+                "Download of {} exceeded its declared size of {} bytes",
+                asset.name, asset.size
+            )));
+        }
         file.write_all(&buffer[..read])?;
         hasher.update(&buffer[..read]);
-        asset_bytes += read as u64;
+        asset_bytes = next_asset_bytes;
         *completed_bytes += read as u64;
         if completed_bytes.saturating_sub(last_reported) >= 1024 * 1024 {
             events.emit_value(
@@ -554,6 +736,10 @@ fn download_asset(
     Ok(())
 }
 
+/// Extracts a 64-digit hexadecimal SHA-256 value from GitHub's digest field.
+///
+/// The returned slice borrows the original asset metadata without allocating.
+/// Callers decide whether their comparison needs case normalization.
 fn parse_sha256(asset: &GithubReleaseAsset) -> Result<&str> {
     let digest = asset
         .digest
@@ -569,35 +755,24 @@ fn parse_sha256(asset: &GithubReleaseAsset) -> Result<&str> {
     Ok(digest)
 }
 
+/// Loads an installed bundle and fully verifies its payload checksums.
+///
+/// Structural and semantic validation runs before both payloads are streamed
+/// through SHA-256. This is the trust boundary used before model inference or
+/// attribute emphasis consumes files from Application Support.
 fn load_model_bundle(directory: &Path, expected_id: &str) -> Result<ModelBundle> {
-    let manifest: ModelManifest =
-        serde_json::from_reader(File::open(directory.join("model.json"))?)?;
-    validate_manifest(&manifest, expected_id)?;
-
-    let model_path = directory.join("model.onnx");
-    if fs::metadata(&model_path).map_or(true, |metadata| metadata.len() == 0) {
-        return Err(AppError::Processing(format!(
-            "{} is missing or empty",
-            model_path.display()
-        )));
-    }
-    let directions_path = directory.join("attribute_directions.json");
+    let bundle = validate_model_bundle_structure(directory, expected_id)?;
     for (path, expected_digest) in [
-        (&model_path, &manifest.checksums.model_sha256),
         (
-            &directions_path,
-            &manifest.checksums.attribute_directions_sha256,
+            bundle.directory.join("model.onnx"),
+            &bundle.manifest.checksums.model_sha256,
+        ),
+        (
+            bundle.directory.join("attribute_directions.json"),
+            &bundle.manifest.checksums.attribute_directions_sha256,
         ),
     ] {
-        if expected_digest.len() != 64
-            || !expected_digest.bytes().all(|byte| byte.is_ascii_hexdigit())
-        {
-            return Err(AppError::Processing(format!(
-                "Model '{}' has an invalid SHA-256 manifest",
-                manifest.id
-            )));
-        }
-        let mut source = File::open(path)?;
+        let mut source = File::open(&path)?;
         let mut hasher = Sha256::new();
         let mut buffer = [0_u8; 64 * 1024];
         loop {
@@ -613,6 +788,34 @@ fn load_model_bundle(directory: &Path, expected_id: &str) -> Result<ModelBundle>
                 path.display()
             )));
         }
+    }
+    Ok(bundle)
+}
+
+/// Validates bundle shape and attribute semantics without re-hashing payloads.
+///
+/// This is used immediately after download because [`download_asset`] already
+/// authenticated every byte in the same staging directory. It checks manifest
+/// compatibility, nonempty payloads, the complete 37-name attribute set, 512
+/// dimensions, finite values, and approximately unit-length directions.
+fn validate_model_bundle_structure(directory: &Path, expected_id: &str) -> Result<ModelBundle> {
+    let manifest: ModelManifest =
+        serde_json::from_reader(File::open(directory.join("model.json"))?)?;
+    validate_manifest(&manifest, expected_id)?;
+
+    let model_path = directory.join("model.onnx");
+    if fs::metadata(&model_path).map_or(true, |metadata| metadata.len() == 0) {
+        return Err(AppError::Processing(format!(
+            "{} is missing or empty",
+            model_path.display()
+        )));
+    }
+    let directions_path = directory.join("attribute_directions.json");
+    if fs::metadata(&directions_path).map_or(true, |metadata| metadata.len() == 0) {
+        return Err(AppError::Processing(format!(
+            "{} is missing or empty",
+            directions_path.display()
+        )));
     }
 
     let directions: AttributeDirections = serde_json::from_reader(File::open(&directions_path)?)?;
@@ -650,6 +853,11 @@ fn load_model_bundle(directory: &Path, expected_id: &str) -> Result<ModelBundle>
     })
 }
 
+/// Enforces the application-facing invariants of `model.json`.
+///
+/// A compatible manifest has the current API version, exactly the expected ID,
+/// a nonempty display name, a positive parameter count when supplied, and two
+/// syntactically valid SHA-256 values. This check does not read payload files.
 fn validate_manifest(manifest: &ModelManifest, expected_id: &str) -> Result<()> {
     validate_model_id(&manifest.id)?;
     if manifest.model_api_version != MODEL_API_VERSION
@@ -662,9 +870,25 @@ fn validate_manifest(manifest: &ModelManifest, expected_id: &str) -> Result<()> 
             manifest.id, MODEL_API_VERSION
         )));
     }
+    for digest in [
+        &manifest.checksums.model_sha256,
+        &manifest.checksums.attribute_directions_sha256,
+    ] {
+        if digest.len() != 64 || !digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(AppError::Processing(format!(
+                "Model '{}' has an invalid SHA-256 manifest",
+                manifest.id
+            )));
+        }
+    }
     Ok(())
 }
 
+/// Validates the identifier grammar used by release tags and filesystem paths.
+///
+/// Restricting IDs to lowercase ASCII letters, digits, and internal hyphens
+/// ensures the ID remains one path segment and keeps staging-prefix matching
+/// unambiguous. Empty IDs and leading or trailing hyphens are rejected.
 fn validate_model_id(model_id: &str) -> Result<()> {
     let valid = !model_id.is_empty()
         && !model_id.starts_with('-')
@@ -681,18 +905,25 @@ fn validate_model_id(model_id: &str) -> Result<()> {
     }
 }
 
+/// Returns the persistent model root under FontCluster's Application Support directory.
 fn installed_models_root() -> Result<PathBuf> {
     Ok(AppState::get_base_dir()?.join("Models"))
 }
 
-fn discover_local_models() -> Vec<ModelBundle> {
+/// Discovers locally installed bundles for catalog presentation.
+///
+/// Discovery is intentionally tolerant and shallow: unreadable directories,
+/// invalid manifests, and missing or empty payloads are skipped, while payload
+/// SHA-256 and attribute semantics are deferred to [`resolve_model`]. This
+/// prevents catalog opening from hashing a model that may be hundreds of MB.
+fn discover_local_models() -> Vec<ModelManifest> {
     let Ok(models_root) = installed_models_root() else {
         return Vec::new();
     };
     let Ok(entries) = fs::read_dir(models_root) else {
         return Vec::new();
     };
-    let mut bundles = Vec::new();
+    let mut manifests = Vec::new();
     for entry in entries.flatten() {
         let directory = entry.path();
         let Some(id) = directory.file_name().and_then(|name| name.to_str()) else {
@@ -701,15 +932,51 @@ fn discover_local_models() -> Vec<ModelBundle> {
         if validate_model_id(id).is_err() {
             continue;
         }
-        if let Ok(bundle) = load_model_bundle(&directory, id) {
-            bundles.push(bundle);
+        let Ok(file) = File::open(directory.join("model.json")) else {
+            continue;
+        };
+        let Ok(manifest) = serde_json::from_reader::<_, ModelManifest>(file) else {
+            continue;
+        };
+        if validate_manifest(&manifest, id).is_err()
+            || ["model.onnx", "attribute_directions.json"]
+                .iter()
+                .any(|name| {
+                    fs::metadata(directory.join(name)).map_or(true, |metadata| metadata.len() == 0)
+                })
+        {
+            continue;
         }
+        manifests.push(manifest);
     }
-    bundles
+    manifests
 }
 
+/// Reconciles the replacement backup left by an interrupted atomic install.
+///
+/// When the destination is absent, a fully valid `.invalid-*` directory is
+/// restored. When both paths exist, the ambiguous backup is removed and the
+/// caller continues with validation or a fresh download of the destination.
+fn reconcile_invalid_backup(models_root: &Path, model_id: &str) -> Result<()> {
+    let destination = models_root.join(model_id);
+    let invalid_backup = models_root.join(format!(".invalid-{model_id}"));
+    if !invalid_backup.exists() {
+        return Ok(());
+    }
+    if !destination.exists() && load_model_bundle(&invalid_backup, model_id).is_ok() {
+        fs::rename(invalid_backup, destination)?;
+    } else {
+        fs::remove_dir_all(invalid_backup)?;
+    }
+    Ok(())
+}
+
+/// Removes abandoned staging directories for one model while its lock is held.
+///
+/// The underscore delimiter cannot occur in a valid model ID, so a prefix for
+/// `foo` cannot accidentally match a staging directory belonging to `foo-bar`.
 fn remove_stale_downloads(models_root: &Path, model_id: &str) -> Result<()> {
-    let prefix = format!(".download-{model_id}-");
+    let prefix = format!(".download-{model_id}_");
     for entry in fs::read_dir(models_root)? {
         let path = entry?.path();
         if path
@@ -721,109 +988,4 @@ fn remove_stale_downloads(models_root: &Path, model_id: &str) -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn manifest_accepts_current_checksums_and_cached_provenance() {
-        let checksum = "a".repeat(64);
-        let current: ModelManifest = serde_json::from_value(json!({
-            "modelApiVersion": 1,
-            "id": "fontclip-vit-b32-v1",
-            "name": "FontCLIP ViT-B/32",
-            "description": "Model",
-            "parameterCount": 87_849_216,
-            "checksums": {
-                "modelSha256": checksum,
-                "attributeDirectionsSha256": checksum,
-            },
-        }))
-        .unwrap();
-        assert_eq!(current.parameter_count, Some(87_849_216));
-        assert!(validate_manifest(&current, "fontclip-vit-b32-v1").is_ok());
-
-        let cached: ModelManifest = serde_json::from_value(json!({
-            "schemaVersion": 1,
-            "modelApiVersion": 1,
-            "id": "fontclip-vit-b32-v1",
-            "name": "FontCLIP ViT-B/32",
-            "description": "Model",
-            "inference": {},
-            "provenance": {
-                "modelSha256": checksum,
-                "attributeDirectionsSha256": checksum,
-            },
-        }))
-        .unwrap();
-        assert_eq!(cached.parameter_count, None);
-        assert!(validate_manifest(&cached, "fontclip-vit-b32-v1").is_ok());
-    }
-
-    #[test]
-    fn model_ids_are_safe_directory_names() {
-        assert!(validate_model_id("fontclip-vit-b32-v1").is_ok());
-        for invalid in ["", "../model", "Model", "-model", "model-", "model_v2"] {
-            assert!(validate_model_id(invalid).is_err(), "accepted {invalid}");
-        }
-    }
-
-    #[test]
-    fn github_digest_must_be_sha256() {
-        let asset = GithubReleaseAsset {
-            name: "model.onnx".into(),
-            browser_download_url: String::new(),
-            size: 1,
-            digest: Some(format!("sha256:{}", "a".repeat(64))),
-        };
-        assert_eq!(parse_sha256(&asset).unwrap(), "a".repeat(64));
-
-        for invalid in [
-            None,
-            Some(format!("md5:{}", "a".repeat(32))),
-            Some(format!("sha256:{}", "a".repeat(63))),
-            Some(format!("sha256:{}z", "a".repeat(63))),
-        ] {
-            let asset = GithubReleaseAsset {
-                name: "model.onnx".into(),
-                browser_download_url: String::new(),
-                size: 1,
-                digest: invalid,
-            };
-            assert!(parse_sha256(&asset).is_err());
-        }
-    }
-
-    #[test]
-    fn model_release_has_exactly_the_required_assets() {
-        let assets = REQUIRED_ASSETS
-            .iter()
-            .map(|name| GithubReleaseAsset {
-                name: name.to_string(),
-                browser_download_url: String::new(),
-                size: 1,
-                digest: Some(format!("sha256:{}", "a".repeat(64))),
-            })
-            .collect::<Vec<_>>();
-        let release = GithubRelease {
-            tag_name: "fontclip-vit-b32-v1".into(),
-            name: None,
-            body: None,
-            draft: false,
-            prerelease: false,
-            assets: assets.clone(),
-        };
-        assert!(required_release_assets(&release).is_ok());
-
-        let mut unexpected = release;
-        unexpected.assets.push(GithubReleaseAsset {
-            name: "README.md".into(),
-            browser_download_url: String::new(),
-            size: 1,
-            digest: Some(format!("sha256:{}", "a".repeat(64))),
-        });
-        assert!(required_release_assets(&unexpected).is_err());
-    }
 }

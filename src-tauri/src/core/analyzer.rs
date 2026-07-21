@@ -9,7 +9,7 @@
 
 use crate::commands::progress::progress_events;
 use crate::config::ProgressStage;
-use crate::core::{resolve_model, AppState, EventSink};
+use crate::core::{AppState, EventSink, ModelBundle};
 use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
@@ -59,9 +59,14 @@ struct BatchResult {
 }
 
 impl Analyzer {
-    /// Locates and loads the selected installed ONNX model.
-    pub fn new(model_id: &str) -> Result<Self> {
-        let model = resolve_model(model_id)?;
+    /// Loads the selected ONNX model from an already validated bundle.
+    ///
+    /// Bundle resolution, download, and checksum verification belong to the
+    /// job preparation stage. Accepting [`ModelBundle`] here keeps inference
+    /// focused on model execution and prevents a second full-file checksum of
+    /// large ONNX assets when analysis begins.
+    pub fn new(model: &ModelBundle) -> Result<Self> {
+        let model_id = &model.manifest.id;
         let model_path = model.directory.join(MODEL_FILE_NAME);
 
         Ok(Self {

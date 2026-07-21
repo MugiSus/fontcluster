@@ -136,6 +136,14 @@ export const updateSessionTitle = async (
   }
 };
 
+/**
+ * Submits a stage-scoped algorithm patch to the backend pipeline.
+ *
+ * The backend owns config invalidation and any required model installation;
+ * this action only forwards the request and refreshes the active session after
+ * a successful in-place run. Errors stay rejected so the submitting control
+ * remains the single owner of the terminal failure toast.
+ */
 export const runProcessingJobs = async (
   algorithm: Partial<AlgorithmConfig>,
   sessionId?: string,
@@ -178,6 +186,16 @@ const loadLatestSessionId = async () => {
   }
 };
 
+/**
+ * Registers application-wide backend event subscriptions at the app root.
+ *
+ * Model download events update one indefinite toast per session/model pair:
+ * start and progress reuse its ID, completion replaces it with a finite
+ * success toast, and cancellation removes it. A download failure only removes
+ * the progress toast because the action that awaited the job owns the final
+ * localized error. The tracking map supports cancellation cleanup; it is not
+ * a second source of truth for model availability.
+ */
 export function useAppEvents() {
   const { t } = useI18n();
   const activeModelDownloads = new Map<string, string>();
@@ -307,19 +325,12 @@ export function useAppEvents() {
       );
     });
 
-    listenWithCleanup<{ sessionId: string; modelId: string; error: string }>(
+    listenWithCleanup<{ sessionId: string; modelId: string }>(
       'model_download_failed',
       (event) => {
         const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
         activeModelDownloads.delete(toastId);
         toast.dismiss(toastId);
-        toast.error(
-          t.jobs.toasts.modelDownloadFailed({ model: event.payload.modelId }),
-          {
-            description: event.payload.error,
-            duration: 8000,
-          },
-        );
       },
     );
 

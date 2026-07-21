@@ -51,9 +51,11 @@ import { ModelProperty } from './model-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
 
-// Ordered list of selectable font sets; `system_fonts` stays first so the
-// divider after it (see itemComponent) lands in the right place. Labels are
-// resolved through the dictionary at render time via `fontSetLabel`.
+/**
+ * Ordered selectable font sets. `system_fonts` stays first so the divider in
+ * the item renderer remains at the boundary between local and remote sets.
+ * Labels are resolved from the active locale at render time.
+ */
 const FONT_SET_KEYS: FontSet[] = [
   'system_fonts',
   'google_fonts_popular100',
@@ -65,8 +67,7 @@ const FONT_SET_KEYS: FontSet[] = [
   'google_fonts_all',
 ];
 
-// Hierarchical clustering linkage names are algorithm proper nouns; kept in
-// English across locales.
+/** Algorithm proper names shared across locales. */
 const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
   single: 'Single',
   complete: 'Complete',
@@ -138,6 +139,16 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
   };
 }
 
+/**
+ * Renders the algorithm form and adapts its draft inputs into stage-owned
+ * configuration patches.
+ *
+ * This component owns only ephemeral form state and the submit cooldown. The
+ * persisted algorithm, pipeline invalidation and model installation remain
+ * backend responsibilities. Full and analysis submissions wait until the
+ * catalog can identify the draft model as installed or downloadable; a
+ * clustering-only resume does not consume that draft analysis selection.
+ */
 export function ControlContent() {
   const { t } = useI18n();
   const fontSetLabel = (fontSet: FontSet) => t.controlPanel.fontSets[fontSet]();
@@ -158,20 +169,40 @@ export function ControlContent() {
     handleRun();
   };
 
+  /**
+   * Snapshots the form once and submits only the configuration owned by the
+   * requested pipeline stages. `not_downloaded` is accepted because starting
+   * the backend job is what authorizes its download; transient `loading` and
+   * `unknown` values block runs that would consume the draft model.
+   */
   const handleRun = async (options?: { override?: ProcessStatus }) => {
     if (isRunCooldown() || !formRef) return;
+
+    const formdata = new FormData(formRef);
+    const clustering = parseClusteringConfig(formdata);
+    const modelAvailability = formdata.get('analysis-model-availability');
+    const isClusteringOnly =
+      options?.override === 'analyzed' &&
+      (appState.session.status.process_status === 'analyzed' ||
+        appState.session.status.process_status === 'clustered');
+    if (
+      !isClusteringOnly &&
+      modelAvailability !== 'available' &&
+      modelAvailability !== 'not_downloaded'
+    ) {
+      toast.warning(t.controlPanel.modelCatalogRequired());
+      return;
+    }
 
     setIsRunCooldown(true);
     clearRunCooldown();
 
-    const formdata = new FormData(formRef);
     const rendering = parseRenderingConfig(formdata);
     const analysis: AnalysisOptions = {
       model_id:
         (formdata.get('analysis-model-id') as string) ||
         appState.session.algorithm.analysis.model_id,
     };
-    const clustering = parseClusteringConfig(formdata);
 
     const sessionId =
       options?.override ||
