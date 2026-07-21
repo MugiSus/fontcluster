@@ -42,6 +42,7 @@ export const en = {
     fonts: 'fonts',
     model: 'model',
     modelDownloadRequired: 'Downloads when Generate is pressed',
+    modelParameters: '{{count}}M params',
     textSize: 'text size',
     linkageMethod: 'linkage method',
     preprocessDimensions: 'preprocess dimensions',

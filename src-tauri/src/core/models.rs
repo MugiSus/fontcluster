@@ -22,8 +22,8 @@ use std::time::Duration;
 
 const MODEL_REPOSITORY_API: &str = "https://api.github.com/repos/MugiSus/fontcluster-models";
 const GITHUB_API_VERSION: &str = "2026-03-10";
-const MODEL_SCHEMA_VERSION: u32 = 1;
 const MODEL_API_VERSION: u32 = 1;
+const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
 const REQUIRED_ASSETS: [&str; 3] = ["model.json", "model.onnx", "attribute_directions.json"];
 const EMPHASIS_ATTRIBUTES: [&str; 37] = [
     "angular",
@@ -69,34 +69,21 @@ const EMPHASIS_ATTRIBUTES: [&str; 37] = [
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelManifest {
-    pub schema_version: u32,
     pub model_api_version: u32,
     pub id: String,
     pub name: String,
     pub description: String,
-    pub inference: ModelInferenceContract,
-    provenance: ModelProvenance,
+    #[serde(default)]
+    pub parameter_count: Option<u64>,
+    #[serde(alias = "provenance")]
+    checksums: ModelChecksums,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ModelProvenance {
+struct ModelChecksums {
     model_sha256: String,
     attribute_directions_sha256: String,
-}
-
-/// The model contract accepted by this version of FontCluster.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelInferenceContract {
-    pub input_name: String,
-    pub input_dtype: String,
-    pub input_shape: [usize; 4],
-    pub output_name: String,
-    pub output_dtype: String,
-    pub output_shape: [usize; 2],
-    pub preprocessing: String,
-    pub l2_normalized: bool,
 }
 
 /// A validated model directory ready for inference and attribute emphasis.
@@ -120,6 +107,7 @@ pub struct ModelCatalogEntry {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub parameter_count: Option<u64>,
     pub download_size: u64,
     pub availability: ModelAvailability,
 }
@@ -175,14 +163,19 @@ pub fn list_models() -> ModelCatalogResponse {
                 id: bundle.manifest.id.clone(),
                 name: bundle.manifest.name,
                 description: bundle.manifest.description,
+                parameter_count: bundle.manifest.parameter_count,
                 download_size: 0,
                 availability: ModelAvailability::Available,
             },
         );
     }
 
-    let warning = match github_client().and_then(|client| fetch_releases(&client)) {
-        Ok(releases) => {
+    let warning = match github_client().and_then(|client| {
+        let releases = fetch_releases(&client)?;
+        Ok((client, releases))
+    }) {
+        Ok((client, releases)) => {
+            let mut warnings = Vec::new();
             for release in releases
                 .into_iter()
                 .filter(|release| !release.draft && !release.prerelease)
@@ -193,30 +186,56 @@ pub fn list_models() -> ModelCatalogResponse {
                 {
                     continue;
                 }
-                let description = release
-                    .body
-                    .as_deref()
-                    .and_then(|body| body.lines().find(|line| !line.trim().is_empty()))
-                    .unwrap_or("")
-                    .trim()
-                    .to_string();
+                if entries.contains_key(&model_id) {
+                    continue;
+                }
+                let manifest = match fetch_release_manifest(&client, &release, &model_id) {
+                    Ok(manifest) => Some(manifest),
+                    Err(error @ AppError::Network(_)) => {
+                        warnings.push(format!("Could not read metadata for '{model_id}': {error}"));
+                        None
+                    }
+                    Err(error) => {
+                        warnings.push(format!("Ignoring model release '{model_id}': {error}"));
+                        continue;
+                    }
+                };
                 let download_size = release
                     .assets
                     .iter()
                     .filter(|asset| REQUIRED_ASSETS.contains(&asset.name.as_str()))
                     .map(|asset| asset.size)
                     .sum();
+                let (name, description, parameter_count) = match manifest {
+                    Some(manifest) => (
+                        manifest.name,
+                        manifest.description,
+                        manifest.parameter_count,
+                    ),
+                    None => (
+                        release.name.unwrap_or_else(|| model_id.clone()),
+                        release
+                            .body
+                            .as_deref()
+                            .and_then(|body| body.lines().find(|line| !line.trim().is_empty()))
+                            .unwrap_or("")
+                            .trim()
+                            .to_string(),
+                        None,
+                    ),
+                };
                 entries
                     .entry(model_id.clone())
                     .or_insert(ModelCatalogEntry {
                         id: model_id.clone(),
-                        name: release.name.unwrap_or(model_id),
+                        name,
                         description,
+                        parameter_count,
                         download_size,
                         availability: ModelAvailability::NotDownloaded,
                     });
             }
-            None
+            (!warnings.is_empty()).then(|| warnings.join("; "))
         }
         Err(error) => Some(error.to_string()),
     };
@@ -373,6 +392,77 @@ fn fetch_release(client: &Client, model_id: &str) -> Result<GithubRelease> {
         .map_err(|error| AppError::Network(error.to_string()))
 }
 
+fn fetch_release_manifest(
+    client: &Client,
+    release: &GithubRelease,
+    expected_id: &str,
+) -> Result<ModelManifest> {
+    let asset = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == "model.json")
+        .ok_or_else(|| {
+            AppError::Processing(format!(
+                "Model release '{}' is missing model.json",
+                release.tag_name
+            ))
+        })?;
+    if asset.size == 0 || asset.size > MAX_MANIFEST_BYTES {
+        return Err(AppError::Processing(format!(
+            "Model release '{}' has an invalid model.json size",
+            release.tag_name
+        )));
+    }
+    let expected_digest = parse_sha256(asset)?;
+    let response = client
+        .get(&asset.browser_download_url)
+        .timeout(Duration::from_secs(30))
+        .send()
+        .and_then(|response| response.error_for_status())
+        .map_err(|error| AppError::Network(error.to_string()))?;
+    let mut bytes = Vec::with_capacity(asset.size as usize);
+    response
+        .take(MAX_MANIFEST_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| AppError::Network(error.to_string()))?;
+    if bytes.len() as u64 != asset.size {
+        return Err(AppError::Network(format!(
+            "Download of model.json for '{}' ended at {} of {} bytes",
+            release.tag_name,
+            bytes.len(),
+            asset.size
+        )));
+    }
+    if format!("{:x}", Sha256::digest(&bytes)) != expected_digest {
+        return Err(AppError::Processing(format!(
+            "SHA-256 verification failed for model.json in '{}'",
+            release.tag_name
+        )));
+    }
+    let manifest: ModelManifest = serde_json::from_slice(&bytes)?;
+    validate_manifest(&manifest, expected_id)?;
+    for (asset_name, manifest_digest) in [
+        ("model.onnx", &manifest.checksums.model_sha256),
+        (
+            "attribute_directions.json",
+            &manifest.checksums.attribute_directions_sha256,
+        ),
+    ] {
+        let asset = release
+            .assets
+            .iter()
+            .find(|asset| asset.name == asset_name)
+            .expect("required release assets were checked before reading model.json");
+        if !manifest_digest.eq_ignore_ascii_case(parse_sha256(asset)?) {
+            return Err(AppError::Processing(format!(
+                "Checksum for {asset_name} in model.json does not match release '{}'",
+                release.tag_name
+            )));
+        }
+    }
+    Ok(manifest)
+}
+
 fn required_release_assets(release: &GithubRelease) -> Result<Vec<&GithubReleaseAsset>> {
     if release.assets.len() != REQUIRED_ASSETS.len() {
         return Err(AppError::Processing(format!(
@@ -493,10 +583,10 @@ fn load_model_bundle(directory: &Path, expected_id: &str) -> Result<ModelBundle>
     }
     let directions_path = directory.join("attribute_directions.json");
     for (path, expected_digest) in [
-        (&model_path, &manifest.provenance.model_sha256),
+        (&model_path, &manifest.checksums.model_sha256),
         (
             &directions_path,
-            &manifest.provenance.attribute_directions_sha256,
+            &manifest.checksums.attribute_directions_sha256,
         ),
     ] {
         if expected_digest.len() != 64
@@ -562,18 +652,10 @@ fn load_model_bundle(directory: &Path, expected_id: &str) -> Result<ModelBundle>
 
 fn validate_manifest(manifest: &ModelManifest, expected_id: &str) -> Result<()> {
     validate_model_id(&manifest.id)?;
-    let inference = &manifest.inference;
-    if manifest.schema_version != MODEL_SCHEMA_VERSION
-        || manifest.model_api_version != MODEL_API_VERSION
+    if manifest.model_api_version != MODEL_API_VERSION
         || manifest.id != expected_id
-        || inference.input_name != "gray_image"
-        || inference.input_dtype != "float32"
-        || inference.input_shape != [8, 1, 224, 224]
-        || inference.output_name != "embedding"
-        || inference.output_dtype != "float32"
-        || inference.output_shape != [8, 512]
-        || inference.preprocessing != "fontcluster_grayscale_mask_v1"
-        || !inference.l2_normalized
+        || manifest.name.trim().is_empty()
+        || manifest.parameter_count.is_some_and(|count| count == 0)
     {
         return Err(AppError::Processing(format!(
             "Model '{}' is incompatible with FontCluster model API v{}",
@@ -644,6 +726,41 @@ fn remove_stale_downloads(models_root: &Path, model_id: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn manifest_accepts_current_checksums_and_cached_provenance() {
+        let checksum = "a".repeat(64);
+        let current: ModelManifest = serde_json::from_value(json!({
+            "modelApiVersion": 1,
+            "id": "fontclip-vit-b32-v1",
+            "name": "FontCLIP ViT-B/32",
+            "description": "Model",
+            "parameterCount": 87_849_216,
+            "checksums": {
+                "modelSha256": checksum,
+                "attributeDirectionsSha256": checksum,
+            },
+        }))
+        .unwrap();
+        assert_eq!(current.parameter_count, Some(87_849_216));
+        assert!(validate_manifest(&current, "fontclip-vit-b32-v1").is_ok());
+
+        let cached: ModelManifest = serde_json::from_value(json!({
+            "schemaVersion": 1,
+            "modelApiVersion": 1,
+            "id": "fontclip-vit-b32-v1",
+            "name": "FontCLIP ViT-B/32",
+            "description": "Model",
+            "inference": {},
+            "provenance": {
+                "modelSha256": checksum,
+                "attributeDirectionsSha256": checksum,
+            },
+        }))
+        .unwrap();
+        assert_eq!(cached.parameter_count, None);
+        assert!(validate_manifest(&cached, "fontclip-vit-b32-v1").is_ok());
+    }
 
     #[test]
     fn model_ids_are_safe_directory_names() {

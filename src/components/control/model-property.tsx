@@ -66,6 +66,7 @@ export function ModelProperty(props: ModelPropertyProps) {
           id,
           name: id,
           description: '',
+          parameterCount: null,
           downloadSize: 0,
           availability: 'unknown',
         }),
@@ -121,12 +122,20 @@ export function ModelProperty(props: ModelPropertyProps) {
                   aria-label={t.controlPanel.modelDownloadRequired()}
                 />
                 <span class='ml-auto shrink-0 text-xs text-muted-foreground'>
-                  {(
+                  {`${(
                     selectProps.item.rawValue.downloadSize / 1_000_000
                   ).toLocaleString(locale(), {
                     maximumFractionDigits: 1,
-                  })}{' '}
-                  MB
+                  })} MB`}
+                  {selectProps.item.rawValue.parameterCount
+                    ? ` · ${t.controlPanel.modelParameters({
+                        count: (
+                          selectProps.item.rawValue.parameterCount / 1_000_000
+                        ).toLocaleString(locale(), {
+                          maximumFractionDigits: 1,
+                        }),
+                      })}`
+                    : ''}
                 </span>
               </Show>
             </span>

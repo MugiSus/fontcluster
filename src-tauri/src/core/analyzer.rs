@@ -33,6 +33,7 @@ const MODEL_FILE_NAME: &str = "model.onnx";
 const DEFAULT_INPUT_SIZE: u32 = 224;
 const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
 const MODEL_BATCH_SIZE: usize = 8;
+const MODEL_OUTPUT_DIMENSIONS: usize = 512;
 const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
 
 /// Owns the loaded ONNX model and the preprocessing spec it expects.
@@ -67,7 +68,7 @@ impl Analyzer {
             session: Mutex::new(load_session(&model_path, model_id)?),
             spec: ModelSpec {
                 input_size: DEFAULT_INPUT_SIZE,
-                output_dimensions: model.manifest.inference.output_shape[1],
+                output_dimensions: MODEL_OUTPUT_DIMENSIONS,
             },
         })
     }

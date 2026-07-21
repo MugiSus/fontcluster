@@ -4,6 +4,7 @@ export interface ModelCatalogEntry {
   id: string;
   name: string;
   description: string;
+  parameterCount: number | null;
   downloadSize: number;
   availability: ModelAvailability;
 }
