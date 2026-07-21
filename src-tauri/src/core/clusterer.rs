@@ -19,7 +19,7 @@ use crate::core::session::{
 use crate::core::{AppState, EventSink};
 use crate::error::{AppError, Result};
 use kodama::{linkage, Method as KodamaMethod};
-use ndarray::{concatenate, Array1, Array2, Axis};
+use ndarray::{arr2, concatenate, Array1, Array2, ArrayView2, Axis};
 use petal_decomposition::PcaBuilder;
 use std::collections::{BTreeMap, HashMap};
 
@@ -299,18 +299,23 @@ fn build_cluster_features(
 /// coordinate ([`crate::config::ClusteringData::two`]).
 ///
 /// Takes the top two principal components of the same emphasis-aware feature
-/// matrix the clustering runs on, so scatter distances are a rank-2 linear
-/// approximation of the clustered distances and attribute emphasis carries
-/// over: levels ±1–2 tilt the projection, ±3–4 give the attribute enough
-/// variance to become effectively an axis of the plot. Each output axis is
-/// standardised to zero mean / unit variance so the frontend's outlier
-/// compression sees a stable scale regardless of model or emphasis magnitude.
-/// Degenerate inputs (a lone sample, fewer than three features) skip PCA and
-/// standardise the columns that exist; a missing or constant axis reads 0.
+/// matrix the clustering runs on, so the scatter is a rank-2 linear view of the
+/// clustered geometry and attribute emphasis carries over: levels ±1–2 tilt the
+/// projection, ±3–4 give the attribute enough variance to become effectively an
+/// axis of the plot. The two components are then **rotated**
+/// ([`rotate_scatter_2d`]) by the configured factor rotation
+/// ([`SCATTER_ROTATION`]) — varimax (orthogonal: only reorients the cloud) or
+/// promax (oblique: shears it) — which the standardisation below renders as an
+/// axis-aligned or tilted layout. Each output axis is standardised
+/// to zero mean / unit variance so the frontend's outlier compression sees a
+/// stable scale regardless of model or emphasis magnitude. Degenerate inputs (a
+/// lone sample, fewer than three features) skip PCA and standardise the columns
+/// that exist; a missing or constant axis reads 0.
 fn scatter_projection(points: &Array2<f32>) -> Result<Vec<[f32; 2]>> {
     let (n_samples, n_features) = points.dim();
     let projected = if n_samples >= 2 && n_features > 2 {
-        pca_embedding(points.clone(), 2)?
+        let (scores, components) = pca_fit(points.clone(), 2)?;
+        rotate_scatter_2d(scores, &components)
     } else {
         points.clone()
     };
@@ -324,6 +329,124 @@ fn scatter_projection(points: &Array2<f32>) -> Result<Vec<[f32; 2]>> {
         }
     }
     Ok(scatter)
+}
+
+/// Power (κ) the varimax loadings are raised to when building the promax
+/// target. 4 is the classical Hendrickson–White default (as in R's
+/// `stats::promax` and statsmodels); larger values make the factors more
+/// oblique.
+const PROMAX_POWER: i32 = 4;
+
+/// Factor rotation the scatter projection applies to the 2-D PCA scores.
+///
+/// The two share the varimax step; promax only adds an oblique relaxation on
+/// top, so switching is a single edit to [`SCATTER_ROTATION`]:
+/// - [`ScatterRotation::Varimax`] — orthogonal, distance-preserving (only
+///   reorients the cloud);
+/// - [`ScatterRotation::Promax`] — varimax then oblique (shears the cloud).
+#[allow(dead_code)] // the unselected variant is "unused" until SCATTER_ROTATION is flipped
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ScatterRotation {
+    Varimax,
+    Promax,
+}
+
+/// The rotation [`rotate_scatter_2d`] uses. Flip this to compare the two looks.
+const SCATTER_ROTATION: ScatterRotation = ScatterRotation::Promax;
+
+/// Rotates the 2-D PCA `scores` for the scatter using the configured
+/// [`SCATTER_ROTATION`]; see [`rotate_scatter_2d_with`] for the mechanics.
+fn rotate_scatter_2d(scores: Array2<f32>, components: &Array2<f32>) -> Array2<f32> {
+    rotate_scatter_2d_with(scores, components, SCATTER_ROTATION)
+}
+
+/// Applies a two-factor **varimax** or **promax** rotation to PCA `scores`
+/// (`[n, 2]`) using the fitted `components` (`[2, p]`), returning the rotated
+/// scores.
+///
+/// Both start from the orthogonal varimax solution (loadings and scores rotated
+/// by the closed-form Kaiser angle, see [`varimax_angle_2d`]).
+/// [`ScatterRotation::Varimax`] stops there — distance-preserving, so the
+/// scatter only reorients. [`ScatterRotation::Promax`] continues with the
+/// standard oblique step (R `stats::promax`, statsmodels
+/// `factor_rotation.promax`): least-squares fit the varimax loadings `A` toward a
+/// sharpened target `Q = sign(A)·|A|^κ` ([`PROMAX_POWER`]) — `U = (AᵀA)⁻¹ AᵀQ` —
+/// letting the two axes correlate, then the oblique scores that keep
+/// `Xc ≈ F·Λᵀ` are `F = S_v·(U⁻¹)ᵀ`. That shears the cloud, which after
+/// [`scatter_projection`]'s per-axis standardisation reads as a tilted layout.
+/// (The reference's column normalisation of `U` is skipped: it only rescales
+/// each axis, which that standardisation already discards.)
+///
+/// Returns `scores` unchanged for non-`k = 2` shapes or a degenerate (singular)
+/// promax fit.
+fn rotate_scatter_2d_with(
+    scores: Array2<f32>,
+    components: &Array2<f32>,
+    mode: ScatterRotation,
+) -> Array2<f32> {
+    if scores.ncols() != 2 || components.nrows() != 2 || components.ncols() == 0 {
+        return scores;
+    }
+
+    // Shared varimax step: rotate loadings and scores by the same φ.
+    let loadings = components.t();
+    let (sin, cos) = varimax_angle_2d(loadings).sin_cos();
+    let rotation = arr2(&[[cos, -sin], [sin, cos]]);
+    let varimax_loadings = loadings.dot(&rotation); // A = L·R  (p×2)
+    let varimax_scores = scores.dot(&rotation); // S_v = S·R (n×2)
+
+    if mode == ScatterRotation::Varimax {
+        return varimax_scores; // orthogonal solution, distance-preserving
+    }
+
+    // Promax oblique step: target Q = sign(A)·|A|^κ, U = (AᵀA)⁻¹ AᵀQ (2×2).
+    let target = varimax_loadings.mapv(|value| value.signum() * value.abs().powi(PROMAX_POWER));
+    let at = varimax_loadings.t();
+    let gram_inv = match invert_2x2(&at.dot(&varimax_loadings)) {
+        Some(inverse) => inverse,
+        None => return varimax_scores,
+    };
+    let u = gram_inv.dot(&at.dot(&target));
+
+    // Oblique scores F = S_v·(U⁻¹)ᵀ; fall back to varimax if U is singular.
+    match invert_2x2(&u) {
+        Some(u_inv) => varimax_scores.dot(&u_inv.t()),
+        None => varimax_scores,
+    }
+}
+
+/// Varimax rotation angle (radians) for a two-column `loadings` matrix
+/// (`[p, 2]`), via the closed-form Kaiser solution: rotating both the loadings
+/// and the scores by this angle maximises the varimax simplicity criterion.
+fn varimax_angle_2d(loadings: ArrayView2<f32>) -> f32 {
+    let p = loadings.nrows() as f32;
+    let (mut a, mut b, mut c, mut d) = (0.0f32, 0.0, 0.0, 0.0);
+    for row in loadings.rows() {
+        let (x, y) = (row[0], row[1]);
+        let u = x * x - y * y;
+        let v = 2.0 * x * y;
+        a += u;
+        b += v;
+        c += u * u - v * v;
+        d += 2.0 * u * v;
+    }
+    // For PCA the loading columns are orthonormal, so the `/p` correction terms
+    // happen to vanish; they stay in for generality.
+    0.25 * (d - 2.0 * a * b / p).atan2(c - (a * a - b * b) / p)
+}
+
+/// Inverse of a 2×2 matrix, or `None` when it is (near-)singular.
+fn invert_2x2(m: &Array2<f32>) -> Option<Array2<f32>> {
+    let (a, b, c, d) = (m[(0, 0)], m[(0, 1)], m[(1, 0)], m[(1, 1)]);
+    let det = a * d - b * c;
+    if det.abs() < 1e-12 {
+        return None;
+    }
+    let inv_det = 1.0 / det;
+    Some(arr2(&[
+        [d * inv_det, -b * inv_det],
+        [-c * inv_det, a * inv_det],
+    ]))
 }
 
 /// Population standard deviation of one column of `data` (`0.0` when empty).
@@ -412,6 +535,15 @@ fn load_attribute_directions(expected_dim: usize) -> Result<HashMap<String, Vec<
 /// `dimensions` is clamped to the rank limit (`min(n_samples, n_features)`).
 /// Errors when there are too few samples or features for PCA to be defined.
 fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
+    Ok(pca_fit(data, dimensions)?.0)
+}
+
+/// Fits a `dimensions`-component PCA, returning both the `(n_samples, k)` scores
+/// and the `(k, n_features)` component matrix (its transpose is the loadings).
+///
+/// `dimensions` is clamped to the rank limit (`min(n_samples, n_features)`).
+/// Errors when there are too few samples or features for PCA to be defined.
+fn pca_fit(data: Array2<f32>, dimensions: usize) -> Result<(Array2<f32>, Array2<f32>)> {
     let (n_samples, n_features) = data.dim();
     if n_samples < 2 {
         return Err(AppError::Processing(
@@ -436,10 +568,11 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
         data.as_standard_layout().to_owned()
     };
 
-    PcaBuilder::new(dimensions)
-        .build()
+    let mut pca = PcaBuilder::new(dimensions).build();
+    let scores = pca
         .fit_transform(&data)
-        .map_err(|e| AppError::Processing(e.to_string()))
+        .map_err(|e| AppError::Processing(e.to_string()))?;
+    Ok((scores, pca.components().to_owned()))
 }
 
 /// Runs agglomerative clustering and returns the per-point `labels`, the
@@ -905,6 +1038,70 @@ mod tests {
         let mean = scatter.iter().map(|p| p[0]).sum::<f32>() / 3.0;
         assert!(mean.abs() < 1e-5);
         assert!(scatter[0][0] < scatter[1][0] && scatter[1][0] < scatter[2][0]);
+    }
+
+    /// Varimax mode is orthogonal: 45° loadings force a non-zero rotation, yet
+    /// every pairwise score distance survives (only the axes reorient).
+    #[test]
+    fn varimax_mode_rotates_but_preserves_distances() {
+        let scores =
+            Array2::from_shape_vec((4, 2), vec![1.0, 0.0, 0.0, 1.0, -1.0, 0.5, 0.3, -0.7]).unwrap();
+        // Loadings (componentsᵀ rows) sit at 45° ⇒ a ~45° varimax rotation.
+        let components =
+            Array2::from_shape_vec((2, 3), vec![0.5, 0.5, 0.7071, 0.5, 0.5, -0.7071]).unwrap();
+        let out = rotate_scatter_2d_with(scores.clone(), &components, ScatterRotation::Varimax);
+
+        assert!(
+            (&out - &scores).iter().any(|value| value.abs() > 1e-3),
+            "varimax should reorient the scores"
+        );
+        for i in 0..scores.nrows() {
+            for j in (i + 1)..scores.nrows() {
+                let before = &scores.row(i) - &scores.row(j);
+                let after = &out.row(i) - &out.row(j);
+                assert!(
+                    (before.dot(&before) - after.dot(&after)).abs() < 1e-3,
+                    "distance {i},{j} changed under orthogonal rotation"
+                );
+            }
+        }
+    }
+
+    /// Promax mode is oblique: it shears the scores, so at least one pairwise
+    /// distance changes — the property that distinguishes it from varimax.
+    #[test]
+    fn promax_mode_shears_scores() {
+        let scores =
+            Array2::from_shape_vec((4, 2), vec![1.0, 0.0, 0.0, 1.0, -1.0, 0.5, 0.3, -0.7]).unwrap();
+        // Non-orthogonal loadings (columns correlate) ⇒ a non-trivial oblique fit.
+        let components =
+            Array2::from_shape_vec((2, 3), vec![0.8, 0.6, 0.0, 0.0, 0.6, 0.8]).unwrap();
+        let out = rotate_scatter_2d_with(scores.clone(), &components, ScatterRotation::Promax);
+
+        let changed = (0..scores.nrows()).any(|i| {
+            ((i + 1)..scores.nrows()).any(|j| {
+                let before = &scores.row(i) - &scores.row(j);
+                let after = &out.row(i) - &out.row(j);
+                (before.dot(&before) - after.dot(&after)).abs() > 1e-2
+            })
+        });
+        assert!(changed, "oblique rotation must alter some distances");
+    }
+
+    /// Axis-aligned orthonormal loadings are already maximally simple, so both
+    /// modes are identities and the scores pass through unchanged.
+    #[test]
+    fn rotation_noop_on_aligned_loadings() {
+        let scores = Array2::from_shape_vec((3, 2), vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]).unwrap();
+        let components =
+            Array2::from_shape_vec((2, 3), vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0]).unwrap();
+        for mode in [ScatterRotation::Varimax, ScatterRotation::Promax] {
+            let out = rotate_scatter_2d_with(scores.clone(), &components, mode);
+            assert!(
+                (&out - &scores).iter().all(|value| value.abs() < 1e-5),
+                "aligned loadings should not move"
+            );
+        }
     }
 
     /// Gram-Schmidt yields mutually orthogonal unit rows and collapses a
