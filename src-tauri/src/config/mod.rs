@@ -108,6 +108,12 @@ pub struct ClusteringConfig {
     /// Number of PCA dimensions feature vectors are reduced to before
     /// distances are computed.
     pub preprocessing_dimensions: usize,
+    /// Factor rotation applied to the PCA representation used for clustering.
+    #[serde(default)]
+    pub preprocessing_rotation: FactorRotation,
+    /// Factor rotation applied independently to the two-dimensional scatter PCA.
+    #[serde(default)]
+    pub scatter_plot_rotation: FactorRotation,
     /// Maximum linkage distance at which clusters stop merging.
     pub distance_threshold: f32,
     /// Desired final cluster count; `0` means "use `distance_threshold`".
@@ -157,11 +163,23 @@ pub enum ClusteringMethod {
     Median,
 }
 
+/// Rotation applied to PCA loadings and their corresponding scores.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum FactorRotation {
+    #[default]
+    None,
+    Varimax,
+    Promax,
+}
+
 impl Default for ClusteringConfig {
     fn default() -> Self {
         Self {
             method: ClusteringMethod::Average,
             preprocessing_dimensions: 8,
+            preprocessing_rotation: FactorRotation::None,
+            scatter_plot_rotation: FactorRotation::None,
             distance_threshold: 0.5,
             target_cluster_count: 0,
             enable_attribute_emphasis: false,
@@ -426,4 +444,26 @@ pub struct RenderConfig {
     pub text: String,
     pub font_size: f32,
     pub output_dir: PathBuf,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn missing_factor_rotations_deserialize_as_none() {
+        let config: ClusteringConfig = serde_json::from_value(json!({
+            "method": "average",
+            "preprocessing_dimensions": 8,
+            "distance_threshold": 0.5,
+            "target_cluster_count": 0,
+            "enable_attribute_emphasis": false,
+            "emphasis": {}
+        }))
+        .unwrap();
+
+        assert_eq!(config.preprocessing_rotation, FactorRotation::None);
+        assert_eq!(config.scatter_plot_rotation, FactorRotation::None);
+    }
 }

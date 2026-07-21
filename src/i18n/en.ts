@@ -43,6 +43,8 @@ export const en = {
     textSize: 'text size',
     linkageMethod: 'linkage method',
     preprocessDimensions: 'preprocess dimensions',
+    preprocessRotation: 'preprocess rotation',
+    scatterPlotRotation: 'scatter plot rotation',
     groupingThreshold: 'threshold',
     targetClusters: 'target clusters',
     equalizer: {

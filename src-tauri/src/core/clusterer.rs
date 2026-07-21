@@ -9,8 +9,9 @@
 use crate::commands::progress::progress_events;
 use crate::config::{
     ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
-    DendrogramData, DendrogramMerge, ProgressStage,
+    DendrogramData, DendrogramMerge, FactorRotation, ProgressStage,
 };
+use crate::core::factor_rotation::rotate_pca_scores;
 use crate::core::optimal_leaf_ordering::optimize_leaf_order;
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
@@ -43,6 +44,8 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
     let preprocessing_dimensions = config.preprocessing_dimensions;
+    let preprocessing_rotation = config.preprocessing_rotation;
+    let scatter_plot_rotation = config.scatter_plot_rotation;
     // The enable switch gates the whole feature: when off, hand the feature
     // builder an empty map so it takes the plain no-emphasis path, while the
     // stored levels stay untouched in the session.
@@ -75,8 +78,13 @@ pub async fn cluster_all(events: &impl EventSink, state: &AppState) -> Result<()
         )
         .map_err(|e| AppError::Processing(e.to_string()))?;
 
-        let points = build_cluster_features(data, preprocessing_dimensions, &emphasis)?;
-        let scatter = scatter_projection(&points)?;
+        let points = build_cluster_features(
+            data,
+            preprocessing_dimensions,
+            preprocessing_rotation,
+            &emphasis,
+        )?;
+        let scatter = scatter_projection(&points, scatter_plot_rotation)?;
 
         Ok(ClusterInputs {
             points,
@@ -219,6 +227,7 @@ fn active_emphasis(emphasis: &BTreeMap<String, i8>) -> Vec<(String, i8)> {
 fn build_cluster_features(
     data: Array2<f32>,
     dimensions: usize,
+    rotation: FactorRotation,
     emphasis: &BTreeMap<String, i8>,
 ) -> Result<Array2<f32>> {
     let (n_samples, n_features) = data.dim();
@@ -226,7 +235,7 @@ fn build_cluster_features(
         if n_samples < 2 || n_features <= dimensions {
             Ok(data)
         } else {
-            pca_embedding(data, dimensions)
+            pca_embedding_with_rotation(data, dimensions, rotation)
         }
     };
 
@@ -307,10 +316,10 @@ fn build_cluster_features(
 /// compression sees a stable scale regardless of model or emphasis magnitude.
 /// Degenerate inputs (a lone sample, fewer than three features) skip PCA and
 /// standardise the columns that exist; a missing or constant axis reads 0.
-fn scatter_projection(points: &Array2<f32>) -> Result<Vec<[f32; 2]>> {
+fn scatter_projection(points: &Array2<f32>, rotation: FactorRotation) -> Result<Vec<[f32; 2]>> {
     let (n_samples, n_features) = points.dim();
     let projected = if n_samples >= 2 && n_features > 2 {
-        pca_embedding(points.clone(), 2)?
+        pca_embedding_with_rotation(points.clone(), 2, rotation)?
     } else {
         points.clone()
     };
@@ -411,7 +420,16 @@ fn load_attribute_directions(expected_dim: usize) -> Result<HashMap<String, Vec<
 ///
 /// `dimensions` is clamped to the rank limit (`min(n_samples, n_features)`).
 /// Errors when there are too few samples or features for PCA to be defined.
+#[cfg(test)]
 fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
+    pca_embedding_with_rotation(data, dimensions, FactorRotation::None)
+}
+
+fn pca_embedding_with_rotation(
+    data: Array2<f32>,
+    dimensions: usize,
+    rotation: FactorRotation,
+) -> Result<Array2<f32>> {
     let (n_samples, n_features) = data.dim();
     if n_samples < 2 {
         return Err(AppError::Processing(
@@ -436,10 +454,17 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
         data.as_standard_layout().to_owned()
     };
 
-    PcaBuilder::new(dimensions)
-        .build()
+    let mut pca = PcaBuilder::new(dimensions).build();
+    let scores = pca
         .fit_transform(&data)
-        .map_err(|e| AppError::Processing(e.to_string()))
+        .map_err(|e| AppError::Processing(e.to_string()))?;
+    Ok(rotate_pca_scores(
+        scores,
+        pca.components(),
+        pca.singular_values(),
+        n_samples,
+        rotation,
+    ))
 }
 
 /// Runs agglomerative clustering and returns the per-point `labels`, the
@@ -831,7 +856,8 @@ mod tests {
             ],
         )
         .unwrap();
-        let out = build_cluster_features(data.clone(), 3, &BTreeMap::new()).unwrap();
+        let out = build_cluster_features(data.clone(), 3, FactorRotation::None, &BTreeMap::new())
+            .unwrap();
         let expected = pca_embedding(data, 3).unwrap();
         assert_eq!(out, expected);
     }
@@ -851,7 +877,7 @@ mod tests {
             ],
         )
         .unwrap();
-        let scatter = scatter_projection(&data).unwrap();
+        let scatter = scatter_projection(&data, FactorRotation::None).unwrap();
         assert_eq!(scatter.len(), 6);
         for axis in 0..2 {
             let mean = scatter.iter().map(|p| p[axis]).sum::<f32>() / 6.0;
@@ -888,7 +914,7 @@ mod tests {
             "concatenate along Axis(1) is expected to reproduce the F-order input"
         );
 
-        let scatter = scatter_projection(&data).unwrap();
+        let scatter = scatter_projection(&data, FactorRotation::None).unwrap();
         assert_eq!(scatter.len(), 5);
         assert!(scatter
             .iter()
@@ -900,7 +926,7 @@ mod tests {
     #[test]
     fn scatter_projection_handles_single_feature() {
         let data = Array2::from_shape_vec((3, 1), vec![1.0, 2.0, 3.0]).unwrap();
-        let scatter = scatter_projection(&data).unwrap();
+        let scatter = scatter_projection(&data, FactorRotation::None).unwrap();
         assert!(scatter.iter().all(|p| p[1] == 0.0));
         let mean = scatter.iter().map(|p| p[0]).sum::<f32>() / 3.0;
         assert!(mean.abs() < 1e-5);
@@ -944,11 +970,20 @@ mod tests {
         }
         let data = Array2::from_shape_vec((8, 512), values).unwrap();
 
-        let out1 =
-            build_cluster_features(data.clone(), 3, &BTreeMap::from([("serif".to_string(), 1)]))
-                .unwrap();
-        let out2 =
-            build_cluster_features(data, 3, &BTreeMap::from([("serif".to_string(), 2)])).unwrap();
+        let out1 = build_cluster_features(
+            data.clone(),
+            3,
+            FactorRotation::None,
+            &BTreeMap::from([("serif".to_string(), 1)]),
+        )
+        .unwrap();
+        let out2 = build_cluster_features(
+            data,
+            3,
+            FactorRotation::None,
+            &BTreeMap::from([("serif".to_string(), 2)]),
+        )
+        .unwrap();
 
         // One appended column beyond the (rank-limited) PCA base.
         assert!(out1.ncols() >= 2 && out2.ncols() == out1.ncols());

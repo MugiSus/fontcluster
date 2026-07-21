@@ -13,6 +13,7 @@ pub mod clusterer;
 pub mod discoverer;
 pub mod events;
 pub mod example;
+mod factor_rotation;
 pub mod google_fonts_downloader;
 mod optimal_leaf_ordering;
 pub mod plugin_bridge;

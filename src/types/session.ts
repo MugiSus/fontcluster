@@ -9,9 +9,13 @@ export type ClusteringMethod =
   | 'centroid'
   | 'median';
 
+export type FactorRotation = 'none' | 'varimax' | 'promax';
+
 export interface ClusteringOptions {
   method: ClusteringMethod;
   preprocessing_dimensions: number;
+  preprocessing_rotation: FactorRotation;
+  scatter_plot_rotation: FactorRotation;
   distance_threshold: number;
   target_cluster_count: number;
   /** Compatibility field for the backend/session schema. The UI derives it

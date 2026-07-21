@@ -25,6 +25,7 @@ import {
   type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
+  type FactorRotation,
 } from '@/types/session';
 import { appState } from '@/store';
 import { runProcessingJobs } from '@/actions';
@@ -73,6 +74,12 @@ const CLUSTERING_METHOD_LABELS: Record<ClusteringMethod, string> = {
   ward: 'Ward',
   centroid: 'Centroid',
   median: 'Median',
+};
+
+const FACTOR_ROTATION_LABELS: Record<FactorRotation, string> = {
+  none: 'None',
+  varimax: 'Varimax',
+  promax: 'Promax',
 };
 
 /**
@@ -125,6 +132,11 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
     preprocessing_dimensions:
       Number(formdata.get('clustering-preprocessing-dimensions')) ||
       DEFAULT_CLUSTERING_CONFIG.preprocessing_dimensions,
+    preprocessing_rotation: (formdata.get(
+      'clustering-preprocessing-rotation',
+    ) ?? DEFAULT_CLUSTERING_CONFIG.preprocessing_rotation) as FactorRotation,
+    scatter_plot_rotation: (formdata.get('clustering-scatter-plot-rotation') ??
+      DEFAULT_CLUSTERING_CONFIG.scatter_plot_rotation) as FactorRotation,
     distance_threshold:
       Number(formdata.get('clustering-distance-threshold')) ||
       DEFAULT_CLUSTERING_CONFIG.distance_threshold,
@@ -327,6 +339,64 @@ export function ControlContent() {
               minValue={1}
               maxValue={384}
             />
+            <TextProperty
+              label={t.controlPanel.preprocessRotation()}
+              class='mr-1 gap-0.5'
+            >
+              <Select
+                name='clustering-preprocessing-rotation'
+                options={
+                  Object.keys(FACTOR_ROTATION_LABELS) as FactorRotation[]
+                }
+                optionTextValue={(rotation) => FACTOR_ROTATION_LABELS[rotation]}
+                disallowEmptySelection
+                defaultValue={
+                  appState.session.algorithm.clustering.preprocessing_rotation
+                }
+                itemComponent={(props) => (
+                  <SelectItem item={props.item}>
+                    {FACTOR_ROTATION_LABELS[props.item.rawValue]}
+                  </SelectItem>
+                )}
+              >
+                <SelectHiddenSelect />
+                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                  <SelectValue<FactorRotation> class='mr-2.5 min-w-0 flex-1 text-right'>
+                    {(state) => FACTOR_ROTATION_LABELS[state.selectedOption()]}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </TextProperty>
+            <TextProperty
+              label={t.controlPanel.scatterPlotRotation()}
+              class='mr-1 gap-0.5'
+            >
+              <Select
+                name='clustering-scatter-plot-rotation'
+                options={
+                  Object.keys(FACTOR_ROTATION_LABELS) as FactorRotation[]
+                }
+                optionTextValue={(rotation) => FACTOR_ROTATION_LABELS[rotation]}
+                disallowEmptySelection
+                defaultValue={
+                  appState.session.algorithm.clustering.scatter_plot_rotation
+                }
+                itemComponent={(props) => (
+                  <SelectItem item={props.item}>
+                    {FACTOR_ROTATION_LABELS[props.item.rawValue]}
+                  </SelectItem>
+                )}
+              >
+                <SelectHiddenSelect />
+                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                  <SelectValue<FactorRotation> class='mr-2.5 min-w-0 flex-1 text-right'>
+                    {(state) => FACTOR_ROTATION_LABELS[state.selectedOption()]}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent />
+              </Select>
+            </TextProperty>
             <NumberProperty
               label={t.controlPanel.groupingThreshold()}
               name='clustering-distance-threshold'

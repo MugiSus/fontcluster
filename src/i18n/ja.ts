@@ -31,6 +31,8 @@ export const ja: Dictionary = {
     textSize: 'テキストサイズ',
     linkageMethod: '連結法',
     preprocessDimensions: '前処理次元数',
+    preprocessRotation: '前処理回転',
+    scatterPlotRotation: '散布図回転',
     groupingThreshold: '閾値',
     targetClusters: '目標クラスタ数',
     equalizer: {

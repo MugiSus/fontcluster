@@ -15,6 +15,8 @@ export const DEFAULT_RENDERING_CONFIG: RenderingOptions = {
 export const DEFAULT_CLUSTERING_CONFIG: ClusteringOptions = {
   method: 'complete',
   preprocessing_dimensions: 16,
+  preprocessing_rotation: 'none',
+  scatter_plot_rotation: 'none',
   distance_threshold: 0.5,
   target_cluster_count: 0,
   enable_attribute_emphasis: false,
