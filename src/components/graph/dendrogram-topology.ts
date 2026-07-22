@@ -1,6 +1,5 @@
 import { type FontItemRecord } from '@/types/font';
 import { type DendrogramData } from '@/types/session';
-import { getClusterColorAngle } from '@/lib/cluster-colors';
 
 export interface DendrogramHierarchyDatum {
   readonly nodeIndex: number;
@@ -61,10 +60,7 @@ export function createDendrogramTopology(
           height: 0,
           representativeKey: key,
           clusterId: clustering?.k,
-          colorAngle: getClusterColorAngle(
-            clustering?.leaf_angle,
-            clustering?.cluster_angle,
-          ),
+          colorAngle: clustering?.cluster_angle,
         }
       : null;
   });

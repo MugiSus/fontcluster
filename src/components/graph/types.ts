@@ -33,6 +33,8 @@ export interface GraphPointData {
   item: FontItem;
   x: number;
   y: number;
+  /** Display hue derived once when adapting a font into graph-point data. */
+  colorAngle: number | undefined;
 }
 
 /**

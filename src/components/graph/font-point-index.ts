@@ -2,6 +2,7 @@ import { createMemo, createRoot } from 'solid-js';
 import { quadtree, type Quadtree } from 'd3-quadtree';
 import { appState } from '@/store';
 import { type FontItem } from '@/types/font';
+import { getClusterColorAngle } from '@/lib/cluster-colors';
 import { activeGraphLayout } from './layouts/active-graph-layout';
 import { collectVisibleCartesianImageKeys } from './cartesian-image-visibility';
 import { collectVisibleRadialImageKeys } from './radial-image-visibility';
@@ -66,6 +67,7 @@ const fontPointIndex = createRoot(() => {
               item,
               x: position.x,
               y: position.y,
+              colorAngle: getClusterColorAngle(item.computed?.clustering),
             },
           ]
         : [];

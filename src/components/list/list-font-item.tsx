@@ -4,7 +4,7 @@ import { CheckIcon, CopyIcon, Plug2Icon } from 'lucide-solid';
 import { type FontItem, type FontWeight, WEIGHT_LABELS } from '@/types/font';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { getClusterColorAngle, getClusterCssColor } from '@/lib/cluster-colors';
+import { getClusteringCssColor } from '@/lib/cluster-colors';
 import { appState } from '@/store';
 import { Button } from '@/components/ui/button';
 
@@ -24,13 +24,7 @@ export function ListFontItem(props: ListFontItemProps) {
   const { t } = useI18n();
   const meta = () => props.item.meta;
   const clustering = () => props.item.computed?.clustering;
-  const clusterColor = () =>
-    getClusterCssColor(
-      getClusterColorAngle(
-        clustering()?.leaf_angle,
-        clustering()?.cluster_angle,
-      ),
-    );
+  const clusterColor = () => getClusteringCssColor(clustering());
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
   const shouldRenderPreview = () =>
     props.isPreviewEnabled !== false && props.previewText !== '';

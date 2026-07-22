@@ -27,7 +27,6 @@ import {
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import { type GraphLayout } from '@/components/graph/layouts/active-graph-layout';
-import { getClusterColorAngle } from '@/lib/cluster-colors';
 import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
 import { createPointLabelLayer } from './point-label-layer';
 import {
@@ -288,10 +287,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           x: point.x,
           y: -point.y,
           color: getClusterColor({
-            angle: getClusterColorAngle(
-              point.item.computed?.clustering?.leaf_angle,
-              point.item.computed?.clustering?.cluster_angle,
-            ),
+            angle: point.colorAngle,
             isDark: isDarkMode,
           }),
           kind,
@@ -350,10 +346,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           x: point.x,
           y: -point.y,
           color: getClusterColor({
-            angle: getClusterColorAngle(
-              point.item.computed?.clustering?.leaf_angle,
-              point.item.computed?.clustering?.cluster_angle,
-            ),
+            angle: point.colorAngle,
             isDark: isDarkMode,
           }),
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
@@ -429,10 +422,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       return {
         points,
         color: getClusterColor({
-          angle: getClusterColorAngle(
-            point?.item.computed?.clustering?.leaf_angle,
-            point?.item.computed?.clustering?.cluster_angle,
-          ),
+          angle: point?.colorAngle,
           isDark: isDark(),
         }),
       };
