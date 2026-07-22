@@ -203,7 +203,7 @@ export const ja: Dictionary = {
     },
   },
   list: {
-    selectPrompt: 'フォントを選択してください',
+    noMatchingFonts: '現在のフィルターに一致するフォントはありません',
     clearPreviewText: '消去',
     applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
     copyFontName: '{{name}} をコピー',

@@ -1,14 +1,11 @@
 import { createMemo, createRoot } from 'solid-js';
 import { quadtree, type Quadtree } from 'd3-quadtree';
 import { appState } from '@/store';
-import { type FontItem } from '@/types/font';
 import { getClusterColorAngle } from '@/lib/cluster-colors';
 import { activeGraphLayout } from './layouts/active-graph-layout';
 import { collectVisibleCartesianImageKeys } from './cartesian-image-visibility';
 import { collectVisibleRadialImageKeys } from './radial-image-visibility';
 import { type GraphPointData, type GraphVisibleBounds } from './types';
-
-const MAX_NEAREST_FONT_ITEMS = 60;
 
 interface FontPointIndexes {
   byKey: Map<string, GraphPointData>;
@@ -29,29 +26,6 @@ function createSelectableFontPointTree(
     .x((point) => point.x)
     .y((point) => point.y)
     .addAll(points);
-}
-
-function findNearestFontItems(
-  tree: Quadtree<GraphPointData>,
-  selectedPoint: GraphPointData,
-): FontItem[] {
-  const searchTree = tree.copy();
-  const nearestItems: FontItem[] = [];
-
-  while (
-    nearestItems.length < MAX_NEAREST_FONT_ITEMS &&
-    searchTree.size() > 0
-  ) {
-    const nearest = searchTree.find(selectedPoint.x, selectedPoint.y);
-    if (!nearest) break;
-
-    searchTree.remove(nearest);
-    if (nearest.key !== selectedPoint.key) {
-      nearestItems.push(nearest.item);
-    }
-  }
-
-  return nearestItems;
 }
 
 const fontPointIndex = createRoot(() => {
@@ -147,12 +121,6 @@ const fontPointIndex = createRoot(() => {
             detailImageGapPx,
           );
     },
-    getNearestSelectableFontItems: (selectedKey: string) => {
-      const selectedPoint = indexes().byKey.get(selectedKey);
-      if (!selectedPoint) return [];
-
-      return findNearestFontItems(selectableTree(), selectedPoint);
-    },
   };
 });
 
@@ -165,6 +133,3 @@ export const getGraphPointsByFamilyName = fontPointIndex.getPointsByFamilyName;
 export const findSelectableFontPoint = fontPointIndex.findSelectablePoint;
 
 export const getVisibleImageKeys = fontPointIndex.getVisibleImageKeys;
-
-export const getNearestSelectableFontItems =
-  fontPointIndex.getNearestSelectableFontItems;

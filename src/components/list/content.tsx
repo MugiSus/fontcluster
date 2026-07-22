@@ -1,14 +1,14 @@
 import {
   createEffect,
+  createMemo,
   For,
   createSelector,
   createSignal,
   Show,
 } from 'solid-js';
-import { debounce } from '@solid-primitives/scheduled';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { toast } from 'solid-sonner';
-import { MousePointerClickIcon } from 'lucide-solid';
+import { SearchXIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import {
@@ -17,88 +17,98 @@ import {
   setListPreviewText,
 } from '@/actions';
 import { type FontItem } from '@/types/font';
-import {
-  getGraphPointByKey,
-  getNearestSelectableFontItems,
-} from '@/components/graph/font-point-index';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
-const LIST_UPDATE_DEBOUNCE = 0;
-const LIST_PREVIEW_SCROLL_DEBOUNCE = 400;
 const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;
 
 export function ListContent() {
   const { t } = useI18n();
-  const [selectedItem, setSelectedItem] = createSignal<FontItem | null>(null);
-  const [nearestItems, setNearestItems] = createSignal<FontItem[]>([]);
   const [canRenderListPreviews, setCanRenderListPreviews] = createSignal(true);
+  const [scrollViewportHeight, setScrollViewportHeight] = createSignal(0);
+  let listScrollElement: HTMLDivElement | undefined;
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
-  let nearestItemsScrollElement: HTMLDivElement | undefined;
+  const isSelectedFontItem = createSelector(() => appState.ui.selectedFontKey);
+  const orderedLeafItems = createMemo(() =>
+    Object.values(appState.fonts.displayData)
+      .filter(
+        (item) =>
+          item.computed?.clustering !== undefined &&
+          item.computed.clustering !== null,
+      )
+      .sort(
+        (left, right) =>
+          left.computed!.clustering!.leaf_angle -
+          right.computed!.clustering!.leaf_angle,
+      ),
+  );
+  const filteredLeafItems = createMemo(() => {
+    const filteredKeys = appState.fonts.filteredKeys;
+    return orderedLeafItems().filter((item) =>
+      filteredKeys.has(item.meta.safe_name),
+    );
+  });
+  const leafIndexByKey = createMemo(
+    () =>
+      new Map(
+        filteredLeafItems().map((item, index) => [item.meta.safe_name, index]),
+      ),
+  );
   const virtualizer = createVirtualizer({
     get count() {
-      return nearestItems().length;
+      const itemCount = filteredLeafItems().length;
+      return itemCount * LIST_ITEM_HEIGHT > scrollViewportHeight()
+        ? itemCount * 3
+        : itemCount;
     },
-    getScrollElement: () => nearestItemsScrollElement ?? null,
+    getScrollElement: () => listScrollElement ?? null,
     estimateSize: () => LIST_ITEM_HEIGHT,
-    overscan: 2,
+    overscan: 4,
+    onChange: (instance, sync) => {
+      const viewportHeight = instance.scrollRect?.height ?? 0;
+      setScrollViewportHeight(viewportHeight);
+      setCanRenderListPreviews(!sync);
+
+      const itemCount = filteredLeafItems().length;
+      const cycleHeight = itemCount * LIST_ITEM_HEIGHT;
+      if (sync || viewportHeight === 0 || cycleHeight <= viewportHeight) return;
+
+      const offset = instance.scrollOffset ?? 0;
+      if (offset < cycleHeight) {
+        instance.scrollToOffset(offset + cycleHeight);
+      } else if (offset >= cycleHeight * 2) {
+        instance.scrollToOffset(offset - cycleHeight);
+      }
+    },
   });
 
-  const updateSelectedItem = debounce(
-    (
-      selectedKey: string,
-      nextSelectedItem: FontItem | null,
-      filteredKeysSize: number,
-      isSelectedPointPositioned: boolean,
-    ) => {
-      if (
-        !nextSelectedItem ||
-        filteredKeysSize === 0 ||
-        !isSelectedPointPositioned
-      ) {
-        setSelectedItem(nextSelectedItem);
-        setNearestItems([]);
-        return;
-      }
-
-      const items = getNearestSelectableFontItems(selectedKey);
-      setSelectedItem(nextSelectedItem);
-      setNearestItems(items);
-      nearestItemsScrollElement?.scrollTo({ top: 0 });
-    },
-    LIST_UPDATE_DEBOUNCE,
-  );
-  const enableListPreviews = debounce(() => {
-    setCanRenderListPreviews(true);
-  }, LIST_PREVIEW_SCROLL_DEBOUNCE);
-
   createEffect(() => {
-    const selectedKey = appState.ui.selectedFontKey;
-    const nextSelectedItem = selectedKey
-      ? appState.fonts.displayData[selectedKey] || null
-      : null;
-    const filteredKeys = appState.fonts.filteredKeys;
+    if (!listScrollElement) return;
 
-    if (!selectedKey) {
-      updateSelectedItem.clear();
-      setSelectedItem(null);
-      setNearestItems([]);
+    const itemCount = filteredLeafItems().length;
+    const viewportHeight = scrollViewportHeight();
+    if (itemCount === 0 || viewportHeight === 0) return;
+
+    const selectedKey = appState.ui.selectedFontKey;
+    const selectedIndex = selectedKey
+      ? leafIndexByKey().get(selectedKey)
+      : undefined;
+    const isCircular = itemCount * LIST_ITEM_HEIGHT > viewportHeight;
+    if (!isCircular) {
+      virtualizer.scrollToIndex(selectedIndex ?? 0, {
+        align: selectedIndex === undefined ? 'start' : 'center',
+      });
       return;
     }
 
-    updateSelectedItem(
-      selectedKey,
-      nextSelectedItem,
-      filteredKeys.size,
-      getGraphPointByKey(selectedKey) !== undefined,
-    );
-  });
+    if (selectedIndex === undefined) {
+      virtualizer.scrollToIndex(itemCount, { align: 'start' });
+      return;
+    }
 
-  const handleNearestItemsScroll = () => {
-    setCanRenderListPreviews(false);
-    enableListPreviews();
-  };
+    virtualizer.scrollToIndex(itemCount + selectedIndex, { align: 'center' });
+  });
 
   const handleApply = (item: FontItem) =>
     applyFontToPlugins(item)
@@ -128,8 +138,8 @@ export function ListContent() {
 
   const NoResultsFound = () => (
     <div class='flex h-full flex-col items-center justify-center gap-2 pb-10 text-center text-sm text-muted-foreground'>
-      <MousePointerClickIcon />
-      <p class='text-xs'>{t.list.selectPrompt()}</p>
+      <SearchXIcon />
+      <p class='text-xs'>{t.list.noMatchingFonts()}</p>
     </div>
   );
 
@@ -140,25 +150,13 @@ export function ListContent() {
         placeholder={appState.session.algorithm.rendering.text || 'A'}
         onValueChange={setListPreviewText}
       />
-      <Show when={selectedItem()}>
-        {(item) => (
-          <ListFontItem
-            item={item()}
-            previewText={appState.ui.listPreviewText}
-            previewFontSize={LIST_PREVIEW_FONT_SIZE}
-            class='animate-fade-in border-b'
-            isSentFontItem={isSentFontItem(item().meta.safe_name)}
-            onClick={() => handleSelect(item())}
-            onMouseEnter={() => setHoveredFontKey(item().meta.safe_name)}
-            onMouseLeave={() => setHoveredFontKey(null)}
-          />
-        )}
-      </Show>
-      <Show when={selectedItem()} fallback={<NoResultsFound />}>
-        <div
-          ref={nearestItemsScrollElement}
-          class='min-h-0 w-full flex-1 overflow-y-scroll'
-          onScroll={handleNearestItemsScroll}
+      <div
+        ref={listScrollElement}
+        class='min-h-0 w-full flex-1 overflow-y-scroll'
+      >
+        <Show
+          when={filteredLeafItems().length > 0}
+          fallback={<NoResultsFound />}
         >
           <ul
             class='relative w-full'
@@ -166,7 +164,10 @@ export function ListContent() {
           >
             <For each={virtualizer.getVirtualItems()}>
               {(virtualItem) => {
-                const item = () => nearestItems()[virtualItem.index];
+                const item = () => {
+                  const items = filteredLeafItems();
+                  return items[virtualItem.index % items.length];
+                };
                 return (
                   <Show when={item()}>
                     {(fontItem) => (
@@ -182,6 +183,9 @@ export function ListContent() {
                           previewText={appState.ui.listPreviewText}
                           previewFontSize={LIST_PREVIEW_FONT_SIZE}
                           isPreviewEnabled={canRenderListPreviews()}
+                          isSelectedFontItem={isSelectedFontItem(
+                            fontItem().meta.safe_name,
+                          )}
                           isSentFontItem={isSentFontItem(
                             fontItem().meta.safe_name,
                           )}
@@ -198,8 +202,8 @@ export function ListContent() {
               }}
             </For>
           </ul>
-        </div>
-      </Show>
+        </Show>
+      </div>
     </div>
   );
 }

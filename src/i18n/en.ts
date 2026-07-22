@@ -214,7 +214,7 @@ export const en = {
     },
   },
   list: {
-    selectPrompt: 'Select a font to see similar fonts',
+    noMatchingFonts: 'No fonts match the active filters',
     clearPreviewText: 'Clear',
     applyToPlugins: 'Apply {{name}} {{weight}} to plugins',
     copyFontName: 'Copy {{name}}',
