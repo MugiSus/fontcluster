@@ -64,7 +64,7 @@ export function ListContent() {
     },
     getScrollElement: () => listScrollElement ?? null,
     estimateSize: () => LIST_ITEM_HEIGHT,
-    overscan: 4,
+    overscan: 8,
     onChange: (instance, sync) => {
       const viewportHeight = instance.scrollRect?.height ?? 0;
       setScrollViewportHeight(viewportHeight);
