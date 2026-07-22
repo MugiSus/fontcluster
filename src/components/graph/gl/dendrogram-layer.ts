@@ -28,14 +28,14 @@ import {
 } from '@/components/graph/dendrogram-edges';
 import { GRAPH_SIZE } from '@/components/graph/constants';
 import { type GraphCoordinate } from '@/components/graph/types';
-import { arcFragmentShader, arcVertexShader } from './arc-shaders';
+import { arcFragmentShader, arcVertexShader } from './shaders/arc';
 import {
   getBackgroundColor,
   getClusterColor,
   type GraphOutputColorSpace,
 } from './cluster-colors-gl';
 import { createFatLineMaterial } from './fat-line-material';
-import { coreFragmentShader, coreVertexShader } from './point-shaders';
+import { coreFragmentShader, coreVertexShader } from './shaders/point';
 
 /** Stroke width in CSS px; fat lines keep a solid core. */
 const EDGE_WIDTH_PX = 1;

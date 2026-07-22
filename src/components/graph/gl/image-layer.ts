@@ -15,7 +15,7 @@ import {
   SAMPLE_IMAGE_BOX_HEIGHT_PX,
   SAMPLE_IMAGE_BOX_WIDTH_PX,
 } from '@/components/graph/constants';
-import { imageFragmentShader, imageVertexShader } from './image-shaders';
+import { imageFragmentShader, imageVertexShader } from './shaders/image';
 
 /** One sample image to draw, centered (in world space) on its point. */
 export interface ImageSpec {

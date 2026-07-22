@@ -8,7 +8,7 @@ import {
   PlaneGeometry,
   ShaderMaterial,
 } from 'three';
-import { ringFragmentShader, ringVertexShader } from './ring-shaders';
+import { ringFragmentShader, ringVertexShader } from './shaders/ring';
 
 /** Stroke width (CSS px) of every ring, constant regardless of radius. A thin
  *  1px line anti-aliases into the bright glow behind it and loses its true

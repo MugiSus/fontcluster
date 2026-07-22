@@ -18,7 +18,7 @@ import {
 import {
   pointLabelFragmentShader,
   pointLabelVertexShader,
-} from './point-label-shaders';
+} from './shaders/point-label';
 
 /** Label glyph em-height in CSS px, held constant on zoom. */
 const FONT_SIZE_PX = 10;

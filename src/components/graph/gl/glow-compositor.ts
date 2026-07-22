@@ -15,7 +15,7 @@ import {
   WebGLRenderTarget,
 } from 'three';
 import { LinearDisplayP3ColorSpace } from 'three/addons/math/ColorSpaces.js';
-import { blitFragmentShader, blitVertexShader } from './blit-shaders';
+import { blitFragmentShader, blitVertexShader } from './shaders/blit';
 
 /**
  * The glow buffer's resolution relative to the screen. Keep this at full

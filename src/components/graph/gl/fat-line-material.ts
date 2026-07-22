@@ -1,5 +1,5 @@
 import { Color, NormalBlending, ShaderMaterial, Vector2 } from 'three';
-import { fatLineFragmentShader, fatLineVertexShader } from './line-shaders';
+import { fatLineFragmentShader, fatLineVertexShader } from './shaders/line';
 
 /** Shared in-shader-antialiased material for Line2 and LineSegments2. */
 export function createFatLineMaterial(options: {

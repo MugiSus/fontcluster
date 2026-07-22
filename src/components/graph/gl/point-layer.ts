@@ -20,7 +20,7 @@ import {
   coreVertexShader,
   haloFragmentShader,
   haloVertexShader,
-} from './point-shaders';
+} from './shaders/point';
 
 /** Sprite diameter (CSS px) = the blur/glow extent. */
 const SIZE = 128;
