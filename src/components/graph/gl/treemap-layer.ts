@@ -79,7 +79,7 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
     }
 
     const boundaries = layout.boundaries.filter(
-      (boundary) => boundary.colorIndex !== undefined,
+      (boundary) => boundary.colorAngle !== undefined,
     );
     if (boundaries.length > 0) {
       const positions = boundaries.flatMap(({ x1, y1, x2, y2 }) => [
@@ -96,8 +96,8 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
         (last, boundary) => Math.max(last, boundary.mergeIndex),
         1,
       );
-      const colors = boundaries.flatMap(({ colorIndex, mergeIndex }) => {
-        boundaryColor.set(getClusterColor({ colorIndex, isDark }));
+      const colors = boundaries.flatMap(({ colorAngle, mergeIndex }) => {
+        boundaryColor.set(getClusterColor({ angle: colorAngle, isDark }));
         boundaryColor.lerpColors(
           background,
           boundaryColor,
@@ -126,14 +126,14 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
 
     const clusterPolygons =
       layout.mode === 'rectangular-treemap'
-        ? layout.clusterRects.map(({ x0, y0, x1, y1, colorIndex }) => ({
+        ? layout.clusterRects.map(({ x0, y0, x1, y1, colorAngle }) => ({
             polygon: [
               [x0, y0],
               [x1, y0],
               [x1, y1],
               [x0, y1],
             ] as GraphPolygon,
-            colorIndex,
+            colorAngle,
           }))
         : layout.clusterPolygons;
     if (clusterPolygons.length > 0) {
@@ -153,7 +153,7 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
       for (const cluster of clusterPolygons) {
         appendClosedPolygon(positions, cluster.polygon);
         clusterColor.set(
-          getClusterColor({ colorIndex: cluster.colorIndex, isDark }),
+          getClusterColor({ angle: cluster.colorAngle, isDark }),
         );
         for (let edge = 0; edge < cluster.polygon.length; edge += 1) {
           colors.push(

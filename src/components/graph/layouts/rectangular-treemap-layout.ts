@@ -20,7 +20,7 @@ export interface RectangularTreemapLeafCell {
   readonly y0: number;
   readonly x1: number;
   readonly y1: number;
-  readonly colorIndex: number | undefined;
+  readonly colorAngle: number | undefined;
 }
 
 export interface RectangularTreemapBoundary {
@@ -29,7 +29,7 @@ export interface RectangularTreemapBoundary {
   readonly x2: number;
   readonly y2: number;
   readonly mergeIndex: number;
-  readonly colorIndex: number | undefined;
+  readonly colorAngle: number | undefined;
 }
 
 export interface RectangularTreemapClusterRect {
@@ -37,7 +37,7 @@ export interface RectangularTreemapClusterRect {
   readonly y0: number;
   readonly x1: number;
   readonly y1: number;
-  readonly colorIndex: number;
+  readonly colorAngle: number;
 }
 
 export interface RectangularTreemapLayout
@@ -82,7 +82,7 @@ export function createRectangularTreemapLayout(
       y0: leaf.y0,
       x1: leaf.x1,
       y1: leaf.y1,
-      colorIndex: node.colorIndex,
+      colorAngle: node.colorAngle,
     });
   }
 
@@ -96,7 +96,7 @@ export function createRectangularTreemapLayout(
       : null;
     if (
       node?.clusterId !== undefined &&
-      node.colorIndex !== undefined &&
+      node.colorAngle !== undefined &&
       parentNode?.clusterId !== node.clusterId
     ) {
       clusterRects.push({
@@ -104,7 +104,7 @@ export function createRectangularTreemapLayout(
         y0: rectangularNode.y0,
         x1: rectangularNode.x1,
         y1: rectangularNode.y1,
-        colorIndex: node.colorIndex,
+        colorAngle: node.colorAngle,
       });
     }
 
@@ -118,7 +118,7 @@ export function createRectangularTreemapLayout(
         x2: first!.x1 === second!.x0 ? first!.x1 : second!.x1,
         y2: Math.min(first!.y1, second!.y1),
         mergeIndex: node.mergeIndex,
-        colorIndex: node.colorIndex,
+        colorAngle: node.colorAngle,
       });
     } else {
       boundaries.push({
@@ -127,7 +127,7 @@ export function createRectangularTreemapLayout(
         x2: Math.min(first!.x1, second!.x1),
         y2: first!.y1 === second!.y0 ? first!.y1 : second!.y1,
         mergeIndex: node.mergeIndex,
-        colorIndex: node.colorIndex,
+        colorAngle: node.colorAngle,
       });
     }
   });

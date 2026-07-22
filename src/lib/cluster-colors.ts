@@ -1,3 +1,10 @@
+import { formatHex, toGamut, type Oklch } from 'culori';
+
+const CLUSTER_LIGHTNESS = 0.715;
+const CLUSTER_CHROMA = 0.1603;
+const UNCLUSTERED_CSS = 'rgb(113 113 122)';
+const UNCLUSTERED_HEX = 0xa0a0a4;
+const mapToSrgb = toGamut('rgb', 'oklch');
 const CLUSTER_TEXT_COLORS = [
   'text-cluster-1',
   'text-cluster-2',
@@ -9,50 +16,28 @@ const CLUSTER_TEXT_COLORS = [
   'text-cluster-8',
 ];
 
-const CLUSTER_BG_COLORS = [
-  'bg-cluster-1',
-  'bg-cluster-2',
-  'bg-cluster-3',
-  'bg-cluster-4',
-  'bg-cluster-5',
-  'bg-cluster-6',
-  'bg-cluster-7',
-  'bg-cluster-8',
-];
+function oklch(angle: number): Oklch {
+  return {
+    mode: 'oklch',
+    l: CLUSTER_LIGHTNESS,
+    c: CLUSTER_CHROMA,
+    h: (angle * 180) / Math.PI,
+  };
+}
 
-const CLUSTER_CSS_COLORS = [
-  'var(--cluster-1)',
-  'var(--cluster-2)',
-  'var(--cluster-3)',
-  'var(--cluster-4)',
-  'var(--cluster-5)',
-  'var(--cluster-6)',
-  'var(--cluster-7)',
-  'var(--cluster-8)',
-];
-
-export function getClusterTextColor(colorIndex: number | undefined): string {
-  if (colorIndex === undefined) {
-    return 'text-zinc-500';
-  }
-
+/** Discrete cluster color retained for the cluster filter control. */
+export function getClusterTextColor(colorIndex: number): string {
   return CLUSTER_TEXT_COLORS[colorIndex % CLUSTER_TEXT_COLORS.length]!;
 }
 
-export function getClusterBackgroundColor(
-  colorIndex: number | undefined,
-): string {
-  if (colorIndex === undefined) {
-    return 'bg-zinc-500';
-  }
-
-  return CLUSTER_BG_COLORS[colorIndex % CLUSTER_BG_COLORS.length]!;
+/** CSS color for a font's backend-owned circular dendrogram angle. */
+export function getClusterCssColor(angle: number | undefined): string {
+  if (angle === undefined) return UNCLUSTERED_CSS;
+  return `oklch(${CLUSTER_LIGHTNESS} ${CLUSTER_CHROMA} ${(angle * 180) / Math.PI})`;
 }
 
-export function getClusterCssColor(colorIndex: number | undefined): string {
-  if (colorIndex === undefined) {
-    return 'rgb(113 113 122)';
-  }
-
-  return CLUSTER_CSS_COLORS[colorIndex % CLUSTER_CSS_COLORS.length]!;
+/** sRGB integer for Three.js, gamut-mapped from the same OKLCH color. */
+export function getClusterHexColor(angle: number | undefined): number {
+  if (angle === undefined) return UNCLUSTERED_HEX;
+  return Number.parseInt(formatHex(mapToSrgb(oklch(angle))).slice(1), 16);
 }

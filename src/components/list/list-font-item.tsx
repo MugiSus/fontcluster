@@ -4,10 +4,7 @@ import { CheckIcon, CopyIcon, Plug2Icon } from 'lucide-solid';
 import { type FontItem, type FontWeight, WEIGHT_LABELS } from '@/types/font';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
-import {
-  getClusterBackgroundColor,
-  getClusterTextColor,
-} from '@/lib/cluster-colors';
+import { getClusterCssColor } from '@/lib/cluster-colors';
 import { appState } from '@/store';
 import { Button } from '@/components/ui/button';
 
@@ -27,7 +24,7 @@ export function ListFontItem(props: ListFontItemProps) {
   const { t } = useI18n();
   const meta = () => props.item.meta;
   const clustering = () => props.item.computed?.clustering;
-  const colorIndex = () => clustering()?.color_index;
+  const clusterColor = () => getClusterCssColor(clustering()?.angle);
   const weight = () => (Math.round(meta().weight / 100) * 100) as FontWeight;
   const shouldRenderPreview = () =>
     props.isPreviewEnabled !== false && props.previewText !== '';
@@ -85,16 +82,14 @@ export function ListFontItem(props: ListFontItemProps) {
       }
     >
       <div
-        class={cn(
-          'absolute bottom-0 left-px top-px z-10 w-[5px]',
-          getClusterBackgroundColor(colorIndex()),
-        )}
+        class='absolute bottom-0 left-px top-px z-10 w-[5px]'
+        style={{ 'background-color': clusterColor() }}
       />
       {/* <div
         aria-hidden='true'
         class='pointer-events-none absolute inset-y-0 right-0 w-16 opacity-60 transition-opacity group-hover:opacity-90'
         style={{
-          'background-image': `repeating-linear-gradient(-45deg, black 0 13.14px, ${getClusterCssColor(colorIndex())} 13.14px 14.14px)`,
+          'background-image': `repeating-linear-gradient(-45deg, black 0 13.14px, ${clusterColor()} 13.14px 14.14px)`,
           '-webkit-mask-image': 'linear-gradient(to right, transparent, black)',
           'mask-image': 'linear-gradient(to right, transparent, black)',
         }}
@@ -103,7 +98,7 @@ export function ListFontItem(props: ListFontItemProps) {
         aria-hidden='true'
         class='pointer-events-none absolute inset-y-0 left-px w-2'
         style={{
-          'background-image': `repeating-linear-gradient(-45deg, black 0 2.14px, ${getClusterCssColor(colorIndex())} 2.14px 3.14px)`,
+          'background-image': `repeating-linear-gradient(-45deg, black 0 2.14px, ${clusterColor()} 2.14px 3.14px)`,
         }}
       /> */}
       <div class='flex items-center gap-2 text-sm font-semibold'>
@@ -140,8 +135,8 @@ export function ListFontItem(props: ListFontItemProps) {
           class={cn(
             'absolute right-3 top-1/2 !size-4 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity',
             isPluginConnected() && props.isSentFontItem && 'opacity-100',
-            getClusterTextColor(colorIndex()),
           )}
+          style={{ color: clusterColor() }}
           stroke-width={2}
         />
       </Show>

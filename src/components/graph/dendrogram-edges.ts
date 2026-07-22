@@ -16,14 +16,14 @@ export interface DendrogramEdge {
   x2: number;
   y2: number;
   mergeIndex: number;
-  colorIndex: number | undefined;
+  colorAngle: number | undefined;
 }
 
 interface DendrogramBezier {
   child: GraphCoordinate;
   parent: GraphCoordinate;
   mergeIndex: number;
-  colorIndex: number | undefined;
+  colorAngle: number | undefined;
 }
 
 /** One circular arc of the radial tree, in graph-space polar coordinates. */
@@ -32,7 +32,7 @@ export interface DendrogramArc {
   angleTo: number;
   radius: number;
   mergeIndex: number;
-  colorIndex: number | undefined;
+  colorAngle: number | undefined;
 }
 
 interface PositionedDendrogramNode {
@@ -41,7 +41,7 @@ interface PositionedDendrogramNode {
   radius: number;
   parent: number;
   representativeKey: string | null;
-  colorIndex: number | undefined;
+  colorAngle: number | undefined;
   mergeIndex: number | null;
   height: number;
 }
@@ -51,7 +51,7 @@ export interface DendrogramNodeDot extends GraphPointData {
   key: string;
   nodeIndex: number;
   safeName: string;
-  colorIndex: number | undefined;
+  colorAngle: number | undefined;
   mergeIndex: number;
 }
 
@@ -148,7 +148,7 @@ const dendrogramTree = createRoot(() => {
             : 0,
         parent: node?.parentIndex ?? -1,
         representativeKey: node?.representativeKey ?? null,
-        colorIndex: node?.colorIndex,
+        colorAngle: node?.colorAngle,
         mergeIndex: node?.mergeIndex ?? null,
         height: node?.height ?? 0,
       }),
@@ -170,7 +170,7 @@ const dendrogramTree = createRoot(() => {
               y: positioned.center.y,
               orientation: 'radial',
               angle: positioned.angle,
-              colorIndex: node.colorIndex,
+              colorAngle: node.colorAngle,
             }
           : {
               key: node.key,
@@ -178,7 +178,7 @@ const dendrogramTree = createRoot(() => {
               x: positioned.center.x,
               y: positioned.center.y,
               orientation: 'rightward',
-              colorIndex: node.colorIndex,
+              colorAngle: node.colorAngle,
             },
       );
     }
@@ -190,7 +190,7 @@ const dendrogramTree = createRoot(() => {
       from: GraphCoordinate,
       to: GraphCoordinate,
       mergeIndex: number,
-      colorIndex: number | undefined,
+      colorAngle: number | undefined,
     ) => {
       if (isCoincident(from, to)) return;
       edges.push({
@@ -199,7 +199,7 @@ const dendrogramTree = createRoot(() => {
         x2: to.x,
         y2: to.y,
         mergeIndex,
-        colorIndex,
+        colorAngle,
       });
     };
 
@@ -225,13 +225,13 @@ const dendrogramTree = createRoot(() => {
             left!.center!,
             leftElbow,
             node.mergeIndex,
-            node.colorIndex,
+            node.colorAngle,
           );
           pushSegment(
             right!.center!,
             rightElbow,
             node.mergeIndex,
-            node.colorIndex,
+            node.colorAngle,
           );
           if (
             parent.radius > COINCIDENT_EPSILON &&
@@ -242,7 +242,7 @@ const dendrogramTree = createRoot(() => {
               angleTo: right!.angle,
               radius: parent.radius,
               mergeIndex: node.mergeIndex,
-              colorIndex: node.colorIndex,
+              colorAngle: node.colorAngle,
             });
           }
         } else if (children.length === 1) {
@@ -250,7 +250,7 @@ const dendrogramTree = createRoot(() => {
             children[0]!.center!,
             parent.center,
             node.mergeIndex,
-            node.colorIndex,
+            node.colorAngle,
           );
         }
       } else {
@@ -259,7 +259,7 @@ const dendrogramTree = createRoot(() => {
             child: child.center!,
             parent: parent.center,
             mergeIndex: node.mergeIndex,
-            colorIndex: node.colorIndex,
+            colorAngle: node.colorAngle,
           });
         }
       }
@@ -290,9 +290,9 @@ const dendrogramTree = createRoot(() => {
         item: representativePoint.item,
         x: node.center.x,
         y: node.center.y,
-        colorIndex:
-          representativePoint.item.computed?.clustering?.color_index ??
-          node.colorIndex,
+        colorAngle:
+          representativePoint.item.computed?.clustering?.angle ??
+          node.colorAngle,
         mergeIndex: node.mergeIndex,
       };
       dots.push(alias);
@@ -338,7 +338,7 @@ export const dendrogramEdges = (
               x2: point.x,
               y2: point.y,
               mergeIndex: curve.mergeIndex,
-              colorIndex: curve.colorIndex,
+              colorAngle: curve.colorAngle,
             },
           ];
     });

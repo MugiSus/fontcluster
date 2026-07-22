@@ -206,7 +206,7 @@ export function GraphViewer(props: GraphViewerProps) {
             !props.showImages
               ? ('centered' as const)
               : ('horizontal' as const),
-          colorIndex: point.item.computed?.clustering?.color_index,
+          colorAngle: point.item.computed?.clustering?.angle,
         })),
   );
 

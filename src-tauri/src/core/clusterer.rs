@@ -11,7 +11,7 @@ use crate::config::{
     ClusterStat, ClusteringConfig, ClusteringData, ClusteringMethod, ClusteringStats, ComputedData,
     DendrogramData, DendrogramMerge, ProgressStage,
 };
-use crate::core::optimal_leaf_ordering::optimize_leaf_order;
+use crate::core::optimal_leaf_ordering::{optimize_leaf_order, ordered_leaves};
 use crate::core::session::{
     load_computed_data, load_font_metadata, load_sample_vectors, save_computed_data,
     save_dendrogram,
@@ -155,6 +155,16 @@ pub async fn cluster_all(
             .map_err(|e| AppError::Processing(e.to_string()))??;
     let n_clusters = stats.clusters.len();
 
+    // Turn the final backend-owned left-first leaf order into stable circular
+    // positions. The radial renderer applies its own visual rotation; the
+    // persisted angle remains normalized to [0, 2π) for every graph mode.
+    let mut angles = vec![0.0f32; n_samples];
+    if n_samples > 1 {
+        for (rank, leaf) in ordered_leaves(&merges, n_samples).into_iter().enumerate() {
+            angles[leaf] = std::f32::consts::TAU * (rank as f32 + 0.5) / n_samples as f32;
+        }
+    }
+
     progress_events::reset_progress(events, state, ProgressStage::Clustering);
     progress_events::set_progress_denominator(
         events,
@@ -167,8 +177,8 @@ pub async fn cluster_all(
     // the dendrogram over the graph without re-clustering.
     let dendrogram = DendrogramData { ids, merges };
 
-    // Each font's persisted clustering carries its cluster's palette slot, so
-    // drawables read `k` and `color_index` from one place.
+    // Each font's persisted clustering carries its circular angle and its
+    // cluster's palette slot, so drawables need no dendrogram traversal.
     let color_by_label: Vec<usize> = stats
         .clusters
         .iter()
@@ -190,6 +200,7 @@ pub async fn cluster_all(
             computed.clustering = Some(ClusteringData {
                 k: labels[i],
                 join_height: join_heights[i],
+                angle: angles[i],
                 // Every point lands in an active cluster, so `labels[i]` is a
                 // valid index into the per-label colors.
                 color_index: color_by_label[labels[i] as usize],

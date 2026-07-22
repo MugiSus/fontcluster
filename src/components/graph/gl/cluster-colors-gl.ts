@@ -1,22 +1,10 @@
 /**
  * Color helpers for the WebGL graph layer.
  *
- * Colors are 0xRRGGBB integers (mirroring index.css) — nothing is read from the
- * DOM or CSS. Callers pass `isDark` (from the color-mode hook) to choose the
- * theme. The returned number feeds three's `Color.set()` / `setClearColor()`
- * directly; only the point buffer splits it into r/g/b floats. Keep these in
- * sync with the `--cluster-*` / `--background` values in index.css.
+ * Cluster colors are converted from the persisted dendrogram angle by the
+ * shared color module. The returned 0xRRGGBB number feeds Three.js directly.
  */
-
-// Cluster palette, indexed by the clustering's palette slot (modulo length).
-const CLUSTER_LIGHT = [
-  0x1aba8c, 0xcbcb2e, 0xda532a, 0x465ae0, 0x985cd5, 0x85d11b, 0xe3941f,
-  0x4bace8,
-];
-const CLUSTER_DARK = [
-  0x16d59f, 0xf7f71c, 0xec663e, 0x6477f4, 0xa65fed, 0x8edb21, 0xd88810,
-  0x3db2fa,
-];
+import { getClusterHexColor } from '@/lib/cluster-colors';
 
 /** Tailwind `text-zinc-500`, used for unclustered points (no cluster). */
 const UNCLUSTERED = 0xa0a0a4;
@@ -24,17 +12,14 @@ const UNCLUSTERED = 0xa0a0a4;
 const BACKGROUND_LIGHT = 0xffffff;
 const BACKGROUND_DARK = 0x000000;
 
-/** Returns the 0xRRGGBB color for a font's palette slot in the given theme. */
+/** Returns the 0xRRGGBB color for a font's circular dendrogram angle. */
 export function getClusterColor({
-  colorIndex,
-  isDark,
+  angle,
 }: {
-  colorIndex: number | undefined;
+  angle: number | undefined;
   isDark?: boolean;
 }): number {
-  if (colorIndex === undefined) return UNCLUSTERED;
-  const palette = isDark ? CLUSTER_DARK : CLUSTER_LIGHT;
-  return palette[colorIndex % palette.length]!;
+  return angle === undefined ? UNCLUSTERED : getClusterHexColor(angle);
 }
 
 /** Returns the 0xRRGGBB clear color (matching `--background`) for the theme. */

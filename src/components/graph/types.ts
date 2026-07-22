@@ -57,8 +57,8 @@ interface GraphPointLabelBase {
   /** Graph-space position of the labelled point. */
   x: number;
   y: number;
-  /** Palette slot of the labelled font; undefined when it lacks clustering. */
-  colorIndex: number | undefined;
+  /** Circular dendrogram angle of the labelled font. */
+  colorAngle: number | undefined;
 }
 
 /**

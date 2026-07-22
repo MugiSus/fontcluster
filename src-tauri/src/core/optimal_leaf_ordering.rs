@@ -65,17 +65,7 @@ pub(super) fn optimize_leaf_order(
     // Relabel leaves by the tree's current left-first traversal. Every
     // subtree is then a contiguous integer range, which makes the dynamic
     // program's endpoint sets cheap to enumerate.
-    let mut leaf_order = Vec::with_capacity(leaf_count);
-    let mut stack = vec![root];
-    while let Some(node) = stack.pop() {
-        if node < leaf_count {
-            leaf_order.push(node);
-            continue;
-        }
-        let merge = &merges[node - leaf_count];
-        stack.push(merge.right);
-        stack.push(merge.left);
-    }
+    let leaf_order = ordered_leaves(merges, leaf_count);
     if leaf_order.len() != leaf_count {
         debug_assert!(false, "dendrogram does not contain every leaf exactly once");
         return;
@@ -293,6 +283,25 @@ pub(super) fn optimize_leaf_order(
         pending.push((second_child, best_inner.1, last_leaf));
         pending.push((first_child, first_leaf, best_inner.0));
     }
+}
+
+/// Returns the final left-first leaf order encoded by an oriented dendrogram.
+pub(super) fn ordered_leaves(merges: &[DendrogramMerge], leaf_count: usize) -> Vec<usize> {
+    if leaf_count == 1 {
+        return vec![0];
+    }
+    let mut order = Vec::with_capacity(leaf_count);
+    let mut stack = vec![leaf_count + merges.len() - 1];
+    while let Some(node) = stack.pop() {
+        if node < leaf_count {
+            order.push(node);
+        } else {
+            let merge = &merges[node - leaf_count];
+            stack.push(merge.right);
+            stack.push(merge.left);
+        }
+    }
+    order
 }
 
 /// The admissible partner endpoints inside `node` when one path endpoint is

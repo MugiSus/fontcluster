@@ -19,7 +19,7 @@ export type GraphPolygon = readonly VoronoiPoint[];
 export interface VoronoiTreemapLeafCell {
   readonly key: string;
   readonly polygon: GraphPolygon;
-  readonly colorIndex: number | undefined;
+  readonly colorAngle: number | undefined;
 }
 
 export interface VoronoiTreemapBoundary {
@@ -28,12 +28,12 @@ export interface VoronoiTreemapBoundary {
   readonly x2: number;
   readonly y2: number;
   readonly mergeIndex: number;
-  readonly colorIndex: number;
+  readonly colorAngle: number;
 }
 
 export interface VoronoiTreemapClusterPolygon {
   readonly polygon: GraphPolygon;
-  readonly colorIndex: number;
+  readonly colorAngle: number;
 }
 
 export interface VoronoiTreemapLayout
@@ -128,7 +128,7 @@ export function createVoronoiTreemapLayout(
     leafCells.push({
       key: node.key,
       polygon,
-      colorIndex: node.colorIndex,
+      colorAngle: node.colorAngle,
     });
   }
 
@@ -143,13 +143,13 @@ export function createVoronoiTreemapLayout(
       : null;
     if (
       node?.clusterId !== undefined &&
-      node.colorIndex !== undefined &&
+      node.colorAngle !== undefined &&
       parentNode?.clusterId !== node.clusterId &&
       voronoiNode.polygon
     ) {
       clusterPolygons.push({
         polygon: voronoiNode.polygon,
-        colorIndex: node.colorIndex,
+        colorAngle: node.colorAngle,
       });
     }
 
@@ -159,7 +159,7 @@ export function createVoronoiTreemapLayout(
     if (
       !node ||
       node.mergeIndex === null ||
-      node.colorIndex === undefined ||
+      node.colorAngle === undefined ||
       children?.length !== 2 ||
       !children[0]!.polygon ||
       !children[1]!.polygon
@@ -177,7 +177,7 @@ export function createVoronoiTreemapLayout(
       x2: segment[1][0],
       y2: segment[1][1],
       mergeIndex: node.mergeIndex,
-      colorIndex: node.colorIndex,
+      colorAngle: node.colorAngle,
     });
   });
 

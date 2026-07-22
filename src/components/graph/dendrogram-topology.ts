@@ -16,7 +16,7 @@ export interface DendrogramTopologyNode {
   readonly height: number;
   readonly representativeKey: string | null;
   readonly clusterId: number | undefined;
-  readonly colorIndex: number | undefined;
+  readonly colorAngle: number | undefined;
 }
 
 export interface DendrogramTopology {
@@ -60,7 +60,7 @@ export function createDendrogramTopology(
           height: 0,
           representativeKey: key,
           clusterId: clustering?.k,
-          colorIndex: clustering?.color_index,
+          colorAngle: clustering?.angle,
         }
       : null;
   });
@@ -103,7 +103,7 @@ export function createDendrogramTopology(
       height: merge.height,
       representativeKey: ids[merge.representative] ?? null,
       clusterId: isSameCluster ? clusterId : undefined,
-      colorIndex: isSameCluster ? firstChild.colorIndex : undefined,
+      colorAngle: isSameCluster ? firstChild.colorAngle : undefined,
     });
   }
 

@@ -180,7 +180,7 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
         member.text = label.text;
         shouldSync = true;
       }
-      member.color = getClusterColor({ colorIndex: label.colorIndex, isDark });
+      member.color = getClusterColor({ angle: label.colorAngle, isDark });
     }
     if (shouldSync) batched.sync();
     props.requestRender();

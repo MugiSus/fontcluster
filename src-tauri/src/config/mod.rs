@@ -348,7 +348,7 @@ pub struct ComputedData {
 /// Per-font results assigned by the clustering stage.
 ///
 /// Everything here is a free by-product of the dendrogram replay that derives
-/// `k` and the cluster's palette slot.
+/// `k`, its dendrogram angle, and the cluster's palette slot.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClusteringData {
     /// Zero-based cluster index.
@@ -359,6 +359,10 @@ pub struct ClusteringData {
     /// point.
     #[serde(default)]
     pub join_height: f32,
+    /// This leaf's position in the final circular dendrogram order, in radians
+    /// over `[0, 2π)`. The backend owns this value because it owns the final
+    /// left/right orientation produced by optimal leaf ordering.
+    pub angle: f32,
     /// Palette slot of this font's cluster (its [`ClusterStat::color_index`]),
     /// stamped per font so drawables read the color without a cluster lookup.
     pub color_index: usize,
