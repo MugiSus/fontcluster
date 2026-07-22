@@ -4,6 +4,7 @@ import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import { type FontItem } from '@/types/font';
 import { GRAPH_MODE_CAPABILITIES } from '@/lib/graph-modes';
+import { getClusterColorAngle } from '@/lib/cluster-colors';
 import { useElementSize } from '@/hooks/use-element-size';
 import {
   dendrogramArcs,
@@ -206,7 +207,10 @@ export function GraphViewer(props: GraphViewerProps) {
             !props.showImages
               ? ('centered' as const)
               : ('horizontal' as const),
-          colorAngle: point.item.computed?.clustering?.angle,
+          colorAngle: getClusterColorAngle(
+            point.item.computed?.clustering?.leaf_angle,
+            point.item.computed?.clustering?.cluster_angle,
+          ),
         })),
   );
 

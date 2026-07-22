@@ -1,11 +1,10 @@
 import { For, onMount } from 'solid-js';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
-import { getClusterTextColor } from '@/lib/cluster-colors';
-import { cn } from '@/lib/utils';
+import { getClusterCssColor } from '@/lib/cluster-colors';
 
 interface ClusterSelectorProps {
-  /** Clusters to offer (id + palette slot), in display order. */
-  clusters: { k: number; colorIndex: number }[];
+  /** Clusters to offer (id + circular direction), in display order. */
+  clusters: { k: number; clusterAngle: number }[];
   /** Reports the selected cluster id (0 or 1); empty means "show every cluster". */
   onChange: (visibleClusterIds: number[]) => void;
 }
@@ -35,7 +34,8 @@ export function ClusterSelector(props: ClusterSelectorProps) {
             class='flex size-8 items-center justify-center rounded-full px-0'
           >
             <div
-              class={cn('font-bold', getClusterTextColor(cluster.colorIndex))}
+              class='font-bold'
+              style={{ color: getClusterCssColor(cluster.clusterAngle) }}
             >
               あ
             </div>

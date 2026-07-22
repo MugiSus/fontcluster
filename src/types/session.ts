@@ -71,6 +71,8 @@ export interface ClusterStat {
   centroid: number[];
   /** Largest internal merge height within this cluster; 0 for singletons. */
   diameter: number;
+  /** Center direction of this cluster's arc in the circular dendrogram. */
+  cluster_angle: number;
   /** Palette slot to draw this cluster in, assigned by the backend so
    *  ring-adjacent clusters never share one. */
   color_index: number;

@@ -11,6 +11,7 @@ import {
   ShaderMaterial,
 } from 'three';
 import { type GraphPointData } from '@/components/graph/types';
+import { getClusterColorAngle } from '@/lib/cluster-colors';
 import { getClusterColor } from './cluster-colors-gl';
 import {
   coreFragmentShader,
@@ -177,7 +178,10 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     const colors = attribute.array as Float32Array;
     for (const [index, point] of pointData.entries()) {
       const hex = getClusterColor({
-        angle: point.item.computed?.clustering?.angle,
+        angle: getClusterColorAngle(
+          point.item.computed?.clustering?.leaf_angle,
+          point.item.computed?.clustering?.cluster_angle,
+        ),
         isDark,
       });
       colors[index * 3] = ((hex >> 16) & 0xff) / 255;

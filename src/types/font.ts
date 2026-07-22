@@ -50,11 +50,10 @@ export interface ClusteringData {
    * outlier.
    */
   join_height: number;
-  /**
-   * Position in the backend's final circular dendrogram order, in radians
-   * over [0, 2π). Used as the hue in every visualization mode.
-   */
-  angle: number;
+  /** Position in the backend's final circular dendrogram order, in radians. */
+  leaf_angle: number;
+  /** Center direction of this font's cluster; shared by every font with the same k. */
+  cluster_angle: number;
   /**
    * Palette slot of this font's cluster (its `ClusterStat.color_index`),
    * stamped per font by the backend so drawables need no cluster lookup.

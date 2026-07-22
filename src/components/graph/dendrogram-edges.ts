@@ -3,6 +3,7 @@ import { CubicBezierCurve, Vector2 } from 'three';
 import { arcPoints, polarPoint } from './layouts/radial-tree-layout';
 import { dendrogramTreeLayout } from './layouts/active-graph-layout';
 import { getGraphPointByKey } from './font-point-index';
+import { getClusterColorAngle } from '@/lib/cluster-colors';
 import {
   type GraphCoordinate,
   type GraphPointData,
@@ -291,8 +292,10 @@ const dendrogramTree = createRoot(() => {
         x: node.center.x,
         y: node.center.y,
         colorAngle:
-          representativePoint.item.computed?.clustering?.angle ??
-          node.colorAngle,
+          getClusterColorAngle(
+            representativePoint.item.computed?.clustering?.leaf_angle,
+            representativePoint.item.computed?.clustering?.cluster_angle,
+          ) ?? node.colorAngle,
         mergeIndex: node.mergeIndex,
       };
       dots.push(alias);

@@ -182,9 +182,9 @@ pub enum ClusteringMethod {
 impl Default for ClusteringConfig {
     fn default() -> Self {
         Self {
-            method: ClusteringMethod::Average,
-            preprocessing_dimensions: 8,
-            distance_threshold: 0.5,
+            method: ClusteringMethod::Complete,
+            preprocessing_dimensions: 64,
+            distance_threshold: 0.25,
             target_cluster_count: 0,
             enable_attribute_emphasis: false,
             emphasis: BTreeMap::new(),
@@ -288,6 +288,9 @@ pub struct ClusterStat {
     /// Largest internal merge height within this cluster (its dendrogram
     /// diameter); `0.0` for singletons.
     pub diameter: f32,
+    /// Direction of this cluster's contiguous arc in the final circular
+    /// dendrogram order, in radians over `[0, 2π)`.
+    pub cluster_angle: f32,
     /// Palette slot to draw this cluster in, assigned so clusters whose arcs
     /// touch on the radial dendrogram ring never share a slot.
     pub color_index: usize,
@@ -360,9 +363,11 @@ pub struct ClusteringData {
     #[serde(default)]
     pub join_height: f32,
     /// This leaf's position in the final circular dendrogram order, in radians
-    /// over `[0, 2π)`. The backend owns this value because it owns the final
-    /// left/right orientation produced by optimal leaf ordering.
-    pub angle: f32,
+    /// over `[0, 2π)`.
+    pub leaf_angle: f32,
+    /// Direction of this font's cluster in that order. Every font with the
+    /// same `k` has the same cluster angle.
+    pub cluster_angle: f32,
     /// Palette slot of this font's cluster (its [`ClusterStat::color_index`]),
     /// stamped per font so drawables read the color without a cluster lookup.
     pub color_index: usize,

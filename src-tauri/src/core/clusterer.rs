@@ -149,21 +149,11 @@ pub async fn cluster_all(
     let n_samples = points.nrows();
     // Linkage plus leaf ordering is CPU-bound (up to O(n³)); run it off the
     // async runtime like the other heavy stages.
-    let (labels, join_heights, merges, stats) =
+    let (labels, join_heights, leaf_angles, merges, stats) =
         tokio::task::spawn_blocking(move || agglomerative_clustering(points, &config))
             .await
             .map_err(|e| AppError::Processing(e.to_string()))??;
     let n_clusters = stats.clusters.len();
-
-    // Turn the final backend-owned left-first leaf order into stable circular
-    // positions. The radial renderer applies its own visual rotation; the
-    // persisted angle remains normalized to [0, 2π) for every graph mode.
-    let mut angles = vec![0.0f32; n_samples];
-    if n_samples > 1 {
-        for (rank, leaf) in ordered_leaves(&merges, n_samples).into_iter().enumerate() {
-            angles[leaf] = std::f32::consts::TAU * (rank as f32 + 0.5) / n_samples as f32;
-        }
-    }
 
     progress_events::reset_progress(events, state, ProgressStage::Clustering);
     progress_events::set_progress_denominator(
@@ -177,8 +167,13 @@ pub async fn cluster_all(
     // the dendrogram over the graph without re-clustering.
     let dendrogram = DendrogramData { ids, merges };
 
-    // Each font's persisted clustering carries its circular angle and its
-    // cluster's palette slot, so drawables need no dendrogram traversal.
+    // Each font's persisted clustering carries its cluster's circular angle
+    // and palette slot, so drawables need no cluster-stat lookup.
+    let cluster_angle_by_label: Vec<f32> = stats
+        .clusters
+        .iter()
+        .map(|cluster| cluster.cluster_angle)
+        .collect();
     let color_by_label: Vec<usize> = stats
         .clusters
         .iter()
@@ -200,7 +195,8 @@ pub async fn cluster_all(
             computed.clustering = Some(ClusteringData {
                 k: labels[i],
                 join_height: join_heights[i],
-                angle: angles[i],
+                leaf_angle: leaf_angles[i],
+                cluster_angle: cluster_angle_by_label[labels[i] as usize],
                 // Every point lands in an active cluster, so `labels[i]` is a
                 // valid index into the per-label colors.
                 color_index: color_by_label[labels[i] as usize],
@@ -543,7 +539,13 @@ fn pca_embedding(data: Array2<f32>, dimensions: usize) -> Result<Array2<f32>> {
 fn agglomerative_clustering(
     points: Array2<f32>,
     config: &ClusteringConfig,
-) -> Result<(Vec<i32>, Vec<f32>, Vec<DendrogramMerge>, ClusteringStats)> {
+) -> Result<(
+    Vec<i32>,
+    Vec<f32>,
+    Vec<f32>,
+    Vec<DendrogramMerge>,
+    ClusteringStats,
+)> {
     let n = points.nrows();
     if n == 1 {
         // A lone point is its own cluster, never merges (join height 0), and
@@ -553,12 +555,13 @@ fn agglomerative_clustering(
                 size: 1,
                 centroid: points.row(0).to_vec(),
                 diameter: 0.0,
+                cluster_angle: 0.0,
                 color_index: 0,
             }],
             cut_height: 0.0,
             merge_heights: Vec::new(),
         };
-        return Ok((vec![0], vec![0.0], Vec::new(), stats));
+        return Ok((vec![0], vec![0.0], vec![0.0], Vec::new(), stats));
     }
 
     let mut condensed = Vec::with_capacity((n * (n - 1)) / 2);
@@ -636,6 +639,10 @@ fn agglomerative_clustering(
         }
     }
     optimize_leaf_order(&mut merges, &leaf_distances, n);
+    let mut leaf_angles = vec![0.0f32; n];
+    for (rank, leaf) in ordered_leaves(&merges, n).into_iter().enumerate() {
+        leaf_angles[leaf] = std::f32::consts::TAU * (rank as f32 + 0.5) / n as f32;
+    }
     let mut active_count = n;
     let target_cluster_count =
         (config.target_cluster_count > 0).then(|| config.target_cluster_count.clamp(1, n));
@@ -710,6 +717,14 @@ fn agglomerative_clustering(
                 .map(|centroid| centroid.to_vec())
                 .unwrap_or_default(),
             diameter: node_height[*node],
+            // A cut cluster is a subtree and therefore occupies one contiguous
+            // interval in the final left-first order. Its mean leaf position
+            // is the center direction of that interval.
+            cluster_angle: members
+                .iter()
+                .map(|member| leaf_angles[*member])
+                .sum::<f32>()
+                / members.len() as f32,
             color_index: *color_index,
         })
         .collect();
@@ -717,6 +732,7 @@ fn agglomerative_clustering(
     Ok((
         labels,
         join_heights,
+        leaf_angles,
         merges,
         ClusteringStats {
             clusters: cluster_stats,

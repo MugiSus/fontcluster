@@ -35,11 +35,11 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
       .map((stat, k) => ({
         k,
         size: stat.size,
-        colorIndex: stat.color_index,
+        clusterAngle: stat.cluster_angle,
       }))
       .toSorted((a, b) => b.size - a.size || a.k - b.k)
       .slice(0, MAX_CLUSTER_TOGGLES)
-      .map(({ k, colorIndex }) => ({ k, colorIndex })),
+      .map(({ k, clusterAngle }) => ({ k, clusterAngle })),
   );
 
   let inputElement: HTMLInputElement | undefined;

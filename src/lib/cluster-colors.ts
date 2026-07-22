@@ -5,16 +5,15 @@ const CLUSTER_CHROMA = 0.1603;
 const UNCLUSTERED_CSS = 'rgb(113 113 122)';
 const UNCLUSTERED_HEX = 0xa0a0a4;
 const mapToSrgb = toGamut('rgb', 'oklch');
-const CLUSTER_TEXT_COLORS = [
-  'text-cluster-1',
-  'text-cluster-2',
-  'text-cluster-3',
-  'text-cluster-4',
-  'text-cluster-5',
-  'text-cluster-6',
-  'text-cluster-7',
-  'text-cluster-8',
-];
+const LEAF_ANGLE_MIX = 0.1;
+
+export function getClusterColorAngle(
+  leafAngle: number | undefined,
+  clusterAngle: number | undefined,
+): number | undefined {
+  if (leafAngle === undefined || clusterAngle === undefined) return undefined;
+  return clusterAngle + (leafAngle - clusterAngle) * LEAF_ANGLE_MIX;
+}
 
 function oklch(angle: number): Oklch {
   return {
@@ -23,11 +22,6 @@ function oklch(angle: number): Oklch {
     c: CLUSTER_CHROMA,
     h: (angle * 180) / Math.PI,
   };
-}
-
-/** Discrete cluster color retained for the cluster filter control. */
-export function getClusterTextColor(colorIndex: number): string {
-  return CLUSTER_TEXT_COLORS[colorIndex % CLUSTER_TEXT_COLORS.length]!;
 }
 
 /** CSS color for a font's backend-owned circular dendrogram angle. */
