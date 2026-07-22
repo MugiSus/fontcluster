@@ -4,8 +4,8 @@
 //! A single [`Analyzer`] owns one ONNX [`Session`] guarded by a
 //! mutex. Images are preprocessed in parallel with [`rayon`], run through the
 //! model in fixed-size batches, and the resulting embedding for each image is
-//! written next to it as `vector.bin`. On Apple silicon the CoreML execution
-//! provider is used; elsewhere the default CPU provider is used.
+//! written next to it as `vector.bin`. ONNX Runtime's default CPU execution
+//! provider is used on every platform.
 
 use crate::commands::progress::progress_events;
 use crate::config::ProgressStage;
@@ -14,14 +14,9 @@ use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
 use ndarray::{s, Array4};
-#[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
-use ort::ep;
 use ort::{
     inputs,
-    session::{
-        builder::{GraphOptimizationLevel, SessionBuilder},
-        Session,
-    },
+    session::{builder::GraphOptimizationLevel, Session},
     value::Tensor,
 };
 use rayon::prelude::*;
@@ -66,11 +61,10 @@ impl Analyzer {
     /// focused on model execution and prevents a second full-file checksum of
     /// large ONNX assets when analysis begins.
     pub fn new(model: &ModelBundle) -> Result<Self> {
-        let model_id = &model.manifest.id;
         let model_path = model.directory.join(MODEL_FILE_NAME);
 
         Ok(Self {
-            session: Mutex::new(load_session(&model_path, model_id)?),
+            session: Mutex::new(load_session(&model_path)?),
             spec: ModelSpec {
                 input_size: DEFAULT_INPUT_SIZE,
                 output_dimensions: MODEL_OUTPUT_DIMENSIONS,
@@ -247,7 +241,7 @@ impl Analyzer {
 }
 
 /// Builds and commits an ONNX session for the model at `model_path`.
-fn load_session(model_path: &Path, model_id: &str) -> Result<Session> {
+fn load_session(model_path: &Path) -> Result<Session> {
     println!(
         "🚀 Analyzer: loading ONNX model from {}",
         model_path.display()
@@ -263,10 +257,6 @@ fn load_session(model_path: &Path, model_id: &str) -> Result<Session> {
     builder = builder
         .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
         .map_err(|err| AppError::Processing(err.to_string()))?;
-    let cache_dir = AppState::get_model_cache_dir()?
-        .join(model_id)
-        .join("cpu-gpu-low-precision");
-    builder = configure_execution_providers(builder, &cache_dir)?;
 
     let session = builder
         .commit_from_file(model_path)
@@ -280,52 +270,6 @@ fn load_session(model_path: &Path, model_id: &str) -> Result<Session> {
     }
 
     Ok(session)
-}
-
-/// Registers the platform's preferred execution provider.
-///
-/// On Apple silicon this enables CoreML on the GPU with low-precision
-/// accumulation and points it at a persistent on-disk cache (`cache_dir`), so
-/// the expensive compile of a large model runs only on the first job rather
-/// than on every run. On every other target the builder is returned unchanged
-/// so the default CPU provider runs.
-fn configure_execution_providers(
-    builder: SessionBuilder,
-    cache_dir: &Path,
-) -> Result<SessionBuilder> {
-    #[cfg(all(target_vendor = "apple", target_arch = "aarch64"))]
-    {
-        fs::create_dir_all(cache_dir).map_err(|e| {
-            AppError::Io(format!(
-                "Failed to create CoreML cache dir {}: {}",
-                cache_dir.display(),
-                e
-            ))
-        })?;
-        let coreml = ep::CoreML::default()
-            .with_compute_units(ep::coreml::ComputeUnits::CPUAndGPU)
-            .with_low_precision_accumulation_on_gpu(true)
-            .with_model_format(ep::coreml::ModelFormat::MLProgram)
-            .with_static_input_shapes(true)
-            .with_specialization_strategy(ep::coreml::SpecializationStrategy::FastPrediction)
-            .with_model_cache_dir(cache_dir.to_string_lossy());
-        let available = ep::ExecutionProvider::is_available(&coreml)
-            .map_err(|err| AppError::Processing(err.to_string()))?;
-        println!(
-            "🚀 Analyzer: CoreML EP available={available}, cache={}",
-            cache_dir.display()
-        );
-
-        builder
-            .with_execution_providers([coreml.build().error_on_failure()])
-            .map_err(|err| AppError::Processing(err.to_string()))
-    }
-
-    #[cfg(not(all(target_vendor = "apple", target_arch = "aarch64")))]
-    {
-        let _ = cache_dir;
-        Ok(builder)
-    }
 }
 
 /// Collects the `sample.png` path of every font under the session's

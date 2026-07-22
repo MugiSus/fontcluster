@@ -118,15 +118,6 @@ impl AppState {
         Ok(Self::get_generated_dir()?.join(format!("{id}.{SESSION_DOCUMENT_EXTENSION}")))
     }
 
-    /// `<cache-dir>/FontCluster/CoreMLCache` — persisted compiled CoreML
-    /// models, so the multi-minute compile of a large model happens only once
-    /// rather than on every job run.
-    pub fn get_model_cache_dir() -> Result<PathBuf> {
-        dirs::cache_dir()
-            .map(|d| d.join("FontCluster").join("CoreMLCache"))
-            .ok_or_else(|| crate::error::AppError::Io("Cache dir not found".into()))
-    }
-
     /// `<cache-dir>/FontCluster/Session` — root of the unpacked working/view
     /// directories.
     pub fn get_session_cache_root() -> Result<PathBuf> {
