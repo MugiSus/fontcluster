@@ -11,7 +11,10 @@ import {
   ShaderMaterial,
 } from 'three';
 import { type GraphPointData } from '@/components/graph/types';
-import { getClusterColor } from './cluster-colors-gl';
+import {
+  getClusterColor,
+  type GraphOutputColorSpace,
+} from './cluster-colors-gl';
 import {
   coreFragmentShader,
   coreVertexShader,
@@ -36,8 +39,8 @@ export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
   /** Whether sharp core dots are drawn; the halo remains independent. */
   showCore: Accessor<boolean>;
-  /** Whether the active theme is dark (drives colors and the glow blend op). */
-  isDark: Accessor<boolean>;
+  /** Encoded RGB space of the renderer's drawing buffer. */
+  colorSpace: GraphOutputColorSpace;
   /** Marks a point active (full) vs dimmed (filtered-out / inactive weight). */
   activePredicate: Accessor<(point: GraphPointData) => boolean>;
   /** Extra per-point opacity multiplier; defaults to fully opaque. */
@@ -121,6 +124,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     blendEquation: AddEquation,
     blendSrc: OneFactor,
     blendDst: OneMinusSrcAlphaFactor,
+    premultipliedAlpha: true,
   });
 
   const core = new Points(geometry, coreMaterial);
@@ -168,21 +172,21 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     geometry.setDrawRange(0, count);
   };
 
-  /** Updates the per-point color in place; call on theme change. */
-  const setColors = (pointData: GraphPointData[], isDark: boolean) => {
+  /** Updates the per-point color in place. */
+  const setColors = (pointData: GraphPointData[]) => {
     const attribute = geometry.getAttribute('aColor');
     // Guard against running before the matching geometry has been built.
     if (!attribute || attribute.count !== pointData.length) return;
 
     const colors = attribute.array as Float32Array;
     for (const [index, point] of pointData.entries()) {
-      const hex = getClusterColor({
+      const color = getClusterColor({
         angle: point.colorAngle,
-        isDark,
+        colorSpace: props.colorSpace,
       });
-      colors[index * 3] = ((hex >> 16) & 0xff) / 255;
-      colors[index * 3 + 1] = ((hex >> 8) & 0xff) / 255;
-      colors[index * 3 + 2] = (hex & 0xff) / 255;
+      colors[index * 3] = color.r;
+      colors[index * 3 + 1] = color.g;
+      colors[index * 3 + 2] = color.b;
     }
     attribute.needsUpdate = true;
   };
@@ -245,19 +249,11 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     const pointData = props.points();
     setPoints(pointData);
     untrack(() => {
-      setColors(pointData, props.isDark());
+      setColors(pointData);
       setActiveState(pointData, props.activePredicate());
       setOpacity(pointData, props.opacityForPoint?.() ?? FULL_OPACITY);
       setHiddenCores(pointData, props.imageShownKeys());
     });
-    props.requestRender();
-  });
-
-  // Colors (theme / clustering changed). The geometry effect seeds colors on a
-  // point-set change; this keeps them current when the theme flips or clustering
-  // loads in later (setColors reads each point's clustering).
-  createEffect(() => {
-    setColors(props.points(), props.isDark());
     props.requestRender();
   });
 

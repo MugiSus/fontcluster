@@ -1,10 +1,24 @@
 import { type Accessor, createEffect, onCleanup } from 'solid-js';
-import { type Object3D } from 'three';
+import {
+  Color,
+  DoubleSide,
+  type Object3D,
+  ShaderMaterial,
+  SRGBColorSpace,
+} from 'three';
+import { DisplayP3ColorSpace } from 'three/addons/math/ColorSpaces.js';
 import { BatchedText, Text } from 'troika-three-text';
 import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
 import { SAMPLE_IMAGE_BOX_HEIGHT_PX } from '@/components/graph/constants';
 import { type GraphPointLabel } from '@/components/graph/types';
-import { getClusterColor } from './cluster-colors-gl';
+import {
+  getClusterColor,
+  type GraphOutputColorSpace,
+} from './cluster-colors-gl';
+import {
+  pointLabelFragmentShader,
+  pointLabelVertexShader,
+} from './point-label-shaders';
 
 /** Label glyph em-height in CSS px, held constant on zoom. */
 const FONT_SIZE_PX = 10;
@@ -44,8 +58,8 @@ export interface PointLabelLayerProps {
   showFontNames: Accessor<boolean>;
   /** Leaf keys whose forced sample images are drawn, so labels remain visible. */
   forcedImageLabelKeys: Accessor<Set<string>>;
-  /** Whether the active theme is dark (picks cluster colors). */
-  isDark: Accessor<boolean>;
+  /** Encoded RGB space of the renderer's drawing buffer. */
+  colorSpace: GraphOutputColorSpace;
   /** World-units-per-CSS-pixel factor so labels keep their px size on zoom. */
   zoom: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
@@ -75,12 +89,31 @@ export interface PointLabelLayerProps {
  * out. The render loop owns the layer's visibility across the glow passes.
  */
 export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
+  // Troika derives its SDF/batching shader from this material. Its member-color
+  // transport stores encoded RGB bytes, so decode them into Three's matching
+  // linear working space before the standard renderer output transform.
+  const labelBaseMaterial = new ShaderMaterial({
+    uniforms: {
+      diffuse: { value: new Color(0xffffff) },
+      opacity: { value: 1 },
+    },
+    vertexShader: pointLabelVertexShader,
+    fragmentShader: pointLabelFragmentShader,
+    side: DoubleSide,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
   const batched = new BatchedText();
+  batched.material = labelBaseMaterial;
   batched.frustumCulled = false;
   // Above the points, below the highlight rings and sample images.
   batched.renderOrder = 0.5;
-  batched.material.depthTest = false;
-  batched.material.depthWrite = false;
+  // Renderer capability is selected once before this layer is constructed.
+  // eslint-disable-next-line solid/reactivity -- intentionally non-reactive renderer configuration
+  const colorSpace = props.colorSpace;
+  const outputColorSpace =
+    colorSpace === 'display-p3' ? DisplayP3ColorSpace : SRGBColorSpace;
 
   /** Member pool keyed by the font key, so changing layout-specific label
    *  order never assigns another font's text geometry to an existing member. */
@@ -152,7 +185,6 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   // require an async worker relayout (`sync`); alignment remains fixed.
   createEffect(() => {
     const labels = props.labels();
-    const isDark = props.isDark();
     let shouldSync = false;
 
     const labelKeys = new Set(labels.map((label) => label.key));
@@ -180,7 +212,10 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
         member.text = label.text;
         shouldSync = true;
       }
-      member.color = getClusterColor({ angle: label.colorAngle, isDark });
+      member.color = getClusterColor({
+        angle: label.colorAngle,
+        colorSpace,
+      }).getHex(outputColorSpace);
     }
     if (shouldSync) batched.sync();
     props.requestRender();
@@ -215,7 +250,7 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   onCleanup(() => {
     batched.removeEventListener('synccomplete', updateMemberTransforms);
     for (const member of members.values()) member.dispose();
-    batched.material.dispose();
+    labelBaseMaterial.dispose();
     batched.dispose();
   });
 

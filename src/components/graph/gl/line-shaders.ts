@@ -15,9 +15,8 @@
 //   - the perspective near-plane `trimSegment` — the graph renders through an
 //     OrthographicCamera (see use-graph-gl-renderer), so `perspective` is always
 //     false and that branch is dead;
-//   - world-units, dashing, log-depth, clipping planes, fog, tone-mapping and
-//     color-space conversion — none are used, and with ColorManagement off +
-//     an sRGB-linear output target the color chunks would be no-ops anyway.
+//   - world-units, dashing, log-depth, clipping planes and fog — none are used.
+//     Tone mapping and color-space output remain delegated to Three's chunks.
 //
 // `uv.x` runs across the stroke width (±1 at the edges); `uv.y` runs along the
 // segment, exceeding ±1 only in the round-cap rows. `USE_COLOR` (set by the
@@ -126,5 +125,7 @@ void main() {
 
   // Straight alpha; the material normal-blends this onto the screen.
   gl_FragColor = vec4( color, alpha );
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;

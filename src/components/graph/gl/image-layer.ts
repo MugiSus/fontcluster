@@ -26,7 +26,7 @@ export interface ImageSpec {
   x: number;
   y: number;
   /** Cluster tint applied to the (luminance-masked) sample. */
-  color: number;
+  color: Color;
   /** 1 for active points, lower for dimmed ones. */
   opacity: number;
 }
@@ -198,7 +198,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
         entry = createEntry(spec, sessionKey, url);
         entries.set(spec.key, entry);
       }
-      (entry.material.uniforms['uColor']!.value as Color).set(spec.color);
+      (entry.material.uniforms['uColor']!.value as Color).copy(spec.color);
       entry.material.uniforms['uOpacity']!.value = spec.opacity;
       entry.mesh.position.set(spec.x, spec.y, 2);
       applyFit(entry);

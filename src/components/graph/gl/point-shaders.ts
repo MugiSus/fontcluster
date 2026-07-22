@@ -59,6 +59,8 @@ void main() {
   float intensity = smoothstep(1.0, 0.8, dist);
   // Straight alpha; the material normal-blends this onto the screen.
   gl_FragColor = vec4(vColor, intensity * vAlpha);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;
 
@@ -100,10 +102,12 @@ void main() {
   if (dist > 1.0) discard;
 
   float halo = pow(max(0.0, 1.0 - dist), 3.0);
-  // Premultiplied output (rgb already × alpha) so the halos 'over'-composite into
-  // the transparent bloom buffer (src factor = One, dst = OneMinusSrcAlpha)
-  // without dark fringing — opacity asymptotes toward 1, the same in both themes.
+  // Three converts the straight working-space color to the target first, then
+  // premultiplies it for the halo buffer's One/OneMinusSrcAlpha blend.
   float a = halo * uOpacity * vGlow * vAlpha;
-  gl_FragColor = vec4(vColor * a, a);
+  gl_FragColor = vec4(vColor, a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+  #include <premultiplied_alpha_fragment>
 }
 `;

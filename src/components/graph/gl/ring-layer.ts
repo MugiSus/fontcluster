@@ -34,7 +34,8 @@ const RING_RADIUS_PX: Record<RingKind, number> = {
 export interface RingSpec {
   x: number;
   y: number;
-  color: number;
+  /** Cluster color in Three.js's working space. */
+  color: Color;
   kind: RingKind;
   /** 1 = full; < 1 dims the stroke for filtered-out / inactive-weight fonts. */
   opacity: number;
@@ -98,7 +99,7 @@ export function createRingLayer(props: RingLayerProps): Object3D {
 
       // Appearance / position follow the spec at this slot.
       createEffect(() => {
-        (material.uniforms['uColor']!.value as Color).set(spec().color);
+        (material.uniforms['uColor']!.value as Color).copy(spec().color);
         material.uniforms['uOpacity']!.value = spec().opacity;
         mesh.position.set(spec().x, spec().y, 1);
       });

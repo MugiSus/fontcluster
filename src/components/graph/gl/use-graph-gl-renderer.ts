@@ -13,6 +13,12 @@ import {
   Vector2,
   WebGLRenderer,
 } from 'three';
+import {
+  DisplayP3ColorSpace,
+  DisplayP3ColorSpaceImpl,
+  LinearDisplayP3ColorSpace,
+  LinearDisplayP3ColorSpaceImpl,
+} from 'three/addons/math/ColorSpaces.js';
 import { useColorMode } from '@kobalte/core';
 import {
   type GraphCoordinate,
@@ -27,7 +33,11 @@ import {
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
 import { type GraphLayout } from '@/components/graph/layouts/active-graph-layout';
-import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
+import {
+  getBackgroundColor,
+  getClusterColor,
+  type GraphOutputColorSpace,
+} from './cluster-colors-gl';
 import { createPointLabelLayer } from './point-label-layer';
 import {
   createDendrogramLayer,
@@ -41,9 +51,11 @@ import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
 import { createScatterGridLayer } from './scatter-grid-layer';
 import { createTreemapLayer } from './treemap-layer';
 
-// Colors come straight from the CSS variables as sRGB, so disable three's
-// linear<->sRGB conversion to keep the rendered hues WYSIWYG with the CSS theme.
-ColorManagement.enabled = false;
+ColorManagement.define({
+  [DisplayP3ColorSpace]: DisplayP3ColorSpaceImpl,
+  [LinearDisplayP3ColorSpace]: LinearDisplayP3ColorSpaceImpl,
+});
+ColorManagement.enabled = true;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.4;
@@ -112,12 +124,36 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // GPU.
       powerPreference: 'default',
     });
-    // We author every color as raw sRGB hex (see cluster-colors-gl) and our own
-    // shaders emit it directly. Built-in materials (LineMaterial) would re-encode
-    // linear->sRGB on output and wash the colors out, so disable that output
-    // conversion: combined with ColorManagement off, the whole pipeline is a raw
-    // passthrough and lines match the points / background.
-    renderer.outputColorSpace = LinearSRGBColorSpace;
+    // Prefer Display P3 on the actual context, but only select its gamut after
+    // the drawing-buffer assignment reads back successfully. Three then owns
+    // the working-to-output conversion for built-in and custom materials alike.
+    const context = renderer.getContext();
+    let graphOutputColorSpace: GraphOutputColorSpace = 'srgb';
+    if ('drawingBufferColorSpace' in context) {
+      try {
+        renderer.outputColorSpace = DisplayP3ColorSpace;
+        if (context.drawingBufferColorSpace === 'display-p3') {
+          graphOutputColorSpace = 'display-p3';
+        }
+      } catch {
+        graphOutputColorSpace = 'srgb';
+      }
+    }
+    const graphWorkingColorSpace =
+      graphOutputColorSpace === 'display-p3'
+        ? LinearDisplayP3ColorSpace
+        : LinearSRGBColorSpace;
+    // The app has one Three renderer. Fix its global working space before any
+    // graph Color or material is constructed, and keep it stable thereafter.
+    ColorManagement.workingColorSpace = graphWorkingColorSpace;
+    renderer.outputColorSpace = graphOutputColorSpace;
+    const restoreDrawingBufferColorSpace = () => {
+      renderer.outputColorSpace = graphOutputColorSpace;
+    };
+    canvas.addEventListener(
+      'webglcontextrestored',
+      restoreDrawingBufferColorSpace,
+    );
 
     const scene = new Scene();
     // Orthographic, y-up: world Y is the negated graph Y (graph space is
@@ -260,7 +296,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const hovered = props.hoveredKey();
       const family = props.selectedFamily();
       const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
-      const isDarkMode = isDark();
       const predicate = activePredicate();
 
       // Dedupe per font, keeping the strongest affordance (selected > hover >
@@ -288,7 +323,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           y: -point.y,
           color: getClusterColor({
             angle: point.colorAngle,
-            isDark: isDarkMode,
+            colorSpace: graphOutputColorSpace,
           }),
           kind,
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
@@ -300,7 +335,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           y: -selectedDendrogramAnchor.y,
           color: getClusterColor({
             angle: selectedDendrogramAnchor.colorAngle,
-            isDark: isDarkMode,
+            colorSpace: graphOutputColorSpace,
           }),
           kind: 'selected',
           opacity: predicate(selectedDendrogramAnchor) ? 1 : DIMMED_OPACITY,
@@ -330,7 +365,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
       const showImages = props.showImages();
       const predicate = activePredicate();
-      const isDarkMode = isDark();
 
       const wanted = new Set<string>();
       if (showImages) for (const key of imageKeys) wanted.add(key);
@@ -347,7 +381,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           y: -point.y,
           color: getClusterColor({
             angle: point.colorAngle,
-            isDark: isDarkMode,
+            colorSpace: graphOutputColorSpace,
           }),
           opacity: predicate(point) ? 1 : DIMMED_OPACITY,
         });
@@ -377,7 +411,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           y: -anchor.y,
           color: getClusterColor({
             angle: anchor.colorAngle,
-            isDark: isDarkMode,
+            colorSpace: graphOutputColorSpace,
           }),
           opacity: predicate(anchor) ? 1 : DIMMED_OPACITY,
         });
@@ -423,7 +457,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         points,
         color: getClusterColor({
           angle: point?.colorAngle,
-          isDark: isDark(),
+          colorSpace: graphOutputColorSpace,
         }),
       };
     });
@@ -431,7 +465,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- layers (one scene; render order keeps images over rings over dots) -
     // Each layer owns its own reactive updates from the accessors below; this
     // hook only constructs them, wires the render loop, and sizes the renderer.
-    const compositor = createGlowCompositor();
+    const compositor = createGlowCompositor(graphWorkingColorSpace);
     const scatterGridLayer = createScatterGridLayer({
       lines: () => {
         const layout = props.layout();
@@ -450,6 +484,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           : null;
       },
       isDark,
+      colorSpace: graphOutputColorSpace,
       resolution: props.size,
       requestRender: scheduleRender,
     });
@@ -461,6 +496,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       highlight: dendrogramHighlight,
       activeKeys: props.filteredKeys,
       isDark,
+      colorSpace: graphOutputColorSpace,
       resolution: props.size,
       zoom: props.zoomFactor,
       pixelRatio,
@@ -475,14 +511,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       showImages: props.showImages,
       showFontNames: props.showFontNames,
       forcedImageLabelKeys,
-      isDark,
+      colorSpace: graphOutputColorSpace,
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
     const pointLayer = createPointLayer({
       points: props.points,
       showCore: props.showPointCore,
-      isDark,
+      colorSpace: graphOutputColorSpace,
       activePredicate,
       imageShownKeys,
       pixelRatio,
@@ -492,7 +528,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const dendrogramAliasHaloLayer = createPointLayer({
       points: props.dendrogramNodeDots,
       showCore: () => false,
-      isDark,
+      colorSpace: graphOutputColorSpace,
       activePredicate,
       opacityForPoint: dendrogramAliasGlowOpacity,
       imageShownKeys: () => NO_IMAGE_KEYS,
@@ -599,6 +635,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     onCleanup(() => {
       if (rafId !== undefined) window.cancelAnimationFrame(rafId);
+      canvas.removeEventListener(
+        'webglcontextrestored',
+        restoreDrawingBufferColorSpace,
+      );
       // The layers own their own teardown (Solid disposes their effects /
       // onCleanups with this owner); the compositor and renderer do not.
       compositor.dispose();

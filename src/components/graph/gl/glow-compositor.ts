@@ -14,6 +14,7 @@ import {
   type WebGLRenderer,
   WebGLRenderTarget,
 } from 'three';
+import { LinearDisplayP3ColorSpace } from 'three/addons/math/ColorSpaces.js';
 import { blitFragmentShader, blitVertexShader } from './blit-shaders';
 
 /**
@@ -57,7 +58,9 @@ const GLOW_LAYER_OPACITY = 0.4;
  * half-float precision while the sharp dots / rings / images / tree stay in the
  * ordinary full-resolution screen pass.
  */
-export function createGlowCompositor() {
+export function createGlowCompositor(
+  colorSpace: typeof LinearSRGBColorSpace | typeof LinearDisplayP3ColorSpace,
+) {
   // The glow accumulation buffer. Half-float so the overlaps don't band; no
   // depth/stencil (only the point halos draw into it, depth-test off).
   const glowTarget = new WebGLRenderTarget(1, 1, {
@@ -65,8 +68,9 @@ export function createGlowCompositor() {
     depthBuffer: false,
     stencilBuffer: false,
   });
-  // Raw passthrough (see the renderer's outputColorSpace note).
-  glowTarget.texture.colorSpace = LinearSRGBColorSpace;
+  // The halo pass writes the renderer's linear working values; keeping the
+  // target in that same space makes Three's output transform an identity here.
+  glowTarget.texture.colorSpace = colorSpace;
   glowTarget.texture.minFilter = LinearFilter;
   glowTarget.texture.magFilter = LinearFilter;
   glowTarget.texture.generateMipmaps = false;
@@ -93,6 +97,7 @@ export function createGlowCompositor() {
     blendEquation: AddEquation,
     blendSrc: OneFactor,
     blendDst: OneMinusSrcAlphaFactor,
+    premultipliedAlpha: true,
   });
   const quad = new Mesh(new PlaneGeometry(2, 2), material);
   scene.add(quad);

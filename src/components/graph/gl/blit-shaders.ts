@@ -25,8 +25,9 @@ void main() {
  * {@link uLayerOpacity}. The material blends it src = One, dst = OneMinusSrcAlpha,
  * so the screen result is `glow + background·(1 - glowAlpha)` — the glow veils
  * the background instead of adding onto it, and the scale dims the whole layer
- * (a region that reached alpha 1 veils at uLayerOpacity). Premultiplied, so
- * scaling the sample moves rgb and alpha together and stays premultiplied-valid.
+ * (a region that reached alpha 1 veils at uLayerOpacity). The sample is
+ * unpremultiplied before Three's output conversion, then premultiplied again so
+ * nonlinear transfer functions never operate on alpha-scaled RGB.
  *
  * The glow was accumulated in 16-bit float so the overlaps stay smooth; this
  * composite is the single quantization down to the 8-bit screen.
@@ -38,6 +39,11 @@ uniform float uLayerOpacity; // whole-layer opacity ceiling
 varying vec2 vUv;
 
 void main() {
-  gl_FragColor = texture2D(uTexture, vUv) * uLayerOpacity;
+  vec4 glow = texture2D(uTexture, vUv);
+  if (glow.a <= 0.0) discard;
+  gl_FragColor = vec4(glow.rgb / glow.a, glow.a * uLayerOpacity);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+  #include <premultiplied_alpha_fragment>
 }
 `;

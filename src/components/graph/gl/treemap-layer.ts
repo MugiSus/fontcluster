@@ -16,6 +16,7 @@ import {
   getBackgroundColor,
   getClusterColor,
   getScatterGridColor,
+  type GraphOutputColorSpace,
 } from './cluster-colors-gl';
 import { createFatLineMaterial } from './fat-line-material';
 
@@ -24,6 +25,7 @@ type TreemapLayout = RectangularTreemapLayout | VoronoiTreemapLayout;
 interface TreemapLayerProps {
   layout: Accessor<TreemapLayout | null>;
   isDark: Accessor<boolean>;
+  colorSpace: GraphOutputColorSpace;
   resolution: Accessor<{ width: number; height: number }>;
   requestRender: () => void;
 }
@@ -91,13 +93,15 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
         0,
       ]);
       const background = new Color(getBackgroundColor({ isDark }));
-      const boundaryColor = new Color();
       const lastMergeIndex = boundaries.reduce(
         (last, boundary) => Math.max(last, boundary.mergeIndex),
         1,
       );
       const colors = boundaries.flatMap(({ colorAngle, mergeIndex }) => {
-        boundaryColor.set(getClusterColor({ angle: colorAngle, isDark }));
+        const boundaryColor = getClusterColor({
+          angle: colorAngle,
+          colorSpace: props.colorSpace,
+        });
         boundaryColor.lerpColors(
           background,
           boundaryColor,
@@ -149,12 +153,12 @@ export function createTreemapLayer(props: TreemapLayerProps): Object3D {
         2;
       const positions: number[] = [];
       const colors: number[] = [];
-      const clusterColor = new Color();
       for (const cluster of clusterPolygons) {
         appendClosedPolygon(positions, cluster.polygon);
-        clusterColor.set(
-          getClusterColor({ angle: cluster.colorAngle, isDark }),
-        );
+        const clusterColor = getClusterColor({
+          angle: cluster.colorAngle,
+          colorSpace: props.colorSpace,
+        });
         for (let edge = 0; edge < cluster.polygon.length; edge += 1) {
           colors.push(
             clusterColor.r,

@@ -29,7 +29,11 @@ import {
 import { GRAPH_SIZE } from '@/components/graph/constants';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { arcFragmentShader, arcVertexShader } from './arc-shaders';
-import { getBackgroundColor, getClusterColor } from './cluster-colors-gl';
+import {
+  getBackgroundColor,
+  getClusterColor,
+  type GraphOutputColorSpace,
+} from './cluster-colors-gl';
 import { createFatLineMaterial } from './fat-line-material';
 import { coreFragmentShader, coreVertexShader } from './point-shaders';
 
@@ -97,7 +101,8 @@ export const dendrogramAliasGlowOpacityForRank = (
 export interface DendrogramHighlight {
   /** Graph-space (y-down) polyline: the point, then successive merge centroids. */
   points: GraphCoordinate[];
-  color: number;
+  /** Stroke color in Three.js's working space. */
+  color: Color;
 }
 
 export interface DendrogramLayerProps {
@@ -116,6 +121,8 @@ export interface DendrogramLayerProps {
   activeKeys: Accessor<Set<string>>;
   /** Whether the active theme is dark (picks cluster/background colors). */
   isDark: Accessor<boolean>;
+  /** Encoded RGB space of the renderer's drawing buffer. */
+  colorSpace: GraphOutputColorSpace;
   /** Viewport resolution `LineMaterial` needs for its pixel-space width. */
   resolution: Accessor<{ width: number; height: number }>;
   /** World-units-per-CSS-pixel factor so arc stroke width stays constant. */
@@ -213,7 +220,6 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     if (edges.length > 0) {
       const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
       const background = new Color(getBackgroundColor({ isDark }));
-      const segmentColor = new Color();
 
       // World Y is the negated graph Y (graph space is y-down).
       const positions = edges.flatMap(({ x1, y1, x2, y2 }) => [
@@ -226,7 +232,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       ]);
       const colors = edges.flatMap(({ mergeIndex, colorAngle }) => {
         const fade = fadeForRank(mergeIndex, lastMergeIndex);
-        segmentColor.set(getClusterColor({ angle: colorAngle, isDark }));
+        const segmentColor = getClusterColor({
+          angle: colorAngle,
+          colorSpace: props.colorSpace,
+        });
         segmentColor.lerpColors(background, segmentColor, fade);
         const { r, g, b } = segmentColor;
         return [r, g, b, r, g, b];
@@ -259,7 +268,6 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         1,
       );
       const background = new Color(getBackgroundColor({ isDark }));
-      const segmentColor = new Color();
       const boxCenters = new Float32Array(arcs.length * 2);
       const boxHalfSizes = new Float32Array(arcs.length * 2);
       const angles = new Float32Array(arcs.length * 2);
@@ -296,7 +304,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         radii[index] = arc.radius;
 
         const fade = fadeForRank(arc.mergeIndex, lastMergeIndex);
-        segmentColor.set(getClusterColor({ angle: arc.colorAngle, isDark }));
+        const segmentColor = getClusterColor({
+          angle: arc.colorAngle,
+          colorSpace: props.colorSpace,
+        });
         segmentColor.lerpColors(background, segmentColor, fade);
         colors[index * 3] = segmentColor.r;
         colors[index * 3 + 1] = segmentColor.g;
@@ -338,14 +349,12 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     props.requestRender();
   });
 
-  // Node dot positions + colors (rebuilt with the dot set / theme, like the
-  // edges above). aState and aHideCore are owned by the effects below.
+  // Node dot positions + colors (rebuilt with the dot set, like the edges
+  // above). aState and aHideCore are owned by the effects below.
   createEffect(() => {
     const nodeDots = props.dots();
-    const isDark = props.isDark();
     const count = nodeDots.length;
     const lastMergeIndex = nodeDots[count - 1]?.mergeIndex || 1;
-    const dotColor = new Color();
 
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
@@ -355,7 +364,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       // World Y is the negated graph Y (graph space is y-down).
       positions[index * 3 + 1] = -dot.y;
       positions[index * 3 + 2] = 0;
-      dotColor.set(getClusterColor({ angle: dot.colorAngle, isDark }));
+      const dotColor = getClusterColor({
+        angle: dot.colorAngle,
+        colorSpace: props.colorSpace,
+      });
       colors[index * 3] = dotColor.r;
       colors[index * 3 + 1] = dotColor.g;
       colors[index * 3 + 2] = dotColor.b;
@@ -431,7 +443,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       const positions = highlight.points.flatMap(({ x, y }) => [x, -y, 0]);
       const geometry = new LineGeometry();
       geometry.setPositions(positions);
-      highlightMaterial.uniforms['diffuse']!.value.set(highlight.color);
+      highlightMaterial.uniforms['diffuse']!.value.copy(highlight.color);
       highlightLine = new Line2(
         geometry,
         highlightMaterial as unknown as LineMaterial,

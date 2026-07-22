@@ -48,5 +48,7 @@ void main() {
   float alpha = (1.0 - smoothstep(uHalfWidthPx - aa, uHalfWidthPx + aa, d)) * uOpacity;
   if (alpha <= 0.0) discard;
   gl_FragColor = vec4(uColor, alpha);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;

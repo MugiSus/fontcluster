@@ -68,5 +68,7 @@ void main() {
   if (alpha <= 0.0) discard;
 
   gl_FragColor = vec4(vColor, alpha);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;

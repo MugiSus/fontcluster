@@ -1,11 +1,13 @@
-import { formatHex, toGamut, type Oklch } from 'culori';
+import { toGamut, type Oklch, type P3, type Rgb } from 'culori';
 import { type ClusteringData } from '@/types/font';
 
-const CLUSTER_LIGHTNESS = 0.715;
-const CLUSTER_CHROMA = 0.1603;
+const CLUSTER_LIGHTNESS = 0.7193;
+const CLUSTER_CHROMA = 0.157;
 const UNCLUSTERED_CSS = 'rgb(113 113 122)';
-const UNCLUSTERED_HEX = 0xa0a0a4;
 const mapToSrgb = toGamut('rgb', 'oklch');
+const mapToDisplayP3 = toGamut('p3', 'oklch');
+
+export type RgbColorSpace = 'srgb' | 'display-p3';
 
 export function getClusterColorAngle(
   clustering: ClusteringData | null | undefined,
@@ -37,8 +39,12 @@ export function getClusteringCssColor(
   return getClusterCssColor(getClusterColorAngle(clustering));
 }
 
-/** sRGB integer for Three.js, gamut-mapped from the same OKLCH color. */
-export function getClusterHexColor(angle: number | undefined): number {
-  if (angle === undefined) return UNCLUSTERED_HEX;
-  return Number.parseInt(formatHex(mapToSrgb(oklch(angle))).slice(1), 16);
+/** Encoded RGB channels gamut-mapped to the selected output color space. */
+export function getClusterRgb(
+  angle: number,
+  colorSpace: RgbColorSpace,
+): Rgb | P3 {
+  return colorSpace === 'display-p3'
+    ? mapToDisplayP3(oklch(angle))
+    : mapToSrgb(oklch(angle));
 }

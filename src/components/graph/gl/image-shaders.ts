@@ -23,5 +23,7 @@ void main() {
   float mask = dot(texel.rgb, vec3(0.299, 0.587, 0.114)) * texel.a;
   if (mask <= 0.003) discard;
   gl_FragColor = vec4(uColor, mask * uOpacity);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
 }
 `;
