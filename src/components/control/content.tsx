@@ -407,7 +407,7 @@ export function ControlContent() {
             disabled={isRunCooldown()}
             variant='outline'
             size='sm'
-            class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums shadow-sm'
+            class='relative flex w-full items-center gap-2 rounded-full text-sm font-black tabular-nums shadow-sm'
           >
             {t.controlPanel.generate()}
             <PlusIcon class='absolute right-3' />
