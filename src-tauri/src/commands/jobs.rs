@@ -1,7 +1,7 @@
 //! Job orchestration: running the processing pipeline and reporting back.
 //!
 //! The pipeline runs in a **separate worker process** (the same executable
-//! re-invoked with [`WORKER_RUN_JOBS_ARG`]) so a crash in native model code
+//! re-invoked with `WORKER_RUN_JOBS_ARG`) so a crash in native model code
 //! can't take down the UI. This module has two sides:
 //! - the app side ([`run_jobs`]/[`stop_jobs`]) spawns the worker, reads the
 //!   JSON event lines it prints, and forwards them to the webview;
@@ -37,8 +37,11 @@ const MAX_RUNNING_JOBS: usize = 4;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunJobsRequest {
+    /// Stage configuration supplied by the current algorithm-options form.
     pub algorithm: AlgorithmConfigPatch,
+    /// Existing session to resume, or `None` to create a new session.
     pub session_id: Option<String>,
+    /// Optional resume point explicitly requested by the UI.
     pub override_status: Option<ProcessStatus>,
 }
 
@@ -46,8 +49,11 @@ pub struct RunJobsRequest {
 /// persisted config and invalidates from the earliest changed stage.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlgorithmConfigPatch {
+    /// Rendering configuration; required when a new session is created.
     pub rendering: Option<RenderingConfig>,
+    /// Analysis configuration; required when a new session is created.
     pub analysis: Option<AnalysisConfig>,
+    /// Clustering configuration; required when a new session is created.
     pub clustering: Option<ClusteringConfig>,
 }
 
@@ -56,6 +62,14 @@ pub struct AlgorithmConfigPatch {
 /// Rejects the call if too many jobs are already running, or if the target
 /// session already has a job in flight. Returns the worker's final result
 /// string (`"Success"`/`"Cancelled"`/…) once it exits.
+///
+/// The child process owns all pipeline and model-download work. This app-side
+/// function owns only child lifecycle and event adaptation: it records the
+/// child under a temporary run ID, replaces that key with the real session ID
+/// after `session_started`, attaches that ID to progress and model-download
+/// events, and removes the child from [`AppState::current_job_children`] on
+/// completion or process exit. Blocking process I/O and `Child::wait` run in a
+/// Tokio blocking task rather than on the command runtime.
 #[command]
 pub async fn run_jobs(
     app: AppHandle,
@@ -201,7 +215,9 @@ pub async fn run_jobs(
 /// One JSON line as printed by the worker's [`StdoutEventSink`].
 #[derive(Debug, Deserialize)]
 struct WorkerEventMessage {
+    /// Event name interpreted or forwarded by the app process.
     event: String,
+    /// Event body, preserved as arbitrary JSON until adaptation.
     payload: Value,
 }
 
@@ -240,6 +256,11 @@ pub fn is_worker_run_jobs_arg(arg: &str) -> bool {
 
 /// Worker-process entry point: deserialises the request, runs the pipeline on
 /// a single-threaded Tokio runtime, and prints the final result event.
+///
+/// Keeping this runtime wholly inside the worker process isolates native-model
+/// failures from the UI process. Blocking model installation is delegated by
+/// [`run_jobs_pipeline`] so its blocking HTTP runtime is also created and
+/// dropped outside this async runtime.
 pub fn run_jobs_worker(request_json: &str) -> Result<()> {
     let request = serde_json::from_str::<RunJobsRequest>(request_json)?;
     let state = AppState::new();
@@ -261,6 +282,22 @@ pub fn run_jobs_worker(request_json: &str) -> Result<()> {
 /// resumes where it left off. The session is packed into its document once it
 /// reaches `Clustered`. Returns `"Cancelled"` if cancellation is observed at
 /// any checkpoint, otherwise `"Success"`.
+///
+/// Model ownership is job-local. The pipeline resolves or installs one
+/// [`crate::core::ModelBundle`] before any stage that needs it, then passes the
+/// same validated bundle to analysis and clustering. A run beginning at
+/// `Empty` or `Rendered` always needs the ONNX model for analysis. A run
+/// beginning at `Analyzed` needs the bundle only when attribute emphasis is
+/// enabled with at least one nonzero direction; ordinary clustering-only runs
+/// and already-clustered runs perform no model download or verification.
+/// Installation runs through `spawn_blocking` because it owns blocking HTTP,
+/// the per-model filesystem lock, and streamed writes for its full lifetime.
+///
+/// The session stored in [`AppState`] remains the source of truth for both the
+/// resume status and effective algorithm configuration. The local bundle is a
+/// validated capability for this invocation, not duplicated application state.
+/// Errors from session transitions, model preparation, individual stages, and
+/// final document packing are propagated to the worker entry point.
 pub async fn run_jobs_pipeline(
     events: impl EventSink,
     state: &AppState,
@@ -294,32 +331,46 @@ pub async fn run_jobs_pipeline(
     };
     events.emit_string("session_started", id.clone())?;
 
-    // Model installation is job preparation rather than UI state. It happens
-    // before rendering so network/integrity failures do not waste a render
-    // pass, and the worker's process boundary keeps native inference isolated.
-    let model_id = {
+    let (model_id, resume_status, clustering_needs_model) = {
         let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().algorithm.analysis.model_id.clone()
+        let session = guard.as_ref().unwrap();
+        (
+            session.algorithm.analysis.model_id.clone(),
+            session.status.process_status,
+            session.algorithm.clustering.enable_attribute_emphasis
+                && session
+                    .algorithm
+                    .clustering
+                    .emphasis
+                    .values()
+                    .any(|&level| level != 0),
+        )
     };
-    // `ensure_model` owns a reqwest blocking client, filesystem lock, and
-    // streamed file writes. Its complete lifecycle, including client drop,
-    // must stay outside this async runtime.
-    let model_install_id = model_id.clone();
-    let model_install_events = events.clone();
-    tokio::task::spawn_blocking(move || ensure_model(&model_install_id, &model_install_events))
-        .await
-        .map_err(|error| {
-            AppError::Processing(format!("Model installation task failed: {error}"))
-        })??;
+
+    let model_bundle = if matches!(
+        resume_status,
+        ProcessStatus::Empty | ProcessStatus::Rendered
+    ) || (resume_status == ProcessStatus::Analyzed && clustering_needs_model)
+    {
+        let model_install_id = model_id.clone();
+        let model_install_events = events.clone();
+        Some(
+            tokio::task::spawn_blocking(move || {
+                ensure_model(&model_install_id, &model_install_events)
+            })
+            .await
+            .map_err(|error| {
+                AppError::Processing(format!("Model installation task failed: {error}"))
+            })??,
+        )
+    } else {
+        None
+    };
 
     // When resuming from a midpoint, clear the progress of the resume stage and
     // every later stage so the UI stops showing stale results that are about to
     // be recomputed. Earlier stages keep their progress because their outputs
     // are reused as-is.
-    let resume_status = {
-        let guard = state.current_session.lock().unwrap();
-        guard.as_ref().unwrap().status.process_status
-    };
     for &stage in stages_to_reset(&resume_status) {
         progress_events::reset_progress(&events, state, stage);
     }
@@ -387,7 +438,10 @@ pub async fn run_jobs_pipeline(
         }
         println!("📐 Starting analysis...");
         events.emit_unit("analysis_start")?;
-        let analyzer = Analyzer::new(&model_id)?;
+        let model = model_bundle.as_ref().ok_or_else(|| {
+            AppError::Processing("Analysis requires a validated model bundle".into())
+        })?;
+        let analyzer = Analyzer::new(model)?;
         analyzer.analyze_all(&events, state).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
@@ -407,7 +461,7 @@ pub async fn run_jobs_pipeline(
         }
         println!("✨ Starting clustering...");
         events.emit_unit("clustering_start")?;
-        clusterer::cluster_all(&events, state).await?;
+        clusterer::cluster_all(&events, state, model_bundle.as_ref()).await?;
 
         if state.is_cancelled.load(Ordering::Relaxed) {
             return Ok("Cancelled".into());
@@ -439,6 +493,8 @@ pub async fn run_jobs_pipeline(
 /// Cancels the worker for `session_id` if given, otherwise every running
 /// worker. Each job's cancellation flag is set before the process is killed so
 /// it can report `"Cancelled"` cleanly, and `jobs_cancelled` is emitted.
+/// Removed jobs are no longer addressable through
+/// [`AppState::current_job_children`] after this call.
 #[command]
 pub fn stop_jobs(
     app: AppHandle,
