@@ -394,15 +394,20 @@ export function ControlContent() {
         </div>
       </Show>
 
-      <div class='border-t p-4'>
+      <div class='relative border-t p-4'>
+        {/* <div class='absolute left-1.5 top-1.5 size-1 rounded-full bg-border' />
+        <div class='absolute right-1.5 top-1.5 size-1 rounded-full bg-border' />
+        <div class='absolute bottom-1.5 left-1.5 size-1 rounded-full bg-border' />
+        <div class='absolute bottom-1.5 right-1.5 size-1 rounded-full bg-border' /> */}
+
         <Tooltip>
           <TooltipTrigger
             as={Button<'button'>}
             type='submit'
             disabled={isRunCooldown()}
-            variant='default'
+            variant='outline'
             size='sm'
-            class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums hover:shadow-lg hover:shadow-primary/25'
+            class='relative flex w-full items-center gap-2 rounded-full text-sm font-bold tabular-nums shadow-sm'
           >
             {t.controlPanel.generate()}
             <PlusIcon class='absolute right-3' />
