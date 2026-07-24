@@ -36,11 +36,11 @@ export const en = {
   },
   controlPanel: {
     text: 'Sample',
-    generate: 'Generate',
     generateModes: {
       open: 'Choose generation mode',
-      duplicateChanged: 'Duplicate and recalculate changes',
-      inPlaceChanged: 'Recalculate changes',
+      applyChanges: 'Apply',
+      duplicateChanged: 'Duplicate and recalculate with changes',
+      inPlaceChanged: 'Recalculate with applied changes',
       fresh: 'Generate new',
     },
     restoreSession: 'Reset changes',

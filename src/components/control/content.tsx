@@ -249,6 +249,10 @@ export function ControlContent() {
       appState.session.algorithm.clustering.target_cluster_count,
     ) ||
     isDraftEmphasisChanged();
+  const hasDraftChanges = () =>
+    isRenderingSectionChanged() ||
+    isAnalysisSectionChanged() ||
+    isClusteringSectionChanged();
 
   const [renderingResetKey, setRenderingResetKey] = createSignal({});
   const [analysisResetKey, setAnalysisResetKey] = createSignal({});
@@ -269,7 +273,7 @@ export function ControlContent() {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    void handleRun('duplicate_changed');
+    void handleRun(hasDraftChanges() ? 'in_place_changed' : 'fresh');
   };
 
   /**
@@ -596,6 +600,7 @@ export function ControlContent() {
         <GenerateButton
           isDisabled={isRunCooldown()}
           hasSession={Boolean(appState.session.session_id)}
+          hasChanges={hasDraftChanges()}
           onSelect={(mode) => void handleRun(mode)}
         />
       </div>

@@ -23,17 +23,24 @@ import { useI18n } from '@/i18n';
 type GenerateButtonProps = {
   isDisabled?: boolean;
   hasSession: boolean;
+  hasChanges: boolean;
   onSelect: (mode: ProcessingRunMode) => void;
 };
 
 /**
- * The primary action is deliberately fixed to the safe duplicate-and-change
- * mode; the adjacent menu exposes the two other session ownership choices.
+ * The primary action follows the draft state: an unchanged form starts a new
+ * session, while a changed form applies the draft to the current session. The
+ * adjacent menu exposes the explicit session ownership choices.
  * DropdownMenu supplies the keyboard navigation and outside-click handling.
  */
 export function GenerateButton(props: GenerateButtonProps) {
   const { t } = useI18n();
   const select = (mode: ProcessingRunMode) => props.onSelect(mode);
+  const primaryMode = () => (props.hasChanges ? 'in_place_changed' : 'fresh');
+  const primaryLabel = () =>
+    props.hasChanges
+      ? t.controlPanel.generateModes.applyChanges()
+      : t.controlPanel.generateModes.fresh();
 
   return (
     <div class='flex w-full'>
@@ -45,13 +52,11 @@ export function GenerateButton(props: GenerateButtonProps) {
           variant='outline'
           size='sm'
           class='relative flex min-w-0 flex-1 items-center gap-2 rounded-l-full rounded-r-none border-r-0 text-sm font-black tabular-nums shadow-sm'
-          onClick={() => select('duplicate_changed')}
+          onClick={() => select(primaryMode())}
         >
-          {t.controlPanel.generate()}
+          {primaryLabel()}
         </TooltipTrigger>
-        <TooltipContent>
-          {t.controlPanel.generateModes.duplicateChanged()}
-        </TooltipContent>
+        <TooltipContent>{primaryLabel()}</TooltipContent>
       </Tooltip>
 
       <DropdownMenu>
@@ -68,14 +73,14 @@ export function GenerateButton(props: GenerateButtonProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent class='w-72 p-1'>
           <DropdownMenuItem
-            disabled={!props.hasSession}
+            disabled={!props.hasSession || !props.hasChanges}
             onSelect={() => select('duplicate_changed')}
           >
             <CopyPlusIcon class='size-4' />
             {t.controlPanel.generateModes.duplicateChanged()}
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={!props.hasSession}
+            disabled={!props.hasSession || !props.hasChanges}
             onSelect={() => select('in_place_changed')}
           >
             <RefreshCwIcon class='size-4' />

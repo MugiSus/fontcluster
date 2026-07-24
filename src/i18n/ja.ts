@@ -24,11 +24,11 @@ export const ja: Dictionary = {
   },
   controlPanel: {
     text: 'サンプル',
-    generate: '生成',
     generateModes: {
       open: '生成方法を選択',
+      applyChanges: '変更を反映',
       duplicateChanged: '複製して変更点から再計算',
-      inPlaceChanged: '変更点から再計算',
+      inPlaceChanged: '変更を反映して再計算',
       fresh: '新しく生成',
     },
     restoreSession: '変更をリセット',
