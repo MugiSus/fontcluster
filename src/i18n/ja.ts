@@ -26,9 +26,9 @@ export const ja: Dictionary = {
     text: 'サンプル',
     generateModes: {
       open: '生成方法を選択',
-      applyChanges: '変更を反映',
+      applyChanges: '適用',
       duplicateChanged: '複製して変更点から再計算',
-      inPlaceChanged: '変更を反映して再計算',
+      inPlaceChanged: '変更を適用して再計算',
       fresh: '新しく生成',
     },
     restoreSession: '変更をリセット',
@@ -139,7 +139,7 @@ export const ja: Dictionary = {
     },
     emptyState: {
       title: 'データがありません',
-      hint: '処理が完了すると表示されます。',
+      hint: '処理が完了すると表示されます',
     },
     selectedFontActions: {
       copy: 'コピー',
