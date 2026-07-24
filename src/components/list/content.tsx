@@ -22,7 +22,6 @@ import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_ITEM_HEIGHT = 64;
 const LIST_PREVIEW_FONT_SIZE = 64;
-const LIST_CIRCULAR_BUFFER_ITEMS = 30;
 /** Allows the native scroll event to arrive just after the input event while
  * keeping programmatic scrolls out of the scroll-hover path. */
 const DIRECT_SCROLL_INPUT_GRACE_MS = 250;
@@ -34,6 +33,7 @@ export function ListContent() {
   let listScrollElement: HTMLDivElement | undefined;
   let isPointerInsideList = false;
   let lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
+  let pendingLoopCorrectionOffset: number | null = null;
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
   const isSelectedFontItem = createSelector(() => appState.ui.selectedFontKey);
   const orderedLeafItems = createMemo(() =>
@@ -68,10 +68,7 @@ export function ListContent() {
 
     return Math.min(
       itemCount - 1,
-      Math.max(
-        Math.ceil(viewportHeight / LIST_ITEM_HEIGHT),
-        LIST_CIRCULAR_BUFFER_ITEMS,
-      ),
+      Math.ceil((viewportHeight * 2.5) / LIST_ITEM_HEIGHT),
     );
   });
   const leafIndexByKey = createMemo(
@@ -109,6 +106,7 @@ export function ListContent() {
 
       const items = filteredLeafItems();
       const itemCount = items.length;
+      const bufferItemCount = circularBufferItemCount();
       if (
         sync &&
         hasRecentDirectScrollInput() &&
@@ -125,14 +123,24 @@ export function ListContent() {
               viewportCenter < virtualItem.end,
           );
         const centerItem = centerVirtualItem
-          ? items[centerVirtualItem.index % itemCount]
+          ? items[
+              (centerVirtualItem.index - bufferItemCount + itemCount) %
+                itemCount
+            ]
           : undefined;
         if (centerItem) {
           setHoveredFontKey(centerItem.meta.safe_name);
         }
       }
 
-      const bufferItemCount = circularBufferItemCount();
+      const offset = instance.scrollOffset ?? 0;
+      if (pendingLoopCorrectionOffset !== null) {
+        const hasReachedCorrectionOffset =
+          Math.abs(offset - pendingLoopCorrectionOffset) < 1;
+        pendingLoopCorrectionOffset = null;
+        if (hasReachedCorrectionOffset) return;
+      }
+
       const cycleHeight = itemCount * LIST_ITEM_HEIGHT;
       const bufferHeight = bufferItemCount * LIST_ITEM_HEIGHT;
       if (
@@ -143,20 +151,26 @@ export function ListContent() {
         return;
       }
 
-      const offset = instance.scrollOffset ?? 0;
-      const isNearStart = offset < bufferHeight;
-      const isNearEnd = offset >= cycleHeight + bufferHeight;
+      // The loop seam is the center of item 0, not the beginning of the
+      // viewport-sized margin. The margin shifts the virtual index of the
+      // middle cycle, so use the same offset for every item lookup.
+      const itemZeroCenterOffset =
+        bufferHeight + (LIST_ITEM_HEIGHT - viewportHeight) / 2;
+      const endItemZeroCenterOffset =
+        cycleHeight + bufferHeight + (LIST_ITEM_HEIGHT - viewportHeight) / 2;
+      const isAtStartLoop = offset <= itemZeroCenterOffset;
+      const isAtEndLoop = offset >= endItemZeroCenterOffset;
       const shouldRecenter = sync
-        ? (instance.scrollDirection === 'backward' && isNearStart) ||
-          (instance.scrollDirection === 'forward' && isNearEnd)
-        : isNearStart || isNearEnd;
+        ? (instance.scrollDirection === 'backward' && isAtStartLoop) ||
+          (instance.scrollDirection === 'forward' && isAtEndLoop)
+        : isAtStartLoop || isAtEndLoop;
       if (!shouldRecenter) return;
 
-      if (isNearStart) {
-        instance.scrollToOffset(offset + cycleHeight);
-      } else if (isNearEnd) {
-        instance.scrollToOffset(offset - cycleHeight);
-      }
+      const correctionOffset = isAtStartLoop
+        ? offset + cycleHeight
+        : offset - cycleHeight;
+      pendingLoopCorrectionOffset = correctionOffset;
+      instance.scrollToOffset(correctionOffset);
     },
   });
 
@@ -254,7 +268,11 @@ export function ListContent() {
               {(virtualItem) => {
                 const item = () => {
                   const items = filteredLeafItems();
-                  return items[virtualItem.index % items.length];
+                  const bufferItemCount = circularBufferItemCount();
+                  return items[
+                    (virtualItem.index - bufferItemCount + items.length) %
+                      items.length
+                  ];
                 };
                 return (
                   <Show when={item()}>
