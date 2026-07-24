@@ -52,7 +52,7 @@ export function GenerateButton(props: GenerateButtonProps) {
           {t.controlPanel.generateModes.applyChanges()}
         </TooltipTrigger>
         <TooltipContent>
-          {t.controlPanel.generateModes.applyChanges()}
+          {t.controlPanel.generateModes.inPlaceChanged()}
         </TooltipContent>
       </Tooltip>
 

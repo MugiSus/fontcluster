@@ -40,7 +40,7 @@ export const en = {
       open: 'Choose generation mode',
       applyChanges: 'Apply',
       duplicateChanged: 'Duplicate and recalculate with changes',
-      inPlaceChanged: 'Recalculate with applied changes',
+      inPlaceChanged: 'Apply changes and recalculate',
       fresh: 'Generate new',
     },
     restoreSession: 'Reset changes',
