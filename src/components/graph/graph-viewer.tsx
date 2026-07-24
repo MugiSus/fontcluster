@@ -143,9 +143,12 @@ export function GraphViewer(props: GraphViewerProps) {
   const visibleDendrogramEdges = createMemo(() =>
     dendrogramEdges(dendrogramCurveZoom()),
   );
+  const graphHoverKey = createMemo(() =>
+    selection.isSelecting() ? null : appState.ui.hoveredFontKey,
+  );
   const dendrogramAncestry = createMemo(() =>
     getDendrogramAncestry(
-      appState.ui.hoveredFontKey ?? selection.selectedKey(),
+      graphHoverKey() ?? selection.selectedKey(),
       dendrogramCurveZoom(),
     ),
   );
@@ -170,8 +173,7 @@ export function GraphViewer(props: GraphViewerProps) {
     },
   );
   const highlightedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
-    () =>
-      appState.ui.hoveredFontKey === null ? selectedDendrogramAnchor() : null,
+    () => (graphHoverKey() === null ? selectedDendrogramAnchor() : null),
   );
 
   // Merge-node exemplar images for the dendrogram mode, following the images
@@ -431,8 +433,10 @@ export function GraphViewer(props: GraphViewerProps) {
           filteredKeys={() => appState.fonts.filteredKeys}
           selectedKey={selection.selectedKey}
           selectedDendrogramAnchor={highlightedDendrogramAnchor}
-          hoveredKey={() => appState.ui.hoveredFontKey}
-          hoveredFamily={() => appState.ui.hoveredFontFamily}
+          hoveredKey={graphHoverKey}
+          hoveredFamily={() =>
+            graphHoverKey() === null ? null : appState.ui.hoveredFontFamily
+          }
           selectedFamily={selection.selectedFamilyName}
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}

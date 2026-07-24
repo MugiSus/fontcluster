@@ -23,12 +23,17 @@ import { ListPreviewTextField } from './preview-text-field';
 const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;
 const LIST_CIRCULAR_BUFFER_ITEMS = 30;
+/** Allows the native scroll event to arrive just after the input event while
+ * keeping programmatic scrolls out of the scroll-hover path. */
+const DIRECT_SCROLL_INPUT_GRACE_MS = 250;
 
 export function ListContent() {
   const { t } = useI18n();
   const [canRenderListPreviews, setCanRenderListPreviews] = createSignal(true);
   const [scrollViewportHeight, setScrollViewportHeight] = createSignal(0);
   let listScrollElement: HTMLDivElement | undefined;
+  let isPointerInsideList = false;
+  let lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
   const isSelectedFontItem = createSelector(() => appState.ui.selectedFontKey);
   const orderedLeafItems = createMemo(() =>
@@ -75,6 +80,19 @@ export function ListContent() {
         filteredLeafItems().map((item, index) => [item.meta.safe_name, index]),
       ),
   );
+  const markDirectScrollInput = () => {
+    if (isPointerInsideList) {
+      lastDirectScrollInputAt = performance.now();
+    }
+  };
+  const hasRecentDirectScrollInput = () =>
+    isPointerInsideList &&
+    performance.now() - lastDirectScrollInputAt <= DIRECT_SCROLL_INPUT_GRACE_MS;
+  const clearListHover = () => {
+    isPointerInsideList = false;
+    lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
+    setHoveredFontKey(null);
+  };
   const virtualizer = createVirtualizer({
     get count() {
       const itemCount = filteredLeafItems().length;
@@ -91,7 +109,12 @@ export function ListContent() {
 
       const items = filteredLeafItems();
       const itemCount = items.length;
-      if (sync && viewportHeight > 0 && itemCount > 0) {
+      if (
+        sync &&
+        hasRecentDirectScrollInput() &&
+        viewportHeight > 0 &&
+        itemCount > 0
+      ) {
         const viewportCenter =
           (instance.scrollOffset ?? 0) + viewportHeight / 2;
         const centerVirtualItem = instance
@@ -209,6 +232,15 @@ export function ListContent() {
       <div
         ref={listScrollElement}
         class='min-h-0 w-full flex-1 overflow-y-scroll'
+        onMouseEnter={() => {
+          isPointerInsideList = true;
+        }}
+        onMouseLeave={clearListHover}
+        onWheel={markDirectScrollInput}
+        onTouchMove={markDirectScrollInput}
+        onPointerMove={(event) => {
+          if (event.buttons !== 0) markDirectScrollInput();
+        }}
       >
         <Show
           when={filteredLeafItems().length > 0}
