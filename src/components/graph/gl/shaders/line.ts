@@ -25,6 +25,7 @@
 
 export const fatLineVertexShader = /* glsl */ `
 uniform float linewidth;
+uniform float aaPad;
 uniform float lineoffset;
 uniform vec2 resolution;
 
@@ -61,7 +62,7 @@ void main() {
   dir.x *= aspect;
   dir = normalize( dir );
 
-  // Perpendicular offset, one stroke half-width to each side of the centerline.
+  // Perpendicular offset, one expanded half-width to each side of the centerline.
   vec2 offset = vec2( dir.y, - dir.x );
   dir.x /= aspect;
   offset.x /= aspect;
@@ -77,7 +78,8 @@ void main() {
   }
 
   // CSS-pixel width → clip space (÷ resolution.y, × clip.w after end select).
-  offset *= linewidth;
+  // The extra pad leaves fragments outside the actual stroke for derivative AA.
+  offset *= linewidth + 2.0 * aaPad;
   offset /= resolution.y;
   centerOffset *= 2.0 * lineoffset;
   centerOffset /= resolution.y;
@@ -94,6 +96,8 @@ void main() {
 export const fatLineFragmentShader = /* glsl */ `
 uniform vec3 diffuse;
 uniform float opacity;
+uniform float linewidth;
+uniform float aaPad;
 
 #ifdef USE_COLOR
   varying vec3 vColor;
@@ -104,13 +108,15 @@ varying vec2 vUv;
 void main() {
   // This pipeline renders without MSAA, so fade alpha across a ~1px coverage
   // ramp at the stroke edge for in-shader anti-aliasing. edgeDistance is the
-  // width-normalized distance from the solid core — |vUv.x| along the body,
+  // expanded-quad-normalized distance from the solid core — |vUv.x| along the body,
   // radial past the round caps where |vUv.y| > 1 — the same field the stock
-  // LineMaterial only hard-discards on; here it feathers instead.
+  // LineMaterial only hard-discards on; here it feathers instead. The actual
+  // stroke boundary is inside the padded quad at edgeRadius.
   float capExtent = max( abs( vUv.y ) - 1.0, 0.0 );
   float edgeDistance = length( vec2( vUv.x, capExtent ) );
+  float edgeRadius = linewidth / ( linewidth + 2.0 * aaPad );
   float coverage = clamp(
-    ( 1.0 - edgeDistance ) / max( fwidth( edgeDistance ), 1e-4 ) + 0.5,
+    ( edgeRadius - edgeDistance ) / max( fwidth( edgeDistance ), 1e-4 ) + 0.5,
     0.0,
     1.0
   );
