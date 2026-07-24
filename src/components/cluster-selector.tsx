@@ -31,14 +31,10 @@ export function ClusterSelector(props: ClusterSelectorProps) {
           <ToggleGroupItem
             value={String(cluster.k)}
             type='button'
-            class='flex size-8 items-center justify-center rounded-full px-0'
+            class='flex size-8 items-center justify-center rounded-full px-0 font-bold'
+            style={{ color: getClusterCssColor(cluster.clusterAngle) }}
           >
-            <div
-              class='font-bold'
-              style={{ color: getClusterCssColor(cluster.clusterAngle) }}
-            >
-              あ
-            </div>
+            あ
           </ToggleGroupItem>
         )}
       </For>
