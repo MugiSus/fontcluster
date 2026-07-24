@@ -22,6 +22,7 @@ import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_ITEM_HEIGHT = 80;
 const LIST_PREVIEW_FONT_SIZE = 64;
+const LIST_CIRCULAR_BUFFER_ITEMS = 30;
 
 export function ListContent() {
   const { t } = useI18n();
@@ -49,6 +50,25 @@ export function ListContent() {
       filteredKeys.has(item.meta.safe_name),
     );
   });
+  const circularBufferItemCount = createMemo(() => {
+    const itemCount = filteredLeafItems().length;
+    const viewportHeight = scrollViewportHeight();
+    if (
+      itemCount === 0 ||
+      viewportHeight === 0 ||
+      itemCount * LIST_ITEM_HEIGHT <= viewportHeight
+    ) {
+      return 0;
+    }
+
+    return Math.min(
+      itemCount - 1,
+      Math.max(
+        Math.ceil(viewportHeight / LIST_ITEM_HEIGHT),
+        LIST_CIRCULAR_BUFFER_ITEMS,
+      ),
+    );
+  });
   const leafIndexByKey = createMemo(
     () =>
       new Map(
@@ -58,9 +78,8 @@ export function ListContent() {
   const virtualizer = createVirtualizer({
     get count() {
       const itemCount = filteredLeafItems().length;
-      return itemCount * LIST_ITEM_HEIGHT > scrollViewportHeight()
-        ? itemCount * 3
-        : itemCount;
+      const bufferItemCount = circularBufferItemCount();
+      return bufferItemCount > 0 ? itemCount + bufferItemCount * 2 : itemCount;
     },
     getScrollElement: () => listScrollElement ?? null,
     estimateSize: () => LIST_ITEM_HEIGHT,
@@ -90,13 +109,29 @@ export function ListContent() {
         }
       }
 
+      const bufferItemCount = circularBufferItemCount();
       const cycleHeight = itemCount * LIST_ITEM_HEIGHT;
-      if (sync || viewportHeight === 0 || cycleHeight <= viewportHeight) return;
+      const bufferHeight = bufferItemCount * LIST_ITEM_HEIGHT;
+      if (
+        viewportHeight === 0 ||
+        cycleHeight <= viewportHeight ||
+        bufferItemCount === 0
+      ) {
+        return;
+      }
 
       const offset = instance.scrollOffset ?? 0;
-      if (offset < cycleHeight) {
+      const isNearStart = offset < bufferHeight;
+      const isNearEnd = offset >= cycleHeight + bufferHeight;
+      const shouldRecenter = sync
+        ? (instance.scrollDirection === 'backward' && isNearStart) ||
+          (instance.scrollDirection === 'forward' && isNearEnd)
+        : isNearStart || isNearEnd;
+      if (!shouldRecenter) return;
+
+      if (isNearStart) {
         instance.scrollToOffset(offset + cycleHeight);
-      } else if (offset >= cycleHeight * 2) {
+      } else if (isNearEnd) {
         instance.scrollToOffset(offset - cycleHeight);
       }
     },
@@ -113,8 +148,8 @@ export function ListContent() {
     const selectedIndex = selectedKey
       ? leafIndexByKey().get(selectedKey)
       : undefined;
-    const isCircular = itemCount * LIST_ITEM_HEIGHT > viewportHeight;
-    if (!isCircular) {
+    const bufferItemCount = circularBufferItemCount();
+    if (bufferItemCount === 0) {
       virtualizer.scrollToIndex(selectedIndex ?? 0, {
         align: selectedIndex === undefined ? 'start' : 'center',
       });
@@ -122,11 +157,13 @@ export function ListContent() {
     }
 
     if (selectedIndex === undefined) {
-      virtualizer.scrollToIndex(itemCount, { align: 'start' });
+      virtualizer.scrollToIndex(bufferItemCount, { align: 'start' });
       return;
     }
 
-    virtualizer.scrollToIndex(itemCount + selectedIndex, { align: 'center' });
+    virtualizer.scrollToIndex(bufferItemCount + selectedIndex, {
+      align: 'center',
+    });
   });
 
   const handleApply = (item: FontItem) =>
