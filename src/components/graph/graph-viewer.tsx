@@ -144,7 +144,10 @@ export function GraphViewer(props: GraphViewerProps) {
     dendrogramEdges(dendrogramCurveZoom()),
   );
   const dendrogramAncestry = createMemo(() =>
-    getDendrogramAncestry(selection.selectedKey(), dendrogramCurveZoom()),
+    getDendrogramAncestry(
+      appState.ui.hoveredFontKey ?? selection.selectedKey(),
+      dendrogramCurveZoom(),
+    ),
   );
 
   const showPointCore = createMemo(() => {
@@ -166,6 +169,10 @@ export function GraphViewer(props: GraphViewerProps) {
       );
     },
   );
+  const highlightedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
+    () =>
+      appState.ui.hoveredFontKey === null ? selectedDendrogramAnchor() : null,
+  );
 
   // Merge-node exemplar images for the dendrogram mode, following the images
   // toggle and the same hex-grid image thinning used by ordinary graph points.
@@ -182,7 +189,7 @@ export function GraphViewer(props: GraphViewerProps) {
         if (keys.has(anchor.key)) anchors.set(anchor.key, anchor);
       }
     }
-    const selectedAnchor = selectedDendrogramAnchor();
+    const selectedAnchor = highlightedDendrogramAnchor();
     if (selectedAnchor) anchors.set(selectedAnchor.key, selectedAnchor);
     return [...anchors.values()];
   });
@@ -423,8 +430,9 @@ export function GraphViewer(props: GraphViewerProps) {
           getPointsByFamilyName={getGraphPointsByFamilyName}
           filteredKeys={() => appState.fonts.filteredKeys}
           selectedKey={selection.selectedKey}
-          selectedDendrogramAnchor={selectedDendrogramAnchor}
+          selectedDendrogramAnchor={highlightedDendrogramAnchor}
           hoveredKey={() => appState.ui.hoveredFontKey}
+          hoveredFamily={() => appState.ui.hoveredFontFamily}
           selectedFamily={selection.selectedFamilyName}
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}

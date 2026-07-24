@@ -27,6 +27,7 @@ export interface AppState {
   ui: {
     selectedFontKey: string | null;
     hoveredFontKey: string | null;
+    readonly hoveredFontFamily: string | null;
     sentFontItemKey: string | null;
     isSessionLoading: boolean;
     readonly selectedFont: FontItem | null;
@@ -94,6 +95,12 @@ export const [appState, setAppState] = createStore<AppState>({
   ui: {
     selectedFontKey: null,
     hoveredFontKey: null,
+    get hoveredFontFamily(): string | null {
+      const key = this.hoveredFontKey;
+      return key
+        ? appState.fonts.displayData[key]?.meta.family_name || null
+        : null;
+    },
     sentFontItemKey: null,
     isSessionLoading: false,
     get selectedFont(): FontItem | null {

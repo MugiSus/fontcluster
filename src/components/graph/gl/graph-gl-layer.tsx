@@ -25,6 +25,7 @@ interface GraphGlLayerProps {
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   hoveredKey: Accessor<string | null>;
+  hoveredFamily: Accessor<string | null>;
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
@@ -64,6 +65,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     selectedKey: () => props.selectedKey(),
     selectedDendrogramAnchor: () => props.selectedDendrogramAnchor(),
     hoveredKey: () => props.hoveredKey(),
+    hoveredFamily: () => props.hoveredFamily(),
     selectedFamily: () => props.selectedFamily(),
     imageKeys: () => props.imageKeys(),
     showImages: () => props.showImages(),

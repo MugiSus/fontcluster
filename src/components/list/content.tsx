@@ -70,7 +70,26 @@ export function ListContent() {
       setScrollViewportHeight(viewportHeight);
       setCanRenderListPreviews(!sync);
 
-      const itemCount = filteredLeafItems().length;
+      const items = filteredLeafItems();
+      const itemCount = items.length;
+      if (sync && viewportHeight > 0 && itemCount > 0) {
+        const viewportCenter =
+          (instance.scrollOffset ?? 0) + viewportHeight / 2;
+        const centerVirtualItem = instance
+          .getVirtualItems()
+          .find(
+            (virtualItem) =>
+              virtualItem.start <= viewportCenter &&
+              viewportCenter < virtualItem.end,
+          );
+        const centerItem = centerVirtualItem
+          ? items[centerVirtualItem.index % itemCount]
+          : undefined;
+        if (centerItem) {
+          setHoveredFontKey(centerItem.meta.safe_name);
+        }
+      }
+
       const cycleHeight = itemCount * LIST_ITEM_HEIGHT;
       if (sync || viewportHeight === 0 || cycleHeight <= viewportHeight) return;
 
@@ -193,7 +212,14 @@ export function ListContent() {
                           onMouseEnter={() =>
                             setHoveredFontKey(fontItem().meta.safe_name)
                           }
-                          onMouseLeave={() => setHoveredFontKey(null)}
+                          onMouseLeave={() => {
+                            if (
+                              appState.ui.hoveredFontKey ===
+                              fontItem().meta.safe_name
+                            ) {
+                              setHoveredFontKey(null);
+                            }
+                          }}
                         />
                       </li>
                     )}

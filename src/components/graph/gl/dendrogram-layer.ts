@@ -56,8 +56,7 @@ const ALIAS_CORE_OPACITY_FAR = 1.0;
  *  at FAR. The halo shader's own `uOpacity` is applied after this. */
 const ALIAS_GLOW_OPACITY_NEAR = 1.0;
 const ALIAS_GLOW_OPACITY_FAR = 0.5;
-/** The ancestry highlight is the mode's focal line: slightly wider and near
- *  opaque so it stands out of the faded tree. */
+/** The selected ancestry is the mode's focal line and stays foremost. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
 const HIGHLIGHT_OPACITY = 1;
 /** Merge-node dot diameter (CSS px); matches the point layer's core dots so

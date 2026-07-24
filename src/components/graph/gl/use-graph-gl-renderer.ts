@@ -74,6 +74,7 @@ export interface UseGraphGlRendererProps {
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   hoveredKey: Accessor<string | null>;
+  hoveredFamily: Accessor<string | null>;
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
@@ -292,10 +293,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // at most one ring (selected wins), dimmed with the same active/dimmed rule
     // as the points and images when it is filtered out / weight-inactive.
     const ringSpecs = createMemo<RingSpec[]>(() => {
-      const selected = props.selectedKey();
       const hovered = props.hoveredKey();
-      const family = props.selectedFamily();
-      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
+      // List hover temporarily takes over the primary selection highlight.
+      // The committed selection remains separate so its action HUD can stay
+      // anchored to the selected font.
+      const selected = hovered ?? props.selectedKey();
+      const family = hovered ? props.hoveredFamily() : props.selectedFamily();
+      const selectedDendrogramAnchor = hovered
+        ? null
+        : props.selectedDendrogramAnchor();
       const predicate = activePredicate();
 
       // Dedupe per font, keeping the strongest affordance (selected > hover >
@@ -346,8 +352,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     const forcedLeafImageKeys = createMemo(() => {
       const keys = new Set<string>();
-      const selected = props.selectedKey();
-      const family = props.selectedFamily();
+      const hovered = props.hoveredKey();
+      const selected = hovered ?? props.selectedKey();
+      const family = hovered ? props.hoveredFamily() : props.selectedFamily();
       if (selected) keys.add(selected);
       if (family) {
         for (const point of props.getPointsByFamilyName(family)) {
@@ -451,7 +458,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
       const points = props.dendrogramAncestry();
       if (points.length < 2) return null;
-      const selected = props.selectedKey();
+      const selected = props.hoveredKey() ?? props.selectedKey();
       const point = selected ? props.getPointByKey(selected) : undefined;
       return {
         points,
