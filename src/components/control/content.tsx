@@ -273,7 +273,7 @@ export function ControlContent() {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    void handleRun(hasDraftChanges() ? 'in_place_changed' : 'fresh');
+    if (hasDraftChanges()) void handleRun('in_place_changed');
   };
 
   /**
