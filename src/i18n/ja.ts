@@ -208,7 +208,7 @@ export const ja: Dictionary = {
     },
   },
   list: {
-    noMatchingFonts: '現在のフィルターに一致するフォントはありません',
+    noMatchingFonts: 'フィルターに一致するフォントがありません',
     clearPreviewText: '消去',
     applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
     copyFontName: '{{name}} をコピー',
