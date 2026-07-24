@@ -125,7 +125,7 @@ const ToggleGroupItem = <T extends ValidComponent = 'button'>(
         <div
           class={cn(
             dotVariants({ side: context.dotSide }),
-            'bg-transparent transition-colors group-data-[pressed]:bg-foreground',
+            'bg-current opacity-0 transition-opacity group-data-[pressed]:opacity-100',
           )}
         />
       </Show>
