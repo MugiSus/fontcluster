@@ -67,7 +67,7 @@ export function ListFontItem(props: ListFontItemProps) {
       type='button'
       variant='ghost'
       class={cn(
-        'group relative flex h-16 w-full min-w-0 flex-col items-start justify-center gap-1.5 overflow-hidden rounded-none p-0 pb-1 pl-6 shadow-none hover:bg-muted',
+        'group relative flex h-16 w-full min-w-0 flex-col items-start justify-center gap-1.5 overflow-hidden rounded-none p-0 pb-1 pl-5 shadow-none hover:bg-muted',
         props.isSelectedFontItem && 'bg-muted',
         props.class,
       )}
