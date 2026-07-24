@@ -13,18 +13,25 @@ import {
 type NumberPropertyProps = {
   label: string;
   name: string;
+  isChanged?: boolean;
 } & Omit<ComponentProps<typeof NumberField>, 'name'>;
 
 export function NumberProperty(props: NumberPropertyProps) {
-  const [local, rootProps] = splitProps(props, ['label', 'name']);
+  const [local, rootProps] = splitProps(props, ['label', 'name', 'isChanged']);
 
   return (
     <NumberField {...rootProps} name={local.name}>
       <NumberFieldGroup>
-        <NumberFieldLabel class='absolute inset-y-0 left-2 flex items-center font-medium capitalize'>
+        <NumberFieldLabel
+          class='absolute inset-y-0 left-2 flex items-center font-medium capitalize'
+          classList={{ '!text-primary': local.isChanged }}
+        >
           {local.label}
         </NumberFieldLabel>
-        <NumberFieldInput name={local.name} />
+        <NumberFieldInput
+          name={local.name}
+          classList={{ '!text-primary': local.isChanged }}
+        />
         <NumberFieldIncrementTrigger />
         <NumberFieldDecrementTrigger />
       </NumberFieldGroup>

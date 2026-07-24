@@ -37,8 +37,13 @@ export const en = {
   controlPanel: {
     text: 'Sample',
     generate: 'Generate',
-    generateNew: 'Generate new graph',
-    recalculate: 'Recalculate',
+    generateModes: {
+      open: 'Choose generation mode',
+      duplicateChanged: 'Duplicate and recalculate changes',
+      inPlaceChanged: 'Recalculate changes',
+      fresh: 'Generate new',
+    },
+    restoreSession: 'Reset changes',
     fonts: 'fonts',
     model: 'model',
     modelDownloadRequired: 'Downloads when Generate is pressed',

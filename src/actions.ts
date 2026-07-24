@@ -16,6 +16,18 @@ import { selectionHistory } from './selection-history';
 import { type FontItem } from './types/font';
 import { type AlgorithmConfig, type ProcessStatus } from './types/session';
 
+export type ProcessingRunMode =
+  | 'duplicate_changed'
+  | 'in_place_changed'
+  | 'fresh';
+
+export interface RunProcessingOptions {
+  sessionId?: string;
+  sourceSessionId?: string;
+  overrideStatus?: ProcessStatus;
+  runMode?: ProcessingRunMode;
+}
+
 export {
   setActiveGraphWeights,
   setGraphMode,
@@ -137,7 +149,8 @@ export const updateSessionTitle = async (
 };
 
 /**
- * Submits a stage-scoped algorithm patch to the backend pipeline.
+ * Submits an algorithm draft and explicit session-ownership mode to the
+ * backend pipeline.
  *
  * The backend owns config invalidation and any required model installation;
  * this action only forwards the request and refreshes the active session after
@@ -146,18 +159,29 @@ export const updateSessionTitle = async (
  */
 export const runProcessingJobs = async (
   algorithm: Partial<AlgorithmConfig>,
-  sessionId?: string,
-  overrideStatus?: ProcessStatus,
+  options: RunProcessingOptions = {},
 ) => {
+  const {
+    sessionId,
+    sourceSessionId,
+    overrideStatus,
+    runMode = 'in_place_changed',
+  } = options;
   selectionHistory.reset();
 
   const result = await invoke<string>('run_jobs', {
     algorithm,
     sessionId,
+    sourceSessionId,
     overrideStatus,
+    runMode,
   });
   console.log('Complete pipeline result:', result);
-  if (sessionId && sessionId === appState.session.session_id) {
+  if (
+    runMode === 'in_place_changed' &&
+    sessionId &&
+    sessionId === appState.session.session_id
+  ) {
     await refreshSession();
   }
 };

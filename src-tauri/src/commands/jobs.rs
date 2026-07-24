@@ -39,10 +39,30 @@ const MAX_RUNNING_JOBS: usize = 4;
 pub struct RunJobsRequest {
     /// Stage configuration supplied by the current algorithm-options form.
     pub algorithm: AlgorithmConfigPatch,
-    /// Existing session to resume, or `None` to create a new session.
+    /// Existing session to resume in place, or `None` for a new session.
     pub session_id: Option<String>,
+    /// Existing session to copy when the run mode creates a new session.
+    #[serde(default)]
+    pub source_session_id: Option<String>,
     /// Optional resume point explicitly requested by the UI.
     pub override_status: Option<ProcessStatus>,
+    /// Whether to copy, resume in place, or start from an empty session.
+    #[serde(default)]
+    pub run_mode: RunMode,
+}
+
+/// How a processing request owns its resulting session.
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RunMode {
+    /// Copy the source session's persisted outputs, then invalidate from the
+    /// earliest changed stage in the copied session.
+    DuplicateChanged,
+    /// Update and recompute the existing session in place.
+    #[default]
+    InPlaceChanged,
+    /// Create an empty session and run all stages from the supplied config.
+    Fresh,
 }
 
 /// Partial algorithm config. The backend compares each supplied stage with the
@@ -75,13 +95,17 @@ pub async fn run_jobs(
     app: AppHandle,
     algorithm: AlgorithmConfigPatch,
     session_id: Option<String>,
+    source_session_id: Option<String>,
     override_status: Option<ProcessStatus>,
+    run_mode: RunMode,
     state: State<'_, AppState>,
 ) -> Result<String> {
     let request = RunJobsRequest {
         algorithm,
         session_id,
+        source_session_id,
         override_status,
+        run_mode,
     };
     let state = state.inner().clone();
     let run_id = Uuid::now_v7().to_string();
@@ -92,7 +116,12 @@ pub async fn run_jobs(
                 "The maximum of {MAX_RUNNING_JOBS} processing jobs is already running"
             )));
         }
-        if let Some(session_id) = request.session_id.as_ref() {
+        let protected_session_id = match request.run_mode {
+            RunMode::DuplicateChanged => request.source_session_id.as_ref(),
+            RunMode::InPlaceChanged => request.session_id.as_ref(),
+            RunMode::Fresh => None,
+        };
+        if let Some(session_id) = protected_session_id {
             if running_jobs.contains_key(session_id) {
                 return Err(AppError::Processing(
                     "This session already has a processing job running".into(),
@@ -305,29 +334,47 @@ pub async fn run_jobs_pipeline(
 ) -> Result<String> {
     state.is_cancelled.store(false, Ordering::Relaxed);
 
-    // Initialize or load session
-    let id = if let Some(sid) = request.session_id {
-        state.load_session_for_processing(&sid)?;
-        state.update_session_config(request.algorithm, request.override_status)?;
-        sid
-    } else {
-        let rendering = request
-            .algorithm
-            .rendering
-            .ok_or_else(|| AppError::Processing("Missing rendering config".into()))?;
-        let analysis = request
-            .algorithm
-            .analysis
-            .ok_or_else(|| AppError::Processing("Missing analysis config".into()))?;
-        let clustering = request
-            .algorithm
-            .clustering
-            .ok_or_else(|| AppError::Processing("Missing clustering config".into()))?;
-        state.initialize_session(AlgorithmConfig {
-            rendering,
-            analysis,
-            clustering,
-        })?
+    // Initialize or load session.
+    let id = match request.run_mode {
+        RunMode::DuplicateChanged => {
+            let source_id = request.source_session_id.as_deref().ok_or_else(|| {
+                AppError::Processing(
+                    "A source session is required when duplicating a session".into(),
+                )
+            })?;
+            let id = state.duplicate_session_for_processing(source_id)?;
+            state.update_session_config(request.algorithm, request.override_status)?;
+            id
+        }
+        RunMode::InPlaceChanged => {
+            let sid = request.session_id.ok_or_else(|| {
+                AppError::Processing(
+                    "A session is required when calculating changes in place".into(),
+                )
+            })?;
+            state.load_session_for_processing(&sid)?;
+            state.update_session_config(request.algorithm, request.override_status)?;
+            sid
+        }
+        RunMode::Fresh => {
+            let rendering = request
+                .algorithm
+                .rendering
+                .ok_or_else(|| AppError::Processing("Missing rendering config".into()))?;
+            let analysis = request
+                .algorithm
+                .analysis
+                .ok_or_else(|| AppError::Processing("Missing analysis config".into()))?;
+            let clustering = request
+                .algorithm
+                .clustering
+                .ok_or_else(|| AppError::Processing("Missing clustering config".into()))?;
+            state.initialize_session(AlgorithmConfig {
+                rendering,
+                analysis,
+                clustering,
+            })?
+        }
     };
     events.emit_string("session_started", id.clone())?;
 

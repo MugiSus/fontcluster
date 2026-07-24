@@ -31,8 +31,9 @@
     --card: 210 50% 99.4%;
     --card-foreground: 222 47% 11.2%;
 
-    --primary: 215 25% 27%;
-    --primary-foreground: 210 50% 99.4%;
+    /* Tailwind blue-500, used for primary actions and unsaved controls. */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 214 32% 91%;
     --secondary-foreground: 222 47% 11.2%;
@@ -64,7 +65,7 @@
     --cluster-7: #e3941f;
     --cluster-8: #4bace8;
 
-    --ring: 215 25% 27%;
+    --ring: 217 91% 60%;
 
     --radius: 0.5rem;
   }
@@ -90,8 +91,9 @@
     --card: 240 13% 7%;
     --card-foreground: 240 5% 96%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 13% 7%;
+    /* Tailwind blue-400 for readable unsaved values on the dark canvas. */
+    --primary: 213 94% 68%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 240 6% 10%;
     --secondary-foreground: 240 5% 96%;
@@ -120,7 +122,7 @@
     --cluster-7: #d88810;
     --cluster-8: #3db2fa;
 
-    --ring: 0 0% 98%;
+    --ring: 213 94% 68%;
 
     --radius: 0.5rem;
   }

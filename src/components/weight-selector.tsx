@@ -10,6 +10,7 @@ interface WeightSelectorProps {
   defaultValue?: FontWeight[];
   name?: string;
   onChange?: (weights: FontWeight[]) => void;
+  isChanged?: boolean;
   isVertical?: boolean;
   isCompact?: boolean;
   isBare?: boolean;
@@ -65,7 +66,10 @@ export function WeightSelector(props: WeightSelectorProps) {
       />
       <Show when={!props.isCompact}>
         <div class='flex size-8 items-center justify-center'>
-          <WeightIcon class='size-3 text-muted-foreground' />
+          <WeightIcon
+            class='size-3 text-muted-foreground'
+            classList={{ '!text-primary': props.isChanged }}
+          />
         </div>
       </Show>
       <For each={displayedWeights().toSorted()}>
@@ -81,6 +85,7 @@ export function WeightSelector(props: WeightSelectorProps) {
                 class={cn(
                   'size-8 pt-0.5 text-xs text-muted-foreground hover:text-foreground',
                   props.isBare ? 'rounded-full' : 'grow rounded px-0',
+                  props.isChanged && '!text-primary',
                 )}
                 style={{ 'font-weight': weight }}
                 disabled={!isSelectable()}

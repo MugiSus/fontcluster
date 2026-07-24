@@ -13,8 +13,8 @@ import {
 type ControlPropertySectionProps = {
   title: string;
   children?: JSX.Element;
-  onStepRun: () => void;
-  isRunnable?: boolean;
+  onRestore: () => void;
+  isChanged: boolean;
   isDisabled?: boolean | undefined;
 };
 
@@ -22,21 +22,23 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
   const { t } = useI18n();
   return (
     <div class='group/section flex flex-col'>
-      <div class='flex items-center gap-2 py-1.5'>
+      <div class='flex h-8 items-center gap-2'>
         <div class='text-xs font-semibold capitalize'>{props.title}</div>
-        <Show when={props.isRunnable !== false}>
+        <Show when={props.isChanged}>
           <Tooltip>
             <TooltipTrigger
               as={Button<'button'>}
+              type='button'
               variant='ghost'
               size='icon'
               disabled={props.isDisabled}
-              class='invisible mb-px size-5 text-xs group-hover/section:visible'
-              onClick={props.onStepRun}
+              aria-label={t.controlPanel.restoreSession()}
+              class='mb-px size-5 text-xs'
+              onClick={props.onRestore}
             >
               <RotateCwIcon class='size-3.5 max-h-3.5' />
             </TooltipTrigger>
-            <TooltipContent>{t.controlPanel.recalculate()}</TooltipContent>
+            <TooltipContent>{t.controlPanel.restoreSession()}</TooltipContent>
           </Tooltip>
         </Show>
       </div>

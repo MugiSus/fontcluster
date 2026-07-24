@@ -253,7 +253,9 @@ export function SessionHistory(props: SessionHistoryProps) {
     toast.info(
       t.jobs.toasts.started({ text: session.algorithm.rendering.text }),
     );
-    runProcessingJobs(session.algorithm, session.session_id).catch((error) => {
+    runProcessingJobs(session.algorithm, {
+      sessionId: session.session_id,
+    }).catch((error) => {
       console.error('Failed to process fonts:', error);
       toast.error(t.jobs.toasts.failed({ error: String(error) }));
     });

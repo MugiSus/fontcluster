@@ -25,8 +25,13 @@ export const ja: Dictionary = {
   controlPanel: {
     text: 'サンプル',
     generate: '生成',
-    generateNew: 'グラフを新しく生成',
-    recalculate: '再計算',
+    generateModes: {
+      open: '生成方法を選択',
+      duplicateChanged: '複製して変更点から再計算',
+      inPlaceChanged: '変更点から再計算',
+      fresh: '新しく生成',
+    },
+    restoreSession: '変更をリセット',
     fonts: 'フォント',
     model: 'モデル',
     modelDownloadRequired: '「生成」を押すとダウンロードします',

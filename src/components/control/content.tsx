@@ -1,7 +1,13 @@
-import { createSignal, onCleanup, Show } from 'solid-js';
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+  Show,
+} from 'solid-js';
 import { debounce } from '@solid-primitives/scheduled';
 import { toast } from 'solid-sonner';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -15,7 +21,7 @@ import {
   TextFieldInput,
   TextFieldLabel,
 } from '@/components/ui/text-field';
-import { PlusIcon, TypeIcon } from 'lucide-solid';
+import { TypeIcon } from 'lucide-solid';
 import { WeightSelector } from '@/components/weight-selector';
 import { type FontWeight } from '@/types/font';
 import {
@@ -23,12 +29,11 @@ import {
   type AnalysisOptions,
   type RenderingOptions,
   type ClusteringOptions,
-  type ProcessStatus,
   type FontSet,
   type ClusteringMethod,
 } from '@/types/session';
 import { appState } from '@/store';
-import { runProcessingJobs } from '@/actions';
+import { runProcessingJobs, type ProcessingRunMode } from '@/actions';
 import { useI18n } from '@/i18n';
 import {
   EMPHASIS_LEVEL_MAX,
@@ -40,16 +45,12 @@ import {
   DEFAULT_RENDERING_CONFIG,
   EMPHASIS_ATTRIBUTES,
 } from '@/constants/session';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
 import { ModelProperty } from './model-property';
 import { ControlPropertySection } from './property-section';
 import { TextProperty } from './text-property';
+import { GenerateButton } from './generate-button';
 
 /**
  * Ordered selectable font sets. `system_fonts` stays first so the divider in
@@ -141,13 +142,13 @@ function parseClusteringConfig(formdata: FormData): ClusteringOptions {
 
 /**
  * Renders the algorithm form and adapts its draft inputs into stage-owned
- * configuration patches.
+ * configuration patches. The backend compares the complete draft with the
+ * persisted session and selects the earliest invalidated stage.
  *
  * This component owns only ephemeral form state and the submit cooldown. The
  * persisted algorithm, pipeline invalidation and model installation remain
- * backend responsibilities. Full and analysis submissions wait until the
- * catalog can identify the draft model as installed or downloadable; a
- * clustering-only resume does not consume that draft analysis selection.
+ * backend responsibilities. Runs that need feature extraction wait until the
+ * catalog can identify the draft model as installed or downloadable.
  */
 export function ControlContent() {
   const { t } = useI18n();
@@ -164,29 +165,155 @@ export function ControlContent() {
 
   let formRef: HTMLFormElement | undefined;
 
+  // The form is the owner of unsaved draft values. This revision only tells
+  // derived labels to re-read that form; it is not a second config store.
+  const [draftRevision, setDraftRevision] = createSignal(0);
+  const markDraftChanged = () => setDraftRevision((revision) => revision + 1);
+  const sessionKey = () =>
+    `${appState.session.session_id}:${appState.session.modified_at}`;
+  createEffect(on(sessionKey, markDraftChanged));
+  const draftFormData = createMemo(() => {
+    draftRevision();
+    return sessionKey() && formRef ? new FormData(formRef) : undefined;
+  });
+  const draftValue = (name: string) => draftFormData()?.get(name)?.toString();
+  const isDraftStringChanged = (name: string, savedValue: string) => {
+    const value = draftValue(name);
+    return value !== undefined && value !== savedValue;
+  };
+  const isDraftNumberChanged = (name: string, savedValue: number) => {
+    const value = draftValue(name);
+    return (
+      value !== undefined &&
+      (!Number.isFinite(Number(value)) || Number(value) !== savedValue)
+    );
+  };
+  const isDraftWeightsChanged = (savedWeights: FontWeight[]) => {
+    const value = draftValue('weights');
+    if (value === undefined) return false;
+    const draftWeights = value.split(',').filter(Boolean).map(Number);
+    return (
+      draftWeights.length !== savedWeights.length ||
+      draftWeights.some((weight, index) => weight !== savedWeights[index])
+    );
+  };
+  const isDraftEmphasisChanged = () => {
+    const savedClustering = appState.session.algorithm.clustering;
+    return EMPHASIS_ATTRIBUTES.some((attribute) => {
+      const value = draftValue(`clustering-emphasis-${attribute}`);
+      if (value === undefined) return false;
+      const draftLevel = Number(value);
+      const savedLevel = savedClustering.enable_attribute_emphasis
+        ? (savedClustering.emphasis?.[attribute] ?? EMPHASIS_LEVEL_NEUTRAL)
+        : EMPHASIS_LEVEL_NEUTRAL;
+      return (
+        (Number.isFinite(draftLevel) ? draftLevel : EMPHASIS_LEVEL_NEUTRAL) !==
+        savedLevel
+      );
+    });
+  };
+  const isRenderingSectionChanged = () =>
+    isDraftStringChanged(
+      'rendering-text',
+      appState.session.algorithm.rendering.text || 'A',
+    ) ||
+    isDraftWeightsChanged(appState.session.algorithm.rendering.weights) ||
+    isDraftStringChanged(
+      'rendering-font-set',
+      appState.session.algorithm.rendering.font_set,
+    ) ||
+    isDraftNumberChanged(
+      'rendering-font-size',
+      appState.session.algorithm.rendering.font_size,
+    );
+  const isAnalysisSectionChanged = () =>
+    isDraftStringChanged(
+      'analysis-model-id',
+      appState.session.algorithm.analysis.model_id,
+    );
+  const isClusteringSectionChanged = () =>
+    isDraftStringChanged(
+      'clustering-method',
+      appState.session.algorithm.clustering.method,
+    ) ||
+    isDraftNumberChanged(
+      'clustering-preprocessing-dimensions',
+      appState.session.algorithm.clustering.preprocessing_dimensions,
+    ) ||
+    isDraftNumberChanged(
+      'clustering-distance-threshold',
+      appState.session.algorithm.clustering.distance_threshold,
+    ) ||
+    isDraftNumberChanged(
+      'clustering-target-cluster-count',
+      appState.session.algorithm.clustering.target_cluster_count,
+    ) ||
+    isDraftEmphasisChanged();
+
+  const [renderingResetKey, setRenderingResetKey] = createSignal({});
+  const [analysisResetKey, setAnalysisResetKey] = createSignal({});
+  const [clusteringResetKey, setClusteringResetKey] = createSignal({});
+
+  const restoreRendering = () => {
+    setRenderingResetKey({});
+    markDraftChanged();
+  };
+  const restoreAnalysis = () => {
+    setAnalysisResetKey({});
+    markDraftChanged();
+  };
+  const restoreClustering = () => {
+    setClusteringResetKey({});
+    markDraftChanged();
+  };
+
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    handleRun();
+    void handleRun('duplicate_changed');
   };
 
   /**
    * Snapshots the form once and submits only the configuration owned by the
-   * requested pipeline stages. `not_downloaded` is accepted because starting
-   * the backend job is what authorizes its download; transient `loading` and
-   * `unknown` values block runs that would consume the draft model.
+   * selected session mode. `not_downloaded` is accepted because starting the
+   * backend job is what authorizes its download; transient `loading` and
+   * `unknown` values block runs that need the model.
    */
-  const handleRun = async (options?: { override?: ProcessStatus }) => {
+  const handleRun = async (requestedMode: ProcessingRunMode) => {
     if (isRunCooldown() || !formRef) return;
 
     const formdata = new FormData(formRef);
+    const rendering = parseRenderingConfig(formdata);
+    const analysis: AnalysisOptions = {
+      model_id:
+        (formdata.get('analysis-model-id') as string) ||
+        appState.session.algorithm.analysis.model_id,
+    };
     const clustering = parseClusteringConfig(formdata);
     const modelAvailability = formdata.get('analysis-model-availability');
-    const isClusteringOnly =
-      options?.override === 'analyzed' &&
-      (appState.session.status.process_status === 'analyzed' ||
-        appState.session.status.process_status === 'clustered');
+    const currentSessionId = appState.session.session_id || undefined;
+    const runMode: ProcessingRunMode =
+      requestedMode !== 'fresh' && !currentSessionId ? 'fresh' : requestedMode;
+    const savedRendering = appState.session.algorithm.rendering;
+    const isRenderingChanged =
+      rendering.text !== savedRendering.text ||
+      rendering.font_set !== savedRendering.font_set ||
+      rendering.font_size !== savedRendering.font_size ||
+      rendering.weights.length !== savedRendering.weights.length ||
+      rendering.weights.some(
+        (weight, index) => weight !== savedRendering.weights[index],
+      );
+    const shouldLoadModel =
+      runMode === 'fresh' ||
+      appState.session.status.process_status === 'empty' ||
+      appState.session.status.process_status === 'rendered' ||
+      isRenderingChanged ||
+      analysis.model_id !== appState.session.algorithm.analysis.model_id ||
+      ((appState.session.status.process_status === 'analyzed' ||
+        appState.session.status.process_status === 'clustered') &&
+        clustering.enable_attribute_emphasis &&
+        Object.values(clustering.emphasis).some((level) => level !== 0));
     if (
-      !isClusteringOnly &&
+      shouldLoadModel &&
       modelAvailability !== 'available' &&
       modelAvailability !== 'not_downloaded'
     ) {
@@ -197,33 +324,26 @@ export function ControlContent() {
     setIsRunCooldown(true);
     clearRunCooldown();
 
-    const rendering = parseRenderingConfig(formdata);
-    const analysis: AnalysisOptions = {
-      model_id:
-        (formdata.get('analysis-model-id') as string) ||
-        appState.session.algorithm.analysis.model_id,
+    // The backend compares all supplied stages with the persisted config and
+    // chooses the earliest invalidated stage for this session mode.
+    const algorithm: Partial<AlgorithmConfig> = {
+      rendering,
+      analysis,
+      clustering,
     };
-
-    const sessionId =
-      options?.override ||
-      appState.session.status.process_status !== 'clustered'
-        ? appState.session.session_id || undefined
-        : undefined;
-
-    // Each stage submits only the inputs it owns. The backend remains the
-    // authority that compares them with persisted values and chooses the
-    // earliest invalidated pipeline stage.
-    const algorithm: Partial<AlgorithmConfig> =
-      options?.override === 'analyzed'
-        ? { clustering }
-        : options?.override === 'rendered'
-          ? { analysis, clustering }
-          : { rendering, analysis, clustering };
 
     toast.info(t.jobs.toasts.started({ text: rendering.text }));
 
     try {
-      await runProcessingJobs(algorithm, sessionId, options?.override);
+      await runProcessingJobs(algorithm, {
+        runMode,
+        ...(runMode === 'in_place_changed' && currentSessionId
+          ? { sessionId: currentSessionId }
+          : {}),
+        ...(runMode === 'duplicate_changed' && currentSessionId
+          ? { sourceSessionId: currentSessionId }
+          : {}),
+      });
     } catch (error) {
       console.error('Failed to process fonts:', error);
       toast.error(t.jobs.toasts.failed({ error: String(error) }));
@@ -234,186 +354,250 @@ export function ControlContent() {
     <form
       ref={formRef}
       onSubmit={handleSubmit}
+      onInput={markDraftChanged}
+      onChange={markDraftChanged}
       class='flex h-full min-h-0 flex-1 flex-col'
     >
-      <Show when={appState.session.session_id || true} keyed>
-        <div class='flex flex-col gap-1 border-b p-4'>
-          <TextField class='relative grid w-full items-center gap-1'>
-            <TextFieldLabel
-              for='rendering-text'
-              class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
-            >
-              <TypeIcon class='mb-0.5 size-3.5' />
-              {t.controlPanel.text()}
-            </TextFieldLabel>
-            <TextFieldInput
-              type='text'
-              name='rendering-text'
-              id='rendering-text'
-              value={appState.session.algorithm.rendering.text || 'A'}
-              placeholder='A'
-              spellcheck='false'
-              class='h-9 text-[15px]'
-            />
-          </TextField>
-          <TextField class='grid w-full items-center gap-1'>
-            <Show when={appState.session.session_id || 'session_id'} keyed>
+      <Show when={sessionKey()} keyed>
+        <Show when={renderingResetKey()} keyed>
+          <div class='flex flex-col gap-1 border-b p-4'>
+            <TextField class='relative grid w-full items-center gap-1'>
+              <TextFieldLabel
+                for='rendering-text'
+                class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
+                classList={{
+                  '!text-primary': isDraftStringChanged(
+                    'rendering-text',
+                    appState.session.algorithm.rendering.text || 'A',
+                  ),
+                }}
+              >
+                <TypeIcon class='mb-0.5 size-3.5' />
+                {t.controlPanel.text()}
+              </TextFieldLabel>
+              <TextFieldInput
+                type='text'
+                name='rendering-text'
+                id='rendering-text'
+                value={appState.session.algorithm.rendering.text || 'A'}
+                placeholder='A'
+                spellcheck='false'
+                class='h-9 text-[15px]'
+                classList={{
+                  '!text-primary': isDraftStringChanged(
+                    'rendering-text',
+                    appState.session.algorithm.rendering.text || 'A',
+                  ),
+                }}
+              />
+            </TextField>
+            <TextField class='grid w-full items-center gap-1'>
               <WeightSelector
                 isMultiple
                 weights={[100, 200, 300, 400, 500, 600, 700, 800, 900]}
                 defaultValue={appState.session.algorithm.rendering.weights}
                 isCompact
+                isChanged={isDraftWeightsChanged(
+                  appState.session.algorithm.rendering.weights,
+                )}
+                onChange={markDraftChanged}
               />
-            </Show>
-          </TextField>
-        </div>
+            </TextField>
+          </div>
+        </Show>
         <div class='flex min-h-0 flex-1 grow flex-col gap-1 overflow-y-scroll px-4 py-3'>
-          <ControlPropertySection
-            title={t.controlPanel.sections.render()}
-            isDisabled={isRunCooldown()}
-            onStepRun={() => handleRun({ override: 'empty' })}
-            isRunnable={false}
-          >
-            <TextProperty label={t.controlPanel.fonts()} class='mr-1 gap-0.5'>
-              <Select
-                name='rendering-font-set'
-                options={FONT_SET_KEYS}
-                optionTextValue={fontSetLabel}
-                disallowEmptySelection
-                defaultValue={appState.session.algorithm.rendering.font_set}
-                itemComponent={(props) => (
-                  <>
-                    <SelectItem item={props.item}>
-                      {fontSetLabel(props.item.rawValue)}
-                    </SelectItem>
-                    <Show when={props.item.rawValue === 'system_fonts'}>
-                      <div class='my-1 w-full border-t' />
-                    </Show>
-                  </>
-                )}
-              >
-                <SelectHiddenSelect />
-                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-                  <SelectValue<FontSet> class='mr-2.5 min-w-0 flex-1 text-right'>
-                    {(state) => fontSetLabel(state.selectedOption())}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-            </TextProperty>
-            <NumberProperty
-              label={t.controlPanel.textSize()}
-              name='rendering-font-size'
-              defaultValue={appState.session.algorithm.rendering.font_size}
-              step={1}
-              minValue={1}
-            />
-          </ControlPropertySection>
-
-          <ControlPropertySection
-            title={t.controlPanel.sections.analyze()}
-            isDisabled={
-              isRunCooldown() &&
-              appState.session.status.process_status !== 'rendered'
-            }
-            onStepRun={() => handleRun({ override: 'rendered' })}
-          >
-            <ModelProperty
-              modelId={appState.session.algorithm.analysis.model_id}
-              sessionId={appState.session.session_id}
-            />
-          </ControlPropertySection>
-
-          <ControlPropertySection
-            title={t.controlPanel.sections.cluster()}
-            isDisabled={
-              isRunCooldown() &&
-              appState.session.status.process_status !== 'analyzed'
-            }
-            onStepRun={() => handleRun({ override: 'analyzed' })}
-          >
-            <TextProperty
-              label={t.controlPanel.linkageMethod()}
-              class='mr-1 gap-0.5'
+          <Show when={renderingResetKey()} keyed>
+            <ControlPropertySection
+              title={t.controlPanel.sections.render()}
+              isDisabled={isRunCooldown()}
+              isChanged={isRenderingSectionChanged()}
+              onRestore={restoreRendering}
             >
-              <Select
-                name='clustering-method'
-                options={
-                  Object.keys(CLUSTERING_METHOD_LABELS) as ClusteringMethod[]
-                }
-                optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
-                disallowEmptySelection
-                defaultValue={appState.session.algorithm.clustering.method}
-                itemComponent={(props) => (
-                  <SelectItem item={props.item}>
-                    {CLUSTERING_METHOD_LABELS[props.item.rawValue]}
-                  </SelectItem>
+              <TextProperty
+                label={t.controlPanel.fonts()}
+                class='mr-1 gap-0.5'
+                isChanged={isDraftStringChanged(
+                  'rendering-font-set',
+                  appState.session.algorithm.rendering.font_set,
                 )}
               >
-                <SelectHiddenSelect />
-                <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-                  <SelectValue<ClusteringMethod> class='mr-2.5 min-w-0 flex-1 text-right'>
-                    {(state) =>
-                      CLUSTERING_METHOD_LABELS[state.selectedOption()]
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-            </TextProperty>
-            <NumberProperty
-              label={t.controlPanel.preprocessDimensions()}
-              name='clustering-preprocessing-dimensions'
-              defaultValue={
-                appState.session.algorithm.clustering.preprocessing_dimensions
-              }
-              step={1}
-              minValue={1}
-              maxValue={384}
-            />
-            <NumberProperty
-              label={t.controlPanel.groupingThreshold()}
-              name='clustering-distance-threshold'
-              defaultValue={
-                appState.session.algorithm.clustering.distance_threshold
-              }
-              step={0.01}
-              minValue={0}
-            />
-            <NumberProperty
-              label={t.controlPanel.targetClusters()}
-              name='clustering-target-cluster-count'
-              defaultValue={
-                appState.session.algorithm.clustering.target_cluster_count
-              }
-              step={1}
-              minValue={0}
-            />
-            <EmphasisControls />
-          </ControlPropertySection>
+                <Select
+                  name='rendering-font-set'
+                  options={FONT_SET_KEYS}
+                  optionTextValue={fontSetLabel}
+                  disallowEmptySelection
+                  defaultValue={appState.session.algorithm.rendering.font_set}
+                  onChange={() => markDraftChanged()}
+                  itemComponent={(props) => (
+                    <>
+                      <SelectItem item={props.item}>
+                        {fontSetLabel(props.item.rawValue)}
+                      </SelectItem>
+                      <Show when={props.item.rawValue === 'system_fonts'}>
+                        <div class='my-1 w-full border-t' />
+                      </Show>
+                    </>
+                  )}
+                >
+                  <SelectHiddenSelect />
+                  <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                    <SelectValue<FontSet>
+                      class='mr-2.5 min-w-0 flex-1 text-right'
+                      classList={{
+                        '!text-primary': isDraftStringChanged(
+                          'rendering-font-set',
+                          appState.session.algorithm.rendering.font_set,
+                        ),
+                      }}
+                    >
+                      {(state) => fontSetLabel(state.selectedOption())}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
+              </TextProperty>
+              <NumberProperty
+                label={t.controlPanel.textSize()}
+                name='rendering-font-size'
+                defaultValue={appState.session.algorithm.rendering.font_size}
+                isChanged={isDraftNumberChanged(
+                  'rendering-font-size',
+                  appState.session.algorithm.rendering.font_size,
+                )}
+                onChange={() => markDraftChanged()}
+                step={1}
+                minValue={1}
+              />
+            </ControlPropertySection>
+          </Show>
+
+          <Show when={analysisResetKey()} keyed>
+            <ControlPropertySection
+              title={t.controlPanel.sections.analyze()}
+              isDisabled={isRunCooldown()}
+              isChanged={isAnalysisSectionChanged()}
+              onRestore={restoreAnalysis}
+            >
+              <ModelProperty
+                modelId={appState.session.algorithm.analysis.model_id}
+                sessionId={appState.session.session_id}
+                isChanged={isDraftStringChanged(
+                  'analysis-model-id',
+                  appState.session.algorithm.analysis.model_id,
+                )}
+                onDraftChange={markDraftChanged}
+              />
+            </ControlPropertySection>
+          </Show>
+
+          <Show when={clusteringResetKey()} keyed>
+            <ControlPropertySection
+              title={t.controlPanel.sections.cluster()}
+              isDisabled={isRunCooldown()}
+              isChanged={isClusteringSectionChanged()}
+              onRestore={restoreClustering}
+            >
+              <TextProperty
+                label={t.controlPanel.linkageMethod()}
+                class='mr-1 gap-0.5'
+                isChanged={isDraftStringChanged(
+                  'clustering-method',
+                  appState.session.algorithm.clustering.method,
+                )}
+              >
+                <Select
+                  name='clustering-method'
+                  options={
+                    Object.keys(CLUSTERING_METHOD_LABELS) as ClusteringMethod[]
+                  }
+                  optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
+                  disallowEmptySelection
+                  defaultValue={appState.session.algorithm.clustering.method}
+                  onChange={() => markDraftChanged()}
+                  itemComponent={(props) => (
+                    <SelectItem item={props.item}>
+                      {CLUSTERING_METHOD_LABELS[props.item.rawValue]}
+                    </SelectItem>
+                  )}
+                >
+                  <SelectHiddenSelect />
+                  <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
+                    <SelectValue<ClusteringMethod>
+                      class='mr-2.5 min-w-0 flex-1 text-right'
+                      classList={{
+                        '!text-primary': isDraftStringChanged(
+                          'clustering-method',
+                          appState.session.algorithm.clustering.method,
+                        ),
+                      }}
+                    >
+                      {(state) =>
+                        CLUSTERING_METHOD_LABELS[state.selectedOption()]
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
+              </TextProperty>
+              <NumberProperty
+                label={t.controlPanel.preprocessDimensions()}
+                name='clustering-preprocessing-dimensions'
+                defaultValue={
+                  appState.session.algorithm.clustering.preprocessing_dimensions
+                }
+                isChanged={isDraftNumberChanged(
+                  'clustering-preprocessing-dimensions',
+                  appState.session.algorithm.clustering
+                    .preprocessing_dimensions,
+                )}
+                onChange={() => markDraftChanged()}
+                step={1}
+                minValue={1}
+                maxValue={384}
+              />
+              <NumberProperty
+                label={t.controlPanel.groupingThreshold()}
+                name='clustering-distance-threshold'
+                defaultValue={
+                  appState.session.algorithm.clustering.distance_threshold
+                }
+                isChanged={isDraftNumberChanged(
+                  'clustering-distance-threshold',
+                  appState.session.algorithm.clustering.distance_threshold,
+                )}
+                onChange={() => markDraftChanged()}
+                step={0.01}
+                minValue={0}
+              />
+              <NumberProperty
+                label={t.controlPanel.targetClusters()}
+                name='clustering-target-cluster-count'
+                defaultValue={
+                  appState.session.algorithm.clustering.target_cluster_count
+                }
+                isChanged={isDraftNumberChanged(
+                  'clustering-target-cluster-count',
+                  appState.session.algorithm.clustering.target_cluster_count,
+                )}
+                onChange={() => markDraftChanged()}
+                step={1}
+                minValue={0}
+              />
+              <EmphasisControls
+                isChanged={isDraftEmphasisChanged()}
+                onDraftChange={markDraftChanged}
+              />
+            </ControlPropertySection>
+          </Show>
         </div>
       </Show>
 
       <div class='relative border-t p-4'>
-        {/* <div class='absolute left-1.5 top-1.5 size-1 rounded-full bg-border' />
-        <div class='absolute right-1.5 top-1.5 size-1 rounded-full bg-border' />
-        <div class='absolute bottom-1.5 left-1.5 size-1 rounded-full bg-border' />
-        <div class='absolute bottom-1.5 right-1.5 size-1 rounded-full bg-border' /> */}
-
-        <Tooltip>
-          <TooltipTrigger
-            as={Button<'button'>}
-            type='submit'
-            disabled={isRunCooldown()}
-            variant='outline'
-            size='sm'
-            class='relative flex w-full items-center gap-2 rounded-full text-sm font-black tabular-nums shadow-sm'
-          >
-            {t.controlPanel.generate()}
-            <PlusIcon class='absolute right-3' />
-          </TooltipTrigger>
-          <TooltipContent>{t.controlPanel.generateNew()}</TooltipContent>
-        </Tooltip>
+        <GenerateButton
+          isDisabled={isRunCooldown()}
+          hasSession={Boolean(appState.session.session_id)}
+          onSelect={(mode) => void handleRun(mode)}
+        />
       </div>
     </form>
   );

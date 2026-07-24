@@ -355,6 +355,40 @@ impl AppState {
         Ok(id)
     }
 
+    /// Copies a stored session into a new writable processing directory and
+    /// makes the copy active. The copied config and all stage outputs remain
+    /// intact until [`Self::update_session_config`] applies the new draft, so
+    /// the normal stage invalidation rules decide what needs recomputation.
+    pub fn duplicate_session_for_processing(&self, source_id: &str) -> Result<String> {
+        let source_dir = Self::resolve_session_dir(source_id)?;
+        let id = Uuid::now_v7().to_string();
+        let processing_dir = Self::get_session_processing_dir(&id)?;
+
+        let copy_result = (|| {
+            copy_session_dir(&source_dir, &processing_dir)?;
+            let mut session = read_session_config_from_dir(&processing_dir)?;
+            let now = chrono::Utc::now();
+            session.session_id = id.clone();
+            session.created_at = now;
+            session.modified_at = now;
+            session.app_version = env!("CARGO_PKG_VERSION").to_string();
+            session.modified_app_version = env!("CARGO_PKG_VERSION").to_string();
+            write_session_config_atomic(&session, &processing_dir)?;
+
+            let mut current = self.current_session.lock().unwrap();
+            *current = Some(session);
+            Ok::<(), crate::error::AppError>(())
+        })();
+
+        if let Err(error) = copy_result {
+            remove_dir_all_best_effort(&processing_dir);
+            return Err(error);
+        }
+
+        println!("📄 Duplicated session {} as {}", source_id, id);
+        Ok(id)
+    }
+
     /// Loads session `id` for viewing, extracting a read-only view if needed.
     pub fn load_session(&self, id: &str) -> Result<()> {
         let session_dir = Self::ensure_session_view(id)?;
@@ -597,6 +631,51 @@ impl AppState {
 /// True if `dir` looks like a session directory (contains a config file).
 fn has_session_config(dir: &Path) -> bool {
     dir.join(SESSION_CONFIG_FILE).exists()
+}
+
+/// Copies a session directory without carrying its source directory name into
+/// the new session id. Session entries are regular files and directories; a
+/// symlink is rejected so a document cannot make a duplicate escape its own
+/// processing directory.
+fn copy_session_dir(source: &Path, destination: &Path) -> Result<()> {
+    for entry in WalkDir::new(source) {
+        let entry = entry.map_err(|error| {
+            crate::error::AppError::Io(format!(
+                "Failed to read session copy source {}: {}",
+                source.display(),
+                error
+            ))
+        })?;
+        let relative = entry.path().strip_prefix(source).map_err(|error| {
+            crate::error::AppError::Processing(format!(
+                "Failed to map session copy path {}: {}",
+                entry.path().display(),
+                error
+            ))
+        })?;
+        let target = destination.join(relative);
+
+        if entry.file_type().is_symlink() {
+            return Err(crate::error::AppError::Processing(format!(
+                "Session copy source contains unsupported symlink {}",
+                entry.path().display()
+            )));
+        }
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&target)?;
+        } else if entry.file_type().is_file() {
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(entry.path(), &target)?;
+        } else {
+            return Err(crate::error::AppError::Processing(format!(
+                "Session copy source contains unsupported entry {}",
+                entry.path().display()
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Removes a file or directory tree, never failing the caller.

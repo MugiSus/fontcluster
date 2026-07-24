@@ -33,13 +33,18 @@ import { EMPHASIS_ATTRIBUTES } from '@/constants/session';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 
+type EmphasisControlsProps = {
+  isChanged?: boolean;
+  onDraftChange?: () => void;
+};
+
 /**
  * Modal form control for the 37 O'Donovan attribute-emphasis levels.
  *
  * `levels` is the single draft state. Hidden inputs expose that draft to the
  * enclosing processing form, while preset constants remain immutable inputs.
  */
-export function EmphasisControls() {
+export function EmphasisControls(props: EmphasisControlsProps) {
   const { t, locale } = useI18n();
   const savedClustering = appState.session.algorithm.clustering;
 
@@ -93,10 +98,14 @@ export function EmphasisControls() {
           variant='ghost'
           size='sm'
           class='group h-8 justify-start pl-2 pr-0.5 capitalize text-muted-foreground shadow-none hover:text-foreground'
+          classList={{ '!text-primary': props.isChanged }}
         >
           <SlidersVerticalIcon class='!size-3.5' />
           <span>{t.controlPanel.equalizer.title()}</span>
-          <span class='ml-auto text-sm text-foreground'>
+          <span
+            class='ml-auto text-sm text-foreground'
+            classList={{ '!text-primary': props.isChanged }}
+          >
             {t.controlPanel.equalizer.presets[selectedPreset()]()}
           </span>
           <ChevronRightIcon />
@@ -125,6 +134,7 @@ export function EmphasisControls() {
               onChange={(preset) => {
                 if (preset === 'default' || preset === 'none') {
                   setLevels({ ...EMPHASIS_PRESETS[preset] });
+                  props.onDraftChange?.();
                 }
               }}
               size='sm'
@@ -172,12 +182,13 @@ export function EmphasisControls() {
                     </span>
                     <Slider
                       value={[levels[attribute]]}
-                      onChange={(value) =>
+                      onChange={(value) => {
                         setLevels(
                           attribute,
                           Math.round(value[0] ?? EMPHASIS_LEVEL_NEUTRAL),
-                        )
-                      }
+                        );
+                        props.onDraftChange?.();
+                      }}
                       minValue={EMPHASIS_LEVEL_MIN}
                       maxValue={EMPHASIS_LEVEL_MAX}
                       step={EMPHASIS_LEVEL_STEP}
