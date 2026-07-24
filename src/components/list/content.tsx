@@ -20,7 +20,7 @@ import { type FontItem } from '@/types/font';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
-const LIST_ITEM_HEIGHT = 80;
+const LIST_ITEM_HEIGHT = 64;
 const LIST_PREVIEW_FONT_SIZE = 64;
 const LIST_CIRCULAR_BUFFER_ITEMS = 30;
 /** Allows the native scroll event to arrive just after the input event while
