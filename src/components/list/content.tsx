@@ -1,5 +1,5 @@
 import {
-  createEffect,
+  createComputed,
   createMemo,
   For,
   createSelector,
@@ -68,7 +68,7 @@ export function ListContent() {
 
     return Math.min(
       itemCount - 1,
-      Math.ceil((viewportHeight * 2.5) / LIST_ITEM_HEIGHT),
+      Math.ceil((viewportHeight * 2) / LIST_ITEM_HEIGHT),
     );
   });
   const leafIndexByKey = createMemo(
@@ -158,8 +158,8 @@ export function ListContent() {
         bufferHeight + (LIST_ITEM_HEIGHT - viewportHeight) / 2;
       const endItemZeroCenterOffset =
         cycleHeight + bufferHeight + (LIST_ITEM_HEIGHT - viewportHeight) / 2;
-      const isAtStartLoop = offset <= itemZeroCenterOffset;
-      const isAtEndLoop = offset >= endItemZeroCenterOffset;
+      const isAtStartLoop = offset < itemZeroCenterOffset;
+      const isAtEndLoop = offset > endItemZeroCenterOffset;
       const shouldRecenter = sync
         ? (instance.scrollDirection === 'backward' && isAtStartLoop) ||
           (instance.scrollDirection === 'forward' && isAtEndLoop)
@@ -174,12 +174,10 @@ export function ListContent() {
     },
   });
 
-  createEffect(() => {
-    if (!listScrollElement) return;
-
+  createComputed(() => {
     const itemCount = filteredLeafItems().length;
     const viewportHeight = scrollViewportHeight();
-    if (itemCount === 0 || viewportHeight === 0) return;
+    if (!listScrollElement || itemCount === 0 || viewportHeight === 0) return;
 
     const selectedKey = appState.ui.selectedFontKey;
     const selectedIndex = selectedKey
