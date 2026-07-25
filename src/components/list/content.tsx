@@ -262,64 +262,67 @@ export function ListContent() {
         placeholder={appState.session.algorithm.rendering.text || 'A'}
         onValueChange={setListPreviewText}
       />
-      <div
-        ref={listScrollElement}
-        class='min-h-0 w-full flex-1 overflow-y-scroll'
-        onWheel={markDirectScrollInput}
-        onTouchMove={markDirectScrollInput}
-        onPointerMove={(event) => {
-          if (event.buttons !== 0) markDirectScrollInput();
-        }}
-      >
-        <Show
-          when={filteredLeafItems().length > 0}
-          fallback={<NoResultsFound />}
+      <div class='relative min-h-0 w-full flex-1'>
+        <div
+          ref={listScrollElement}
+          class='size-full overflow-y-scroll'
+          onWheel={markDirectScrollInput}
+          onTouchMove={markDirectScrollInput}
+          onPointerMove={(event) => {
+            if (event.buttons !== 0) markDirectScrollInput();
+          }}
         >
-          <ul
-            class='relative w-full'
-            style={{ height: `${virtualizer.getTotalSize()}px` }}
+          <Show
+            when={filteredLeafItems().length > 0}
+            fallback={<NoResultsFound />}
           >
-            <For each={virtualizer.getVirtualItems()}>
-              {(virtualItem) => {
-                const item = () => {
-                  const items = filteredLeafItems();
-                  const bufferItemCount = circularBufferItemCount();
-                  return items[
-                    (virtualItem.index - bufferItemCount + items.length) %
-                      items.length
-                  ];
-                };
-                return (
-                  <Show when={item()}>
-                    {(fontItem) => (
-                      <li
-                        data-font-name={fontItem().meta.safe_name}
-                        class='absolute left-0 top-0 w-full'
-                        style={{
-                          transform: `translateY(${virtualItem.start}px)`,
-                        }}
-                      >
-                        <ListFontItem
-                          item={fontItem()}
-                          previewText={appState.ui.listPreviewText}
-                          previewFontSize={LIST_PREVIEW_FONT_SIZE}
-                          isPreviewEnabled={canRenderListPreviews()}
-                          isSelectedFontItem={isSelectedFontItem(
-                            fontItem().meta.safe_name,
-                          )}
-                          isSentFontItem={isSentFontItem(
-                            fontItem().meta.safe_name,
-                          )}
-                          onClick={() => handleSelect(fontItem())}
-                        />
-                      </li>
-                    )}
-                  </Show>
-                );
-              }}
-            </For>
-          </ul>
-        </Show>
+            <ul
+              class='relative w-full'
+              style={{ height: `${virtualizer.getTotalSize()}px` }}
+            >
+              <For each={virtualizer.getVirtualItems()}>
+                {(virtualItem) => {
+                  const item = () => {
+                    const items = filteredLeafItems();
+                    const bufferItemCount = circularBufferItemCount();
+                    return items[
+                      (virtualItem.index - bufferItemCount + items.length) %
+                        items.length
+                    ];
+                  };
+                  return (
+                    <Show when={item()}>
+                      {(fontItem) => (
+                        <li
+                          data-font-name={fontItem().meta.safe_name}
+                          class='absolute left-0 top-0 w-full'
+                          style={{
+                            transform: `translateY(${virtualItem.start}px)`,
+                          }}
+                        >
+                          <ListFontItem
+                            item={fontItem()}
+                            previewText={appState.ui.listPreviewText}
+                            previewFontSize={LIST_PREVIEW_FONT_SIZE}
+                            isPreviewEnabled={canRenderListPreviews()}
+                            isSelectedFontItem={isSelectedFontItem(
+                              fontItem().meta.safe_name,
+                            )}
+                            isSentFontItem={isSentFontItem(
+                              fontItem().meta.safe_name,
+                            )}
+                            onClick={() => handleSelect(fontItem())}
+                          />
+                        </li>
+                      )}
+                    </Show>
+                  );
+                }}
+              </For>
+            </ul>
+          </Show>
+        </div>
+        <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y' />
       </div>
     </div>
   );
