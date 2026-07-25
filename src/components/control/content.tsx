@@ -557,7 +557,7 @@ export function ControlContent() {
                 onChange={() => markDraftChanged()}
                 step={1}
                 minValue={1}
-                maxValue={384}
+                maxValue={512}
               />
               <NumberProperty
                 label={t.controlPanel.groupingThreshold()}
