@@ -24,13 +24,13 @@ export function NumberProperty(props: NumberPropertyProps) {
       <NumberFieldGroup>
         <NumberFieldLabel
           class='absolute inset-y-0 left-2 flex items-center font-medium capitalize'
-          classList={{ '!text-primary': local.isChanged }}
+          classList={{ 'text-primary': local.isChanged }}
         >
           {local.label}
         </NumberFieldLabel>
         <NumberFieldInput
           name={local.name}
-          classList={{ '!text-primary': local.isChanged }}
+          classList={{ 'text-primary': local.isChanged }}
         />
         <NumberFieldIncrementTrigger />
         <NumberFieldDecrementTrigger />

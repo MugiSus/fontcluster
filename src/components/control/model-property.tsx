@@ -214,7 +214,7 @@ export function ModelProperty(props: ModelPropertyProps) {
           <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
             <SelectValue<ModelOption>
               class='mr-2.5 min-w-0 flex-1 text-right'
-              classList={{ '!text-primary': props.isChanged }}
+              classList={{ 'text-primary': props.isChanged }}
             >
               {(state) => (
                 <span class='flex min-w-0 items-center justify-end gap-1.5'>

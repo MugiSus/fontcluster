@@ -98,13 +98,13 @@ export function EmphasisControls(props: EmphasisControlsProps) {
           variant='ghost'
           size='sm'
           class='group h-8 justify-start pl-2 pr-0.5 capitalize text-muted-foreground shadow-none hover:text-foreground'
-          classList={{ '!text-primary': props.isChanged }}
+          classList={{ 'text-primary': props.isChanged }}
         >
           <SlidersVerticalIcon class='!size-3.5' />
           <span>{t.controlPanel.equalizer.title()}</span>
           <span
             class='ml-auto text-sm text-foreground'
-            classList={{ '!text-primary': props.isChanged }}
+            classList={{ 'text-primary': props.isChanged }}
           >
             {t.controlPanel.equalizer.presets[selectedPreset()]()}
           </span>

@@ -370,7 +370,7 @@ export function ControlContent() {
                 for='rendering-text'
                 class='absolute inset-y-0 left-2 flex items-center gap-1.5 font-medium'
                 classList={{
-                  '!text-primary': isDraftStringChanged(
+                  'text-primary': isDraftStringChanged(
                     'rendering-text',
                     appState.session.algorithm.rendering.text || 'A',
                   ),
@@ -388,7 +388,7 @@ export function ControlContent() {
                 spellcheck='false'
                 class='h-9 text-[15px]'
                 classList={{
-                  '!text-primary': isDraftStringChanged(
+                  'text-primary': isDraftStringChanged(
                     'rendering-text',
                     appState.session.algorithm.rendering.text || 'A',
                   ),
@@ -448,7 +448,7 @@ export function ControlContent() {
                     <SelectValue<FontSet>
                       class='mr-2.5 min-w-0 flex-1 text-right'
                       classList={{
-                        '!text-primary': isDraftStringChanged(
+                        'text-primary': isDraftStringChanged(
                           'rendering-font-set',
                           appState.session.algorithm.rendering.font_set,
                         ),
@@ -529,7 +529,7 @@ export function ControlContent() {
                     <SelectValue<ClusteringMethod>
                       class='mr-2.5 min-w-0 flex-1 text-right'
                       classList={{
-                        '!text-primary': isDraftStringChanged(
+                        'text-primary': isDraftStringChanged(
                           'clustering-method',
                           appState.session.algorithm.clustering.method,
                         ),

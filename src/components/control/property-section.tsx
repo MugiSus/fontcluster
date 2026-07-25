@@ -25,7 +25,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
       <div class='flex h-8 items-center gap-2'>
         <div
           class='text-xs font-semibold capitalize'
-          classList={{ '!text-primary': props.isChanged }}
+          classList={{ 'text-primary': props.isChanged }}
         >
           {props.title}
         </div>
@@ -38,11 +38,11 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
               size='icon'
               disabled={props.isDisabled}
               aria-label={t.controlPanel.restoreSession()}
-              class='mb-px size-5 text-xs'
+              class='mb-0.5 size-5 text-xs'
               classList={{ '!text-primary': props.isChanged }}
               onClick={props.onRestore}
             >
-              <RotateCwIcon class='size-3.5 max-h-3.5' />
+              <RotateCwIcon class='!size-3.5' stroke-width={2.5} />
             </TooltipTrigger>
             <TooltipContent>{t.controlPanel.restoreSession()}</TooltipContent>
           </Tooltip>

@@ -139,7 +139,7 @@ export const ja: Dictionary = {
     },
     emptyState: {
       title: 'データがありません',
-      hint: '処理が完了すると表示されます',
+      hint: '処理を完了するとここにグラフが表示されます',
     },
     selectedFontActions: {
       copy: 'コピー',

@@ -68,7 +68,7 @@ export function WeightSelector(props: WeightSelectorProps) {
         <div class='flex size-8 items-center justify-center'>
           <WeightIcon
             class='size-3 text-muted-foreground'
-            classList={{ '!text-primary': props.isChanged }}
+            classList={{ 'text-primary': props.isChanged }}
           />
         </div>
       </Show>
