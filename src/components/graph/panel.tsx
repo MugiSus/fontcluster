@@ -1,6 +1,6 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
-import { applyFontToPlugins } from '@/actions';
+import { applyFontToPlugins } from '@/commands/plugins';
 import { appState } from '@/store';
 import { GraphContent } from './content';
 import { GraphPanelReopenControls } from './panel-reopen-controls';

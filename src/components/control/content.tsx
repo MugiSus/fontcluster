@@ -33,7 +33,7 @@ import {
   type ClusteringMethod,
 } from '@/types/session';
 import { appState } from '@/store';
-import { runProcessingJobs, type ProcessingRunMode } from '@/actions';
+import { runProcessingJobs, type ProcessingRunMode } from '@/commands/session';
 import { useI18n } from '@/i18n';
 import {
   EMPHASIS_LEVEL_MAX,

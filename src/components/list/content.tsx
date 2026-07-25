@@ -18,8 +18,9 @@ import {
   commitDraggingFont,
   listenListScrollRequests,
   setDraggingFont,
-} from '@/actions/graph';
-import { applyFontToPlugins, setListPreviewText } from '@/actions';
+} from '@/commands/font-selection';
+import { setListPreviewText } from '@/commands/list';
+import { applyFontToPlugins } from '@/commands/plugins';
 import { type FontItem } from '@/types/font';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';

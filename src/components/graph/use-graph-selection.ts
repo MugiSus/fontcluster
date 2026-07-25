@@ -3,7 +3,7 @@ import {
   commitDraggingFont,
   sendListScrollRequest,
   setDraggingFont,
-} from '@/actions/graph';
+} from '@/commands/font-selection';
 import { appState } from '@/store';
 import { type DendrogramImageAnchor } from './dendrogram-edges';
 import {

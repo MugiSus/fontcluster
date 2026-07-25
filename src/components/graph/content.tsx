@@ -7,7 +7,7 @@ import {
   setActiveGraphWeights,
   setGraphMode,
   setVisibleGraphClusters,
-} from '@/actions/graph';
+} from '@/commands/graph';
 import { type FontItem } from '@/types/font';
 import { type CopySelectedFont, type GraphToolMode } from './types';
 import { availableGraphModes as collectAvailableGraphModes } from '@/lib/graph-modes';

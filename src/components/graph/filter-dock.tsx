@@ -5,8 +5,8 @@ import { appState } from '@/store';
 import {
   sendListScrollRequest,
   setSelectedFontKey,
-  setVisibleGraphClusters,
-} from '@/actions/graph';
+} from '@/commands/font-selection';
+import { setVisibleGraphClusters } from '@/commands/graph';
 import { cn } from '@/lib/utils';
 import { type FontWeight } from '@/types/font';
 import { useFilteredFontMetadataKeys } from '@/hooks/use-filtered-font-metadata-keys';

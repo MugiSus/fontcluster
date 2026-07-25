@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { appState } from '@/store';
-import { refreshPluginConnections } from '@/actions';
+import { refreshPluginConnections } from '@/commands/plugins';
 import { useI18n } from '@/i18n';
 
 const FIGMA_PLUGIN_URL =

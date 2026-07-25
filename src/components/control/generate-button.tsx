@@ -5,7 +5,7 @@ import {
   RefreshCwIcon,
 } from 'lucide-solid';
 
-import type { ProcessingRunMode } from '@/actions';
+import type { ProcessingRunMode } from '@/commands/session';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

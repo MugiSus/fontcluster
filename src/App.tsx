@@ -3,7 +3,7 @@ import { createStore } from 'solid-js/store';
 import { listen } from '@tauri-apps/api/event';
 import { platform } from '@tauri-apps/plugin-os';
 import { ClipboardListener } from './components/clipboard-listener';
-import { useAppEvents } from './actions';
+import { useAppEvents } from './hooks/use-app-events';
 import { Toaster } from './components/ui/sonner';
 import { ChatPanel } from './components/chat';
 import { ControlPanel } from './components/control';

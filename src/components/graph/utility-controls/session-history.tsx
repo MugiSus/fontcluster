@@ -26,7 +26,7 @@ import {
   setCurrentSessionId,
   stopJobs,
   updateSessionTitle,
-} from '@/actions';
+} from '@/commands/session';
 import { type SessionConfig } from '@/types/session';
 import { SessionHistoryItem } from './session-history-item';
 
