@@ -1,5 +1,5 @@
 import {
-  createComputed,
+  createEffect,
   createMemo,
   For,
   createSelector,
@@ -174,10 +174,12 @@ export function ListContent() {
     },
   });
 
-  createComputed(() => {
+  createEffect(() => {
+    if (!listScrollElement) return;
+
     const itemCount = filteredLeafItems().length;
     const viewportHeight = scrollViewportHeight();
-    if (!listScrollElement || itemCount === 0 || viewportHeight === 0) return;
+    if (itemCount === 0 || viewportHeight === 0) return;
 
     const selectedKey = appState.ui.selectedFontKey;
     const selectedIndex = selectedKey
