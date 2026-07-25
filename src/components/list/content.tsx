@@ -335,7 +335,7 @@ export function ListContent() {
             </ul>
           </Show>
         </div>
-        <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y' />
+        <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y mix-blend-multiply' />
       </div>
     </div>
   );
