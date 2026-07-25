@@ -29,6 +29,9 @@ const restoreSnapshot = (snapshot: SelectionHistorySnapshot) => {
       'selectedDendrogramNode',
       snapshot.selectedDendrogramNode,
     );
+    setAppState('ui', 'draggingFontKey', null);
+    setAppState('ui', 'draggingDendrogramNode', null);
+    setAppState('ui', 'draggingFontSource', null);
   });
 };
 

@@ -13,6 +13,8 @@ import { type GraphMode } from './types/graph';
 
 export type { GraphMode } from './types/graph';
 
+export type DraggingFontSource = 'graph' | 'list';
+
 export interface AppState {
   session: SessionConfig;
   sessionDirectory: string;
@@ -26,8 +28,11 @@ export interface AppState {
   };
   ui: {
     selectedFontKey: string | null;
-    hoveredFontKey: string | null;
-    readonly hoveredFontFamily: string | null;
+    draggingFontKey: string | null;
+    draggingDendrogramNode: number | null;
+    draggingFontSource: DraggingFontSource | null;
+    readonly draggingFontFamily: string | null;
+    readonly isDragging: boolean;
     sentFontItemKey: string | null;
     isSessionLoading: boolean;
     readonly selectedFont: FontItem | null;
@@ -94,12 +99,17 @@ export const [appState, setAppState] = createStore<AppState>({
   },
   ui: {
     selectedFontKey: null,
-    hoveredFontKey: null,
-    get hoveredFontFamily(): string | null {
-      const key = this.hoveredFontKey;
+    draggingFontKey: null,
+    draggingDendrogramNode: null,
+    draggingFontSource: null,
+    get draggingFontFamily(): string | null {
+      const key = this.draggingFontKey;
       return key
         ? appState.fonts.displayData[key]?.meta.family_name || null
         : null;
+    },
+    get isDragging(): boolean {
+      return this.draggingFontKey !== null;
     },
     sentFontItemKey: null,
     isSessionLoading: false,

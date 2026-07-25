@@ -1,7 +1,8 @@
-import { createSelector, createSignal } from 'solid-js';
 import {
-  setSelectedDendrogramNodeSample,
-  setSelectedFontKey as setCommittedSelectedFontKey,
+  clearDraggingFont,
+  commitDraggingFont,
+  sendListScrollRequest,
+  setDraggingFont,
 } from '@/actions/graph';
 import { appState } from '@/store';
 import { type DendrogramImageAnchor } from './dendrogram-edges';
@@ -38,29 +39,18 @@ interface SelectionTarget {
 }
 
 export function useGraphSelection(props: UseGraphSelectionProps) {
-  const [draggingSelection, setDraggingSelection] =
-    createSignal<SelectionTarget | null>(null);
-
   const selectedFontKey = () =>
-    draggingSelection()?.key ?? appState.ui.selectedFontKey;
-  const selectedDendrogramNode = () => {
-    const dragging = draggingSelection();
-    return dragging ? dragging.nodeIndex : appState.ui.selectedDendrogramNode;
-  };
-
-  // True while the pointer is actively resolving a selection (press/drag in
-  // select mode), before it commits on mouse-up. The graph's selected-font
-  // actions stay hidden during this window.
-  const isSelecting = () => draggingSelection() !== null;
+    appState.ui.draggingFontKey ?? appState.ui.selectedFontKey;
+  const selectedDendrogramNode = () =>
+    appState.ui.isDragging
+      ? appState.ui.draggingDendrogramNode
+      : appState.ui.selectedDendrogramNode;
 
   const selectedFontFamily = () => {
-    const key = selectedFontKey();
-    return key
-      ? appState.fonts.displayData[key]?.meta.family_name || null
-      : null;
+    return appState.ui.isDragging
+      ? appState.ui.draggingFontFamily
+      : appState.ui.selectedFontFamily;
   };
-  const isSelectedFontKey = createSelector(selectedFontKey);
-  const isSelectedFamily = createSelector(selectedFontFamily);
 
   const getTargetFromMouseEvent = (
     event: MouseEvent,
@@ -110,13 +100,21 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     return { key: nearest.key, nodeIndex: null };
   };
 
-  const commitSelection = (target: SelectionTarget, event?: MouseEvent) => {
-    if (target.nodeIndex === null) {
-      setCommittedSelectedFontKey(target.key);
-    } else {
-      setSelectedDendrogramNodeSample(target.nodeIndex, target.key);
+  const trackDraggingSelection = (event: MouseEvent) => {
+    const target = getTargetFromMouseEvent(event);
+    if (target) setDraggingFont('graph', target.key, target.nodeIndex);
+  };
+
+  const selectFromMouseEvent = (event: MouseEvent) => {
+    if (appState.ui.draggingFontSource !== 'graph') {
+      const target = getTargetFromMouseEvent(event);
+      if (target) setDraggingFont('graph', target.key, target.nodeIndex);
     }
-    if (event && (event.shiftKey || event.ctrlKey || event.metaKey)) {
+    const committedKey = commitDraggingFont('graph');
+    if (!committedKey) return;
+
+    sendListScrollRequest(committedKey);
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
       props.copySelectedFont({
         isFontName: event.ctrlKey || event.metaKey,
         showToast: false,
@@ -124,30 +122,13 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     }
   };
 
-  const trackDraggingSelection = (event: MouseEvent) => {
-    const target = getTargetFromMouseEvent(event);
-    if (target) setDraggingSelection(target);
-  };
-
-  const clearDraggingSelection = () => {
-    setDraggingSelection(null);
-  };
-
-  const selectFromMouseEvent = (event: MouseEvent) => {
-    const target = draggingSelection() ?? getTargetFromMouseEvent(event);
-    if (target) commitSelection(target, event);
-    clearDraggingSelection();
-  };
-
   return {
     selectedKey: selectedFontKey,
     selectedDendrogramNode,
     selectedFamilyName: selectedFontFamily,
-    isSelecting,
-    isSelectedFontKey,
-    isSelectedFamily,
+    isDragging: () => appState.ui.isDragging,
     trackDraggingSelection,
-    clearDraggingSelection,
+    clearDraggingSelection: () => clearDraggingFont('graph'),
     selectFromMouseEvent,
   };
 }

@@ -17,8 +17,6 @@ interface ListFontItemProps {
   class?: string | undefined;
   isSentFontItem?: boolean | undefined;
   onClick?: (() => void) | undefined;
-  onMouseEnter?: (() => void) | undefined;
-  onMouseLeave?: (() => void) | undefined;
 }
 
 export function ListFontItem(props: ListFontItemProps) {
@@ -68,13 +66,11 @@ export function ListFontItem(props: ListFontItemProps) {
       variant='ghost'
       class={cn(
         'group relative flex h-16 w-full min-w-0 flex-col items-start justify-center gap-1.5 overflow-hidden rounded-none p-0 pb-1 pl-5 shadow-none hover:bg-muted',
-        props.isSelectedFontItem && 'bg-muted',
+        // props.isSelectedFontItem && 'bg-muted',
         props.class,
       )}
       aria-current={props.isSelectedFontItem ? 'true' : undefined}
       onClick={props.onClick}
-      onMouseEnter={props.onMouseEnter}
-      onMouseLeave={props.onMouseLeave}
       aria-label={
         isPluginConnected()
           ? t.list.applyToPlugins({

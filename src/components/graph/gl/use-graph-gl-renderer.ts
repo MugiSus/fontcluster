@@ -73,8 +73,6 @@ export interface UseGraphGlRendererProps {
   filteredKeys: Accessor<Set<string>>;
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
-  hoveredKey: Accessor<string | null>;
-  hoveredFamily: Accessor<string | null>;
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
@@ -289,30 +287,23 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         );
     });
 
-    // The highlight rings to show (selection / hover / family). Each font gets
-    // at most one ring (selected wins), dimmed with the same active/dimmed rule
-    // as the points and images when it is filtered out / weight-inactive.
+    // The highlight rings to show (selection / family). Each font gets at most
+    // one ring (selected wins), dimmed with the same active/dimmed rule as the
+    // points and images when it is filtered out / weight-inactive.
     const ringSpecs = createMemo<RingSpec[]>(() => {
-      const hovered = props.hoveredKey();
-      // List hover temporarily takes over the primary selection highlight.
-      // The committed selection remains separate so its action HUD can stay
-      // anchored to the selected font.
-      const selected = hovered ?? props.selectedKey();
-      const family = hovered ? props.hoveredFamily() : props.selectedFamily();
-      const selectedDendrogramAnchor = hovered
-        ? null
-        : props.selectedDendrogramAnchor();
+      const selected = props.selectedKey();
+      const family = props.selectedFamily();
+      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
       const predicate = activePredicate();
 
-      // Dedupe per font, keeping the strongest affordance (selected > hover >
-      // family) via later overwrites; the layer maps each kind to a radius.
+      // Dedupe per font, keeping the strongest affordance (selected > family)
+      // via later overwrites; the layer maps each kind to a radius.
       const kindByKey = new Map<string, RingKind>();
       if (family) {
         for (const point of props.getPointsByFamilyName(family)) {
           kindByKey.set(point.key, 'family');
         }
       }
-      if (hovered) kindByKey.set(hovered, 'hover');
       if (selectedDendrogramAnchor) {
         kindByKey.set(selectedDendrogramAnchor.safeName, 'alias-source');
       }
@@ -352,9 +343,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     const forcedLeafImageKeys = createMemo(() => {
       const keys = new Set<string>();
-      const hovered = props.hoveredKey();
-      const selected = hovered ?? props.selectedKey();
-      const family = hovered ? props.hoveredFamily() : props.selectedFamily();
+      const selected = props.selectedKey();
+      const family = props.selectedFamily();
       if (selected) keys.add(selected);
       if (family) {
         for (const point of props.getPointsByFamilyName(family)) {
@@ -458,7 +448,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
       const points = props.dendrogramAncestry();
       if (points.length < 2) return null;
-      const selected = props.hoveredKey() ?? props.selectedKey();
+      const selected = props.selectedKey();
       const point = selected ? props.getPointByKey(selected) : undefined;
       return {
         points,

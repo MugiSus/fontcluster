@@ -24,8 +24,6 @@ interface GraphGlLayerProps {
   filteredKeys: Accessor<Set<string>>;
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
-  hoveredKey: Accessor<string | null>;
-  hoveredFamily: Accessor<string | null>;
   selectedFamily: Accessor<string | null>;
   imageKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
@@ -45,7 +43,7 @@ interface GraphGlLayerProps {
 
 /**
  * GPU-rendered graph: hierarchy/scatter backplates, points + glow,
- * selection/hover/family rings and cluster-tinted sample images. Sits behind
+ * selection/family rings and cluster-tinted sample images. Sits behind
  * the SVG, which owns interaction, coordinate transforms and the zoom overlay.
  */
 export function GraphGlLayer(props: GraphGlLayerProps) {
@@ -64,8 +62,6 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     filteredKeys: () => props.filteredKeys(),
     selectedKey: () => props.selectedKey(),
     selectedDendrogramAnchor: () => props.selectedDendrogramAnchor(),
-    hoveredKey: () => props.hoveredKey(),
-    hoveredFamily: () => props.hoveredFamily(),
     selectedFamily: () => props.selectedFamily(),
     imageKeys: () => props.imageKeys(),
     showImages: () => props.showImages(),

@@ -4,7 +4,9 @@ import {
   For,
   createSelector,
   createSignal,
+  onCleanup,
   Show,
+  untrack,
 } from 'solid-js';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { toast } from 'solid-sonner';
@@ -12,26 +14,28 @@ import { SearchXIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import {
-  applyFontToPlugins,
-  setHoveredFontKey,
-  setListPreviewText,
-} from '@/actions';
+  clearDraggingFont,
+  commitDraggingFont,
+  listenListScrollRequests,
+  setDraggingFont,
+} from '@/actions/graph';
+import { applyFontToPlugins, setListPreviewText } from '@/actions';
 import { type FontItem } from '@/types/font';
 import { ListFontItem } from './list-font-item';
 import { ListPreviewTextField } from './preview-text-field';
 
 const LIST_ITEM_HEIGHT = 64;
 const LIST_PREVIEW_FONT_SIZE = 64;
-/** Allows the native scroll event to arrive just after the input event while
- * keeping programmatic scrolls out of the scroll-hover path. */
 const DIRECT_SCROLL_INPUT_GRACE_MS = 250;
+const LIST_SCROLL_END_DELAY_MS = 350;
 
 export function ListContent() {
   const { t } = useI18n();
   const [canRenderListPreviews, setCanRenderListPreviews] = createSignal(true);
   const [scrollViewportHeight, setScrollViewportHeight] = createSignal(0);
   let listScrollElement: HTMLDivElement | undefined;
-  let isPointerInsideList = false;
+  let isDirectScrollActive = false;
+  let hasScrollSelection = false;
   let lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
   let pendingLoopCorrectionOffset: number | null = null;
   const isSentFontItem = createSelector(() => appState.ui.sentFontItemKey);
@@ -78,17 +82,7 @@ export function ListContent() {
       ),
   );
   const markDirectScrollInput = () => {
-    if (isPointerInsideList) {
-      lastDirectScrollInputAt = performance.now();
-    }
-  };
-  const hasRecentDirectScrollInput = () =>
-    isPointerInsideList &&
-    performance.now() - lastDirectScrollInputAt <= DIRECT_SCROLL_INPUT_GRACE_MS;
-  const clearListHover = () => {
-    isPointerInsideList = false;
-    lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
-    setHoveredFontKey(null);
+    lastDirectScrollInputAt = performance.now();
   };
   const virtualizer = createVirtualizer({
     get count() {
@@ -99,6 +93,7 @@ export function ListContent() {
     getScrollElement: () => listScrollElement ?? null,
     estimateSize: () => LIST_ITEM_HEIGHT,
     overscan: 8,
+    isScrollingResetDelay: LIST_SCROLL_END_DELAY_MS,
     onChange: (instance, sync) => {
       const viewportHeight = instance.scrollRect?.height ?? 0;
       setScrollViewportHeight(viewportHeight);
@@ -109,10 +104,13 @@ export function ListContent() {
       const bufferItemCount = circularBufferItemCount();
       if (
         sync &&
-        hasRecentDirectScrollInput() &&
-        viewportHeight > 0 &&
-        itemCount > 0
+        !isDirectScrollActive &&
+        performance.now() - lastDirectScrollInputAt <=
+          DIRECT_SCROLL_INPUT_GRACE_MS
       ) {
+        isDirectScrollActive = true;
+      }
+      if (sync && isDirectScrollActive && viewportHeight > 0 && itemCount > 0) {
         const viewportCenter =
           (instance.scrollOffset ?? 0) + viewportHeight / 2;
         const centerVirtualItem = instance
@@ -129,7 +127,16 @@ export function ListContent() {
             ]
           : undefined;
         if (centerItem) {
-          setHoveredFontKey(centerItem.meta.safe_name);
+          setDraggingFont('list', centerItem.meta.safe_name);
+          hasScrollSelection = true;
+        }
+      }
+      if (!sync && isDirectScrollActive) {
+        isDirectScrollActive = false;
+        lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
+        if (hasScrollSelection) {
+          commitDraggingFont('list');
+          hasScrollSelection = false;
         }
       }
 
@@ -175,33 +182,44 @@ export function ListContent() {
   });
 
   createEffect(() => {
+    if (appState.ui.draggingFontSource !== 'graph') return;
+
+    isDirectScrollActive = false;
+    hasScrollSelection = false;
+    lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
+  });
+
+  onCleanup(() => {
+    if (hasScrollSelection) clearDraggingFont('list');
+  });
+
+  createEffect(() => {
     if (!listScrollElement) return;
 
     const itemCount = filteredLeafItems().length;
     const viewportHeight = scrollViewportHeight();
     if (itemCount === 0 || viewportHeight === 0) return;
 
-    const selectedKey = appState.ui.selectedFontKey;
-    const selectedIndex = selectedKey
-      ? leafIndexByKey().get(selectedKey)
-      : undefined;
     const bufferItemCount = circularBufferItemCount();
     if (bufferItemCount === 0) {
-      virtualizer.scrollToIndex(selectedIndex ?? 0, {
-        align: selectedIndex === undefined ? 'start' : 'center',
-      });
+      virtualizer.scrollToIndex(0, { align: 'start' });
       return;
     }
 
-    if (selectedIndex === undefined) {
-      virtualizer.scrollToIndex(bufferItemCount, { align: 'start' });
-      return;
-    }
-
-    virtualizer.scrollToIndex(bufferItemCount + selectedIndex, {
-      align: 'center',
-    });
+    virtualizer.scrollToIndex(bufferItemCount, { align: 'start' });
   });
+
+  listenListScrollRequests((key) =>
+    untrack(() => {
+      const selectedIndex = leafIndexByKey().get(key);
+      if (selectedIndex === undefined) return;
+
+      const bufferItemCount = circularBufferItemCount();
+      virtualizer.scrollToIndex(bufferItemCount + selectedIndex, {
+        align: 'center',
+      });
+    }),
+  );
 
   const handleApply = (item: FontItem) =>
     applyFontToPlugins(item)
@@ -246,10 +264,6 @@ export function ListContent() {
       <div
         ref={listScrollElement}
         class='min-h-0 w-full flex-1 overflow-y-scroll'
-        onMouseEnter={() => {
-          isPointerInsideList = true;
-        }}
-        onMouseLeave={clearListHover}
         onWheel={markDirectScrollInput}
         onTouchMove={markDirectScrollInput}
         onPointerMove={(event) => {
@@ -296,17 +310,6 @@ export function ListContent() {
                             fontItem().meta.safe_name,
                           )}
                           onClick={() => handleSelect(fontItem())}
-                          onMouseEnter={() =>
-                            setHoveredFontKey(fontItem().meta.safe_name)
-                          }
-                          onMouseLeave={() => {
-                            if (
-                              appState.ui.hoveredFontKey ===
-                              fontItem().meta.safe_name
-                            ) {
-                              setHoveredFontKey(null);
-                            }
-                          }}
                         />
                       </li>
                     )}

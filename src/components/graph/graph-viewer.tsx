@@ -143,14 +143,8 @@ export function GraphViewer(props: GraphViewerProps) {
   const visibleDendrogramEdges = createMemo(() =>
     dendrogramEdges(dendrogramCurveZoom()),
   );
-  const graphHoverKey = createMemo(() =>
-    selection.isSelecting() ? null : appState.ui.hoveredFontKey,
-  );
   const dendrogramAncestry = createMemo(() =>
-    getDendrogramAncestry(
-      graphHoverKey() ?? selection.selectedKey(),
-      dendrogramCurveZoom(),
-    ),
+    getDendrogramAncestry(selection.selectedKey(), dendrogramCurveZoom()),
   );
 
   const showPointCore = createMemo(() => {
@@ -172,9 +166,6 @@ export function GraphViewer(props: GraphViewerProps) {
       );
     },
   );
-  const highlightedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
-    () => (graphHoverKey() === null ? selectedDendrogramAnchor() : null),
-  );
 
   // Merge-node exemplar images for the dendrogram mode, following the images
   // toggle and the same hex-grid image thinning used by ordinary graph points.
@@ -191,7 +182,7 @@ export function GraphViewer(props: GraphViewerProps) {
         if (keys.has(anchor.key)) anchors.set(anchor.key, anchor);
       }
     }
-    const selectedAnchor = highlightedDendrogramAnchor();
+    const selectedAnchor = selectedDendrogramAnchor();
     if (selectedAnchor) anchors.set(selectedAnchor.key, selectedAnchor);
     return [...anchors.values()];
   });
@@ -432,11 +423,7 @@ export function GraphViewer(props: GraphViewerProps) {
           getPointsByFamilyName={getGraphPointsByFamilyName}
           filteredKeys={() => appState.fonts.filteredKeys}
           selectedKey={selection.selectedKey}
-          selectedDendrogramAnchor={highlightedDendrogramAnchor}
-          hoveredKey={graphHoverKey}
-          hoveredFamily={() =>
-            graphHoverKey() === null ? null : appState.ui.hoveredFontFamily
-          }
+          selectedDendrogramAnchor={selectedDendrogramAnchor}
           selectedFamily={selection.selectedFamilyName}
           imageKeys={graph.visibleImageKeys}
           showImages={() => props.showImages}
@@ -492,7 +479,7 @@ export function GraphViewer(props: GraphViewerProps) {
       <Show when={props.showHud}>
         <SelectedFontActions
           selectedKey={selection.selectedKey}
-          isSelecting={selection.isSelecting}
+          isDragging={selection.isDragging}
           viewBox={viewport.viewBox}
           size={svgSize}
           getPointByKey={getSelectedActionAnchorPoint}

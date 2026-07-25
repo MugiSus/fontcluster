@@ -29,7 +29,10 @@ export interface RunProcessingOptions {
 }
 
 export {
+  clearDraggingFont,
+  commitDraggingFont,
   setActiveGraphWeights,
+  setDraggingFont,
   setGraphMode,
   setSelectedDendrogramNodeSample,
   setSelectedFontKey,
@@ -49,6 +52,9 @@ export const loadSession = async (id: string) => {
   setAppState('ui', 'isSessionLoading', true);
   batch(() => {
     setAppState('ui', 'selectedDendrogramNode', null);
+    setAppState('ui', 'draggingFontKey', null);
+    setAppState('ui', 'draggingDendrogramNode', null);
+    setAppState('ui', 'draggingFontSource', null);
     setAppState('sessionDirectory', '');
     setAppState('dendrogram', null);
     setAppState('fonts', 'data', reconcile({}));
@@ -71,9 +77,6 @@ export const loadSession = async (id: string) => {
 
 /** Reloads the currently active session (e.g. after a job mutates it). */
 export const refreshSession = () => loadSession(appState.session.session_id);
-
-export const setHoveredFontKey = (key: string | null) =>
-  setAppState('ui', 'hoveredFontKey', key);
 
 export const setSentFontItemKey = (key: string | null) =>
   setAppState('ui', 'sentFontItemKey', key);
@@ -124,7 +127,6 @@ export const setCurrentSessionId = async (id: string) => {
     batch(() => {
       setAppState('ui', 'selectedFontKey', null);
       setAppState('ui', 'selectedDendrogramNode', null);
-      setAppState('ui', 'hoveredFontKey', null);
       setAppState('ui', 'sentFontItemKey', null);
     });
   }

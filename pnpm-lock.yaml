@@ -20,6 +20,9 @@ importers:
       '@kobalte/core':
         specifier: ^0.13.10
         version: 0.13.10(solid-js@1.9.7)
+      '@solid-primitives/event-bus':
+        specifier: ^1.1.4
+        version: 1.1.4(solid-js@1.9.7)
       '@solid-primitives/history':
         specifier: ^0.2.3
         version: 0.2.3(solid-js@1.9.7)
@@ -676,6 +679,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@solid-primitives/event-bus@1.1.4':
+    resolution: {integrity: sha512-5aYvB/kLiWhL6TmpH/QvFRjwIArknEEHDzxA7hvnJZ+/BFixGeB7yqWEJORYeig7kOzC+XqUbjDmpJhHriP4EA==}
+    peerDependencies:
+      solid-js: ^1.6.12
+
   '@solid-primitives/event-listener@2.4.3':
     resolution: {integrity: sha512-h4VqkYFv6Gf+L7SQj+Y6puigL/5DIi7x5q07VZET7AWcS+9/G3WfIE9WheniHWJs51OEkRB43w6lDys5YeFceg==}
     peerDependencies:
@@ -760,6 +768,11 @@ packages:
 
   '@solid-primitives/utils@6.4.0':
     resolution: {integrity: sha512-AeGTBg8Wtkh/0s+evyLtP8piQoS4wyqqQaAFs2HJcFMMjYAtUgo+ZPduRXLjPlqKVc2ejeR544oeqpbn8Egn8A==}
+    peerDependencies:
+      solid-js: ^1.6.12
+
+  '@solid-primitives/utils@6.4.1':
+    resolution: {integrity: sha512-ISSB5QX1qP2ynrheIpYwc4oKR5Ny4siNuUyf1qZniy+Il+p/PtDB0QK1Dnle8noiHpwRD3gpPdubOC3qI/Zamg==}
     peerDependencies:
       solid-js: ^1.6.12
 
@@ -2585,6 +2598,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.44.0':
     optional: true
 
+  '@solid-primitives/event-bus@1.1.4(solid-js@1.9.7)':
+    dependencies:
+      '@solid-primitives/utils': 6.4.1(solid-js@1.9.7)
+      solid-js: 1.9.7
+
   '@solid-primitives/event-listener@2.4.3(solid-js@1.9.7)':
     dependencies:
       '@solid-primitives/utils': 6.3.2(solid-js@1.9.7)
@@ -2663,6 +2681,10 @@ snapshots:
       solid-js: 1.9.7
 
   '@solid-primitives/utils@6.4.0(solid-js@1.9.7)':
+    dependencies:
+      solid-js: 1.9.7
+
+  '@solid-primitives/utils@6.4.1(solid-js@1.9.7)':
     dependencies:
       solid-js: 1.9.7
 

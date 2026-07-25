@@ -2,7 +2,11 @@ import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { SearchIcon, XIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
-import { setSelectedFontKey, setVisibleGraphClusters } from '@/actions/graph';
+import {
+  sendListScrollRequest,
+  setSelectedFontKey,
+  setVisibleGraphClusters,
+} from '@/actions/graph';
 import { cn } from '@/lib/utils';
 import { type FontWeight } from '@/types/font';
 import { useFilteredFontMetadataKeys } from '@/hooks/use-filtered-font-metadata-keys';
@@ -23,7 +27,10 @@ interface GraphFilterDockProps {
 export function GraphFilterDock(props: GraphFilterDockProps) {
   const { t } = useI18n();
   const { onQueryChange } = useFilteredFontMetadataKeys({
-    onFontSelect: (key) => setSelectedFontKey(key),
+    onFontSelect: (key) => {
+      setSelectedFontKey(key);
+      sendListScrollRequest(key);
+    },
   });
 
   const [query, setQuery] = createSignal(appState.ui.searchQuery);

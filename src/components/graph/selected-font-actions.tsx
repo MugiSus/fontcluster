@@ -31,10 +31,10 @@ const REVEAL_DELAY_MS = 200;
 const POINT_OFFSET_PX = 20;
 
 interface SelectedFontActionsProps {
-  /** The committed selection key (also reflects the in-flight drag target). */
+  /** The committed selection key, or the in-flight drag target. */
   selectedKey: Accessor<string | null>;
-  /** True while a selection is being resolved; keeps the actions hidden. */
-  isSelecting: Accessor<boolean>;
+  /** True while a drag target is being resolved; keeps the actions hidden. */
+  isDragging: Accessor<boolean>;
   viewBox: Accessor<GraphViewBox>;
   size: Accessor<{ width: number; height: number }>;
   getPointByKey: (key: string) => GraphPointData | undefined;
@@ -81,7 +81,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
   const [isReady, setIsReady] = createSignal(false);
   const revealAfterDelay = debounce(() => setIsReady(true), REVEAL_DELAY_MS);
   createEffect(() => {
-    if (props.selectedKey() !== null && !props.isSelecting()) {
+    if (props.selectedKey() !== null && !props.isDragging()) {
       revealAfterDelay();
     } else {
       revealAfterDelay.clear();
