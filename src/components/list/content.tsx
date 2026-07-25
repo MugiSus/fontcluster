@@ -4,9 +4,9 @@ import {
   For,
   createSelector,
   createSignal,
+  on,
   onCleanup,
   Show,
-  untrack,
 } from 'solid-js';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { toast } from 'solid-sonner';
@@ -16,7 +16,6 @@ import { appState } from '@/store';
 import {
   clearDraggingFont,
   commitDraggingFont,
-  listenListScrollRequests,
   setDraggingFont,
 } from '@/commands/font-selection';
 import { setListPreviewText } from '@/commands/list';
@@ -36,6 +35,7 @@ export function ListContent() {
   const [scrollViewportHeight, setScrollViewportHeight] = createSignal(0);
   let listScrollElement: HTMLDivElement | undefined;
   let isDirectScrollActive = false;
+  let isSelectionCausedByScroll = false;
   let hasScrollSelection = false;
   let lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
   let pendingLoopCorrectionOffset: number | null = null;
@@ -136,6 +136,9 @@ export function ListContent() {
         isDirectScrollActive = false;
         lastDirectScrollInputAt = Number.NEGATIVE_INFINITY;
         if (hasScrollSelection) {
+          const draggingKey = appState.ui.draggingFontKey;
+          isSelectionCausedByScroll =
+            draggingKey !== null && draggingKey !== appState.ui.selectedFontKey;
           commitDraggingFont('list');
           hasScrollSelection = false;
         }
@@ -210,16 +213,26 @@ export function ListContent() {
     virtualizer.scrollToIndex(bufferItemCount, { align: 'start' });
   });
 
-  listenListScrollRequests((key) =>
-    untrack(() => {
-      const selectedIndex = leafIndexByKey().get(key);
-      if (selectedIndex === undefined) return;
+  createEffect(
+    on(
+      () => appState.ui.selectedFontKey,
+      (key) => {
+        if (isSelectionCausedByScroll) {
+          isSelectionCausedByScroll = false;
+          return;
+        }
+        if (!key) return;
 
-      const bufferItemCount = circularBufferItemCount();
-      virtualizer.scrollToIndex(bufferItemCount + selectedIndex, {
-        align: 'center',
-      });
-    }),
+        const selectedIndex = leafIndexByKey().get(key);
+        if (selectedIndex === undefined) return;
+
+        const bufferItemCount = circularBufferItemCount();
+        virtualizer.scrollToIndex(bufferItemCount + selectedIndex, {
+          align: 'center',
+        });
+      },
+      { defer: true },
+    ),
   );
 
   const handleApply = (item: FontItem) =>

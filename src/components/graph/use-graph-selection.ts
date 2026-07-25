@@ -1,7 +1,6 @@
 import {
   clearDraggingFont,
   commitDraggingFont,
-  sendListScrollRequest,
   setDraggingFont,
 } from '@/commands/font-selection';
 import { appState } from '@/store';
@@ -113,7 +112,6 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     const committedKey = commitDraggingFont('graph');
     if (!committedKey) return;
 
-    sendListScrollRequest(committedKey);
     if (event.shiftKey || event.ctrlKey || event.metaKey) {
       props.copySelectedFont({
         isFontName: event.ctrlKey || event.metaKey,

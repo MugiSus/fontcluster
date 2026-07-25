@@ -1,16 +1,6 @@
-import { createEventBus } from '@solid-primitives/event-bus';
-import { batch, createRoot } from 'solid-js';
+import { batch } from 'solid-js';
 import { selectionHistory } from '@/selection-history';
 import { appState, setAppState, type DraggingFontSource } from '@/store';
-
-/**
- * One-way UI request emitted by graph selection and consumed by the list.
- * Unlike selectedFontKey, this event is not replayed when the list mounts.
- */
-const listScrollBus = createRoot(() => createEventBus<string>());
-
-export const listenListScrollRequests = listScrollBus.listen;
-export const sendListScrollRequest = listScrollBus.emit;
 
 export const setSelectedFontKey = (key: string | null) => {
   batch(() => {
