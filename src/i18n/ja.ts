@@ -26,7 +26,7 @@ export const ja: Dictionary = {
     text: 'サンプル',
     generateModes: {
       open: '生成方法を選択',
-      applyChanges: '適用',
+      applyChanges: '適用する',
       duplicateChanged: '複製して変更点から再計算',
       inPlaceChanged: '変更を適用して再計算',
       fresh: '新しく生成',
