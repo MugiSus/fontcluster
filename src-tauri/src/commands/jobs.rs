@@ -384,7 +384,8 @@ pub async fn run_jobs_pipeline(
         (
             session.algorithm.analysis.model_id.clone(),
             session.status.process_status,
-            session.algorithm.clustering.enable_attribute_emphasis
+            session.algorithm.clustering.enable_preprocess_pca
+                && session.algorithm.clustering.enable_attribute_emphasis
                 && session
                     .algorithm
                     .clustering

@@ -14,6 +14,7 @@ export const DEFAULT_RENDERING_CONFIG: RenderingOptions = {
 
 export const DEFAULT_CLUSTERING_CONFIG: ClusteringOptions = {
   method: 'complete',
+  enable_preprocess_pca: true,
   preprocessing_dimensions: 64,
   distance_threshold: 0.25,
   target_cluster_count: 0,

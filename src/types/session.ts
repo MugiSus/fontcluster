@@ -11,6 +11,9 @@ export type ClusteringMethod =
 
 export interface ClusteringOptions {
   method: ClusteringMethod;
+  // snake_case to mirror the backend's serde field name verbatim.
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  enable_preprocess_pca: boolean;
   preprocessing_dimensions: number;
   distance_threshold: number;
   target_cluster_count: number;

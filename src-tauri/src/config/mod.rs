@@ -127,8 +127,15 @@ impl Default for FontSet {
 pub struct ClusteringConfig {
     /// Linkage method used to merge clusters.
     pub method: ClusteringMethod,
+    /// Whether analyzer embeddings are PCA-reduced before clustering.
+    ///
+    /// Defaults to `true` for sessions written before this switch existed,
+    /// preserving their historical preprocessing behavior.
+    #[serde(default = "default_enable_preprocess_pca")]
+    pub enable_preprocess_pca: bool,
     /// Number of PCA dimensions feature vectors are reduced to before
-    /// distances are computed.
+    /// distances are computed. Ignored when [`Self::enable_preprocess_pca`] is
+    /// `false`.
     pub preprocessing_dimensions: usize,
     /// Maximum linkage distance at which clusters stop merging.
     pub distance_threshold: f32,
@@ -157,6 +164,12 @@ pub struct ClusteringConfig {
     pub emphasis: BTreeMap<String, i8>,
 }
 
+/// Serde fallback for [`ClusteringConfig::enable_preprocess_pca`]: sessions
+/// written before the field existed always applied PCA preprocessing.
+fn default_enable_preprocess_pca() -> bool {
+    true
+}
+
 /// Serde fallback for [`ClusteringConfig::enable_attribute_emphasis`]: sessions written
 /// before the field existed always applied their emphasis, so a missing value
 /// reads as `true`.
@@ -183,6 +196,7 @@ impl Default for ClusteringConfig {
     fn default() -> Self {
         Self {
             method: ClusteringMethod::Complete,
+            enable_preprocess_pca: true,
             preprocessing_dimensions: 64,
             distance_threshold: 0.25,
             target_cluster_count: 0,
@@ -440,6 +454,18 @@ mod tests {
 
         let parsed: AlgorithmConfig = serde_json::from_value(serialized).unwrap();
         assert_eq!(parsed.analysis.model_id, DEFAULT_MODEL_ID);
+    }
+
+    #[test]
+    fn clustering_config_without_preprocess_switch_keeps_pca_enabled() {
+        let mut serialized = serde_json::to_value(ClusteringConfig::default()).unwrap();
+        serialized
+            .as_object_mut()
+            .unwrap()
+            .remove("enable_preprocess_pca");
+
+        let parsed: ClusteringConfig = serde_json::from_value(serialized).unwrap();
+        assert!(parsed.enable_preprocess_pca);
     }
 }
 

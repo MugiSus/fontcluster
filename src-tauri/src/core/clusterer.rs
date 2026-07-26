@@ -89,6 +89,7 @@ pub async fn cluster_all(
             .map(|s| s.algorithm.clustering.clone())
             .ok_or_else(|| AppError::Processing("No active session".into()))?
     };
+    let enable_preprocess_pca = config.enable_preprocess_pca;
     let preprocessing_dimensions = config.preprocessing_dimensions;
     // The enable switch gates the whole feature: when off, hand the feature
     // builder an empty map so it takes the plain no-emphasis path, while the
@@ -125,6 +126,7 @@ pub async fn cluster_all(
 
         let points = build_cluster_features(
             data,
+            enable_preprocess_pca,
             preprocessing_dimensions,
             &emphasis,
             model_directory.as_deref(),
@@ -250,6 +252,10 @@ fn active_emphasis(emphasis: &BTreeMap<String, i8>) -> Vec<(String, i8)> {
 
 /// Builds the feature matrix fed to clustering, honouring attribute emphasis.
 ///
+/// When PCA preprocessing is disabled, the analyzer embeddings pass through
+/// unchanged. This also bypasses attribute emphasis because the switch's
+/// contract is to cluster the analyzer vectors themselves.
+///
 /// Without emphasis (the default) this reproduces the historical pipeline:
 /// reduce the embeddings to `dimensions` principal components (or pass them
 /// through when there are too few samples/features to reduce).
@@ -280,10 +286,15 @@ fn active_emphasis(emphasis: &BTreeMap<String, i8>) -> Vec<(String, i8)> {
 /// of emphasis.
 fn build_cluster_features(
     data: Array2<f32>,
+    enable_preprocess_pca: bool,
     dimensions: usize,
     emphasis: &BTreeMap<String, i8>,
     model_directory: Option<&Path>,
 ) -> Result<Array2<f32>> {
+    if !enable_preprocess_pca {
+        return Ok(data);
+    }
+
     let (n_samples, n_features) = data.dim();
     let reduce = |data: Array2<f32>| -> Result<Array2<f32>> {
         if n_samples < 2 || n_features <= dimensions {
@@ -922,9 +933,33 @@ mod tests {
             ],
         )
         .unwrap();
-        let out = build_cluster_features(data.clone(), 3, &BTreeMap::new(), None).unwrap();
+        let out = build_cluster_features(data.clone(), true, 3, &BTreeMap::new(), None).unwrap();
         let expected = pca_embedding(data, 3).unwrap();
         assert_eq!(out, expected);
+    }
+
+    /// Disabling preprocessing must bypass PCA and attribute emphasis entirely,
+    /// handing the analyzer vectors to clustering without modification.
+    #[test]
+    fn features_without_preprocess_pca_match_analyzer_vectors() {
+        let data = Array2::from_shape_vec(
+            (3, 4),
+            vec![
+                1.0, 0.0, 0.2, 0.9, //
+                0.0, 1.0, 0.8, 0.1, //
+                0.5, 0.5, 0.1, 0.6, //
+            ],
+        )
+        .unwrap();
+        let out = build_cluster_features(
+            data.clone(),
+            false,
+            2,
+            &BTreeMap::from([("serif".to_string(), 4)]),
+            None,
+        )
+        .unwrap();
+        assert_eq!(out, data);
     }
 
     /// Both scatter axes come out standardised: zero mean, unit variance.
@@ -1035,6 +1070,7 @@ mod tests {
 
         let out1 = build_cluster_features(
             data.clone(),
+            true,
             3,
             &BTreeMap::from([("serif".to_string(), 1)]),
             Some(&model.directory),
@@ -1042,6 +1078,7 @@ mod tests {
         .unwrap();
         let out2 = build_cluster_features(
             data,
+            true,
             3,
             &BTreeMap::from([("serif".to_string(), 2)]),
             Some(&model.directory),

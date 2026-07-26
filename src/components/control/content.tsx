@@ -36,19 +36,14 @@ import { appState } from '@/store';
 import { runProcessingJobs, type ProcessingRunMode } from '@/commands/session';
 import { useI18n } from '@/i18n';
 import {
-  EMPHASIS_LEVEL_MAX,
-  EMPHASIS_LEVEL_MIN,
-  EMPHASIS_LEVEL_NEUTRAL,
-} from '@/constants/emphasis';
-import {
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
-  EMPHASIS_ATTRIBUTES,
 } from '@/constants/session';
-import { EmphasisControls } from './emphasis-controls';
+// import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
 import { ModelProperty } from './model-property';
 import { ControlPropertySection } from './property-section';
+import { SwitchProperty } from './switch-property';
 import { TextProperty } from './text-property';
 import { GenerateButton } from './generate-button';
 
@@ -108,35 +103,28 @@ function parseRenderingConfig(formdata: FormData): RenderingOptions {
  * {@link ClusteringOptions}, defaulting each field the same way
  * {@link parseRenderingConfig} does.
  *
- * Attribute emphasis is active when at least one submitted level is non-zero.
- * An all-zero map takes the backend's unchanged no-emphasis path.
+ * Attribute emphasis is currently hidden, so its persisted settings pass
+ * through unchanged rather than being silently cleared by an unrelated edit.
  */
-function parseClusteringConfig(formdata: FormData): ClusteringOptions {
-  // Emphasis levels are integers in -4..4; only non-zero axes are kept, so the
-  // stored map stays sparse and a missing key reads as "no emphasis".
-  const emphasis: Record<string, number> = {};
-  for (const attribute of EMPHASIS_ATTRIBUTES) {
-    const value = Number(formdata.get(`clustering-emphasis-${attribute}`));
-    const level = Number.isFinite(value)
-      ? Math.max(EMPHASIS_LEVEL_MIN, Math.min(EMPHASIS_LEVEL_MAX, value))
-      : EMPHASIS_LEVEL_NEUTRAL;
-    if (level !== EMPHASIS_LEVEL_NEUTRAL) emphasis[attribute] = level;
-  }
-
+function parseClusteringConfig(
+  formdata: FormData,
+  savedConfig: ClusteringOptions,
+): ClusteringOptions {
   return {
     method: (formdata.get('clustering-method') ??
       DEFAULT_CLUSTERING_CONFIG.method) as ClusteringMethod,
+    enable_preprocess_pca: formdata.has('clustering-enable-preprocess-pca'),
     preprocessing_dimensions:
       Number(formdata.get('clustering-preprocessing-dimensions')) ||
-      DEFAULT_CLUSTERING_CONFIG.preprocessing_dimensions,
+      savedConfig.preprocessing_dimensions,
     distance_threshold:
       Number(formdata.get('clustering-distance-threshold')) ||
       DEFAULT_CLUSTERING_CONFIG.distance_threshold,
     target_cluster_count:
       Number(formdata.get('clustering-target-cluster-count')) ||
       DEFAULT_CLUSTERING_CONFIG.target_cluster_count,
-    enable_attribute_emphasis: Object.keys(emphasis).length > 0,
-    emphasis,
+    enable_attribute_emphasis: savedConfig.enable_attribute_emphasis,
+    emphasis: savedConfig.emphasis,
   };
 }
 
@@ -155,6 +143,9 @@ export function ControlContent() {
   const fontSetLabel = (fontSet: FontSet) => t.controlPanel.fontSets[fontSet]();
 
   const [isRunCooldown, setIsRunCooldown] = createSignal(false);
+  const [isPreprocessPcaEnabled, setIsPreprocessPcaEnabled] = createSignal(
+    appState.session.algorithm.clustering.enable_preprocess_pca,
+  );
   const clearRunCooldown = debounce(() => {
     setIsRunCooldown(false);
   }, 2000);
@@ -171,7 +162,14 @@ export function ControlContent() {
   const markDraftChanged = () => setDraftRevision((revision) => revision + 1);
   const sessionKey = () =>
     `${appState.session.session_id}:${appState.session.modified_at}`;
-  createEffect(on(sessionKey, markDraftChanged));
+  createEffect(
+    on(sessionKey, () => {
+      setIsPreprocessPcaEnabled(
+        appState.session.algorithm.clustering.enable_preprocess_pca,
+      );
+      markDraftChanged();
+    }),
+  );
   const draftFormData = createMemo(() => {
     draftRevision();
     return sessionKey() && formRef ? new FormData(formRef) : undefined;
@@ -188,6 +186,10 @@ export function ControlContent() {
       (!Number.isFinite(Number(value)) || Number(value) !== savedValue)
     );
   };
+  const isDraftBooleanChanged = (name: string, savedValue: boolean) => {
+    const formData = draftFormData();
+    return formData !== undefined && formData.has(name) !== savedValue;
+  };
   const isDraftWeightsChanged = (savedWeights: FontWeight[]) => {
     const value = draftValue('weights');
     if (value === undefined) return false;
@@ -196,21 +198,6 @@ export function ControlContent() {
       draftWeights.length !== savedWeights.length ||
       draftWeights.some((weight, index) => weight !== savedWeights[index])
     );
-  };
-  const isDraftEmphasisChanged = () => {
-    const savedClustering = appState.session.algorithm.clustering;
-    return EMPHASIS_ATTRIBUTES.some((attribute) => {
-      const value = draftValue(`clustering-emphasis-${attribute}`);
-      if (value === undefined) return false;
-      const draftLevel = Number(value);
-      const savedLevel = savedClustering.enable_attribute_emphasis
-        ? (savedClustering.emphasis?.[attribute] ?? EMPHASIS_LEVEL_NEUTRAL)
-        : EMPHASIS_LEVEL_NEUTRAL;
-      return (
-        (Number.isFinite(draftLevel) ? draftLevel : EMPHASIS_LEVEL_NEUTRAL) !==
-        savedLevel
-      );
-    });
   };
   const isRenderingSectionChanged = () =>
     isDraftStringChanged(
@@ -236,6 +223,10 @@ export function ControlContent() {
       'clustering-method',
       appState.session.algorithm.clustering.method,
     ) ||
+    isDraftBooleanChanged(
+      'clustering-enable-preprocess-pca',
+      appState.session.algorithm.clustering.enable_preprocess_pca,
+    ) ||
     isDraftNumberChanged(
       'clustering-preprocessing-dimensions',
       appState.session.algorithm.clustering.preprocessing_dimensions,
@@ -247,8 +238,7 @@ export function ControlContent() {
     isDraftNumberChanged(
       'clustering-target-cluster-count',
       appState.session.algorithm.clustering.target_cluster_count,
-    ) ||
-    isDraftEmphasisChanged();
+    );
   const hasDraftChanges = () =>
     isRenderingSectionChanged() ||
     isAnalysisSectionChanged() ||
@@ -267,6 +257,9 @@ export function ControlContent() {
     markDraftChanged();
   };
   const restoreClustering = () => {
+    setIsPreprocessPcaEnabled(
+      appState.session.algorithm.clustering.enable_preprocess_pca,
+    );
     setClusteringResetKey({});
     markDraftChanged();
   };
@@ -292,7 +285,10 @@ export function ControlContent() {
         (formdata.get('analysis-model-id') as string) ||
         appState.session.algorithm.analysis.model_id,
     };
-    const clustering = parseClusteringConfig(formdata);
+    const clustering = parseClusteringConfig(
+      formdata,
+      appState.session.algorithm.clustering,
+    );
     const modelAvailability = formdata.get('analysis-model-availability');
     const currentSessionId = appState.session.session_id || undefined;
     const runMode: ProcessingRunMode =
@@ -314,6 +310,7 @@ export function ControlContent() {
       analysis.model_id !== appState.session.algorithm.analysis.model_id ||
       ((appState.session.status.process_status === 'analyzed' ||
         appState.session.status.process_status === 'clustered') &&
+        clustering.enable_preprocess_pca &&
         clustering.enable_attribute_emphasis &&
         Object.values(clustering.emphasis).some((level) => level !== 0));
     if (
@@ -543,22 +540,34 @@ export function ControlContent() {
                   <SelectContent />
                 </Select>
               </TextProperty>
-              <NumberProperty
-                label={t.controlPanel.preprocessDimensions()}
-                name='clustering-preprocessing-dimensions'
-                defaultValue={
-                  appState.session.algorithm.clustering.preprocessing_dimensions
-                }
-                isChanged={isDraftNumberChanged(
-                  'clustering-preprocessing-dimensions',
-                  appState.session.algorithm.clustering
-                    .preprocessing_dimensions,
-                )}
-                onChange={() => markDraftChanged()}
-                step={1}
-                minValue={1}
-                maxValue={512}
+              <SwitchProperty
+                label={t.controlPanel.preprocessPca()}
+                name='clustering-enable-preprocess-pca'
+                checked={isPreprocessPcaEnabled()}
+                onChange={(enabled: boolean) => {
+                  setIsPreprocessPcaEnabled(enabled);
+                  markDraftChanged();
+                }}
               />
+              <Show when={isPreprocessPcaEnabled()}>
+                <NumberProperty
+                  label={t.controlPanel.preprocessDimensions()}
+                  name='clustering-preprocessing-dimensions'
+                  defaultValue={
+                    appState.session.algorithm.clustering
+                      .preprocessing_dimensions
+                  }
+                  isChanged={isDraftNumberChanged(
+                    'clustering-preprocessing-dimensions',
+                    appState.session.algorithm.clustering
+                      .preprocessing_dimensions,
+                  )}
+                  onChange={() => markDraftChanged()}
+                  step={1}
+                  minValue={1}
+                  maxValue={512}
+                />
+              </Show>
               <NumberProperty
                 label={t.controlPanel.groupingThreshold()}
                 name='clustering-distance-threshold'
@@ -587,10 +596,10 @@ export function ControlContent() {
                 step={1}
                 minValue={0}
               />
-              <EmphasisControls
-                isChanged={isDraftEmphasisChanged()}
-                onDraftChange={markDraftChanged}
-              />
+              {/*
+                Attribute Equalizer is temporarily hidden.
+                <EmphasisControls onDraftChange={markDraftChanged} />
+              */}
             </ControlPropertySection>
           </Show>
         </div>

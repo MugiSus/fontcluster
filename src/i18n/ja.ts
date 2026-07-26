@@ -43,7 +43,8 @@ export const ja: Dictionary = {
     modelCatalogRequired: 'モデル情報を取得してから生成してください。',
     textSize: 'テキストサイズ',
     linkageMethod: '連結法',
-    preprocessDimensions: '前処理次元数',
+    preprocessPca: 'PCA前処理を有効化',
+    preprocessDimensions: 'PCA次元数',
     groupingThreshold: '閾値',
     targetClusters: '目標クラスタ数',
     equalizer: {

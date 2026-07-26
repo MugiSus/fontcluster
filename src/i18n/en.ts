@@ -55,7 +55,8 @@ export const en = {
     modelCatalogRequired: 'Load the model information before generating.',
     textSize: 'text size',
     linkageMethod: 'linkage method',
-    preprocessDimensions: 'preprocess dimensions',
+    preprocessPca: 'Enable PCA Preprocessing',
+    preprocessDimensions: 'PCA Dimentions',
     groupingThreshold: 'threshold',
     targetClusters: 'target clusters',
     equalizer: {
