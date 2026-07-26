@@ -276,18 +276,18 @@ export function ListContent() {
         onValueChange={setListPreviewText}
       />
       <div class='relative min-h-0 w-full flex-1'>
-        <div
-          ref={listScrollElement}
-          class='size-full overflow-y-scroll'
-          onWheel={markDirectScrollInput}
-          onTouchMove={markDirectScrollInput}
-          onPointerMove={(event) => {
-            if (event.buttons !== 0) markDirectScrollInput();
-          }}
+        <Show
+          when={filteredLeafItems().length > 0}
+          fallback={<NoResultsFound />}
         >
-          <Show
-            when={filteredLeafItems().length > 0}
-            fallback={<NoResultsFound />}
+          <div
+            ref={listScrollElement}
+            class='size-full overflow-y-scroll'
+            onWheel={markDirectScrollInput}
+            onTouchMove={markDirectScrollInput}
+            onPointerMove={(event) => {
+              if (event.buttons !== 0) markDirectScrollInput();
+            }}
           >
             <ul
               class='relative w-full'
@@ -333,9 +333,9 @@ export function ListContent() {
                 }}
               </For>
             </ul>
-          </Show>
-        </div>
-        <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y mix-blend-multiply' />
+          </div>
+          <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y mix-blend-multiply' />
+        </Show>
       </div>
     </div>
   );
