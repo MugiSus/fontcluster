@@ -41,7 +41,6 @@ import {
 import { createPointLabelLayer } from './point-label-layer';
 import {
   createDendrogramLayer,
-  dendrogramAliasGlowOpacityForRank,
   type DendrogramHighlight,
 } from './dendrogram-layer';
 import { createGlowCompositor } from './glow-compositor';
@@ -277,16 +276,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const activePredicate = createMemo(() =>
       makeActivePredicate(props.filteredKeys()),
     );
-    const dendrogramAliasGlowOpacity = createMemo(() => {
-      const aliases = props.dendrogramNodeDots();
-      const lastMergeIndex = aliases[aliases.length - 1]?.mergeIndex || 1;
-      return (point: GraphPointData) =>
-        dendrogramAliasGlowOpacityForRank(
-          (point as DendrogramNodeDot).mergeIndex,
-          lastMergeIndex,
-        );
-    });
-
     // The highlight rings to show (selection / family). Each font gets at most
     // one ring (selected wins), dimmed with the same active/dimmed rule as the
     // points and images when it is filtered out / weight-inactive.
@@ -527,7 +516,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       showCore: () => false,
       colorSpace: graphOutputColorSpace,
       activePredicate,
-      opacityForPoint: dendrogramAliasGlowOpacity,
       imageShownKeys: () => NO_IMAGE_KEYS,
       pixelRatio,
       glowScale: compositor.glowScale,

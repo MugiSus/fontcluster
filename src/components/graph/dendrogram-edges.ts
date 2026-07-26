@@ -51,7 +51,6 @@ export interface DendrogramNodeDot extends GraphPointData {
   key: string;
   nodeIndex: number;
   safeName: string;
-  mergeIndex: number;
 }
 
 export type DendrogramImageAnchor = DendrogramNodeDot;
@@ -290,7 +289,6 @@ const dendrogramTree = createRoot(() => {
         x: node.center.x,
         y: node.center.y,
         colorAngle: representativePoint.colorAngle ?? node.colorAngle,
-        mergeIndex: node.mergeIndex,
       };
       dots.push(alias);
       imageAnchors.push(alias);

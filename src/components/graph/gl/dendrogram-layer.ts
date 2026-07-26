@@ -30,8 +30,8 @@ import { GRAPH_SIZE } from '@/components/graph/constants';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { arcFragmentShader, arcVertexShader } from './shaders/arc';
 import {
-  getBackgroundColor,
   getClusterColor,
+  getScatterGridColor,
   type GraphOutputColorSpace,
 } from './cluster-colors-gl';
 import { createFatLineMaterial } from './fat-line-material';
@@ -41,21 +41,8 @@ import { coreFragmentShader, coreVertexShader } from './shaders/point';
 const EDGE_WIDTH_PX = 1;
 /** Extra CSS px around each analytic arc's bounding quad for the AA feather. */
 const ARC_AA_PAD_PX = 2;
-/** Uniform opacity on top of the per-segment fade, so crossing segments blend
- *  instead of the later (coarser) one occluding the finer one. */
-const EDGE_OPACITY = 1.0;
-/** Per-segment fade: the finest merge draws at NEAR, the coarsest at FAR. The
- *  fade is baked into the vertex colors as a lerp towards the background, so
- *  the tree recedes with depth without needing per-vertex alpha. */
-const FADE_NEAR = 0.9;
-const FADE_FAR = 0.3;
-/** Merge-node alias core opacity: finest merge at NEAR, root side at FAR. */
-const ALIAS_CORE_OPACITY_NEAR = 1.0;
-const ALIAS_CORE_OPACITY_FAR = 1.0;
-/** Merge-node alias glow opacity multiplier: finest merge at NEAR, root side
- *  at FAR. The halo shader's own `uOpacity` is applied after this. */
-const ALIAS_GLOW_OPACITY_NEAR = 1.0;
-const ALIAS_GLOW_OPACITY_FAR = 0.5;
+/** Every edge is fully opaque; color alone distinguishes its cluster scope. */
+const EDGE_OPACITY = 1;
 /** The selected ancestry is the mode's focal line and stays foremost. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
 const HIGHLIGHT_OPACITY = 1;
@@ -65,36 +52,6 @@ const NODE_DOT_PX = 3;
 const DENDROGRAM_CENTER = GRAPH_SIZE / 2;
 const TWO_PI = Math.PI * 2;
 const ARC_BOUNDS_CARDINAL_ANGLES = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
-
-/** Depth fade of a merge edge's color towards the background. */
-const fadeForRank = (
-  mergeIndex: number,
-  lastMergeIndex: number,
-  near = FADE_NEAR,
-  far = FADE_FAR,
-) => near - (near - far) * (mergeIndex / lastMergeIndex);
-
-export const dendrogramAliasCoreOpacityForRank = (
-  mergeIndex: number,
-  lastMergeIndex: number,
-) =>
-  fadeForRank(
-    mergeIndex,
-    lastMergeIndex,
-    ALIAS_CORE_OPACITY_NEAR,
-    ALIAS_CORE_OPACITY_FAR,
-  );
-
-export const dendrogramAliasGlowOpacityForRank = (
-  mergeIndex: number,
-  lastMergeIndex: number,
-) =>
-  fadeForRank(
-    mergeIndex,
-    lastMergeIndex,
-    ALIAS_GLOW_OPACITY_NEAR,
-    ALIAS_GLOW_OPACITY_FAR,
-  );
 
 /** The selected font's merge-ancestry polyline and its stroke color. */
 export interface DendrogramHighlight {
@@ -217,8 +174,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       lines = null;
     }
     if (edges.length > 0) {
-      const lastMergeIndex = edges[edges.length - 1]!.mergeIndex || 1;
-      const background = new Color(getBackgroundColor({ isDark }));
+      const uncoloredEdgeColor = new Color(getScatterGridColor({ isDark }));
 
       // World Y is the negated graph Y (graph space is y-down).
       const positions = edges.flatMap(({ x1, y1, x2, y2 }) => [
@@ -229,13 +185,14 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         -y2,
         0,
       ]);
-      const colors = edges.flatMap(({ mergeIndex, colorAngle }) => {
-        const fade = fadeForRank(mergeIndex, lastMergeIndex);
-        const segmentColor = getClusterColor({
-          angle: colorAngle,
-          colorSpace: props.colorSpace,
-        });
-        segmentColor.lerpColors(background, segmentColor, fade);
+      const colors = edges.flatMap(({ colorAngle }) => {
+        const segmentColor =
+          colorAngle === undefined
+            ? uncoloredEdgeColor
+            : getClusterColor({
+                angle: colorAngle,
+                colorSpace: props.colorSpace,
+              });
         const { r, g, b } = segmentColor;
         return [r, g, b, r, g, b];
       });
@@ -253,7 +210,6 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   createEffect(() => {
     const arcs = props.arcs();
-    const straightEdges = props.edges();
     const isDark = props.isDark();
     if (arcMesh) {
       group.remove(arcMesh);
@@ -261,12 +217,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       arcMesh = null;
     }
     if (arcs.length > 0) {
-      const lastMergeIndex = Math.max(
-        straightEdges[straightEdges.length - 1]?.mergeIndex ??
-          arcs[arcs.length - 1]!.mergeIndex,
-        1,
-      );
-      const background = new Color(getBackgroundColor({ isDark }));
+      const uncoloredEdgeColor = new Color(getScatterGridColor({ isDark }));
       const boxCenters = new Float32Array(arcs.length * 2);
       const boxHalfSizes = new Float32Array(arcs.length * 2);
       const angles = new Float32Array(arcs.length * 2);
@@ -302,12 +253,13 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         angles[index * 2 + 1] = arc.angleTo;
         radii[index] = arc.radius;
 
-        const fade = fadeForRank(arc.mergeIndex, lastMergeIndex);
-        const segmentColor = getClusterColor({
-          angle: arc.colorAngle,
-          colorSpace: props.colorSpace,
-        });
-        segmentColor.lerpColors(background, segmentColor, fade);
+        const segmentColor =
+          arc.colorAngle === undefined
+            ? uncoloredEdgeColor
+            : getClusterColor({
+                angle: arc.colorAngle,
+                colorSpace: props.colorSpace,
+              });
         colors[index * 3] = segmentColor.r;
         colors[index * 3 + 1] = segmentColor.g;
         colors[index * 3 + 2] = segmentColor.b;
@@ -353,11 +305,9 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   createEffect(() => {
     const nodeDots = props.dots();
     const count = nodeDots.length;
-    const lastMergeIndex = nodeDots[count - 1]?.mergeIndex || 1;
 
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
-    const opacities = new Float32Array(count);
     for (const [index, dot] of nodeDots.entries()) {
       positions[index * 3] = dot.x;
       // World Y is the negated graph Y (graph space is y-down).
@@ -370,10 +320,6 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       colors[index * 3] = dotColor.r;
       colors[index * 3 + 1] = dotColor.g;
       colors[index * 3 + 2] = dotColor.b;
-      opacities[index] = dendrogramAliasCoreOpacityForRank(
-        dot.mergeIndex,
-        lastMergeIndex,
-      );
     }
     dotGeometry.setAttribute(
       'position',
@@ -386,7 +332,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     );
     dotGeometry.setAttribute(
       'aOpacity',
-      new Float32BufferAttribute(opacities, 1),
+      new Float32BufferAttribute(new Float32Array(count).fill(1), 1),
     );
     dotGeometry.setAttribute(
       'aHideCore',
