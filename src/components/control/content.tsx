@@ -410,7 +410,6 @@ export function ControlContent() {
           <Show when={renderingResetKey()} keyed>
             <ControlPropertySection
               title={t.controlPanel.sections.render()}
-              isDisabled={isRunCooldown()}
               isChanged={isRenderingSectionChanged()}
               onRestore={restoreRendering}
             >
@@ -475,7 +474,6 @@ export function ControlContent() {
           <Show when={analysisResetKey()} keyed>
             <ControlPropertySection
               title={t.controlPanel.sections.analyze()}
-              isDisabled={isRunCooldown()}
               isChanged={isAnalysisSectionChanged()}
               onRestore={restoreAnalysis}
             >
@@ -494,7 +492,6 @@ export function ControlContent() {
           <Show when={clusteringResetKey()} keyed>
             <ControlPropertySection
               title={t.controlPanel.sections.cluster()}
-              isDisabled={isRunCooldown()}
               isChanged={isClusteringSectionChanged()}
               onRestore={restoreClustering}
             >
