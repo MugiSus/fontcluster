@@ -266,7 +266,13 @@ export function ControlContent() {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    if (hasDraftChanges()) void handleRun('in_place_changed');
+    if (hasDraftChanges()) {
+      void handleRun(
+        isAnalysisSectionChanged() || isClusteringSectionChanged()
+          ? 'in_place_changed'
+          : 'fresh',
+      );
+    }
   };
 
   /**
@@ -607,6 +613,11 @@ export function ControlContent() {
           isDisabled={isRunCooldown()}
           hasSession={Boolean(appState.session.session_id)}
           hasChanges={hasDraftChanges()}
+          primaryMode={
+            isAnalysisSectionChanged() || isClusteringSectionChanged()
+              ? 'in_place_changed'
+              : 'fresh'
+          }
           onSelect={(mode) => void handleRun(mode)}
         />
       </div>
