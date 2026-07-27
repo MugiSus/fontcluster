@@ -334,7 +334,7 @@ export function ListContent() {
               </For>
             </ul>
           </div>
-          <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y mix-blend-multiply' />
+          <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y' />
         </Show>
       </div>
     </div>
