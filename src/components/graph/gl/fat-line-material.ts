@@ -8,9 +8,9 @@ const FAT_LINE_AA_PAD_PX = 1;
 export function createFatLineMaterial(options: {
   color: number;
   linewidth: number;
-  lineOffset?: number;
   opacity: number;
   hasVertexColors: boolean;
+  hasRoundCaps?: boolean;
 }): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {
@@ -18,7 +18,7 @@ export function createFatLineMaterial(options: {
       opacity: { value: options.opacity },
       linewidth: { value: options.linewidth },
       aaPad: { value: FAT_LINE_AA_PAD_PX },
-      lineoffset: { value: options.lineOffset ?? 0 },
+      roundCaps: { value: options.hasRoundCaps === false ? 0 : 1 },
       resolution: { value: new Vector2(1, 1) },
     },
     vertexShader: fatLineVertexShader,

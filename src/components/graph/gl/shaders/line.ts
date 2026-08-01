@@ -2,9 +2,9 @@
 // anti-aliases itself, matching this pipeline's in-shader-AA convention (see
 // point-shaders.ts). It is a deliberately narrowed reimplementation of three's
 // `LineMaterial` (three/examples/jsm/lines) covering only what the graph layers
-// use — screen-space `linewidth`, round caps, optional per-segment vertex
-// colors — so it can bake anti-aliasing in as a first-class step instead of
-// patching three's built-in program through `onBeforeCompile`.
+// use — screen-space `linewidth`, selectable round/butt caps, optional
+// per-segment vertex colors — so it can bake anti-aliasing in as a first-class
+// step instead of patching three's built-in program through `onBeforeCompile`.
 //
 // The quad expansion mirrors `LineMaterial`'s non-world-units path exactly: each
 // segment is an instanced box (`LineSegmentsGeometry` / `LineGeometry` supply
@@ -26,7 +26,7 @@
 export const fatLineVertexShader = /* glsl */ `
 uniform float linewidth;
 uniform float aaPad;
-uniform float lineoffset;
+uniform float roundCaps;
 uniform vec2 resolution;
 
 attribute vec3 instanceStart;
@@ -66,28 +66,25 @@ void main() {
   vec2 offset = vec2( dir.y, - dir.x );
   dir.x /= aspect;
   offset.x /= aspect;
-  vec2 centerOffset = offset;
-
   if ( position.x < 0.0 ) offset *= - 1.0;
 
-  // Round caps: extend the end rows of the box along the segment direction.
-  if ( position.y < 0.0 ) {
-    offset += - dir;
-  } else if ( position.y > 1.0 ) {
-    offset += dir;
+  // Round caps extend the end rows; butt-cap rows collapse at the endpoints.
+  if ( roundCaps > 0.5 ) {
+    if ( position.y < 0.0 ) {
+      offset += - dir;
+    } else if ( position.y > 1.0 ) {
+      offset += dir;
+    }
   }
 
   // CSS-pixel width → clip space (÷ resolution.y, × clip.w after end select).
   // The extra pad leaves fragments outside the actual stroke for derivative AA.
   offset *= linewidth + 2.0 * aaPad;
   offset /= resolution.y;
-  centerOffset *= 2.0 * lineoffset;
-  centerOffset /= resolution.y;
 
   vec4 clip = ( position.y < 0.5 ) ? clipStart : clipEnd;
   offset *= clip.w;
-  centerOffset *= clip.w;
-  clip.xy += offset + centerOffset;
+  clip.xy += offset;
 
   gl_Position = clip;
 }
@@ -98,6 +95,7 @@ uniform vec3 diffuse;
 uniform float opacity;
 uniform float linewidth;
 uniform float aaPad;
+uniform float roundCaps;
 
 #ifdef USE_COLOR
   varying vec3 vColor;
@@ -112,7 +110,9 @@ void main() {
   // radial past the round caps where |vUv.y| > 1 — the same field the stock
   // LineMaterial only hard-discards on; here it feathers instead. The actual
   // stroke boundary is inside the padded quad at edgeRadius.
-  float capExtent = max( abs( vUv.y ) - 1.0, 0.0 );
+  float capExtent = roundCaps > 0.5
+    ? max( abs( vUv.y ) - 1.0, 0.0 )
+    : 0.0;
   float edgeDistance = length( vec2( vUv.x, capExtent ) );
   float edgeRadius = linewidth / ( linewidth + 2.0 * aaPad );
   float coverage = clamp(
