@@ -67,7 +67,7 @@ interface GraphPointLabelBase {
  * One font-name label of the GL label layer. Radial labels read outward along
  * their leaf's dendrogram spoke; rightward labels extend from a horizontal
  * tree's leaves; horizontal labels hang below points; centered labels occupy
- * the hidden core's original position in treemap modes without samples.
+ * the point position unless an actual sample image requires clearance.
  */
 export type GraphPointLabel =
   | (GraphPointLabelBase & {

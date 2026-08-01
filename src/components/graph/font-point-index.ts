@@ -9,7 +9,6 @@ import { type GraphPointData, type GraphVisibleBounds } from './types';
 
 interface FontPointIndexes {
   byKey: Map<string, GraphPointData>;
-  byFamilyName: Map<string, GraphPointData[]>;
 }
 
 function getSelectableFontPointData(
@@ -49,21 +48,12 @@ const fontPointIndex = createRoot(() => {
   });
   const indexes = createMemo<FontPointIndexes>(() => {
     const byKey = new Map<string, GraphPointData>();
-    const byFamilyName = new Map<string, GraphPointData[]>();
 
     for (const point of points()) {
       byKey.set(point.key, point);
-
-      const familyName = point.item.meta.family_name;
-      const familyPoints = byFamilyName.get(familyName);
-      if (familyPoints) {
-        familyPoints.push(point);
-      } else {
-        byFamilyName.set(familyName, [point]);
-      }
     }
 
-    return { byKey, byFamilyName };
+    return { byKey };
   });
   const selectablePoints = createMemo(() =>
     getSelectableFontPointData(points(), appState.fonts.filteredKeys),
@@ -76,8 +66,6 @@ const fontPointIndex = createRoot(() => {
     points,
     selectablePoints,
     getPointByKey: (key: string) => indexes().byKey.get(key),
-    getPointsByFamilyName: (familyName: string): readonly GraphPointData[] =>
-      indexes().byFamilyName.get(familyName) ?? [],
     findSelectablePoint: (x: number, y: number, radius: number) => {
       const findLeafKeyAt = activeGraphLayout()?.findLeafKeyAt;
       if (findLeafKeyAt) {
@@ -88,7 +76,7 @@ const fontPointIndex = createRoot(() => {
       }
       return selectableTree().find(x, y, radius);
     },
-    getVisibleImageKeys: (
+    getVisibleDetailKeys: (
       bounds: GraphVisibleBounds,
       scale: number,
       showImages: boolean,
@@ -97,7 +85,7 @@ const fontPointIndex = createRoot(() => {
       // With images hidden and only name labels drawn, the labels are the sole
       // detail this thinning gates, so reduce the normal spacing.
       const isDenseLabelSpacing = !showImages && showFontNames;
-      const detailImageGapPx =
+      const detailGapPx =
         appState.ui.graphMode === 'scatter-plot' ||
         appState.ui.graphMode === 'rectangular-treemap' ||
         appState.ui.graphMode === 'voronoi-treemap'
@@ -112,13 +100,13 @@ const fontPointIndex = createRoot(() => {
             selectablePoints(),
             bounds,
             scale,
-            detailImageGapPx,
+            detailGapPx,
           )
         : collectVisibleCartesianImageKeys(
             selectableTree(),
             bounds,
             scale,
-            detailImageGapPx,
+            detailGapPx,
           );
     },
   };
@@ -128,8 +116,6 @@ export const fontPoints = fontPointIndex.points;
 
 export const getGraphPointByKey = fontPointIndex.getPointByKey;
 
-export const getGraphPointsByFamilyName = fontPointIndex.getPointsByFamilyName;
-
 export const findSelectableFontPoint = fontPointIndex.findSelectablePoint;
 
-export const getVisibleImageKeys = fontPointIndex.getVisibleImageKeys;
+export const getVisibleDetailKeys = fontPointIndex.getVisibleDetailKeys;

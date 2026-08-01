@@ -10,6 +10,7 @@ import { DisplayP3ColorSpace } from 'three/addons/math/ColorSpaces.js';
 import { BatchedText, Text } from 'troika-three-text';
 import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
 import { SAMPLE_IMAGE_BOX_HEIGHT_PX } from '@/components/graph/constants';
+import { type GraphPointPresentation } from '@/components/graph/graph-point-presentation';
 import { type GraphPointLabel } from '@/components/graph/types';
 import {
   getClusterColor,
@@ -47,17 +48,8 @@ const GEIST_FONT_URL = URL.createObjectURL(
 export interface PointLabelLayerProps {
   /** The point labels to draw (see {@link GraphPointLabel}). */
   labels: Accessor<GraphPointLabel[]>;
-  /** Keys picked by the screen-space image thinning (and viewport cull);
-   *  only their labels show, so label density follows the image density. */
-  visibleKeys: Accessor<Set<string>>;
-  /** Representative font keys that are currently active/selectable. */
-  activeKeys: Accessor<Set<string>>;
-  /** Whether the sample images are shown (labels then get a fixed extra gap). */
-  showImages: Accessor<boolean>;
-  /** Whether the toolbar font-name toggle is enabled. */
-  showFontNames: Accessor<boolean>;
-  /** Leaf keys whose forced sample images are drawn, so labels remain visible. */
-  forcedImageLabelKeys: Accessor<Set<string>>;
+  /** Primitive visibility/emphasis state derived once for every font point. */
+  presentations: Accessor<ReadonlyMap<string, GraphPointPresentation>>;
   /** Encoded RGB space of the renderer's drawing buffer. */
   colorSpace: GraphOutputColorSpace;
   /** World-units-per-CSS-pixel factor so labels keep their px size on zoom. */
@@ -72,8 +64,9 @@ export interface PointLabelLayerProps {
  * dendrogram; labels on the left semicircle are flipped 180° and end-anchored
  * (the classic radial label rule) so no name renders upside down. Horizontal
  * tree labels extend rightward; treemap and scatter labels normally hang
- * below, while treemap labels replace hidden cores at the point center when
- * the user has hidden sample images.
+ * below, while treemap labels may occupy the point center when samples are
+ * hidden. A selection-forced sample moves that one centered label through the
+ * same below-image clearance path as an ordinary horizontal label.
  *
  * Rendering uses troika's SDF text — glyph layout and SDF atlas generation
  * run asynchronously in a worker, and the (experimental) `BatchedText` draws
@@ -81,12 +74,11 @@ export interface PointLabelLayerProps {
  *
  * Labels keep a constant screen size: the glyph em-height is authored in CSS
  * px and each member scales by the world-per-px zoom factor — a matrix-only
- * update, so zooming never re-runs the worker layout. Density is delegated to
- * the image layer's screen-space thinning (`visibleKeys`): every point
- * keeps a laid-out member, but only the thinned/in-viewport ones are visible
- * (via fill opacity, again avoiding relayout while panning). Each label takes
- * its point's cluster color and the standard dimmed opacity when filtered
- * out. The render loop owns the layer's visibility across the glow passes.
+ * update, so zooming never re-runs the worker layout. Every point keeps a
+ * laid-out member, while its primitive presentation controls visibility,
+ * sample clearance, and active/dimmed opacity without this layer consulting
+ * selection, filtering, thinning, or toolbar state. The render loop owns the
+ * layer's visibility across the glow passes.
  */
 export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   // Troika derives its SDF/batching shader from this material. Its member-color
@@ -128,14 +120,13 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
    */
   const updateMemberTransforms = () => {
     const zoom = props.zoom();
-    const showImages = props.showImages();
-    const forcedImageLabelKeys = props.forcedImageLabelKeys();
+    const presentations = props.presentations();
 
     for (const label of props.labels()) {
       const member = members.get(label.key);
       if (!member) continue;
       const blockBounds = member.textRenderInfo?.blockBounds;
-      const hasImageBox = showImages || forcedImageLabelKeys.has(label.key);
+      const hasImageBox = presentations.get(label.key)?.showSample ?? false;
 
       if (label.orientation === 'radial') {
         const gap =
@@ -159,7 +150,7 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
           zoom;
         member.position.set(label.x + gap, -label.y, 0);
         member.rotation.z = 0;
-      } else if (label.orientation === 'centered') {
+      } else if (label.orientation === 'centered' && !hasImageBox) {
         member.position.set(label.x, -label.y, 0);
         member.rotation.z = 0;
       } else {
@@ -224,23 +215,16 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   // Zoom, image clearance and layout-mode changes are matrix-only updates.
   createEffect(() => updateMemberTransforms());
 
-  // Visibility (the image thinning's pick + viewport cull, plus forced image
-  // label exceptions) and the standard active/dimmed rule, via fill opacity:
-  // cheap in-place updates the batch reads per frame, so density changes while
-  // panning never resync either.
+  // Primitive visibility and active/dimmed state become fill opacity updates
+  // that the batch reads in place, so panning never resyncs text geometry.
   createEffect(() => {
-    const visibleKeys = props.visibleKeys();
-    const activeKeys = props.activeKeys();
-    const showFontNames = props.showFontNames();
-    const forcedImageLabelKeys = props.forcedImageLabelKeys();
+    const presentations = props.presentations();
     for (const label of props.labels()) {
       const member = members.get(label.key)!;
-      const isVisible =
-        (showFontNames && visibleKeys.has(label.key)) ||
-        forcedImageLabelKeys.has(label.key);
-      member.fillOpacity = !isVisible
+      const presentation = presentations.get(label.key);
+      member.fillOpacity = !presentation?.showLabel
         ? 0
-        : activeKeys.has(label.key)
+        : presentation.isActive
           ? 1
           : DIMMED_OPACITY;
     }

@@ -8,6 +8,7 @@ import {
   PlaneGeometry,
   ShaderMaterial,
 } from 'three';
+import { type GraphPointEmphasis } from '@/components/graph/graph-point-presentation';
 import { ringFragmentShader, ringVertexShader } from './shaders/ring';
 
 /** Stroke width (CSS px) of every ring, constant regardless of radius. A thin
@@ -19,7 +20,7 @@ const LINE_WIDTH_PX = 1;
 const AA_PAD_PX = 2;
 
 /** Which highlight affordance a ring represents — it sets the radius. */
-export type RingKind = 'selected' | 'alias-source' | 'family';
+export type RingKind = Exclude<GraphPointEmphasis, 'none'>;
 
 /** Radius (CSS px) per affordance; the stroke width stays constant regardless.
  *  Matches the original SVG circle radii. */

@@ -69,7 +69,7 @@ export interface DendrogramLayerProps {
   /** The merge-node dots to draw, in merge order. */
   dots: Accessor<DendrogramNodeDot[]>;
   /** Node indexes whose exemplar image is drawn; their dot is hidden (the
-   *  image replaces it, like the point layer's `aHideCore`). */
+   *  image replaces it, like the point layer's `aCoreVisible`). */
   imageNodeIndexes: Accessor<Set<number>>;
   /** The selected font's ancestry to emphasize, if any. */
   highlight: Accessor<DendrogramHighlight | null>;
@@ -137,14 +137,13 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
 
   // The merge-node dots reuse the point layer's core sprite program: aColor
   // carries the representative color, aOpacity carries the alias depth fade,
-  // and aHideCore suppresses the dot where the node's exemplar image is drawn
+  // and aCoreVisible suppresses the dot where the exemplar image is drawn
   // — exactly the leaf points' image behaviour.
   const dotGeometry = new BufferGeometry();
   const dotMaterial = new ShaderMaterial({
     uniforms: {
       uPixelRatio: { value: 1 },
       uCore: { value: NODE_DOT_PX },
-      uShowCore: { value: 1 },
     },
     vertexShader: coreVertexShader,
     fragmentShader: coreFragmentShader,
@@ -301,7 +300,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   });
 
   // Node dot positions + colors (rebuilt with the dot set, like the edges
-  // above). aState and aHideCore are owned by the effects below.
+  // above). aState and aCoreVisible are owned by the effects below.
   createEffect(() => {
     const nodeDots = props.dots();
     const count = nodeDots.length;
@@ -335,8 +334,8 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       new Float32BufferAttribute(new Float32Array(count).fill(1), 1),
     );
     dotGeometry.setAttribute(
-      'aHideCore',
-      new Float32BufferAttribute(new Float32Array(count), 1),
+      'aCoreVisible',
+      new Float32BufferAttribute(new Float32Array(count).fill(1), 1),
     );
     dotGeometry.setDrawRange(0, count);
     props.requestRender();
@@ -362,12 +361,12 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
   createEffect(() => {
     const shownImages = props.imageNodeIndexes();
     const nodeDots = props.dots();
-    const attribute = dotGeometry.getAttribute('aHideCore');
+    const attribute = dotGeometry.getAttribute('aCoreVisible');
     if (!attribute || attribute.count !== nodeDots.length) return;
 
     const flags = attribute.array as Float32Array;
     for (const [index, dot] of nodeDots.entries()) {
-      flags[index] = shownImages.has(dot.nodeIndex) ? 1 : 0;
+      flags[index] = shownImages.has(dot.nodeIndex) ? 0 : 1;
     }
     attribute.needsUpdate = true;
     props.requestRender();

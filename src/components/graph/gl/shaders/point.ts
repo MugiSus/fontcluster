@@ -5,11 +5,10 @@
 //     it keeps its on-screen size when the glow buffer is downscaled.
 //
 // Both programs share the same geometry (position / aColor / aState /
-// aOpacity); the core additionally reads aHideCore to drop the dot where a
-// sample image is drawn and uShowCore to disable every dot for layouts that do
-// not need them (the halo ignores both, so the glow stays). The orchestrator
-// still shows the core or halo points per render pass rather than switching a
-// uPass uniform.
+// aOpacity); the core additionally reads the already-derived aCoreVisible
+// primitive. The halo ignores it, so the glow stays independent. The
+// orchestrator still shows the core or halo points per render pass rather than
+// switching a uPass uniform.
 //
 // `position` / projection uniforms are injected by three's ShaderMaterial, so
 // only the custom attributes are declared here.
@@ -18,11 +17,10 @@ export const coreVertexShader = /* glsl */ `
 attribute vec3 aColor;
 attribute float aState;    // 0 = active, 1 = dimmed (filtered out / inactive weight)
 attribute float aOpacity;  // extra per-point opacity multiplier
-attribute float aHideCore; // 1 = core hidden (this sample's image is drawn)
+attribute float aCoreVisible; // 1 = draw the sharp core for this point
 
 uniform float uPixelRatio;
 uniform float uCore; // solid core diameter (CSS px)
-uniform float uShowCore; // 0 = hide every core dot, 1 = draw non-image cores
 
 varying vec3 vColor;
 varying float vAlpha;
@@ -34,7 +32,7 @@ void main() {
   // Dimmed (filtered-out / inactive) points are 0.75x the size and much fainter.
   float scale = dimmed ? 0.75 : 1.0;
   vAlpha = (dimmed ? 0.2 : 1.0) * aOpacity;
-  vCoreVisible = uShowCore * (1.0 - step(0.5, aHideCore));
+  vCoreVisible = step(0.5, aCoreVisible);
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   // WebGL may clamp zero-size points to its implementation minimum. Keep a

@@ -20,12 +20,11 @@ interface GraphGlLayerProps {
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   getPointByKey: (key: string) => GraphPointData | undefined;
-  getPointsByFamilyName: (familyName: string) => readonly GraphPointData[];
   filteredKeys: Accessor<Set<string>>;
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   selectedFamily: Accessor<string | null>;
-  imageKeys: Accessor<Set<string>>;
+  visibleDetailKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
@@ -57,13 +56,11 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     zoomFactor: () => props.zoomFactor(),
     points: () => props.points(),
     getPointByKey: (key) => props.getPointByKey(key),
-    getPointsByFamilyName: (familyName) =>
-      props.getPointsByFamilyName(familyName),
     filteredKeys: () => props.filteredKeys(),
     selectedKey: () => props.selectedKey(),
     selectedDendrogramAnchor: () => props.selectedDendrogramAnchor(),
     selectedFamily: () => props.selectedFamily(),
-    imageKeys: () => props.imageKeys(),
+    visibleDetailKeys: () => props.visibleDetailKeys(),
     showImages: () => props.showImages(),
     showFontNames: () => props.showFontNames(),
     glow: () => props.glow(),

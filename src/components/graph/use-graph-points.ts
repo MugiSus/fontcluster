@@ -2,7 +2,6 @@ import {
   type Accessor,
   createEffect,
   createMemo,
-  createSelector,
   createSignal,
 } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
@@ -16,7 +15,7 @@ import { collectVisibleRadialImageKeys } from './radial-image-visibility';
 import {
   findSelectableFontPoint,
   fontPoints,
-  getVisibleImageKeys,
+  getVisibleDetailKeys,
 } from './font-point-index';
 import { type GraphViewBox, type GraphVisibleBounds } from './types';
 
@@ -32,9 +31,9 @@ interface UseGraphPointsProps {
 }
 
 export function useGraphPoints(props: UseGraphPointsProps) {
-  const [imageVisibleBounds, setImageVisibleBounds] =
+  const [detailVisibleBounds, setDetailVisibleBounds] =
     createSignal<GraphVisibleBounds | null>(null);
-  const [imageZoomFactor, setImageZoomFactor] = createSignal(1);
+  const [detailZoomFactor, setDetailZoomFactor] = createSignal(1);
 
   const visibleBounds = createMemo<GraphVisibleBounds>(() => {
     const viewBox = props.viewBox();
@@ -71,19 +70,17 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     const size = props.svgSize();
     if (size.width === 0 || size.height === 0) return;
 
-    setImageVisibleBounds(visibleBounds());
-    setImageZoomFactor(props.zoomFactor());
+    setDetailVisibleBounds(visibleBounds());
+    setDetailZoomFactor(props.zoomFactor());
   });
 
-  const visibleImageKeys = createMemo(() => {
-    const bounds = imageVisibleBounds();
+  const visibleDetailKeys = createMemo(() => {
+    const bounds = detailVisibleBounds();
     if (!bounds) return new Set<string>();
 
-    // Labels follow this same visibility set, so the point index can reserve
-    // the right amount of screen space for the active detail combination.
-    return getVisibleImageKeys(
+    return getVisibleDetailKeys(
       bounds,
-      imageZoomFactor(),
+      detailZoomFactor(),
       props.showImages(),
       props.showFontNames(),
     );
@@ -103,28 +100,23 @@ export function useGraphPoints(props: UseGraphPointsProps) {
   );
 
   const visibleDendrogramImageKeys = createMemo(() => {
-    const bounds = imageVisibleBounds();
+    const bounds = detailVisibleBounds();
     if (!bounds) return new Set<string>();
 
     return appState.ui.graphMode === 'radial-tree'
       ? collectVisibleRadialImageKeys(
           selectableDendrogramAnchors(),
           bounds,
-          imageZoomFactor(),
+          detailZoomFactor(),
           24,
         )
       : collectVisibleCartesianImageKeys(
           selectableDendrogramAnchorTree(),
           bounds,
-          imageZoomFactor(),
+          detailZoomFactor(),
           24,
         );
   });
-
-  const isImageVisible = createSelector(
-    visibleImageKeys,
-    (key: string, keys: Set<string>) => keys.has(key),
-  );
 
   const findSelectablePoint = (x: number, y: number, radius: number) =>
     findSelectableFontPoint(x, y, radius);
@@ -137,9 +129,8 @@ export function useGraphPoints(props: UseGraphPointsProps) {
 
   return {
     allPoints: fontPoints,
-    visibleImageKeys,
+    visibleDetailKeys,
     visibleDendrogramImageKeys,
-    isImageVisible,
     findSelectablePoint,
     findSelectableDendrogramPoint,
   };

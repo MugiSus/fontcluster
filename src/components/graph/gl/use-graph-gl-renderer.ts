@@ -34,6 +34,10 @@ import {
 } from '@/components/graph/dendrogram-edges';
 import { type GraphLayout } from '@/components/graph/layouts/active-graph-layout';
 import {
+  deriveGraphPointPresentations,
+  type GraphPointPresentation,
+} from '@/components/graph/graph-point-presentation';
+import {
   getBackgroundColor,
   getClusterColor,
   type GraphOutputColorSpace,
@@ -46,7 +50,7 @@ import {
 import { createGlowCompositor } from './glow-compositor';
 import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
-import { createRingLayer, type RingKind, type RingSpec } from './ring-layer';
+import { createRingLayer, type RingSpec } from './ring-layer';
 import { createScatterGridLayer } from './scatter-grid-layer';
 import { createTreemapLayer } from './treemap-layer';
 
@@ -58,7 +62,7 @@ ColorManagement.enabled = true;
 
 /** Opacity of dimmed (filtered-out / inactive weight) sample images. */
 const DIMMED_OPACITY = 0.4;
-const NO_IMAGE_KEYS = new Set<string>();
+const NO_CORE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
@@ -68,12 +72,11 @@ export interface UseGraphGlRendererProps {
   zoomFactor: Accessor<number>;
   points: Accessor<GraphPointData[]>;
   getPointByKey: (key: string) => GraphPointData | undefined;
-  getPointsByFamilyName: (familyName: string) => readonly GraphPointData[];
   filteredKeys: Accessor<Set<string>>;
   selectedKey: Accessor<string | null>;
   selectedDendrogramAnchor: Accessor<DendrogramImageAnchor | null>;
   selectedFamily: Accessor<string | null>;
-  imageKeys: Accessor<Set<string>>;
+  visibleDetailKeys: Accessor<Set<string>>;
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
@@ -174,10 +177,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
-      // The label layer shows for the toolbar toggle, plus selected/family
-      // image labels while their sample images are drawn.
-      const showLabels =
-        props.showFontNames() || forcedImageLabelKeys().size > 0;
+      const showLabels = hasVisiblePointLabels();
       const showTreemapBoundaries = props.showTreemapBoundaries();
 
       // Glow off: draw the sharp content (core dots + rings + images + tree)
@@ -271,39 +271,55 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       props.size();
       return window.devicePixelRatio;
     });
-    // The active/dimmed rule, derived once and shared by the points, rings and
-    // images (a point is active when it passes the graph filter).
-    const activePredicate = createMemo(() =>
+    const dendrogramActivePredicate = createMemo(() =>
       makeActivePredicate(props.filteredKeys()),
+    );
+    const pointPresentations = createMemo(() =>
+      deriveGraphPointPresentations({
+        points: props.points(),
+        activeKeys: props.filteredKeys(),
+        visibleDetailKeys: props.visibleDetailKeys(),
+        selectedKey: props.selectedKey(),
+        selectedAliasSourceKey:
+          props.selectedDendrogramAnchor()?.safeName ?? null,
+        selectedFamilyName: props.selectedFamily(),
+        showSamples: props.showImages(),
+        showLabels: props.showFontNames(),
+        showCores: props.showPointCore(),
+      }),
+    );
+    const pointPresentationByKey = createMemo(() => {
+      const presentations = new Map<string, GraphPointPresentation>();
+      for (const presentation of pointPresentations()) {
+        presentations.set(presentation.point.key, presentation);
+      }
+      return presentations;
+    });
+    const pointCoreVisibleKeys = createMemo(() => {
+      const keys = new Set<string>();
+      for (const presentation of pointPresentations()) {
+        if (presentation.showCore) keys.add(presentation.point.key);
+      }
+      return keys;
+    });
+    const pointActivePredicate = createMemo(() => {
+      const presentations = pointPresentationByKey();
+      return (point: GraphPointData) =>
+        presentations.get(point.key)?.isActive ?? false;
+    });
+    const hasVisiblePointLabels = createMemo(() =>
+      pointPresentations().some((presentation) => presentation.showLabel),
     );
     // The highlight rings to show (selection / family). Each font gets at most
     // one ring (selected wins), dimmed with the same active/dimmed rule as the
     // points and images when it is filtered out / weight-inactive.
     const ringSpecs = createMemo<RingSpec[]>(() => {
-      const selected = props.selectedKey();
-      const family = props.selectedFamily();
       const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
-      const predicate = activePredicate();
-
-      // Dedupe per font, keeping the strongest affordance (selected > family)
-      // via later overwrites; the layer maps each kind to a radius.
-      const kindByKey = new Map<string, RingKind>();
-      if (family) {
-        for (const point of props.getPointsByFamilyName(family)) {
-          kindByKey.set(point.key, 'family');
-        }
-      }
-      if (selectedDendrogramAnchor) {
-        kindByKey.set(selectedDendrogramAnchor.safeName, 'alias-source');
-      }
-      if (selected && !selectedDendrogramAnchor) {
-        kindByKey.set(selected, 'selected');
-      }
 
       const specs: RingSpec[] = [];
-      for (const [key, kind] of kindByKey) {
-        const point = props.getPointByKey(key);
-        if (!point) continue;
+      for (const presentation of pointPresentations()) {
+        if (presentation.emphasis === 'none') continue;
+        const point = presentation.point;
         specs.push({
           x: point.x,
           y: -point.y,
@@ -311,8 +327,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             angle: point.colorAngle,
             colorSpace: graphOutputColorSpace,
           }),
-          kind,
-          opacity: predicate(point) ? 1 : DIMMED_OPACITY,
+          kind: presentation.emphasis,
+          opacity: presentation.isActive ? 1 : DIMMED_OPACITY,
         });
       }
       if (selectedDendrogramAnchor) {
@@ -324,44 +340,23 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             colorSpace: graphOutputColorSpace,
           }),
           kind: 'selected',
-          opacity: predicate(selectedDendrogramAnchor) ? 1 : DIMMED_OPACITY,
+          opacity: dendrogramActivePredicate()(selectedDendrogramAnchor)
+            ? 1
+            : DIMMED_OPACITY,
         });
       }
       return specs;
     });
 
-    const forcedLeafImageKeys = createMemo(() => {
-      const keys = new Set<string>();
-      const selected = props.selectedKey();
-      const family = props.selectedFamily();
-      if (selected) keys.add(selected);
-      if (family) {
-        for (const point of props.getPointsByFamilyName(family)) {
-          keys.add(point.key);
-        }
-      }
-      return keys;
-    });
-
-    // The sample images to show. Selected / family-highlighted leaves always
-    // show their image, but still dim with their ring when filtered out /
-    // weight-inactive.
+    // Ordinary samples are now a direct projection of the per-point primitive
+    // presentation; merge-node aliases retain their dendrogram-owned path.
     const imageSpecs = createMemo<ImageSpec[]>(() => {
-      const imageKeys = props.imageKeys();
-      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
-      const showImages = props.showImages();
-      const predicate = activePredicate();
-
-      const wanted = new Set<string>();
-      if (showImages) for (const key of imageKeys) wanted.add(key);
-      for (const key of forcedLeafImageKeys()) wanted.add(key);
-
       const specs: ImageSpec[] = [];
-      for (const key of wanted) {
-        const point = props.getPointByKey(key);
-        if (!point || !point.item.meta.safe_name) continue;
+      for (const presentation of pointPresentations()) {
+        if (!presentation.showSample) continue;
+        const point = presentation.point;
         specs.push({
-          key,
+          key: point.key,
           safeName: point.item.meta.safe_name,
           x: point.x,
           y: -point.y,
@@ -369,7 +364,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             angle: point.colorAngle,
             colorSpace: graphOutputColorSpace,
           }),
-          opacity: predicate(point) ? 1 : DIMMED_OPACITY,
+          opacity: presentation.isActive ? 1 : DIMMED_OPACITY,
         });
       }
 
@@ -377,19 +372,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       // ordinary points upstream. Node keys live in their own namespace: the
       // same font may represent several nodes (and its own leaf) at once, and
       // the pooled meshes must not collide — the texture cache still dedupes
-      // by safe name, so no extra loads happen. A selected alias keeps its
-      // image visible the same way a selected ordinary point does.
-      const dendrogramAnchors = new Map<string, DendrogramImageAnchor>();
+      // by safe name, so no extra loads happen.
       for (const anchor of props.dendrogramImageAnchors()) {
-        dendrogramAnchors.set(anchor.key, anchor);
-      }
-      if (selectedDendrogramAnchor) {
-        dendrogramAnchors.set(
-          selectedDendrogramAnchor.key,
-          selectedDendrogramAnchor,
-        );
-      }
-      for (const anchor of dendrogramAnchors.values()) {
         specs.push({
           key: anchor.key,
           safeName: anchor.safeName,
@@ -399,39 +383,20 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             angle: anchor.colorAngle,
             colorSpace: graphOutputColorSpace,
           }),
-          opacity: predicate(anchor) ? 1 : DIMMED_OPACITY,
+          opacity: dendrogramActivePredicate()(anchor) ? 1 : DIMMED_OPACITY,
         });
       }
       return specs;
     });
 
-    // Keys whose image is actually drawn; the point layer hides their core dot
-    // (the glow stays). Derived from imageSpecs so "core hidden" tracks "image
-    // shown" exactly.
-    const imageShownKeys = createMemo(
-      () => new Set(imageSpecs().map((spec) => spec.key)),
-    );
-    const forcedImageLabelKeys = createMemo(() => {
-      const shown = imageShownKeys();
-      const keys = new Set<string>();
-      for (const key of forcedLeafImageKeys()) {
-        if (shown.has(key)) keys.add(key);
-      }
-      return keys;
-    });
-
     // Merge nodes whose exemplar image is drawn; the dendrogram layer hides
     // their node dot the same way.
-    const anchoredNodeIndexes = createMemo(() => {
-      const nodeIndexes = new Set(
-        props.dendrogramImageAnchors().map((anchor) => anchor.nodeIndex),
-      );
-      const selectedDendrogramAnchor = props.selectedDendrogramAnchor();
-      if (selectedDendrogramAnchor) {
-        nodeIndexes.add(selectedDendrogramAnchor.nodeIndex);
-      }
-      return nodeIndexes;
-    });
+    const anchoredNodeIndexes = createMemo(
+      () =>
+        new Set(
+          props.dendrogramImageAnchors().map((anchor) => anchor.nodeIndex),
+        ),
+    );
 
     // The selected font's merge ancestry, stroked in its cluster color.
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
@@ -490,33 +455,25 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     });
     const pointLabelLayer = createPointLabelLayer({
       labels: props.pointLabels,
-      // The image layer's screen-space thinning + viewport cull set the label
-      // density too (`imageKeys` is computed whether or not images are shown).
-      visibleKeys: props.imageKeys,
-      activeKeys: props.filteredKeys,
-      showImages: props.showImages,
-      showFontNames: props.showFontNames,
-      forcedImageLabelKeys,
+      presentations: pointPresentationByKey,
       colorSpace: graphOutputColorSpace,
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
     const pointLayer = createPointLayer({
       points: props.points,
-      showCore: props.showPointCore,
       colorSpace: graphOutputColorSpace,
-      activePredicate,
-      imageShownKeys,
+      activePredicate: pointActivePredicate,
+      coreVisibleKeys: pointCoreVisibleKeys,
       pixelRatio,
       glowScale: compositor.glowScale,
       requestRender: scheduleRender,
     });
     const dendrogramAliasHaloLayer = createPointLayer({
       points: props.dendrogramNodeDots,
-      showCore: () => false,
       colorSpace: graphOutputColorSpace,
-      activePredicate,
-      imageShownKeys: () => NO_IMAGE_KEYS,
+      activePredicate: dendrogramActivePredicate,
+      coreVisibleKeys: () => NO_CORE_KEYS,
       pixelRatio,
       glowScale: compositor.glowScale,
       requestRender: scheduleRender,
@@ -553,13 +510,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- effect: glow / font-name toggles ---------------------------------
     // `renderFrame` switches between the bloom and straight paths on `glow`
-    // and gates the label layer on font-name / selected-image visibility, but
-    // it reads those accessors untracked (it runs in rAF), so subscribe here.
+    // and gates the label layer on derived point presentation, but it reads
+    // those accessors untracked (it runs in rAF), so subscribe here.
     createEffect(() => {
       props.glow();
-      props.showFontNames();
       props.showTreemapBoundaries();
-      forcedImageLabelKeys();
+      hasVisiblePointLabels();
       scheduleRender();
     });
 

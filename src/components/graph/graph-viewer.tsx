@@ -23,11 +23,7 @@ import {
   SAMPLE_IMAGE_BOX_HEIGHT_PX,
   SAMPLE_IMAGE_BOX_WIDTH_PX,
 } from './constants';
-import {
-  fontPoints,
-  getGraphPointByKey,
-  getGraphPointsByFamilyName,
-} from './font-point-index';
+import { fontPoints, getGraphPointByKey } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { SelectedFontActions } from './selected-font-actions';
 import {
@@ -148,11 +144,13 @@ export function GraphViewer(props: GraphViewerProps) {
   );
 
   const showPointCore = createMemo(() => {
-    const capabilities = GRAPH_MODE_CAPABILITIES[appState.ui.graphMode];
-    return (
-      capabilities.showPointCore ||
-      (capabilities.canShowTreemapBoundaries && !props.showTreemapBoundaries)
-    );
+    if (appState.ui.graphMode === 'rectangular-treemap') {
+      return !props.showTreemapBoundaries;
+    }
+    if (appState.ui.graphMode === 'voronoi-treemap') {
+      return props.showTreemapBoundaries;
+    }
+    return GRAPH_MODE_CAPABILITIES[appState.ui.graphMode].showPointCore;
   });
 
   const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
@@ -168,29 +166,23 @@ export function GraphViewer(props: GraphViewerProps) {
   );
 
   // Merge-node exemplar images for the dendrogram mode, following the images
-  // toggle and the same hex-grid image thinning used by ordinary graph points.
+  // toggle and the same screen-space thinning used by ordinary graph points.
   // This memo is the single source of the visible merge-node images: the GL
   // image layer draws exactly these, and image-box hit-testing resolves against
-  // the same set. A selected alias remains visible like a selected ordinary
-  // graph point. Dot hit-testing is independent so image-hidden nodes still
+  // the same set. Dot hit-testing is independent so image-hidden nodes still
   // behave like selectable graph points.
   const dendrogramNodeImageAnchors = createMemo<DendrogramImageAnchor[]>(() => {
-    const anchors = new Map<string, DendrogramImageAnchor>();
-    if (props.showImages) {
-      const keys = graph.visibleDendrogramImageKeys();
-      for (const anchor of dendrogramImageAnchors()) {
-        if (keys.has(anchor.key)) anchors.set(anchor.key, anchor);
-      }
-    }
-    const selectedAnchor = selectedDendrogramAnchor();
-    if (selectedAnchor) anchors.set(selectedAnchor.key, selectedAnchor);
-    return [...anchors.values()];
+    if (!props.showImages) return [];
+    const keys = graph.visibleDendrogramImageKeys();
+    return dendrogramImageAnchors().filter((anchor) => keys.has(anchor.key));
   });
 
   // The GL layer's name labels follow the layout actually in effect: the
   // tree leaf labels while a dendrogram is drawn. Map/scatter labels normally
-  // sit below each point; when treemap boundaries replace the point cores and
-  // the user hides samples, they occupy the exact core center instead.
+  // sit below each point; treemap labels occupy the point center when cell
+  // boundaries replace the user-hidden samples. Thinning controls visibility
+  // separately; the GL label layer moves an individual centered label below
+  // any sample image forced by selection.
   const pointLabels = createMemo<GraphPointLabel[]>(() =>
     dendrogramTreeLayout()
       ? dendrogramLeafLabels()
@@ -202,7 +194,7 @@ export function GraphViewer(props: GraphViewerProps) {
           orientation:
             GRAPH_MODE_CAPABILITIES[appState.ui.graphMode]
               .canShowTreemapBoundaries &&
-            !showPointCore() &&
+            props.showTreemapBoundaries &&
             !props.showImages
               ? ('centered' as const)
               : ('horizontal' as const),
@@ -420,12 +412,11 @@ export function GraphViewer(props: GraphViewerProps) {
           zoomFactor={viewport.zoomFactor}
           points={fontPoints}
           getPointByKey={getGraphPointByKey}
-          getPointsByFamilyName={getGraphPointsByFamilyName}
           filteredKeys={() => appState.fonts.filteredKeys}
           selectedKey={selection.selectedKey}
           selectedDendrogramAnchor={selectedDendrogramAnchor}
           selectedFamily={selection.selectedFamilyName}
-          imageKeys={graph.visibleImageKeys}
+          visibleDetailKeys={graph.visibleDetailKeys}
           showImages={() => props.showImages}
           showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}

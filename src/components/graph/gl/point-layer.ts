@@ -37,16 +37,14 @@ const FULL_OPACITY = () => 1;
 
 export interface PointLayerProps {
   points: Accessor<GraphPointData[]>;
-  /** Whether sharp core dots are drawn; the halo remains independent. */
-  showCore: Accessor<boolean>;
   /** Encoded RGB space of the renderer's drawing buffer. */
   colorSpace: GraphOutputColorSpace;
   /** Marks a point active (full) vs dimmed (filtered-out / inactive weight). */
   activePredicate: Accessor<(point: GraphPointData) => boolean>;
   /** Extra per-point opacity multiplier; defaults to fully opaque. */
   opacityForPoint?: Accessor<(point: GraphPointData) => number>;
-  /** Keys whose sample image is drawn; their core dot is hidden (glow stays). */
-  imageShownKeys: Accessor<Set<string>>;
+  /** Keys whose primitive presentation enables the sharp core dot. */
+  coreVisibleKeys: Accessor<Set<string>>;
   /** Device pixel ratio; sprite size = CSS px × this. */
   pixelRatio: Accessor<number>;
   /** The glow buffer's resolution scale (applied to the halo sprite in-shader). */
@@ -67,8 +65,8 @@ export interface PointLayerProps {
  * - `aState` — 0 for active points, 1 for dimmed (filtered-out / inactive
  *   weight) points.
  * - `aOpacity` — an extra per-point opacity multiplier, normally 1.
- * - `aHideCore` — 1 for points whose sample image is drawn (the core dot is
- *   suppressed there; only the core program reads it, so the glow still shows).
+ * - `aCoreVisible` — 1 for points whose primitive presentation enables the
+ *   core dot; only the core program reads it, so the glow stays independent.
  *
  * Everything follows the accessors via effects; the render loop simply shows the
  * core or halo object per pass, so there is no imperative per-frame API.
@@ -94,7 +92,6 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     uniforms: {
       uPixelRatio: { value: 1 },
       uCore: { value: CORE },
-      uShowCore: { value: 1 },
     },
     vertexShader: coreVertexShader,
     fragmentShader: coreFragmentShader,
@@ -166,7 +163,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
       new Float32BufferAttribute(new Float32Array(count), 1),
     );
     geometry.setAttribute(
-      'aHideCore',
+      'aCoreVisible',
       new Float32BufferAttribute(new Float32Array(count), 1),
     );
     geometry.setDrawRange(0, count);
@@ -223,18 +220,18 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     attribute.needsUpdate = true;
   };
 
-  /** Flags points whose image is shown so the core shader drops their dot. */
-  const setHiddenCores = (
+  /** Applies the already-derived per-point core visibility primitive. */
+  const setCoreVisibility = (
     pointData: GraphPointData[],
-    imageShownKeys: Set<string>,
+    coreVisibleKeys: Set<string>,
   ) => {
-    const attribute = geometry.getAttribute('aHideCore');
+    const attribute = geometry.getAttribute('aCoreVisible');
     // Guard against running before the matching geometry has been built.
     if (!attribute || attribute.count !== pointData.length) return;
 
     const flags = attribute.array as Float32Array;
     for (const [index, point] of pointData.entries()) {
-      flags[index] = imageShownKeys.has(point.key) ? 1 : 0;
+      flags[index] = coreVisibleKeys.has(point.key) ? 1 : 0;
     }
     attribute.needsUpdate = true;
   };
@@ -252,7 +249,7 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
       setColors(pointData);
       setActiveState(pointData, props.activePredicate());
       setOpacity(pointData, props.opacityForPoint?.() ?? FULL_OPACITY);
-      setHiddenCores(pointData, props.imageShownKeys());
+      setCoreVisibility(pointData, props.coreVisibleKeys());
     });
     props.requestRender();
   });
@@ -269,17 +266,10 @@ export function createPointLayer(props: PointLayerProps): PointLayer {
     props.requestRender();
   });
 
-  // Core visibility: hide the data dot for samples whose image is drawn (the
-  // glow keeps showing — only the core program reads aHideCore).
+  // Per-point core visibility is already resolved by the presentation owner;
+  // the glow remains independent because only the core shader reads it.
   createEffect(() => {
-    setHiddenCores(props.points(), props.imageShownKeys());
-    props.requestRender();
-  });
-
-  // Layout-level core visibility is one uniform update; per-point image
-  // suppression remains independently encoded by aHideCore.
-  createEffect(() => {
-    coreMaterial.uniforms['uShowCore']!.value = props.showCore() ? 1 : 0;
+    setCoreVisibility(props.points(), props.coreVisibleKeys());
     props.requestRender();
   });
 
