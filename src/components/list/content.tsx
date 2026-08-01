@@ -7,6 +7,7 @@ import {
   on,
   onCleanup,
   Show,
+  untrack,
 } from 'solid-js';
 import { createVirtualizer } from '@tanstack/solid-virtual';
 import { toast } from 'solid-sonner';
@@ -204,13 +205,21 @@ export function ListContent() {
     const viewportHeight = scrollViewportHeight();
     if (itemCount === 0 || viewportHeight === 0) return;
 
+    const selectedKey = untrack(() => appState.ui.selectedFontKey);
+    const selectedIndex = selectedKey
+      ? leafIndexByKey().get(selectedKey)
+      : undefined;
     const bufferItemCount = circularBufferItemCount();
     if (bufferItemCount === 0) {
-      virtualizer.scrollToIndex(0, { align: 'start' });
+      virtualizer.scrollToIndex(selectedIndex ?? 0, {
+        align: selectedIndex === undefined ? 'start' : 'center',
+      });
       return;
     }
 
-    virtualizer.scrollToIndex(bufferItemCount, { align: 'start' });
+    virtualizer.scrollToIndex(bufferItemCount + (selectedIndex ?? 0), {
+      align: selectedIndex === undefined ? 'start' : 'center',
+    });
   });
 
   createEffect(
@@ -276,18 +285,18 @@ export function ListContent() {
         onValueChange={setListPreviewText}
       />
       <div class='relative min-h-0 w-full flex-1'>
-        <Show
-          when={filteredLeafItems().length > 0}
-          fallback={<NoResultsFound />}
+        <div
+          ref={listScrollElement}
+          class='size-full overflow-y-scroll'
+          onWheel={markDirectScrollInput}
+          onTouchMove={markDirectScrollInput}
+          onPointerMove={(event) => {
+            if (event.buttons !== 0) markDirectScrollInput();
+          }}
         >
-          <div
-            ref={listScrollElement}
-            class='size-full overflow-y-scroll'
-            onWheel={markDirectScrollInput}
-            onTouchMove={markDirectScrollInput}
-            onPointerMove={(event) => {
-              if (event.buttons !== 0) markDirectScrollInput();
-            }}
+          <Show
+            when={filteredLeafItems().length > 0}
+            fallback={<NoResultsFound />}
           >
             <ul
               class='relative w-full'
@@ -333,7 +342,9 @@ export function ListContent() {
                 }}
               </For>
             </ul>
-          </div>
+          </Show>
+        </div>
+        <Show when={filteredLeafItems().length > 0}>
           <div class='pointer-events-none absolute inset-x-0 top-1/2 z-10 h-16 -translate-y-1/2 border-y' />
         </Show>
       </div>
