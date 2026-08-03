@@ -13,7 +13,6 @@ import {
   SelectContent,
   SelectHiddenSelect,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import {
@@ -43,8 +42,8 @@ import {
 import { NumberProperty } from './number-property';
 import { ModelProperty } from './model-property';
 import { ControlPropertySection } from './property-section';
+import { SelectProperty } from './select-property';
 import { SwitchProperty } from './switch-property';
-import { TextProperty } from './text-property';
 import { GenerateButton } from './generate-button';
 
 /**
@@ -419,49 +418,46 @@ export function ControlContent() {
               isChanged={isRenderingSectionChanged()}
               onRestore={restoreRendering}
             >
-              <TextProperty
-                label={t.controlPanel.fonts()}
-                class='mr-1 gap-0.5'
-                isChanged={isDraftStringChanged(
-                  'rendering-font-set',
-                  appState.session.algorithm.rendering.font_set,
+              <Select
+                name='rendering-font-set'
+                options={FONT_SET_KEYS}
+                optionTextValue={fontSetLabel}
+                disallowEmptySelection
+                defaultValue={appState.session.algorithm.rendering.font_set}
+                onChange={() => markDraftChanged()}
+                itemComponent={(props) => (
+                  <>
+                    <SelectItem item={props.item}>
+                      {fontSetLabel(props.item.rawValue)}
+                    </SelectItem>
+                    <Show when={props.item.rawValue === 'system_fonts'}>
+                      <div class='my-1 w-full border-t' />
+                    </Show>
+                  </>
                 )}
               >
-                <Select
-                  name='rendering-font-set'
-                  options={FONT_SET_KEYS}
-                  optionTextValue={fontSetLabel}
-                  disallowEmptySelection
-                  defaultValue={appState.session.algorithm.rendering.font_set}
-                  onChange={() => markDraftChanged()}
-                  itemComponent={(props) => (
-                    <>
-                      <SelectItem item={props.item}>
-                        {fontSetLabel(props.item.rawValue)}
-                      </SelectItem>
-                      <Show when={props.item.rawValue === 'system_fonts'}>
-                        <div class='my-1 w-full border-t' />
-                      </Show>
-                    </>
+                <SelectHiddenSelect />
+                <SelectProperty
+                  label={t.controlPanel.fonts()}
+                  isChanged={isDraftStringChanged(
+                    'rendering-font-set',
+                    appState.session.algorithm.rendering.font_set,
                   )}
                 >
-                  <SelectHiddenSelect />
-                  <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-                    <SelectValue<FontSet>
-                      class='mr-2.5 min-w-0 flex-1 text-right'
-                      classList={{
-                        'text-primary': isDraftStringChanged(
-                          'rendering-font-set',
-                          appState.session.algorithm.rendering.font_set,
-                        ),
-                      }}
-                    >
-                      {(state) => fontSetLabel(state.selectedOption())}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-              </TextProperty>
+                  <SelectValue<FontSet>
+                    class='mr-2.5 min-w-0 flex-1 text-right'
+                    classList={{
+                      'text-primary': isDraftStringChanged(
+                        'rendering-font-set',
+                        appState.session.algorithm.rendering.font_set,
+                      ),
+                    }}
+                  >
+                    {(state) => fontSetLabel(state.selectedOption())}
+                  </SelectValue>
+                </SelectProperty>
+                <SelectContent />
+              </Select>
               <NumberProperty
                 label={t.controlPanel.textSize()}
                 name='rendering-font-size'
@@ -501,48 +497,45 @@ export function ControlContent() {
               isChanged={isClusteringSectionChanged()}
               onRestore={restoreClustering}
             >
-              <TextProperty
-                label={t.controlPanel.linkageMethod()}
-                class='mr-1 gap-0.5'
-                isChanged={isDraftStringChanged(
-                  'clustering-method',
-                  appState.session.algorithm.clustering.method,
+              <Select
+                name='clustering-method'
+                options={
+                  Object.keys(CLUSTERING_METHOD_LABELS) as ClusteringMethod[]
+                }
+                optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
+                disallowEmptySelection
+                defaultValue={appState.session.algorithm.clustering.method}
+                onChange={() => markDraftChanged()}
+                itemComponent={(props) => (
+                  <SelectItem item={props.item}>
+                    {CLUSTERING_METHOD_LABELS[props.item.rawValue]}
+                  </SelectItem>
                 )}
               >
-                <Select
-                  name='clustering-method'
-                  options={
-                    Object.keys(CLUSTERING_METHOD_LABELS) as ClusteringMethod[]
-                  }
-                  optionTextValue={(method) => CLUSTERING_METHOD_LABELS[method]}
-                  disallowEmptySelection
-                  defaultValue={appState.session.algorithm.clustering.method}
-                  onChange={() => markDraftChanged()}
-                  itemComponent={(props) => (
-                    <SelectItem item={props.item}>
-                      {CLUSTERING_METHOD_LABELS[props.item.rawValue]}
-                    </SelectItem>
+                <SelectHiddenSelect />
+                <SelectProperty
+                  label={t.controlPanel.linkageMethod()}
+                  isChanged={isDraftStringChanged(
+                    'clustering-method',
+                    appState.session.algorithm.clustering.method,
                   )}
                 >
-                  <SelectHiddenSelect />
-                  <SelectTrigger class='h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
-                    <SelectValue<ClusteringMethod>
-                      class='mr-2.5 min-w-0 flex-1 text-right'
-                      classList={{
-                        'text-primary': isDraftStringChanged(
-                          'clustering-method',
-                          appState.session.algorithm.clustering.method,
-                        ),
-                      }}
-                    >
-                      {(state) =>
-                        CLUSTERING_METHOD_LABELS[state.selectedOption()]
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-              </TextProperty>
+                  <SelectValue<ClusteringMethod>
+                    class='mr-2.5 min-w-0 flex-1 text-right'
+                    classList={{
+                      'text-primary': isDraftStringChanged(
+                        'clustering-method',
+                        appState.session.algorithm.clustering.method,
+                      ),
+                    }}
+                  >
+                    {(state) =>
+                      CLUSTERING_METHOD_LABELS[state.selectedOption()]
+                    }
+                  </SelectValue>
+                </SelectProperty>
+                <SelectContent />
+              </Select>
               <SwitchProperty
                 label={t.controlPanel.preprocessPca()}
                 name='clustering-enable-preprocess-pca'
