@@ -267,7 +267,8 @@ export function ControlContent() {
     e.preventDefault();
     if (hasDraftChanges()) {
       void handleRun(
-        isAnalysisSectionChanged() || isClusteringSectionChanged()
+        !isRenderingSectionChanged() &&
+          (isAnalysisSectionChanged() || isClusteringSectionChanged())
           ? 'in_place_changed'
           : 'fresh',
       );
@@ -607,7 +608,8 @@ export function ControlContent() {
           hasSession={Boolean(appState.session.session_id)}
           hasChanges={hasDraftChanges()}
           primaryMode={
-            isAnalysisSectionChanged() || isClusteringSectionChanged()
+            !isRenderingSectionChanged() &&
+            (isAnalysisSectionChanged() || isClusteringSectionChanged())
               ? 'in_place_changed'
               : 'fresh'
           }
