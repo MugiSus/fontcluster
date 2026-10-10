@@ -8,6 +8,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:wayland:nvidia": "env -u WEBKIT_DISABLE_DMABUF_RENDERER GDK_BACKEND=wayland __NV_DISABLE_EXPLICIT_SYNC=1 pnpm tauri dev",
     "build": "vite build",
     "serve": "vite preview",
     "release": "cargo release --manifest-path src-tauri/Cargo.toml",
@@ -17,6 +18,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test:rendering": "tsc -p tests/tsconfig.json --noEmit && node --experimental-strip-types --conditions=browser --test tests/render-scheduler.test.mjs",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
   },
   "license": "GPL-2.0-or-later",
