@@ -124,7 +124,13 @@ pub fn run() {
     }
     crate::core::start_plugin_bridge_server(app_state.clone());
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Keep native refresh-rate preferences in the WebView lifecycle. The graph
+    // continues to use requestAnimationFrame and renders only when invalidated.
+    #[cfg(target_os = "macos")]
+    let builder = builder.plugin(tauri_plugin_macos_fps::init());
+
+    builder
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())

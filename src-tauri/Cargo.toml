@@ -87,6 +87,7 @@ petal-decomposition = { version = "0.9", features = ["openblas-system"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 petal-decomposition = "0.9"
+tauri-plugin-macos-fps = "0.1.0"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 petal-decomposition = { version = "0.9", features = ["intel-mkl-static"] }

@@ -15,6 +15,42 @@ This command applies the NVIDIA explicit-sync workaround to this process and its
 
 This workaround fixes the startup path, not every frame-rate limitation. On the tested WebKitGTK 2.52.6 / NVIDIA 615.71.09 system, `drmWaitVBlank` returns `Operation not supported`; WebKit's fallback display timer runs at roughly 60 Hz. A graph-free, full-screen WebGL clear can still fall below that rate. Do not interpret a fast JavaScript render submission or passing rendering tests as proof of smooth on-screen presentation.
 
+## High refresh rate on macOS
+
+The macOS build registers [tauri-plugin-macos-fps](https://github.com/userFRM/tauri-plugin-macos-fps) for every WebView. It disables WebKit's `PreferPageRenderingUpdatesNear60FPSEnabled` preference so `requestAnimationFrame` can follow a high-refresh display. No frontend timer or fixed 120 FPS rendering loop is added; the graph still renders on demand.
+
+The plugin targets the cap on macOS 13–15. Its maintainer reports native refresh rates without the workaround on macOS 26. This integration has not yet been measured on a Mac. It removes a preference, not GPU workload, power-saving limits, or the display's configured refresh-rate limit. The plugin uses a private WebKit API, so this build is intended for the existing direct DMG distribution, not the Mac App Store.
+
+Start normally with `pnpm tauri dev`. For an A/B comparison, restart with the plugin disabled:
+
+```sh
+pnpm tauri dev --config '{"plugins":{"macos-fps":{"enabled":false}}}'
+```
+
+On the high-refresh display, run this finite diagnostic in the app's Web Inspector console, then pan or zoom during the measurement. Repeat with the plugin enabled and disabled, keeping window size and display settings identical:
+
+```js
+async function measureAnimationCadence() {
+  const times = [];
+  for (let i = 0; i < 241; i++) {
+    times.push(await new Promise(requestAnimationFrame));
+    if (document.visibilityState !== 'visible') {
+      throw new Error('Keep the app visible for the whole measurement');
+    }
+  }
+  const intervals = times.slice(1).map((time, i) => time - times[i]);
+  intervals.sort((a, b) => a - b);
+  return {
+    animationCallbacksPerSecond: 240000 / (times[240] - times[0]),
+    intervalMedianMs: intervals[120],
+    intervalP95Ms: intervals[227],
+  };
+}
+await measureAnimationCadence();
+```
+
+About 8.3 ms indicates a 120 Hz callback cadence; about 16.7 ms indicates 60 Hz. This measures animation callbacks, not frames physically presented by the compositor. Compare visible motion too. The macOS plugin has no effect on Linux's separate WebKitGTK fallback described above. WebKit's `WEBKIT_DISPLAY_REFRESH_THROTTLE_FPS` only throttles an existing display cadence; setting it to 120 does not raise the fallback timer's rate.
+
 ## Acknowledgements
 
 FontCluster's font-similarity engine is built on **FontCLIP**, and this app would not exist without the research behind it. Deep thanks to its authors:
