@@ -1,4 +1,11 @@
-import { type Accessor, createEffect, onCleanup } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  indexArray,
+  onCleanup,
+} from 'solid-js';
 import {
   Color,
   Group,
@@ -19,7 +26,6 @@ import { imageFragmentShader, imageVertexShader } from './shaders/image';
 
 /** One sample image to draw, centered (in world space) on its point. */
 export interface ImageSpec {
-  /** Stable font key, used to pool meshes across updates. */
   key: string;
   /** Sample folder name, used to build the texture URL. */
   safeName: string;
@@ -31,199 +37,140 @@ export interface ImageSpec {
   opacity: number;
 }
 
-/**
- * The cluster-tinted sample images.
- *
- * Each image is a quad textured with the font's `sample.png`, tinted by its
- * cluster color and masked by the sample's luminance (see image-shaders). The
- * quad is fit inside a fixed CSS-pixel box without distorting the texture's
- * aspect ratio (the SVG `xMidYMid meet` behaviour).
- *
- * Meshes are pooled by font key, and textures are cached by sample name so
- * revisiting a font does not reload it. The shown set, image-source identity
- * and zoom all follow their accessors via effects; `requestRender` repaints
- * once an async texture arrives (and after each reactive update).
- */
 export interface ImageLayerProps {
-  /** The images to show; meshes are pooled by `spec.key` across updates. */
   specs: Accessor<ImageSpec[]>;
-  /** Image-source identity for pooled meshes / textures (drops all on change). */
+  /** Image-source identity; cached textures belong to exactly one session. */
   sessionKey: Accessor<string>;
-  /** Resolves a sample folder name to a URL loadable by three.js. */
   sampleImageUrl: (safeName: string) => string | undefined;
   /** World-units-per-CSS-pixel factor so the box stays constant on zoom. */
   zoom: Accessor<number>;
-  /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
 }
 
-interface ImageEntry {
-  safeName: string;
-  mesh: Mesh;
-  material: ShaderMaterial;
-  /** Texture aspect ratio (width / height), known only once it has loaded. */
-  aspect?: number | undefined;
+interface SampleTexture {
+  texture: Texture;
+  isReady: Accessor<boolean>;
 }
 
-/** Creates the image layer; returns the scene object to add. */
+/**
+ * Samples use one mesh/material per visible array slot, managed by Solid's
+ * indexArray. Changing selection replaces the slot's texture and uniforms,
+ * keeping its compiled GPU program alive even when no other sample is shown.
+ * Textures (including in-flight loads) are shared by safe name per session.
+ */
 export function createImageLayer(props: ImageLayerProps): Object3D {
-  // Stable repaint callback; captured so the async texture load (which runs
-  // outside any tracked scope) doesn't read it off the reactive props object.
-  // eslint-disable-next-line solid/reactivity -- a plain callback, never reactive
-  const requestRender = props.requestRender;
   const group = new Group();
   group.renderOrder = 2;
-
-  // One shared unit quad; per-mesh scale handles the fit sizing.
   const quad = new PlaneGeometry(1, 1);
   const textureLoader = new TextureLoader();
-  const textureCache = new Map<string, Texture>();
-  const entries = new Map<string, ImageEntry>();
-  let zoom = 1;
-  // The image source the pooled meshes / cached textures belong to. The same
-  // `safeName` may map to a different image under another key, so everything
-  // is dropped when it changes (see update) to avoid mixing the sources.
-  let currentSessionKey: string | null = null;
 
-  const aspectOf = (texture: Texture): number | undefined => {
-    const image = texture.image as
-      | { width?: number; height?: number }
-      | undefined;
-    if (image?.width && image.height) return image.width / image.height;
-    return undefined;
-  };
-
-  /** Scales a mesh to the largest size fitting the box at the texture aspect. */
-  const applyFit = (entry: ImageEntry) => {
-    let width = SAMPLE_IMAGE_BOX_WIDTH_PX;
-    let height = SAMPLE_IMAGE_BOX_HEIGHT_PX;
-    const aspect = entry.aspect;
-    if (aspect && Number.isFinite(aspect) && aspect > 0) {
-      const boxAspect = SAMPLE_IMAGE_BOX_WIDTH_PX / SAMPLE_IMAGE_BOX_HEIGHT_PX;
-      if (aspect > boxAspect) height = SAMPLE_IMAGE_BOX_WIDTH_PX / aspect;
-      else width = SAMPLE_IMAGE_BOX_HEIGHT_PX * aspect;
-    }
-    entry.mesh.scale.set(width * zoom, height * zoom, 1);
-  };
-
-  const createEntry = (
-    spec: ImageSpec,
-    sessionKey: string,
-    url: string,
-  ): ImageEntry => {
-    const material = new ShaderMaterial({
-      uniforms: {
-        uMap: { value: null },
-        uColor: { value: new Color() },
-        uOpacity: { value: 1 },
-      },
-      vertexShader: imageVertexShader,
-      fragmentShader: imageFragmentShader,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      blending: NormalBlending,
+  const getSampleTexture = createMemo(() => {
+    props.sessionKey();
+    const cache = new Map<string, SampleTexture>();
+    let isDisposed = false;
+    onCleanup(() => {
+      isDisposed = true;
+      for (const entry of cache.values()) entry.texture.dispose();
+      cache.clear();
     });
-    const mesh = new Mesh(quad, material);
-    mesh.frustumCulled = false;
-    mesh.renderOrder = 2;
-    group.add(mesh);
-    const entry: ImageEntry = { safeName: spec.safeName, mesh, material };
 
-    const cached = textureCache.get(spec.safeName);
-    if (cached) {
-      material.uniforms['uMap']!.value = cached;
-      entry.aspect = aspectOf(cached);
-    } else {
-      textureLoader.load(url, (texture) => {
-        // Drop loads that resolve after an image-source switch — caching them
-        // would reintroduce the old source's image under this safeName.
-        if (sessionKey !== currentSessionKey) {
+    return (safeName: string, url: string): SampleTexture => {
+      const cached = cache.get(safeName);
+      if (cached) return cached;
+      const [isReady, setIsReady] = createSignal(false);
+      const texture = textureLoader.load(
+        url,
+        () => {
+          // Old session loads must neither revive resources nor repaint.
+          if (!isDisposed) setIsReady(true);
+        },
+        undefined,
+        () => {
+          if (isDisposed) return;
+          // A transient failure must not poison this session's cache. A later
+          // selection/visibility update may request the sample again.
+          cache.delete(safeName);
           texture.dispose();
-          return;
-        }
-        texture.minFilter = LinearFilter;
-        texture.magFilter = LinearFilter;
-        texture.generateMipmaps = false;
-        textureCache.set(spec.safeName, texture);
-        if (entries.get(spec.key) === entry) {
-          material.uniforms['uMap']!.value = texture;
-          entry.aspect = aspectOf(texture);
-          applyFit(entry);
-          requestRender();
-        }
+        },
+      );
+      texture.minFilter = LinearFilter;
+      texture.magFilter = LinearFilter;
+      texture.generateMipmaps = false;
+      const entry = { texture, isReady };
+      // Store the loader's texture immediately, so aliases share pending loads.
+      cache.set(safeName, entry);
+      return entry;
+    };
+  });
+
+  const meshes = indexArray(
+    () => props.specs(),
+    (spec) => {
+      const material = new ShaderMaterial({
+        uniforms: {
+          uMap: { value: null },
+          uColor: { value: new Color() },
+          uOpacity: { value: 1 },
+        },
+        vertexShader: imageVertexShader,
+        fragmentShader: imageFragmentShader,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        blending: NormalBlending,
       });
-    }
-    return entry;
-  };
+      const mesh = new Mesh(quad, material);
+      mesh.frustumCulled = false;
+      mesh.renderOrder = 2;
+      group.add(mesh);
 
-  /** Shows exactly `specs`, creating/removing pooled meshes as needed. */
-  const update = (specs: ImageSpec[], sessionKey: string) => {
-    // On an image-source switch, drop every pooled mesh and cached texture: the
-    // same safeName / font key may refer to a different image now, so reusing
-    // them would mix the previous source's images with the new ones.
-    if (sessionKey !== currentSessionKey) {
-      for (const entry of entries.values()) {
-        group.remove(entry.mesh);
-        entry.material.dispose();
-      }
-      entries.clear();
-      for (const texture of textureCache.values()) texture.dispose();
-      textureCache.clear();
-      currentSessionKey = sessionKey;
-    }
+      const sample = createMemo(() => {
+        const getTexture = getSampleTexture();
+        const safeName = spec().safeName;
+        const url = safeName ? props.sampleImageUrl(safeName) : undefined;
+        return url ? getTexture(safeName, url) : null;
+      });
 
-    const wanted = new Set(specs.map((spec) => spec.key));
+      createEffect(() => {
+        const current = spec();
+        (material.uniforms['uColor']!.value as Color).copy(current.color);
+        material.uniforms['uOpacity']!.value = current.opacity;
+        mesh.position.set(current.x, current.y, 2);
+        props.requestRender();
+      });
 
-    // Remove meshes whose font is no longer shown (textures stay cached).
-    for (const [key, entry] of entries) {
-      if (wanted.has(key)) continue;
-      group.remove(entry.mesh);
-      entry.material.dispose();
-      entries.delete(key);
-    }
+      createEffect(() => {
+        const entry = sample();
+        mesh.visible = entry?.isReady() ?? false;
+        material.uniforms['uMap']!.value = entry?.texture ?? null;
+        const image = entry?.texture.image as
+          | { width?: number; height?: number }
+          | undefined;
+        const aspect =
+          image?.width && image.height ? image.width / image.height : 0;
+        let width = SAMPLE_IMAGE_BOX_WIDTH_PX;
+        let height = SAMPLE_IMAGE_BOX_HEIGHT_PX;
+        if (aspect > 0 && Number.isFinite(aspect)) {
+          if (aspect > width / height) height = width / aspect;
+          else width = height * aspect;
+        }
+        const zoom = props.zoom();
+        mesh.scale.set(width * zoom, height * zoom, 1);
+        props.requestRender();
+      });
 
-    for (const spec of specs) {
-      if (!spec.safeName) continue;
-      const url = props.sampleImageUrl(spec.safeName);
-      if (!url) continue;
-      let entry = entries.get(spec.key);
-      if (entry && entry.safeName !== spec.safeName) {
-        group.remove(entry.mesh);
-        entry.material.dispose();
-        entries.delete(spec.key);
-        entry = undefined;
-      }
-      if (!entry) {
-        entry = createEntry(spec, sessionKey, url);
-        entries.set(spec.key, entry);
-      }
-      (entry.material.uniforms['uColor']!.value as Color).copy(spec.color);
-      entry.material.uniforms['uOpacity']!.value = spec.opacity;
-      entry.mesh.position.set(spec.x, spec.y, 2);
-      applyFit(entry);
-    }
-  };
+      onCleanup(() => {
+        group.remove(mesh);
+        material.dispose();
+      });
+      return mesh;
+    },
+  );
 
-  // Shown set / image-source identity follow their accessors.
   createEffect(() => {
-    update(props.specs(), props.sessionKey());
-    requestRender();
+    meshes();
+    props.requestRender();
   });
-  // Keep every image's box constant in CSS pixels across zoom.
-  createEffect(() => {
-    zoom = props.zoom();
-    for (const entry of entries.values()) applyFit(entry);
-    requestRender();
-  });
-
-  onCleanup(() => {
-    for (const entry of entries.values()) entry.material.dispose();
-    entries.clear();
-    for (const texture of textureCache.values()) texture.dispose();
-    textureCache.clear();
-    quad.dispose();
-  });
-
+  onCleanup(() => quad.dispose());
   return group;
 }
