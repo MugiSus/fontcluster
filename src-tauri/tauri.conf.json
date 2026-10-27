@@ -54,6 +54,9 @@
     }
   },
   "plugins": {
+    "macos-fps": {
+      "enabled": true
+    },
     "updater": {
       "active": true,
       "endpoints": [
