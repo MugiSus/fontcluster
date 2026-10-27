@@ -3,6 +3,18 @@
 
 Install at [fontcluster.mugisus.me](https://fontcluster.mugisus.me)
 
+## Development on Linux / NVIDIA / Wayland
+
+If `pnpm tauri dev` exits with `Error 71 (Protocol error) dispatching to Wayland display`, use:
+
+```sh
+pnpm dev:wayland:nvidia
+```
+
+This command applies the NVIDIA explicit-sync workaround to this process and its children, while keeping WebKit's DMA-BUF renderer enabled. It clears an inherited `WEBKIT_DISABLE_DMABUF_RENDERER`, which can allow startup at the cost of severe rendering slowdown. It does not change system settings or the standard launch command. See [WebKit issue 280210](https://bugs.webkit.org/show_bug.cgi?id=280210).
+
+This workaround fixes the startup path, not every frame-rate limitation. On the tested WebKitGTK 2.52.6 / NVIDIA 615.71.09 system, `drmWaitVBlank` returns `Operation not supported`; WebKit's fallback display timer runs at roughly 60 Hz. A graph-free, full-screen WebGL clear can still fall below that rate. Do not interpret a fast JavaScript render submission as proof of smooth on-screen presentation.
+
 ## Acknowledgements
 
 FontCluster's font-similarity engine is built on **FontCLIP**, and this app would not exist without the research behind it. Deep thanks to its authors:

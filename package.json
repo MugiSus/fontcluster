@@ -8,6 +8,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:wayland:nvidia": "env -u WEBKIT_DISABLE_DMABUF_RENDERER GDK_BACKEND=wayland __NV_DISABLE_EXPLICIT_SYNC=1 pnpm tauri dev",
     "build": "vite build",
     "serve": "vite preview",
     "release": "cargo release --manifest-path src-tauri/Cargo.toml",
