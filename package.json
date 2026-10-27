@@ -18,7 +18,6 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "test:rendering": "tsc -p tests/tsconfig.json --noEmit && node --experimental-strip-types --conditions=browser --test tests/render-scheduler.test.mjs",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check"
   },
   "license": "GPL-2.0-or-later",

@@ -17,6 +17,11 @@ operational risks, and open questions that could affect the task. If any of
 these materially change the implementation choice, list them and ask the user
 before proceeding.
 
+### Tests
+
+Do not add or generate tests unless the user explicitly requests or approves
+them. Verify changes using existing checks and direct inspection when possible.
+
 ### Existing libraries first
 
 Before writing control flow, lifecycle management, event handling, parsing,

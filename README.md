@@ -13,7 +13,7 @@ pnpm dev:wayland:nvidia
 
 This command applies the NVIDIA explicit-sync workaround to this process and its children, while keeping WebKit's DMA-BUF renderer enabled. It clears an inherited `WEBKIT_DISABLE_DMABUF_RENDERER`, which can allow startup at the cost of severe rendering slowdown. It does not change system settings or the standard launch command. See [WebKit issue 280210](https://bugs.webkit.org/show_bug.cgi?id=280210).
 
-This workaround fixes the startup path, not every frame-rate limitation. On the tested WebKitGTK 2.52.6 / NVIDIA 615.71.09 system, `drmWaitVBlank` returns `Operation not supported`; WebKit's fallback display timer runs at roughly 60 Hz. A graph-free, full-screen WebGL clear can still fall below that rate. Do not interpret a fast JavaScript render submission or passing rendering tests as proof of smooth on-screen presentation.
+This workaround fixes the startup path, not every frame-rate limitation. On the tested WebKitGTK 2.52.6 / NVIDIA 615.71.09 system, `drmWaitVBlank` returns `Operation not supported`; WebKit's fallback display timer runs at roughly 60 Hz. A graph-free, full-screen WebGL clear can still fall below that rate. Do not interpret a fast JavaScript render submission as proof of smooth on-screen presentation.
 
 ## High refresh rate on macOS
 
@@ -27,29 +27,7 @@ Start normally with `pnpm tauri dev`. For an A/B comparison, restart with the pl
 pnpm tauri dev --config '{"plugins":{"macos-fps":{"enabled":false}}}'
 ```
 
-On the high-refresh display, run this finite diagnostic in the app's Web Inspector console, then pan or zoom during the measurement. Repeat with the plugin enabled and disabled, keeping window size and display settings identical:
-
-```js
-async function measureAnimationCadence() {
-  const times = [];
-  for (let i = 0; i < 241; i++) {
-    times.push(await new Promise(requestAnimationFrame));
-    if (document.visibilityState !== 'visible') {
-      throw new Error('Keep the app visible for the whole measurement');
-    }
-  }
-  const intervals = times.slice(1).map((time, i) => time - times[i]);
-  intervals.sort((a, b) => a - b);
-  return {
-    animationCallbacksPerSecond: 240000 / (times[240] - times[0]),
-    intervalMedianMs: intervals[120],
-    intervalP95Ms: intervals[227],
-  };
-}
-await measureAnimationCadence();
-```
-
-About 8.3 ms indicates a 120 Hz callback cadence; about 16.7 ms indicates 60 Hz. This measures animation callbacks, not frames physically presented by the compositor. Compare visible motion too. The macOS plugin has no effect on Linux's separate WebKitGTK fallback described above. WebKit's `WEBKIT_DISPLAY_REFRESH_THROTTLE_FPS` only throttles an existing display cadence; setting it to 120 does not raise the fallback timer's rate.
+A high-refresh display is needed to compare the plugin enabled and disabled. The plugin does not guarantee a higher on-screen presentation rate.
 
 ## Acknowledgements
 
