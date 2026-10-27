@@ -53,6 +53,7 @@ import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingSpec } from './ring-layer';
 import { createScatterGridLayer } from './scatter-grid-layer';
 import { createTreemapLayer } from './treemap-layer';
+import { createRenderScheduler } from './create-render-scheduler';
 
 ColorManagement.define({
   [DisplayP3ColorSpace]: DisplayP3ColorSpaceImpl,
@@ -157,6 +158,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     );
 
     const scene = new Scene();
+    // All passes share the same transforms. Update once per frame below;
+    // Three's default would traverse the whole scene (and Troika's member
+    // bounds) again for every glow/backplate/sharp pass.
+    scene.matrixWorldAutoUpdate = false;
     // Orthographic, y-up: world Y is the negated graph Y (graph space is
     // y-down), so a standard camera maps it the right way up.
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0.1, 1000);
@@ -164,17 +169,14 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
     // --- on-demand render loop -------------------------------------------
     // Nothing animates continuously; render a single frame whenever a reactive
-    // dependency or an async texture asks for one. `renderFrame` runs from
-    // requestAnimationFrame — outside Solid's tracking scope — so it reads the
+    // dependency or an async texture asks for one. `renderFrame` runs
+    // outside Solid's tracking scope, so it reads the
     // signals/hooks directly (a plain value read, no subscription); the effects
-    // below only schedule a frame when those inputs change. `rafId` is the lone
-    // piece of genuine mutable state: the dedupe token for the pending frame.
-    let rafId: number | undefined;
+    // below only schedule a frame when those inputs change.
     let hasRenderedFrame = false;
 
     const renderFrame = () => {
-      rafId = undefined;
-
+      scene.updateMatrixWorld();
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
       const showLabels = hasVisiblePointLabels();
@@ -258,10 +260,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       hasRenderedFrame = true;
       canvas.style.visibility = '';
     };
-    const scheduleRender = () => {
-      if (rafId !== undefined) return;
-      rafId = window.requestAnimationFrame(renderFrame);
-    };
+    const { requestRender: scheduleRender, renderBeforePaint } =
+      createRenderScheduler(renderFrame);
 
     // --- shared derived state --------------------------------------------
     const isDark = () => colorMode() === 'dark';
@@ -511,7 +511,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- effect: glow / font-name toggles ---------------------------------
     // `renderFrame` switches between the bloom and straight paths on `glow`
     // and gates the label layer on derived point presentation, but it reads
-    // those accessors untracked (it runs in rAF), so subscribe here.
+    // those accessors untracked, so subscribe here.
     createEffect(() => {
       props.glow();
       props.showTreemapBoundaries();
@@ -571,11 +571,19 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       camera.top = -centerY + visibleHeight / 2;
       camera.bottom = -centerY - visibleHeight / 2;
       camera.updateProjectionMatrix();
-      scheduleRender();
+      renderBeforePaint();
+    });
+
+    // Graph dragging publishes at most one selection per animation frame.
+    // Finish its layer updates in that frame, just like camera updates, rather
+    // than adding another rAF between pointer input and the visible highlight.
+    createEffect(() => {
+      props.selectedKey();
+      props.selectedDendrogramAnchor();
+      renderBeforePaint();
     });
 
     onCleanup(() => {
-      if (rafId !== undefined) window.cancelAnimationFrame(rafId);
       canvas.removeEventListener(
         'webglcontextrestored',
         restoreDrawingBufferColorSpace,
