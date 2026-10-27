@@ -1,3 +1,4 @@
+import { createEffect, on, onCleanup } from 'solid-js';
 import {
   clearDraggingFont,
   commitDraggingFont,
@@ -38,6 +39,30 @@ interface SelectionTarget {
 }
 
 export function useGraphSelection(props: UseGraphSelectionProps) {
+  // Pending input belongs to this adapter; commands remain the sole owner of
+  // selection state. Hit-test every position so a fast pass over a node still
+  // selects it, but publish only the latest hit once per animation frame.
+  let pendingTarget: SelectionTarget | null = null;
+  let selectionFrame: number | undefined;
+  const cancelPendingSelection = () => {
+    if (selectionFrame !== undefined) {
+      window.cancelAnimationFrame(selectionFrame);
+      selectionFrame = undefined;
+    }
+    pendingTarget = null;
+  };
+  const clearDraggingSelection = () => {
+    cancelPendingSelection();
+    clearDraggingFont('graph');
+  };
+  onCleanup(clearDraggingSelection);
+  createEffect(
+    on(
+      () => [appState.session.session_id, appState.ui.isSessionLoading],
+      clearDraggingSelection,
+      { defer: true },
+    ),
+  );
   const selectedFontKey = () =>
     appState.ui.draggingFontKey ?? appState.ui.selectedFontKey;
   const selectedDendrogramNode = () =>
@@ -99,16 +124,32 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     return { key: nearest.key, nodeIndex: null };
   };
 
-  const trackDraggingSelection = (event: MouseEvent) => {
+  const beginDraggingSelection = (event: MouseEvent) => {
+    cancelPendingSelection();
     const target = getTargetFromMouseEvent(event);
     if (target) setDraggingFont('graph', target.key, target.nodeIndex);
   };
 
+  const trackDraggingSelection = (event: MouseEvent) => {
+    const target = getTargetFromMouseEvent(event);
+    if (!target) return;
+    pendingTarget = target;
+    if (selectionFrame !== undefined) return;
+    selectionFrame = window.requestAnimationFrame(() => {
+      selectionFrame = undefined;
+      const latest = pendingTarget;
+      pendingTarget = null;
+      if (latest) setDraggingFont('graph', latest.key, latest.nodeIndex);
+    });
+  };
+
   const selectFromMouseEvent = (event: MouseEvent) => {
-    if (appState.ui.draggingFontSource !== 'graph') {
-      const target = getTargetFromMouseEvent(event);
-      if (target) setDraggingFont('graph', target.key, target.nodeIndex);
-    }
+    // Mouseup can arrive before the next frame (or without a final move).
+    // Resolve its position first; releasing over empty space preserves the
+    // latest node touched, including a hit that has not been painted yet.
+    const target = getTargetFromMouseEvent(event) ?? pendingTarget;
+    cancelPendingSelection();
+    if (target) setDraggingFont('graph', target.key, target.nodeIndex);
     const committedKey = commitDraggingFont('graph');
     if (!committedKey) return;
 
@@ -125,8 +166,9 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     selectedDendrogramNode,
     selectedFamilyName: selectedFontFamily,
     isDragging: () => appState.ui.isDragging,
+    beginDraggingSelection,
     trackDraggingSelection,
-    clearDraggingSelection: () => clearDraggingFont('graph'),
+    clearDraggingSelection,
     selectFromMouseEvent,
   };
 }
