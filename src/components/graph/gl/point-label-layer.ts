@@ -1,4 +1,10 @@
-import { type Accessor, createEffect, onCleanup } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  onCleanup,
+  untrack,
+} from 'solid-js';
 import {
   Color,
   DoubleSide,
@@ -74,8 +80,9 @@ export interface PointLabelLayerProps {
  *
  * Labels keep a constant screen size: the glyph em-height is authored in CSS
  * px and each member scales by the world-per-px zoom factor — a matrix-only
- * update, so zooming never re-runs the worker layout. Every point keeps a
- * laid-out member, while its primitive presentation controls visibility,
+ * update, so zooming never re-runs the worker layout. Only visible labels have
+ * a laid-out member: zero-opacity members still incur Troika's per-frame CPU
+ * work and submit glyphs to the GPU. Primitive presentation controls membership,
  * sample clearance, and active/dimmed opacity without this layer consulting
  * selection, filtering, thinning, or toolbar state. The render loop owns the
  * layer's visibility across the glow passes.
@@ -110,6 +117,27 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   /** Member pool keyed by the font key, so changing layout-specific label
    *  order never assigns another font's text geometry to an existing member. */
   const members = new Map<string, Text>();
+  // Gamut mapping depends on the label data, not selection or sample clearance.
+  // Keep that expensive conversion out of the per-selection appearance effect.
+  const labelColors = createMemo(
+    () =>
+      new Map(
+        props
+          .labels()
+          .map((label) => [
+            label.key,
+            getClusterColor({ angle: label.colorAngle, colorSpace }).getHex(
+              outputColorSpace,
+            ),
+          ]),
+      ),
+  );
+  const visibleLabels = createMemo(() => {
+    const presentations = props.presentations();
+    return props
+      .labels()
+      .filter((label) => presentations.get(label.key)?.showLabel);
+  });
 
   /**
    * Applies layout-specific alignment as member transforms. Every glyph block
@@ -122,7 +150,7 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
     const zoom = props.zoom();
     const presentations = props.presentations();
 
-    for (const label of props.labels()) {
+    for (const label of visibleLabels()) {
       const member = members.get(label.key);
       if (!member) continue;
       const blockBounds = member.textRenderInfo?.blockBounds;
@@ -175,7 +203,8 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   // Text and color follow the label set / theme. Only actual text changes
   // require an async worker relayout (`sync`); alignment remains fixed.
   createEffect(() => {
-    const labels = props.labels();
+    const labels = visibleLabels();
+    const presentations = props.presentations();
     let shouldSync = false;
 
     const labelKeys = new Set(labels.map((label) => label.key));
@@ -203,33 +232,20 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
         member.text = label.text;
         shouldSync = true;
       }
-      member.color = getClusterColor({
-        angle: label.colorAngle,
-        colorSpace,
-      }).getHex(outputColorSpace);
+      member.color = labelColors().get(label.key)!;
+      member.fillOpacity = presentations.get(label.key)?.isActive
+        ? 1
+        : DIMMED_OPACITY;
     }
+    // Membership and initial appearance must be applied together. Solid does
+    // not promise ordering between separate effects after visibility changes.
+    untrack(updateMemberTransforms);
     if (shouldSync) batched.sync();
     props.requestRender();
   });
 
   // Zoom, image clearance and layout-mode changes are matrix-only updates.
   createEffect(() => updateMemberTransforms());
-
-  // Primitive visibility and active/dimmed state become fill opacity updates
-  // that the batch reads in place, so panning never resyncs text geometry.
-  createEffect(() => {
-    const presentations = props.presentations();
-    for (const label of props.labels()) {
-      const member = members.get(label.key)!;
-      const presentation = presentations.get(label.key);
-      member.fillOpacity = !presentation?.showLabel
-        ? 0
-        : presentation.isActive
-          ? 1
-          : DIMMED_OPACITY;
-    }
-    props.requestRender();
-  });
 
   onCleanup(() => {
     batched.removeEventListener('synccomplete', updateMemberTransforms);

@@ -274,6 +274,33 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const dendrogramActivePredicate = createMemo(() =>
       makeActivePredicate(props.filteredKeys()),
     );
+    // These are renderer-owned derived values. Selection changes emphasis,
+    // never a font's palette, so do not repeat gamut mapping for every sample
+    // and ring on every pointer update. Consumers only copy/read these Colors.
+    const pointColors = createMemo(
+      () =>
+        new Map(
+          props.points().map((point) => [
+            point.key,
+            getClusterColor({
+              angle: point.colorAngle,
+              colorSpace: graphOutputColorSpace,
+            }),
+          ]),
+        ),
+    );
+    const anchorColors = createMemo(
+      () =>
+        new Map(
+          props.dendrogramImageAnchors().map((anchor) => [
+            anchor.key,
+            getClusterColor({
+              angle: anchor.colorAngle,
+              colorSpace: graphOutputColorSpace,
+            }),
+          ]),
+        ),
+    );
     const pointPresentations = createMemo(() =>
       deriveGraphPointPresentations({
         points: props.points(),
@@ -323,10 +350,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         specs.push({
           x: point.x,
           y: -point.y,
-          color: getClusterColor({
-            angle: point.colorAngle,
-            colorSpace: graphOutputColorSpace,
-          }),
+          color: pointColors().get(point.key)!,
           kind: presentation.emphasis,
           opacity: presentation.isActive ? 1 : DIMMED_OPACITY,
         });
@@ -360,29 +384,23 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           safeName: point.item.meta.safe_name,
           x: point.x,
           y: -point.y,
-          color: getClusterColor({
-            angle: point.colorAngle,
-            colorSpace: graphOutputColorSpace,
-          }),
+          color: pointColors().get(point.key)!,
           opacity: presentation.isActive ? 1 : DIMMED_OPACITY,
         });
       }
 
       // Merge-node aliases use the same image thinning as
       // ordinary points upstream. Node keys live in their own namespace: the
-      // same font may represent several nodes (and its own leaf) at once, and
-      // the pooled meshes must not collide — the texture cache still dedupes
-      // by safe name, so no extra loads happen.
+      // same font may represent several nodes (and its own leaf) at once.
+      // Each spec gets its own mesh slot; the texture cache dedupes by safe
+      // name, so no extra loads happen.
       for (const anchor of props.dendrogramImageAnchors()) {
         specs.push({
           key: anchor.key,
           safeName: anchor.safeName,
           x: anchor.x,
           y: -anchor.y,
-          color: getClusterColor({
-            angle: anchor.colorAngle,
-            colorSpace: graphOutputColorSpace,
-          }),
+          color: anchorColors().get(anchor.key)!,
           opacity: dendrogramActivePredicate()(anchor) ? 1 : DIMMED_OPACITY,
         });
       }
