@@ -146,7 +146,12 @@ const dendrogramTree = createRoot(() => {
             : 0,
         parent: node?.parentIndex ?? -1,
         representativeKey: node?.representativeKey ?? null,
-        colorAngle: node?.colorAngle,
+        // Branch endpoints use the same representative-font color as their
+        // visible node/sample, including merges that span multiple clusters.
+        colorAngle: node?.representativeKey
+          ? (getGraphPointByKey(node.representativeKey)?.colorAngle ??
+            node.colorAngle)
+          : node?.colorAngle,
         mergeIndex: node?.mergeIndex ?? null,
         height: node?.height ?? 0,
       }),
@@ -215,41 +220,21 @@ const dendrogramTree = createRoot(() => {
       });
 
       if (layout.mode === 'radial-tree') {
-        if (children.length === 2) {
-          const [left, right] = children;
-          const leftElbow = polarPoint(left!.angle, parent.radius);
-          const rightElbow = polarPoint(right!.angle, parent.radius);
-          pushSegment(
-            left!.center!,
-            leftElbow,
-            node.mergeIndex,
-            node.colorAngle,
-          );
-          pushSegment(
-            right!.center!,
-            rightElbow,
-            node.mergeIndex,
-            node.colorAngle,
-          );
+        for (const child of children) {
+          const elbow = polarPoint(child.angle, parent.radius);
+          pushSegment(child.center!, elbow, node.mergeIndex, child.colorAngle);
           if (
             parent.radius > COINCIDENT_EPSILON &&
-            Math.abs(right!.angle - left!.angle) > COINCIDENT_EPSILON
+            Math.abs(child.angle - parent.angle) > COINCIDENT_EPSILON
           ) {
             arcs.push({
-              angleFrom: left!.angle,
-              angleTo: right!.angle,
+              angleFrom: Math.min(child.angle, parent.angle),
+              angleTo: Math.max(child.angle, parent.angle),
               radius: parent.radius,
               mergeIndex: node.mergeIndex,
-              colorAngle: node.colorAngle,
+              colorAngle: child.colorAngle,
             });
           }
-        } else if (children.length === 1) {
-          pushSegment(
-            children[0]!.center!,
-            parent.center,
-            node.mergeIndex,
-            node.colorAngle,
-          );
         }
       } else {
         for (const child of children) {
@@ -257,7 +242,7 @@ const dendrogramTree = createRoot(() => {
             child: child.center!,
             parent: parent.center,
             mergeIndex: node.mergeIndex,
-            colorAngle: node.colorAngle,
+            colorAngle: child.colorAngle,
           });
         }
       }
@@ -288,7 +273,7 @@ const dendrogramTree = createRoot(() => {
         item: representativePoint.item,
         x: node.center.x,
         y: node.center.y,
-        colorAngle: representativePoint.colorAngle ?? node.colorAngle,
+        colorAngle: node.colorAngle,
       };
       dots.push(alias);
       imageAnchors.push(alias);

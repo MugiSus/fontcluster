@@ -8,11 +8,11 @@ interface GraphModeCapabilities {
 }
 
 export const GRAPH_MODE_ORDER: readonly GraphMode[] = [
+  'scatter-plot',
   'radial-tree',
   'horizontal-tree',
   'rectangular-treemap',
   'voronoi-treemap',
-  'scatter-plot',
 ];
 
 export const GRAPH_MODE_CAPABILITIES: Record<GraphMode, GraphModeCapabilities> =

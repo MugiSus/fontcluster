@@ -41,7 +41,7 @@ import { coreFragmentShader, coreVertexShader } from './shaders/point';
 const EDGE_WIDTH_PX = 1;
 /** Extra CSS px around each analytic arc's bounding quad for the AA feather. */
 const ARC_AA_PAD_PX = 2;
-/** Every edge is fully opaque; color alone distinguishes its cluster scope. */
+/** Every edge is fully opaque and takes its destination node's font color. */
 const EDGE_OPACITY = 1;
 /** The selected ancestry is the mode's focal line and stays foremost. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
@@ -94,12 +94,9 @@ export interface DendrogramLayerProps {
  * `dendrogram-edges.ts`) plus a data dot at every merge node. Rendered under
  * the points (renderOrder -0.5) so the tree reads as a backplate.
  *
- * Two visual encodings are baked into per-segment vertex colors:
- * - merges whose subtree lies inside one final cluster take that cluster's
- *   color; merges spanning clusters fall back to the neutral gray that
- *   `getClusterColor` returns for "no cluster";
- * - color fades towards the background with merge rank, so fine structure is
- *   vivid and the coarse trunks recede.
+ * Each branch, including its radial arc, takes the destination node's
+ * representative-font color. Only endpoints without clustering color data
+ * fall back to the neutral grid color; merge rank does not dim branches.
  * The node dots themselves behave like graph-point aliases: they use the
  * representative point color and the point-core shader's active/dimmed alpha.
  *

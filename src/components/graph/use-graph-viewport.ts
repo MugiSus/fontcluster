@@ -1,5 +1,6 @@
 import {
   type Accessor,
+  batch,
   createEffect,
   createMemo,
   createSignal,
@@ -7,7 +8,6 @@ import {
   onCleanup,
   untrack,
 } from 'solid-js';
-import { debounce } from '@solid-primitives/scheduled';
 import {
   GRAPH_PADDING,
   MAX_WHEEL_DELTA,
@@ -33,13 +33,16 @@ interface UseGraphViewportProps {
   svgSize: Accessor<{ width: number; height: number }>;
   graphWidth: Accessor<number>;
   graphHeight: Accessor<number>;
+  resetCenter: Accessor<GraphCoordinate | undefined>;
+  /** Magnification relative to fitting the graph bounds with padding. */
+  resetZoom: Accessor<number>;
+  onViewportChange: (center: GraphCoordinate) => void;
 }
 
 export interface GraphViewportController {
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
   isDragging: Accessor<boolean>;
-  isMoving: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
   refreshViewportRect: () => void;
   dragPan: (event: MouseEvent) => void;
@@ -87,17 +90,22 @@ export function useGraphViewport(
 ): GraphViewportController {
   const graphWidth = createMemo(() => props.graphWidth());
   const graphHeight = createMemo(() => props.graphHeight());
-  const resetViewBox = createMemo<GraphViewBox>(() => ({
-    x: -GRAPH_PADDING,
-    y: -GRAPH_PADDING,
-    width: graphWidth() + GRAPH_PADDING * 2,
-    height: graphHeight() + GRAPH_PADDING * 2,
-  }));
+  const resetViewBox = createMemo<GraphViewBox>(() => {
+    const zoom = props.resetZoom();
+    const width = (graphWidth() + GRAPH_PADDING * 2) / zoom;
+    const height = (graphHeight() + GRAPH_PADDING * 2) / zoom;
+    const center = props.resetCenter();
+    return {
+      x: (center?.x ?? graphWidth() / 2) - width / 2,
+      y: (center?.y ?? graphHeight() / 2) - height / 2,
+      width,
+      height,
+    };
+  });
   const initialViewBox = untrack(resetViewBox);
 
   const [viewBox, setViewBox] = createSignal(initialViewBox);
   const [isDragging, setIsDragging] = createSignal(false);
-  const [isInteracting, setIsInteracting] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
 
   let latestViewBox = initialViewBox;
@@ -109,8 +117,12 @@ export function useGraphViewport(
     latestViewBox = nextViewBox;
     if (viewBoxAnimationFrame) return;
 
+    // eslint-disable-next-line solid/reactivity -- rAF commits staged camera state and emits an interaction event.
     viewBoxAnimationFrame = window.requestAnimationFrame(() => {
-      setViewBox(latestViewBox);
+      batch(() => {
+        setViewBox(latestViewBox);
+        props.onViewportChange(getViewBoxCenter(latestViewBox));
+      });
       viewBoxAnimationFrame = undefined;
     });
   };
@@ -127,20 +139,10 @@ export function useGraphViewport(
     ),
   );
 
-  const finishInteraction = debounce(() => {
-    setIsInteracting(false);
-  }, 250);
-
-  const startInteractionTimer = () => {
-    setIsInteracting(true);
-    finishInteraction();
-  };
-
   onCleanup(() => {
     if (viewBoxAnimationFrame) {
       window.cancelAnimationFrame(viewBoxAnimationFrame);
     }
-    finishInteraction.clear();
   });
 
   const zoomFactor = createMemo(() => {
@@ -159,8 +161,6 @@ export function useGraphViewport(
       currentViewBox.height / currentSize.height,
     );
   });
-
-  const isMoving = createMemo(() => isDragging() || isInteracting());
 
   // Cached SVG client rect. `getBoundingClientRect` forces a layout reflow, so
   // we measure it only at interaction starts (and lazily) instead of on every
@@ -181,36 +181,12 @@ export function useGraphViewport(
     });
   };
 
-  const panBy = ({
-    deltaX,
-    deltaY,
-    shouldStartInteraction = true,
-  }: {
-    deltaX: number;
-    deltaY: number;
-    shouldStartInteraction?: boolean;
-  }) => {
-    if (shouldStartInteraction) {
-      startInteractionTimer();
-    }
-
-    queueViewBoxUpdate(
-      getPannedViewBox({
-        viewBox: getCurrentViewBox(),
-        deltaX,
-        deltaY,
-      }),
-    );
-  };
-
   const panByScreenDelta = ({
     deltaX,
     deltaY,
-    shouldStartInteraction = true,
   }: {
     deltaX: number;
     deltaY: number;
-    shouldStartInteraction?: boolean;
   }) => {
     const delta = getViewBoxDeltaFromScreenDelta({
       deltaX,
@@ -220,11 +196,13 @@ export function useGraphViewport(
     });
     if (!delta) return;
 
-    panBy({
-      deltaX: delta.x,
-      deltaY: delta.y,
-      shouldStartInteraction,
-    });
+    queueViewBoxUpdate(
+      getPannedViewBox({
+        viewBox: getCurrentViewBox(),
+        deltaX: delta.x,
+        deltaY: delta.y,
+      }),
+    );
   };
 
   const zoomInto = ({
@@ -236,7 +214,6 @@ export function useGraphViewport(
     focusY: number;
     zoomFactor: number;
   }) => {
-    startInteractionTimer();
     queueViewBoxUpdate(
       getZoomedViewBox({
         viewBox: getCurrentViewBox(),
@@ -256,7 +233,6 @@ export function useGraphViewport(
     panByScreenDelta({
       deltaX: -deltaX,
       deltaY: -deltaY,
-      shouldStartInteraction: false,
     });
     setLastMousePos({ x: event.clientX, y: event.clientY });
   };
@@ -273,7 +249,6 @@ export function useGraphViewport(
     });
     if (!nextViewBox) return;
 
-    startInteractionTimer();
     queueViewBoxUpdate(nextViewBox);
   };
 
@@ -285,7 +260,6 @@ export function useGraphViewport(
   };
 
   const endPanDrag = () => {
-    if (isDragging()) startInteractionTimer();
     setIsDragging(false);
   };
 
@@ -332,7 +306,6 @@ export function useGraphViewport(
   };
 
   const handleReset = () => {
-    startInteractionTimer();
     queueViewBoxUpdate(resetViewBox());
   };
 
@@ -340,7 +313,6 @@ export function useGraphViewport(
     viewBox,
     zoomFactor,
     isDragging,
-    isMoving,
     getGraphPointFromEvent,
     refreshViewportRect,
     dragPan,

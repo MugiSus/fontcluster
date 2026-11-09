@@ -1,9 +1,4 @@
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-} from 'solid-js';
+import { type Accessor, createMemo } from 'solid-js';
 import { quadtree } from 'd3-quadtree';
 import { appState } from '@/store';
 import { collectVisibleCartesianImageKeys } from './cartesian-image-visibility';
@@ -13,6 +8,7 @@ import {
 } from './dendrogram-edges';
 import { collectVisibleRadialImageKeys } from './radial-image-visibility';
 import {
+  findNearestSelectableFontPoint,
   findSelectableFontPoint,
   fontPoints,
   getVisibleDetailKeys,
@@ -25,19 +21,17 @@ interface UseGraphPointsProps {
   svgSize: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
-  isMoving: Accessor<boolean>;
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
 }
 
 export function useGraphPoints(props: UseGraphPointsProps) {
-  const [detailVisibleBounds, setDetailVisibleBounds] =
-    createSignal<GraphVisibleBounds | null>(null);
-  const [detailZoomFactor, setDetailZoomFactor] = createSignal(1);
-
-  const visibleBounds = createMemo<GraphVisibleBounds>(() => {
+  // The viewport publishes once per animation frame; derive detail visibility
+  // from that same frame instead of retaining a snapshot until movement stops.
+  const visibleBounds = createMemo<GraphVisibleBounds | null>(() => {
     const viewBox = props.viewBox();
     const size = props.svgSize();
+    if (size.width <= 0 || size.height <= 0) return null;
     const scale = props.zoomFactor();
 
     return {
@@ -64,23 +58,13 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     };
   });
 
-  createEffect(() => {
-    if (props.isMoving()) return;
-
-    const size = props.svgSize();
-    if (size.width === 0 || size.height === 0) return;
-
-    setDetailVisibleBounds(visibleBounds());
-    setDetailZoomFactor(props.zoomFactor());
-  });
-
   const visibleDetailKeys = createMemo(() => {
-    const bounds = detailVisibleBounds();
+    const bounds = visibleBounds();
     if (!bounds) return new Set<string>();
 
     return getVisibleDetailKeys(
       bounds,
-      detailZoomFactor(),
+      props.zoomFactor(),
       props.showImages(),
       props.showFontNames(),
     );
@@ -100,20 +84,20 @@ export function useGraphPoints(props: UseGraphPointsProps) {
   );
 
   const visibleDendrogramImageKeys = createMemo(() => {
-    const bounds = detailVisibleBounds();
+    const bounds = visibleBounds();
     if (!bounds) return new Set<string>();
 
     return appState.ui.graphMode === 'radial-tree'
       ? collectVisibleRadialImageKeys(
           selectableDendrogramAnchors(),
           bounds,
-          detailZoomFactor(),
+          props.zoomFactor(),
           24,
         )
       : collectVisibleCartesianImageKeys(
           selectableDendrogramAnchorTree(),
           bounds,
-          detailZoomFactor(),
+          props.zoomFactor(),
           24,
         );
   });
@@ -132,6 +116,7 @@ export function useGraphPoints(props: UseGraphPointsProps) {
     visibleDetailKeys,
     visibleDendrogramImageKeys,
     findSelectablePoint,
+    findNearestSelectablePoint: findNearestSelectableFontPoint,
     findSelectableDendrogramPoint,
   };
 }

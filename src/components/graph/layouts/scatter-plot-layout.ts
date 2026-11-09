@@ -10,6 +10,8 @@ import { type GraphLayoutBase } from './types';
 
 export interface ScatterPlotLayout extends GraphLayoutBase<'scatter-plot'> {
   readonly gridLines: ScatterGridLine[];
+  /** Projected (0σ, 0σ), which need not be the bounds' midpoint. */
+  readonly origin: GraphCoordinate;
 }
 
 /** Soft scale at which the standardised scatter axes become logarithmic. */
@@ -81,6 +83,10 @@ export function createScatterPlotLayout(
     mode: 'scatter-plot',
     width: GRAPH_SIZE,
     height: GRAPH_SIZE,
+    origin: {
+      x: projectionX.project(0),
+      y: GRAPH_SIZE - projectionY.project(0),
+    },
     positionByKey,
     gridLines: [
       ...sigmaGridLines('x', projectionX),

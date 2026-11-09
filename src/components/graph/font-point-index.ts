@@ -66,6 +66,8 @@ const fontPointIndex = createRoot(() => {
     points,
     selectablePoints,
     getPointByKey: (key: string) => indexes().byKey.get(key),
+    findNearestSelectablePoint: (x: number, y: number) =>
+      selectableTree().find(x, y),
     findSelectablePoint: (x: number, y: number, radius: number) => {
       const findLeafKeyAt = activeGraphLayout()?.findLeafKeyAt;
       if (findLeafKeyAt) {
@@ -117,5 +119,9 @@ export const fontPoints = fontPointIndex.points;
 export const getGraphPointByKey = fontPointIndex.getPointByKey;
 
 export const findSelectableFontPoint = fontPointIndex.findSelectablePoint;
+
+/** Nearest font position in every layout, independent of treemap containment. */
+export const findNearestSelectableFontPoint =
+  fontPointIndex.findNearestSelectablePoint;
 
 export const getVisibleDetailKeys = fontPointIndex.getVisibleDetailKeys;

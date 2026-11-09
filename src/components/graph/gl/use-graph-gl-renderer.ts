@@ -52,6 +52,7 @@ import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingSpec } from './ring-layer';
 import { createScatterGridLayer } from './scatter-grid-layer';
+import { createCrosshairLayer } from './crosshair-layer';
 import { createTreemapLayer } from './treemap-layer';
 
 ColorManagement.define({
@@ -187,6 +188,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         scatterGridLayer.visible = true;
+        crosshairLayer.visible = true;
         treemapLayer.visible = showTreemapBoundaries;
         dendrogramLayer.visible = true;
         pointLabelLayer.visible = showLabels;
@@ -209,6 +211,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
       scatterGridLayer.visible = false;
+      crosshairLayer.visible = false;
       treemapLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = false;
@@ -225,6 +228,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = false;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = true;
+      crosshairLayer.visible = true;
       treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       renderer.setRenderTarget(null);
@@ -239,6 +243,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = false;
+      crosshairLayer.visible = false;
       treemapLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = showLabels;
@@ -252,6 +257,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       // Leave the scene in a sane default for any stray render.
       scatterGridLayer.visible = true;
+      crosshairLayer.visible = true;
       treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
@@ -439,6 +445,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       resolution: props.size,
       requestRender: scheduleRender,
     });
+    const crosshairLayer = createCrosshairLayer({
+      showVertical: () => props.layout()?.mode !== 'horizontal-tree',
+      // CSS owns the token; Three handles the color-space conversion.
+      getColor: () => window.getComputedStyle(canvas).color,
+      viewBox: props.viewBox,
+      zoomFactor: props.zoomFactor,
+      resolution: props.size,
+      requestRender: scheduleRender,
+    });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
       arcs: props.dendrogramArcs,
@@ -491,6 +506,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       requestRender: scheduleRender,
     });
     scene.add(scatterGridLayer);
+    scene.add(crosshairLayer);
     scene.add(treemapLayer);
     scene.add(dendrogramLayer);
     scene.add(pointLabelLayer);
