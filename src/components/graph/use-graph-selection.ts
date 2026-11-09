@@ -2,6 +2,7 @@ import {
   clearDraggingFont,
   commitDraggingFont,
   setDraggingFont,
+  setSelectedFontKey,
 } from '@/commands/font-selection';
 import { appState } from '@/store';
 import { type DendrogramImageAnchor } from './dendrogram-edges';
@@ -18,6 +19,10 @@ interface UseGraphSelectionProps {
     x: number,
     y: number,
     radius: number,
+  ) => GraphPointData | undefined;
+  findNearestSelectablePoint: (
+    x: number,
+    y: number,
   ) => GraphPointData | undefined;
   /** Visible dendrogram merge-node sample image under the pointer, if any. */
   findDendrogramAnchor: (x: number, y: number) => DendrogramImageAnchor | null;
@@ -128,5 +133,9 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     trackDraggingSelection,
     clearDraggingSelection: () => clearDraggingFont('graph'),
     selectFromMouseEvent,
+    selectNearestPoint: (center: GraphCoordinate) => {
+      const nearest = props.findNearestSelectablePoint(center.x, center.y);
+      if (nearest) setSelectedFontKey(nearest.key);
+    },
   };
 }

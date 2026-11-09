@@ -124,7 +124,7 @@ export const [appState, setAppState] = createStore<AppState>({
     listPreviewText: '',
     activeGraphWeights: [400],
     visibleGraphClusters: [],
-    graphMode: 'radial-tree',
+    graphMode: 'scatter-plot',
     selectedDendrogramNode: null,
   },
   plugins: {
