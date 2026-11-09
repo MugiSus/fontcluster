@@ -81,7 +81,7 @@ export function GraphViewer(props: GraphViewerProps) {
       const layout = activeGraphLayout();
       return layout?.mode === 'scatter-plot' ? layout.origin : undefined;
     },
-    resetZoom: () => (activeGraphLayout()?.mode === 'scatter-plot' ? 2 : 1),
+    resetZoom: () => (activeGraphLayout()?.mode === 'scatter-plot' ? 2.5 : 1),
     onViewportChange: (center) => selection.selectNearestPoint(center),
   });
   const graph = useGraphPoints({
