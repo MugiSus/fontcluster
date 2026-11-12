@@ -2,8 +2,8 @@ import {
   type Accessor,
   createEffect,
   createMemo,
+  mapArray,
   onCleanup,
-  untrack,
 } from 'solid-js';
 import {
   Color,
@@ -80,9 +80,8 @@ export interface PointLabelLayerProps {
  *
  * Labels keep a constant screen size: the glyph em-height is authored in CSS
  * px and each member scales by the world-per-px zoom factor — a matrix-only
- * update, so zooming never re-runs the worker layout. Only visible labels have
- * a laid-out member: zero-opacity members still incur Troika's per-frame CPU
- * work and submit glyphs to the GPU. Primitive presentation controls membership,
+ * update, so zooming never re-runs the worker layout. Solid retains members
+ * for visible labels only; primitive presentation controls membership,
  * sample clearance, and active/dimmed opacity without this layer consulting
  * selection, filtering, thinning, or toolbar state. The render loop owns the
  * layer's visibility across the glow passes.
@@ -114,29 +113,31 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   const outputColorSpace =
     colorSpace === 'display-p3' ? DisplayP3ColorSpace : SRGBColorSpace;
 
-  /** Member pool keyed by the font key, so changing layout-specific label
-   *  order never assigns another font's text geometry to an existing member. */
-  const members = new Map<string, Text>();
-  // Gamut mapping depends on the label data, not selection or sample clearance.
-  // Keep that expensive conversion out of the per-selection appearance effect.
-  const labelColors = createMemo(
-    () =>
-      new Map(
-        props
-          .labels()
-          .map((label) => [
-            label.key,
-            getClusterColor({ angle: label.colorAngle, colorSpace }).getHex(
-              outputColorSpace,
-            ),
-          ]),
-      ),
-  );
+  // Label objects are immutable layout data. mapArray retains each visible
+  // member by that identity and owns its removal/disposal when it disappears.
   const visibleLabels = createMemo(() => {
     const presentations = props.presentations();
     return props
       .labels()
       .filter((label) => presentations.get(label.key)?.showLabel);
+  });
+  const members = mapArray(visibleLabels, (label) => {
+    const member = new Text();
+    member.font = GEIST_FONT_URL;
+    member.fontSize = FONT_SIZE_PX;
+    member.anchorX = 'center';
+    member.anchorY = 'middle';
+    member.text = label.text;
+    member.color = getClusterColor({
+      angle: label.colorAngle,
+      colorSpace,
+    }).getHex(outputColorSpace);
+    batched.addText(member);
+    onCleanup(() => {
+      batched.removeText(member);
+      member.dispose();
+    });
+    return { label, member };
   });
 
   /**
@@ -150,9 +151,10 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
     const zoom = props.zoom();
     const presentations = props.presentations();
 
-    for (const label of visibleLabels()) {
-      const member = members.get(label.key);
-      if (!member) continue;
+    for (const { label, member } of members()) {
+      member.fillOpacity = presentations.get(label.key)?.isActive
+        ? 1
+        : DIMMED_OPACITY;
       const blockBounds = member.textRenderInfo?.blockBounds;
       const hasImageBox = presentations.get(label.key)?.showSample ?? false;
 
@@ -200,56 +202,16 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
   // repainting the completed batch.
   batched.addEventListener('synccomplete', updateMemberTransforms);
 
-  // Text and color follow the label set / theme. Only actual text changes
-  // require an async worker relayout (`sync`); alignment remains fixed.
+  // Troika owns dirty tracking and skips unchanged text. This effect follows
+  // membership, while the transform effect also follows zoom and appearance.
   createEffect(() => {
-    const labels = visibleLabels();
-    const presentations = props.presentations();
-    let shouldSync = false;
-
-    const labelKeys = new Set(labels.map((label) => label.key));
-    for (const [key, member] of members) {
-      if (labelKeys.has(key)) continue;
-      batched.removeText(member);
-      member.dispose();
-      members.delete(key);
-      shouldSync = true;
-    }
-
-    for (const label of labels) {
-      let member = members.get(label.key);
-      if (!member) {
-        member = new Text();
-        member.font = GEIST_FONT_URL;
-        member.fontSize = FONT_SIZE_PX;
-        member.anchorX = 'center';
-        member.anchorY = 'middle';
-        batched.addText(member);
-        members.set(label.key, member);
-        shouldSync = true;
-      }
-      if (member.text !== label.text) {
-        member.text = label.text;
-        shouldSync = true;
-      }
-      member.color = labelColors().get(label.key)!;
-      member.fillOpacity = presentations.get(label.key)?.isActive
-        ? 1
-        : DIMMED_OPACITY;
-    }
-    // Membership and initial appearance must be applied together. Solid does
-    // not promise ordering between separate effects after visibility changes.
-    untrack(updateMemberTransforms);
-    if (shouldSync) batched.sync();
-    props.requestRender();
+    members();
+    batched.sync();
   });
-
-  // Zoom, image clearance and layout-mode changes are matrix-only updates.
-  createEffect(() => updateMemberTransforms());
+  createEffect(updateMemberTransforms);
 
   onCleanup(() => {
     batched.removeEventListener('synccomplete', updateMemberTransforms);
-    for (const member of members.values()) member.dispose();
     labelBaseMaterial.dispose();
     batched.dispose();
   });

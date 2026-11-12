@@ -280,9 +280,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     const dendrogramActivePredicate = createMemo(() =>
       makeActivePredicate(props.filteredKeys()),
     );
-    // These are renderer-owned derived values. Selection changes emphasis,
-    // never a font's palette, so do not repeat gamut mapping for every sample
-    // and ring on every pointer update. Consumers only copy/read these Colors.
+    // Palette conversion depends on layout data, not selection/visibility.
+    // Cache per point for rings and samples; consumers only read/copy Colors.
     const pointColors = createMemo(
       () =>
         new Map(
@@ -290,18 +289,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             point.key,
             getClusterColor({
               angle: point.colorAngle,
-              colorSpace: graphOutputColorSpace,
-            }),
-          ]),
-        ),
-    );
-    const anchorColors = createMemo(
-      () =>
-        new Map(
-          props.dendrogramImageAnchors().map((anchor) => [
-            anchor.key,
-            getClusterColor({
-              angle: anchor.colorAngle,
               colorSpace: graphOutputColorSpace,
             }),
           ]),
@@ -386,7 +373,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         if (!presentation.showSample) continue;
         const point = presentation.point;
         specs.push({
-          key: point.key,
           safeName: point.item.meta.safe_name,
           x: point.x,
           y: -point.y,
@@ -395,18 +381,18 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         });
       }
 
-      // Merge-node aliases use the same image thinning as
-      // ordinary points upstream. Node keys live in their own namespace: the
-      // same font may represent several nodes (and its own leaf) at once.
-      // Each spec gets its own mesh slot; the texture cache dedupes by safe
-      // name, so no extra loads happen.
+      // Merge-node aliases use the same image thinning as ordinary points
+      // upstream. One font may represent several nodes and its leaf at once.
+      // Each spec has its own mesh slot; aliases share their texture by URL.
       for (const anchor of props.dendrogramImageAnchors()) {
         specs.push({
-          key: anchor.key,
           safeName: anchor.safeName,
           x: anchor.x,
           y: -anchor.y,
-          color: anchorColors().get(anchor.key)!,
+          color: getClusterColor({
+            angle: anchor.colorAngle,
+            colorSpace: graphOutputColorSpace,
+          }),
           opacity: dendrogramActivePredicate()(anchor) ? 1 : DIMMED_OPACITY,
         });
       }

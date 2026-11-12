@@ -1,10 +1,13 @@
 import {
   type Accessor,
+  type Resource,
   createEffect,
   createMemo,
-  createSignal,
+  createResource,
+  getOwner,
   indexArray,
   onCleanup,
+  runWithOwner,
 } from 'solid-js';
 import {
   Color,
@@ -26,7 +29,6 @@ import { imageFragmentShader, imageVertexShader } from './shaders/image';
 
 /** One sample image to draw, centered (in world space) on its point. */
 export interface ImageSpec {
-  key: string;
   /** Sample folder name, used to build the texture URL. */
   safeName: string;
   x: number;
@@ -37,69 +39,73 @@ export interface ImageSpec {
   opacity: number;
 }
 
+/**
+ * The cluster-tinted sample images.
+ *
+ * Each image is a quad textured with the font's `sample.png`, tinted by its
+ * cluster color and masked by the sample's luminance (see image-shaders). The
+ * quad is fit inside a fixed CSS-pixel box without distorting the texture's
+ * aspect ratio (the SVG `xMidYMid meet` behaviour).
+ *
+ * Solid manages one mesh per visible array slot. Textures are cached by URL
+ * for the current session, so aliases and revisits share completed/pending
+ * loads. The shown set, image-source identity and zoom follow their accessors;
+ * `requestRender` repaints after each reactive update, including loaded images.
+ */
 export interface ImageLayerProps {
+  /** Images to show; Solid reuses the mesh/material at each array index. */
   specs: Accessor<ImageSpec[]>;
-  /** Image-source identity; cached textures belong to exactly one session. */
+  /** Image-source identity; releases cached textures when the session changes. */
   sessionKey: Accessor<string>;
+  /** Resolves a sample folder name to a URL loadable by three.js. */
   sampleImageUrl: (safeName: string) => string | undefined;
   /** World-units-per-CSS-pixel factor so the box stays constant on zoom. */
   zoom: Accessor<number>;
+  /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
 }
 
-interface SampleTexture {
-  texture: Texture;
-  isReady: Accessor<boolean>;
-}
-
-/**
- * Samples use one mesh/material per visible array slot, managed by Solid's
- * indexArray. Changing selection replaces the slot's texture and uniforms,
- * keeping its compiled GPU program alive even when no other sample is shown.
- * Textures (including in-flight loads) are shared by safe name per session.
- */
+/** Owns session textures and visible mesh slots; selection stays upstream. */
 export function createImageLayer(props: ImageLayerProps): Object3D {
   const group = new Group();
   group.renderOrder = 2;
   const quad = new PlaneGeometry(1, 1);
   const textureLoader = new TextureLoader();
 
-  const getSampleTexture = createMemo(() => {
+  // Cache the Resource, including pending loads, so merge-node aliases share
+  // one texture. The session owner outlives individual visible mesh slots.
+  const getTexture = createMemo(() => {
     props.sessionKey();
-    const cache = new Map<string, SampleTexture>();
-    let isDisposed = false;
-    onCleanup(() => {
-      isDisposed = true;
-      for (const entry of cache.values()) entry.texture.dispose();
-      cache.clear();
-    });
+    const owner = getOwner();
+    const cache = new Map<string, Resource<Texture | undefined>>();
+    onCleanup(() => cache.clear());
 
-    return (safeName: string, url: string): SampleTexture => {
-      const cached = cache.get(safeName);
+    return (url: string) => {
+      const cached = cache.get(url);
       if (cached) return cached;
-      const [isReady, setIsReady] = createSignal(false);
-      const texture = textureLoader.load(
-        url,
-        () => {
-          // Old session loads must neither revive resources nor repaint.
-          if (!isDisposed) setIsReady(true);
-        },
-        undefined,
-        () => {
-          if (isDisposed) return;
-          // A transient failure must not poison this session's cache. A later
-          // selection/visibility update may request the sample again.
-          cache.delete(safeName);
-          texture.dispose();
-        },
-      );
-      texture.minFilter = LinearFilter;
-      texture.magFilter = LinearFilter;
-      texture.generateMipmaps = false;
-      const entry = { texture, isReady };
-      // Store the loader's texture immediately, so aliases share pending loads.
-      cache.set(safeName, entry);
-      return entry;
+      const resource = runWithOwner(owner, () => {
+        const loaded = textureLoader
+          .loadAsync(url)
+          .then((texture) => {
+            texture.minFilter = LinearFilter;
+            texture.magFilter = LinearFilter;
+            texture.generateMipmaps = false;
+            return texture;
+          })
+          .catch(() => {
+            // Allow a later visibility update to retry a failed sample.
+            cache.delete(url);
+            return undefined;
+          });
+        // Also releases a load that finishes after the session was disposed.
+        onCleanup(() => {
+          void loaded.then((texture) => texture?.dispose());
+        });
+        const [sample] = createResource(() => loaded);
+        return sample;
+      })!;
+      cache.set(url, resource);
+      return resource;
     };
   });
 
@@ -125,12 +131,11 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
       group.add(mesh);
 
       const sample = createMemo(() => {
-        const getTexture = getSampleTexture();
+        const load = getTexture();
         const safeName = spec().safeName;
         const url = safeName ? props.sampleImageUrl(safeName) : undefined;
-        return url ? getTexture(safeName, url) : null;
+        return url ? load(url) : undefined;
       });
-
       createEffect(() => {
         const current = spec();
         (material.uniforms['uColor']!.value as Color).copy(current.color);
@@ -138,27 +143,28 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
         mesh.position.set(current.x, current.y, 2);
         props.requestRender();
       });
-
       createEffect(() => {
-        const entry = sample();
-        mesh.visible = entry?.isReady() ?? false;
-        material.uniforms['uMap']!.value = entry?.texture ?? null;
-        const image = entry?.texture.image as
-          | { width?: number; height?: number }
+        const texture = sample()?.();
+        mesh.visible = texture !== undefined;
+        material.uniforms['uMap']!.value = texture ?? null;
+        const image = texture?.image as
+          | { width: number; height: number }
           | undefined;
-        const aspect =
-          image?.width && image.height ? image.width / image.height : 0;
-        let width = SAMPLE_IMAGE_BOX_WIDTH_PX;
-        let height = SAMPLE_IMAGE_BOX_HEIGHT_PX;
-        if (aspect > 0 && Number.isFinite(aspect)) {
-          if (aspect > width / height) height = width / aspect;
-          else width = height * aspect;
+        if (image) {
+          const aspect = image.width / image.height;
+          const isWide =
+            aspect > SAMPLE_IMAGE_BOX_WIDTH_PX / SAMPLE_IMAGE_BOX_HEIGHT_PX;
+          const width = isWide
+            ? SAMPLE_IMAGE_BOX_WIDTH_PX
+            : SAMPLE_IMAGE_BOX_HEIGHT_PX * aspect;
+          const height = isWide
+            ? SAMPLE_IMAGE_BOX_WIDTH_PX / aspect
+            : SAMPLE_IMAGE_BOX_HEIGHT_PX;
+          const zoom = props.zoom();
+          mesh.scale.set(width * zoom, height * zoom, 1);
         }
-        const zoom = props.zoom();
-        mesh.scale.set(width * zoom, height * zoom, 1);
         props.requestRender();
       });
-
       onCleanup(() => {
         group.remove(mesh);
         material.dispose();
