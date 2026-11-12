@@ -16,7 +16,7 @@ function App() {
   const isFullscreen = useIsFullscreen();
   const isMac = platform() === 'macos';
   const [panelState, setPanelState] = createStore<PanelState>({
-    control: true,
+    control: false,
     list: true,
     chat: false,
   });

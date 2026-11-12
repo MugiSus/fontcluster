@@ -77,12 +77,17 @@ export function GraphViewer(props: GraphViewerProps) {
     svgSize,
     graphWidth: () => activeGraphLayout()?.width ?? GRAPH_SIZE,
     graphHeight: () => activeGraphLayout()?.height ?? GRAPH_SIZE,
+    resetCenter: () => {
+      const layout = activeGraphLayout();
+      return layout?.mode === 'scatter-plot' ? layout.origin : undefined;
+    },
+    resetZoom: () => (activeGraphLayout()?.mode === 'scatter-plot' ? 2.5 : 1),
+    onViewportChange: (center) => selection.selectNearestPoint(center),
   });
   const graph = useGraphPoints({
     svgSize,
     viewBox: viewport.viewBox,
     zoomFactor: viewport.zoomFactor,
-    isMoving: viewport.isMoving,
     showImages: () => props.showImages,
     showFontNames: () => props.showFontNames,
   });
@@ -124,6 +129,7 @@ export function GraphViewer(props: GraphViewerProps) {
     getGraphPointFromEvent: viewport.getGraphPointFromEvent,
     getSelectionRadius: () => 40 * viewport.zoomFactor(),
     findSelectablePoint: graph.findSelectablePoint,
+    findNearestSelectablePoint: graph.findNearestSelectablePoint,
     findDendrogramAnchor,
     findDendrogramPoint,
     copySelectedFont: (options) => props.copySelectedFont(options),
