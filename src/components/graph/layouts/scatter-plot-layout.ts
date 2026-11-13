@@ -1,4 +1,5 @@
 import { extent, range } from 'd3-array';
+import { forceCollide, forceSimulation, forceX, forceY } from 'd3-force';
 import { scaleSymlog } from 'd3-scale';
 import { type FontItemRecord } from '@/types/font';
 import { GRAPH_PADDING, GRAPH_SIZE } from '@/components/graph/constants';
@@ -16,6 +17,8 @@ export interface ScatterPlotLayout extends GraphLayoutBase<'scatter-plot'> {
 
 /** Soft scale at which the standardised scatter axes become logarithmic. */
 const SYMLOG_CONSTANT = 1.25;
+/** Graph-space spacing, independent of camera zoom and detail visibility. */
+const POINT_SPACING = 12;
 
 interface AxisProjection {
   project: (value: number) => number;
@@ -57,7 +60,7 @@ function sigmaGridLines(
   }));
 }
 
-/** Symlog projection of the clustering feature space's first two PCs. */
+/** Symlog projection of the first two PCs, relaxed to separate crowded points. */
 export function createScatterPlotLayout(
   displayData: FontItemRecord,
 ): ScatterPlotLayout {
@@ -69,14 +72,32 @@ export function createScatterPlotLayout(
   });
   const projectionX = createAxisProjection(located.map(({ x }) => x));
   const projectionY = createAxisProjection(located.map(({ y }) => y));
+  // D3 mutates only these layout-owned nodes, never the source PCA coordinates.
+  // Anchors preserve the map's neighbourhoods; cooling leaves collision forces
+  // to resolve the remaining crowding. No timer or camera-dependent simulation.
+  const nodes = located.map(({ key, x, y }) => {
+    const targetX = projectionX.project(x);
+    const targetY = GRAPH_SIZE - projectionY.project(y);
+    return { key, x: targetX, y: targetY, targetX, targetY };
+  });
+  const simulation = forceSimulation(nodes)
+    .stop()
+    .alphaDecay(0.06)
+    .force(
+      'x',
+      forceX<(typeof nodes)[number]>((node) => node.targetX).strength(0.1),
+    )
+    .force(
+      'y',
+      forceY<(typeof nodes)[number]>((node) => node.targetY).strength(0.1),
+    )
+    .force('collide', forceCollide(POINT_SPACING / 2).iterations(2));
+  simulation.tick(120);
+  // Finish without the anchors pulling already separated neighbours together.
+  simulation.force('x', null).force('y', null).tick(20);
+
   const positionByKey = new Map<string, GraphCoordinate>(
-    located.map(({ key, x, y }) => [
-      key,
-      {
-        x: projectionX.project(x),
-        y: GRAPH_SIZE - projectionY.project(y),
-      },
-    ]),
+    nodes.map(({ key, x, y }) => [key, { x, y }]),
   );
 
   return {
@@ -88,6 +109,8 @@ export function createScatterPlotLayout(
       y: GRAPH_SIZE - projectionY.project(0),
     },
     positionByKey,
+    // Gridlines remain a reference for the original PCA projection; relaxed
+    // point positions no longer encode exact sigma values.
     gridLines: [
       ...sigmaGridLines('x', projectionX),
       ...sigmaGridLines('y', projectionY),
