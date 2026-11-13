@@ -1,6 +1,7 @@
 import { extent, range } from 'd3-array';
 import { forceCollide, forceSimulation, forceX, forceY } from 'd3-force';
 import { scaleSymlog } from 'd3-scale';
+import { randomLcg } from 'd3-random';
 import { type FontItemRecord } from '@/types/font';
 import { GRAPH_PADDING, GRAPH_SIZE } from '@/components/graph/constants';
 import {
@@ -18,7 +19,8 @@ export interface ScatterPlotLayout extends GraphLayoutBase<'scatter-plot'> {
 /** Soft scale at which the standardised scatter axes become logarithmic. */
 const SYMLOG_CONSTANT = 1.25;
 /** Graph-space spacing, independent of camera zoom and detail visibility. */
-const POINT_SPACING = 12;
+const MIN_COLLISION_RADIUS = 6;
+const MAX_COLLISION_RADIUS = 12;
 
 interface AxisProjection {
   project: (value: number) => number;
@@ -72,13 +74,34 @@ export function createScatterPlotLayout(
   });
   const projectionX = createAxisProjection(located.map(({ x }) => x));
   const projectionY = createAxisProjection(located.map(({ y }) => y));
+  // Vary collision radii to avoid uniform close packing. Seeded D3 randomness
+  // and sorted keys keep assignments repeatable for the loaded font set, even
+  // after reordering input. These radii are visual spacing, not font metrics.
+  const random = randomLcg(0.42);
+  const radiusByKey = new Map(
+    located
+      .map(({ key }) => key)
+      .sort()
+      .map((key) => [
+        key,
+        MIN_COLLISION_RADIUS +
+          random() * (MAX_COLLISION_RADIUS - MIN_COLLISION_RADIUS),
+      ]),
+  );
   // D3 mutates only these layout-owned nodes, never the source PCA coordinates.
   // Anchors preserve the map's neighbourhoods; cooling leaves collision forces
   // to resolve the remaining crowding. No timer or camera-dependent simulation.
   const nodes = located.map(({ key, x, y }) => {
     const targetX = projectionX.project(x);
     const targetY = GRAPH_SIZE - projectionY.project(y);
-    return { key, x: targetX, y: targetY, targetX, targetY };
+    return {
+      key,
+      x: targetX,
+      y: targetY,
+      targetX,
+      targetY,
+      radius: radiusByKey.get(key)!,
+    };
   });
   const simulation = forceSimulation(nodes)
     .stop()
@@ -91,7 +114,10 @@ export function createScatterPlotLayout(
       'y',
       forceY<(typeof nodes)[number]>((node) => node.targetY).strength(0.1),
     )
-    .force('collide', forceCollide(POINT_SPACING / 2).iterations(2));
+    .force(
+      'collide',
+      forceCollide<(typeof nodes)[number]>((node) => node.radius).iterations(2),
+    );
   simulation.tick(120);
   // Finish without the anchors pulling already separated neighbours together.
   simulation.force('x', null).force('y', null).tick(20);
