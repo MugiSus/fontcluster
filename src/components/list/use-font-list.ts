@@ -27,8 +27,8 @@ const BASE_ROW_HEIGHT_PX = 30;
 export const LIST_SCROLL_STEP_PX = BASE_ROW_HEIGHT_PX * LIST_MAX_SCALE;
 // Width of the Gaussian magnification in item units (larger = broader).
 const MAGNIFICATION_SIGMA_ITEMS = 2;
-const VISIBLE_RADIUS_ITEMS = 20;
-const FADE_START_ITEMS = 5;
+const VISIBLE_RADIUS_ITEMS = 16;
+const FADE_START_ITEMS = VISIBLE_RADIUS_ITEMS - 3;
 const LENS_SAMPLE_STEP = 0.125;
 const lensOffsets = range(-24, 24 + LENS_SAMPLE_STEP, LENS_SAMPLE_STEP);
 // Integrate the row heights once. D3 owns the cumulative sum, interpolation
