@@ -138,6 +138,7 @@ export const en = {
       zoom: 'Zoom',
       showSamples: 'Show samples',
       showFontNames: 'Show font names',
+      showList: 'Show list',
       glowMode: 'Glow mode',
       radialTreeMode: 'Radial tree',
       horizontalTreeMode: 'Horizontal tree',

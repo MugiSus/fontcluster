@@ -2,6 +2,7 @@ import {
   ChartScatterIcon,
   GitForkIcon,
   HandIcon,
+  ListIcon,
   MaximizeIcon,
   MinusIcon,
   MousePointer2Icon,
@@ -35,6 +36,7 @@ interface GraphBottomToolbarProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showList: boolean;
   graphMode: GraphMode;
   canCycleGraphMode: boolean;
   isFilterOpen: boolean;
@@ -42,6 +44,7 @@ interface GraphBottomToolbarProps {
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
+  onToggleList: () => void;
   onCycleGraphMode: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
@@ -87,6 +90,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       props.showImages && 'images',
       props.showFontNames && 'fontNames',
       props.showGlow && 'glow',
+      props.showList && 'list',
     ].filter(Boolean) as string[];
 
   const handleDisplayChange = (values: string[]) => {
@@ -96,6 +100,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       props.onToggleFontNames();
     }
     if (next.has('glow') !== props.showGlow) props.onToggleGlow();
+    if (next.has('list') !== props.showList) props.onToggleList();
   };
 
   return (
@@ -241,6 +246,17 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             <TelescopeIcon class='size-4' />
           </TooltipTrigger>
           <TooltipContent>{t.graph.bottomToolbar.glowMode()}</TooltipContent>
+        </Tooltip>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='list'
+            class={toggleItemClass}
+            aria-label={t.graph.bottomToolbar.showList()}
+          >
+            <ListIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>{t.graph.bottomToolbar.showList()}</TooltipContent>
         </Tooltip>
       </ToggleGroup>
 

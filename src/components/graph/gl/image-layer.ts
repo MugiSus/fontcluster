@@ -1,3 +1,4 @@
+import { LRUCache } from 'lru-cache';
 import { type Accessor, createEffect, onCleanup } from 'solid-js';
 import {
   Color,
@@ -29,6 +30,9 @@ export interface ImageSpec {
   color: Color;
   /** 1 for active points, lower for dimmed ones. */
   opacity: number;
+  anchorX?: 'left' | 'center' | undefined;
+  width?: number | undefined;
+  height?: number | undefined;
 }
 
 /**
@@ -39,7 +43,7 @@ export interface ImageSpec {
  * quad is fit inside a fixed CSS-pixel box without distorting the texture's
  * aspect ratio (the SVG `xMidYMid meet` behaviour).
  *
- * Meshes are pooled by font key, and textures are cached by sample name so
+ * Meshes are pooled by font key, and textures are cached by URL with an LRU limit so
  * revisiting a font does not reload it. The shown set, image-source identity
  * and zoom all follow their accessors via effects; `requestRender` repaints
  * once an async texture arrives (and after each reactive update).
@@ -55,10 +59,16 @@ export interface ImageLayerProps {
   zoom: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
+  onLayout?: ((key: string, width: number) => void) | undefined;
 }
 
 interface ImageEntry {
-  safeName: string;
+  key: string;
+  x: number;
+  isLeftAligned: boolean;
+  url: string;
+  width: number;
+  height: number;
   mesh: Mesh;
   material: ShaderMaterial;
   /** Texture aspect ratio (width / height), known only once it has loaded. */
@@ -77,13 +87,17 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
   // One shared unit quad; per-mesh scale handles the fit sizing.
   const quad = new PlaneGeometry(1, 1);
   const textureLoader = new TextureLoader();
-  const textureCache = new Map<string, Texture>();
+  const textureCache = new LRUCache<string, Texture>({
+    max: 512,
+    dispose: (texture) => texture.dispose(),
+  });
   const entries = new Map<string, ImageEntry>();
   let zoom = 1;
   // The image source the pooled meshes / cached textures belong to. The same
   // `safeName` may map to a different image under another key, so everything
   // is dropped when it changes (see update) to avoid mixing the sources.
   let currentSessionKey: string | null = null;
+  let sourceGeneration = 0;
 
   const aspectOf = (texture: Texture): number | undefined => {
     const image = texture.image as
@@ -95,20 +109,23 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
 
   /** Scales a mesh to the largest size fitting the box at the texture aspect. */
   const applyFit = (entry: ImageEntry) => {
-    let width = SAMPLE_IMAGE_BOX_WIDTH_PX;
-    let height = SAMPLE_IMAGE_BOX_HEIGHT_PX;
+    let width = entry.width;
+    let height = entry.height;
     const aspect = entry.aspect;
     if (aspect && Number.isFinite(aspect) && aspect > 0) {
-      const boxAspect = SAMPLE_IMAGE_BOX_WIDTH_PX / SAMPLE_IMAGE_BOX_HEIGHT_PX;
-      if (aspect > boxAspect) height = SAMPLE_IMAGE_BOX_WIDTH_PX / aspect;
-      else width = SAMPLE_IMAGE_BOX_HEIGHT_PX * aspect;
+      const boxAspect = entry.width / entry.height;
+      if (aspect > boxAspect) height = entry.width / aspect;
+      else width = entry.height * aspect;
     }
     entry.mesh.scale.set(width * zoom, height * zoom, 1);
+    entry.mesh.position.x =
+      entry.x + (entry.isLeftAligned ? (width * zoom) / 2 : 0);
+    props.onLayout?.(entry.key, width * zoom);
   };
 
   const createEntry = (
     spec: ImageSpec,
-    sessionKey: string,
+    generation: number,
     url: string,
   ): ImageEntry => {
     const material = new ShaderMaterial({
@@ -128,24 +145,34 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     mesh.frustumCulled = false;
     mesh.renderOrder = 2;
     group.add(mesh);
-    const entry: ImageEntry = { safeName: spec.safeName, mesh, material };
+    const entry: ImageEntry = {
+      key: spec.key,
+      x: spec.x,
+      isLeftAligned: spec.anchorX === 'left',
+      url,
+      mesh,
+      material,
+      width: spec.width ?? SAMPLE_IMAGE_BOX_WIDTH_PX,
+      height: spec.height ?? SAMPLE_IMAGE_BOX_HEIGHT_PX,
+    };
 
-    const cached = textureCache.get(spec.safeName);
+    const cached = textureCache.get(url);
     if (cached) {
       material.uniforms['uMap']!.value = cached;
       entry.aspect = aspectOf(cached);
     } else {
+      // eslint-disable-next-line solid/reactivity -- Three invokes this async load callback; layout reads the current GPU entry.
       textureLoader.load(url, (texture) => {
         // Drop loads that resolve after an image-source switch — caching them
         // would reintroduce the old source's image under this safeName.
-        if (sessionKey !== currentSessionKey) {
+        if (generation !== sourceGeneration) {
           texture.dispose();
           return;
         }
         texture.minFilter = LinearFilter;
         texture.magFilter = LinearFilter;
         texture.generateMipmaps = false;
-        textureCache.set(spec.safeName, texture);
+        textureCache.set(url, texture);
         if (entries.get(spec.key) === entry) {
           material.uniforms['uMap']!.value = texture;
           entry.aspect = aspectOf(texture);
@@ -168,7 +195,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
         entry.material.dispose();
       }
       entries.clear();
-      for (const texture of textureCache.values()) texture.dispose();
+      sourceGeneration++;
       textureCache.clear();
       currentSessionKey = sessionKey;
     }
@@ -188,16 +215,20 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
       const url = props.sampleImageUrl(spec.safeName);
       if (!url) continue;
       let entry = entries.get(spec.key);
-      if (entry && entry.safeName !== spec.safeName) {
+      if (entry && entry.url !== url) {
         group.remove(entry.mesh);
         entry.material.dispose();
         entries.delete(spec.key);
         entry = undefined;
       }
       if (!entry) {
-        entry = createEntry(spec, sessionKey, url);
+        entry = createEntry(spec, sourceGeneration, url);
         entries.set(spec.key, entry);
       }
+      entry.x = spec.x;
+      entry.isLeftAligned = spec.anchorX === 'left';
+      entry.width = spec.width ?? SAMPLE_IMAGE_BOX_WIDTH_PX;
+      entry.height = spec.height ?? SAMPLE_IMAGE_BOX_HEIGHT_PX;
       (entry.material.uniforms['uColor']!.value as Color).copy(spec.color);
       entry.material.uniforms['uOpacity']!.value = spec.opacity;
       entry.mesh.position.set(spec.x, spec.y, 2);
@@ -218,9 +249,10 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
   });
 
   onCleanup(() => {
+    currentSessionKey = null;
+    sourceGeneration++;
     for (const entry of entries.values()) entry.material.dispose();
     entries.clear();
-    for (const texture of textureCache.values()) texture.dispose();
     textureCache.clear();
     quad.dispose();
   });

@@ -1,3 +1,5 @@
+import { useFontList } from '@/components/list/use-font-list';
+import { GraphListOverlay } from '@/components/list/graph-list-overlay';
 import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
@@ -49,6 +51,7 @@ interface GraphViewerProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
+  showList: boolean;
   showHud: boolean;
   sessionKey: string;
   sampleImageUrl: (safeName: string) => string | undefined;
@@ -70,6 +73,10 @@ export function GraphViewer(props: GraphViewerProps) {
   let isZoomStarted = false;
 
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
+  const fontList = useFontList({
+    size: svgSize,
+    isVisible: () => props.showList && props.showHud,
+  });
   const viewport = useGraphViewport({
     getSvgElement: () => svgElement,
     svgSize,
@@ -389,6 +396,7 @@ export function GraphViewer(props: GraphViewerProps) {
         }
       >
         <GraphGlLayer
+          list={fontList}
           layout={activeGraphLayout}
           size={svgSize}
           viewBox={viewport.viewBox}
@@ -448,6 +456,9 @@ export function GraphViewer(props: GraphViewerProps) {
         </svg>
       </Show>
 
+      <Show when={props.showHud && props.showList}>
+        <GraphListOverlay list={fontList} />
+      </Show>
       <Show when={props.showHud}>
         <SelectedFontActions
           selectedKey={selection.selectedKey}

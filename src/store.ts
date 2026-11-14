@@ -38,7 +38,6 @@ export interface AppState {
     readonly selectedFont: FontItem | null;
     readonly selectedFontFamily: string | null;
     searchQuery: string;
-    listPreviewText: string;
     activeGraphWeights: FontWeight[];
     visibleGraphClusters: number[];
     /** Active graph layout. Lives in the store because graph layout modules
@@ -121,7 +120,6 @@ export const [appState, setAppState] = createStore<AppState>({
       return this.selectedFont?.meta.family_name || null;
     },
     searchQuery: '',
-    listPreviewText: '',
     activeGraphWeights: [400],
     visibleGraphClusters: [],
     graphMode: 'scatter-plot',

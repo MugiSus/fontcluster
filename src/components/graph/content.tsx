@@ -25,6 +25,7 @@ export function GraphContent(props: GraphContentProps) {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [showGlow, setShowGlow] = createSignal(true);
+  const [showList, setShowList] = createSignal(true);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
     createSignal<ViewportZoomControls | null>(null);
@@ -72,6 +73,7 @@ export function GraphContent(props: GraphContentProps) {
         toolMode={toolMode()}
         showImages={showImages()}
         showFontNames={showFontNames()}
+        showList={showList()}
         showGlow={showGlow()}
         showHud={props.showHud}
         sessionKey={props.sessionKey}
@@ -85,6 +87,7 @@ export function GraphContent(props: GraphContentProps) {
           toolMode={toolMode()}
           showImages={showImages()}
           showFontNames={showFontNames()}
+          showList={showList()}
           showGlow={showGlow()}
           graphMode={appState.ui.graphMode}
           canCycleGraphMode={availableGraphModes().length > 1}
@@ -94,6 +97,7 @@ export function GraphContent(props: GraphContentProps) {
           onToggleImages={() => setShowImages((shown) => !shown)}
           onToggleFontNames={() => setShowFontNames((shown) => !shown)}
           onToggleGlow={() => setShowGlow((shown) => !shown)}
+          onToggleList={() => setShowList((shown) => !shown)}
           onCycleGraphMode={() => {
             const modes = availableGraphModes();
             const nextMode =

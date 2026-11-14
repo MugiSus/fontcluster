@@ -126,6 +126,7 @@ export const ja: Dictionary = {
       zoom: 'ズーム',
       showSamples: 'サンプル',
       showFontNames: 'フォント名',
+      showList: 'リストを表示',
       glowMode: '光彩',
       radialTreeMode: '放射木',
       horizontalTreeMode: '水平木',

@@ -1,3 +1,5 @@
+import { createFontListLayer } from './font-list-layer';
+import { type FontListController } from '@/components/list/use-font-list';
 import {
   type Accessor,
   createEffect,
@@ -66,6 +68,7 @@ const NO_CORE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
+  list: FontListController;
   layout: Accessor<GraphLayout | null>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
@@ -191,6 +194,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
+        fontListLayer.render(renderer);
         hasRenderedFrame = true;
         canvas.style.visibility = '';
         return;
@@ -252,6 +256,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       crosshairLayer.visible = true;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
+      fontListLayer.render(renderer);
       hasRenderedFrame = true;
       canvas.style.visibility = '';
     };
@@ -480,6 +485,15 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       sessionKey: props.sessionKey,
       sampleImageUrl: props.sampleImageUrl,
       zoom: props.zoomFactor,
+      requestRender: scheduleRender,
+    });
+    const fontListLayer = createFontListLayer({
+      list: props.list,
+      size: props.size,
+      isDark,
+      colorSpace: graphOutputColorSpace,
+      sessionKey: props.sessionKey,
+      sampleImageUrl: props.sampleImageUrl,
       requestRender: scheduleRender,
     });
     scene.add(scatterGridLayer);
