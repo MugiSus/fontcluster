@@ -320,7 +320,8 @@ export function GraphViewer(props: GraphViewerProps) {
         return;
       }
       if (props.toolMode === 'select') {
-        selection.trackDraggingSelection(event);
+        event.preventDefault();
+        selection.beginDraggingSelection(event);
       }
     }
   };
