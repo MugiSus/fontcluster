@@ -59,9 +59,12 @@ jobs:
           node-version: lts/*
           cache: 'pnpm'
 
-      - name: install Rust stable
+      # ort-sys 2.0.0-rc.12 assumes the pre-1.100 Cargo build directory layout
+      # when copying Windows DLLs. Keep the toolchain used by release 0.28.1.
+      - name: install Rust 1.99.1
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: '1.99.1'
           targets: ${{ matrix.target }}
 
       - name: Rust cache
