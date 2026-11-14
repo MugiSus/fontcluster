@@ -72,29 +72,8 @@ export function createFontListLayer(props: {
       group: Group;
       dot: Mesh<CircleGeometry, MeshBasicMaterial>;
       text: Text;
-      scale: number;
     }
   >();
-  // Worker-shaped text bounds and async image widths both feed this layout.
-  // Keep the full string and shrink only names that exceed the graph width.
-  const layoutName = (key: string) => {
-    const entry = rows.get(key);
-    if (!entry) return;
-    const x =
-      LIST_SAMPLE_LEFT +
-      (imageWidths.get(key) ?? LIST_SAMPLE_WIDTH * entry.scale) +
-      12;
-    const bounds = entry.text.textRenderInfo?.blockBounds;
-    const textWidth = bounds ? bounds[2] - bounds[0] : 0;
-    const availableWidth = Math.max(0, props.list.bounds().width - x - 12);
-    entry.text.position.x = x;
-    entry.text.scale.setScalar(
-      textWidth > 0
-        ? Math.min(entry.scale, availableWidth / textWidth)
-        : entry.scale,
-    );
-    props.requestRender();
-  };
   scene.add(
     createImageLayer({
       specs: imageSpecs,
@@ -104,7 +83,8 @@ export function createFontListLayer(props: {
       requestRender: () => props.requestRender(),
       onLayout: (key, width) => {
         imageWidths.set(key, width);
-        layoutName(key);
+        const entry = rows.get(key);
+        if (entry) entry.text.position.x = LIST_SAMPLE_LEFT + width + 12;
       },
     }),
   );
@@ -133,14 +113,14 @@ export function createFontListLayer(props: {
         );
         const text = new Text();
         text.font = GEIST_FONT_URL;
-        text.fontSize = 11;
+        text.fontSize = 12;
         text.anchorX = 'left';
         text.anchorY = 'middle';
         text.material = textMaterial;
         text.renderOrder = 3;
         group.add(dot, text);
         scene.add(group);
-        entry = { group, dot, text, scale: row.scale };
+        entry = { group, dot, text };
         rows.set(row.id, entry);
       }
       entry.group.position.y = -row.y;
@@ -159,14 +139,15 @@ export function createFontListLayer(props: {
           colorSpace: props.colorSpace,
         }),
       );
-      entry.scale = row.scale;
       entry.dot.material.opacity = row.opacity;
       entry.text.fillOpacity = row.opacity;
-      layoutName(row.id);
+      entry.text.position.x =
+        LIST_SAMPLE_LEFT +
+        (imageWidths.get(row.id) ?? LIST_SAMPLE_WIDTH * row.scale) +
+        12;
       entry.text.color = props.isDark() ? 0xd4d4d8 : 0x3f3f46;
       entry.text.text = row.item.meta.font_name;
-      // eslint-disable-next-line solid/reactivity -- Troika calls this after async shaping; current bounds are intentionally read then.
-      entry.text.sync(() => layoutName(row.id));
+      entry.text.sync(props.requestRender);
     }
     props.requestRender();
   });
@@ -176,7 +157,6 @@ export function createFontListLayer(props: {
     camera.right = width;
     camera.bottom = -height;
     camera.updateProjectionMatrix();
-    for (const key of rows.keys()) layoutName(key);
     props.requestRender();
   });
 

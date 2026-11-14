@@ -21,13 +21,13 @@ import {
 } from '@/commands/font-selection';
 import { type FontItem } from '@/types/font';
 
-export const LIST_MIN_SCALE = 0.5;
+export const LIST_MIN_SCALE = 0.6;
 export const LIST_MAX_SCALE = 2.4;
 const BASE_ROW_HEIGHT_PX = 30;
 export const LIST_SCROLL_STEP_PX = BASE_ROW_HEIGHT_PX * LIST_MAX_SCALE;
 // Width of the Gaussian magnification in item units (larger = broader).
-const MAGNIFICATION_SIGMA_ITEMS = 2.5;
-const VISIBLE_RADIUS_ITEMS = 16;
+const MAGNIFICATION_SIGMA_ITEMS = 2;
+const VISIBLE_RADIUS_ITEMS = 20;
 const FADE_START_ITEMS = 5;
 const LENS_SAMPLE_STEP = 0.125;
 const lensOffsets = range(-24, 24 + LENS_SAMPLE_STEP, LENS_SAMPLE_STEP);
