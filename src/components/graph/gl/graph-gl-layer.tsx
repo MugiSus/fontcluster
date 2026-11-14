@@ -28,8 +28,6 @@ interface GraphGlLayerProps {
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
-  showPointCore: Accessor<boolean>;
-  showTreemapBoundaries: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
@@ -64,8 +62,6 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     showImages: () => props.showImages(),
     showFontNames: () => props.showFontNames(),
     glow: () => props.glow(),
-    showPointCore: () => props.showPointCore(),
-    showTreemapBoundaries: () => props.showTreemapBoundaries(),
     dendrogramEdges: () => props.dendrogramEdges(),
     dendrogramArcs: () => props.dendrogramArcs(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),

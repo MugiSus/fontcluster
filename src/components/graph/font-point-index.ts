@@ -69,13 +69,6 @@ const fontPointIndex = createRoot(() => {
     findNearestSelectablePoint: (x: number, y: number) =>
       selectableTree().find(x, y),
     findSelectablePoint: (x: number, y: number, radius: number) => {
-      const findLeafKeyAt = activeGraphLayout()?.findLeafKeyAt;
-      if (findLeafKeyAt) {
-        const key = findLeafKeyAt(x, y);
-        return key && appState.fonts.filteredKeys.has(key)
-          ? indexes().byKey.get(key)
-          : undefined;
-      }
       return selectableTree().find(x, y, radius);
     },
     getVisibleDetailKeys: (
@@ -88,9 +81,7 @@ const fontPointIndex = createRoot(() => {
       // detail this thinning gates, so reduce the normal spacing.
       const isDenseLabelSpacing = !showImages && showFontNames;
       const detailGapPx =
-        appState.ui.graphMode === 'scatter-plot' ||
-        appState.ui.graphMode === 'rectangular-treemap' ||
-        appState.ui.graphMode === 'voronoi-treemap'
+        appState.ui.graphMode === 'scatter-plot'
           ? isDenseLabelSpacing
             ? 40
             : 60
@@ -120,7 +111,7 @@ export const getGraphPointByKey = fontPointIndex.getPointByKey;
 
 export const findSelectableFontPoint = fontPointIndex.findSelectablePoint;
 
-/** Nearest font position in every layout, independent of treemap containment. */
+/** Nearest font position in every layout. */
 export const findNearestSelectableFontPoint =
   fontPointIndex.findNearestSelectablePoint;
 

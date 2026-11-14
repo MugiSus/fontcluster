@@ -3,7 +3,6 @@ import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import { type FontItem } from '@/types/font';
-import { GRAPH_MODE_CAPABILITIES } from '@/lib/graph-modes';
 import { useElementSize } from '@/hooks/use-element-size';
 import {
   dendrogramArcs,
@@ -50,7 +49,6 @@ interface GraphViewerProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
-  showTreemapBoundaries: boolean;
   showHud: boolean;
   sessionKey: string;
   sampleImageUrl: (safeName: string) => string | undefined;
@@ -149,16 +147,6 @@ export function GraphViewer(props: GraphViewerProps) {
     getDendrogramAncestry(selection.selectedKey(), dendrogramCurveZoom()),
   );
 
-  const showPointCore = createMemo(() => {
-    if (appState.ui.graphMode === 'rectangular-treemap') {
-      return !props.showTreemapBoundaries;
-    }
-    if (appState.ui.graphMode === 'voronoi-treemap') {
-      return props.showTreemapBoundaries;
-    }
-    return GRAPH_MODE_CAPABILITIES[appState.ui.graphMode].showPointCore;
-  });
-
   const selectedDendrogramAnchor = createMemo<DendrogramImageAnchor | null>(
     () => {
       const nodeIndex = selection.selectedDendrogramNode();
@@ -183,12 +171,7 @@ export function GraphViewer(props: GraphViewerProps) {
     return dendrogramImageAnchors().filter((anchor) => keys.has(anchor.key));
   });
 
-  // The GL layer's name labels follow the layout actually in effect: the
-  // tree leaf labels while a dendrogram is drawn. Map/scatter labels normally
-  // sit below each point; treemap labels occupy the point center when cell
-  // boundaries replace the user-hidden samples. Thinning controls visibility
-  // separately; the GL label layer moves an individual centered label below
-  // any sample image forced by selection.
+  // Tree labels follow their leaf layout; scatter labels sit below each point.
   const pointLabels = createMemo<GraphPointLabel[]>(() =>
     dendrogramTreeLayout()
       ? dendrogramLeafLabels()
@@ -197,13 +180,7 @@ export function GraphViewer(props: GraphViewerProps) {
           text: point.item.meta.font_name,
           x: point.x,
           y: point.y,
-          orientation:
-            GRAPH_MODE_CAPABILITIES[appState.ui.graphMode]
-              .canShowTreemapBoundaries &&
-            props.showTreemapBoundaries &&
-            !props.showImages
-              ? ('centered' as const)
-              : ('horizontal' as const),
+          orientation: 'horizontal' as const,
           colorAngle: point.colorAngle,
         })),
   );
@@ -426,8 +403,6 @@ export function GraphViewer(props: GraphViewerProps) {
           showImages={() => props.showImages}
           showFontNames={() => props.showFontNames}
           glow={() => props.showGlow}
-          showPointCore={showPointCore}
-          showTreemapBoundaries={() => props.showTreemapBoundaries}
           dendrogramEdges={visibleDendrogramEdges}
           dendrogramArcs={dendrogramArcs}
           dendrogramNodeDots={dendrogramNodeDots}

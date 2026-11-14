@@ -25,7 +25,6 @@ export function GraphContent(props: GraphContentProps) {
   const [showImages, setShowImages] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(true);
   const [showGlow, setShowGlow] = createSignal(true);
-  const [showTreemapBoundaries, setShowTreemapBoundaries] = createSignal(true);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
     createSignal<ViewportZoomControls | null>(null);
@@ -74,7 +73,6 @@ export function GraphContent(props: GraphContentProps) {
         showImages={showImages()}
         showFontNames={showFontNames()}
         showGlow={showGlow()}
-        showTreemapBoundaries={showTreemapBoundaries()}
         showHud={props.showHud}
         sessionKey={props.sessionKey}
         sampleImageUrl={props.sampleImageUrl}
@@ -88,7 +86,6 @@ export function GraphContent(props: GraphContentProps) {
           showImages={showImages()}
           showFontNames={showFontNames()}
           showGlow={showGlow()}
-          showTreemapBoundaries={showTreemapBoundaries()}
           graphMode={appState.ui.graphMode}
           canCycleGraphMode={availableGraphModes().length > 1}
           isFilterOpen={isFilterOpen()}
@@ -97,9 +94,6 @@ export function GraphContent(props: GraphContentProps) {
           onToggleImages={() => setShowImages((shown) => !shown)}
           onToggleFontNames={() => setShowFontNames((shown) => !shown)}
           onToggleGlow={() => setShowGlow((shown) => !shown)}
-          onToggleTreemapBoundaries={() =>
-            setShowTreemapBoundaries((shown) => !shown)
-          }
           onCycleGraphMode={() => {
             const modes = availableGraphModes();
             const nextMode =

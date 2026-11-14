@@ -6,10 +6,6 @@ import {
   type RadialTreeLayout,
 } from './radial-tree-layout';
 import {
-  createRectangularTreemapLayout,
-  type RectangularTreemapLayout,
-} from './rectangular-treemap-layout';
-import {
   createScatterPlotLayout,
   type ScatterPlotLayout,
 } from './scatter-plot-layout';
@@ -17,16 +13,10 @@ import {
   createHorizontalTreeLayout,
   type HorizontalTreeLayout,
 } from './horizontal-tree-layout';
-import {
-  createVoronoiTreemapLayout,
-  type VoronoiTreemapLayout,
-} from './voronoi-treemap-layout';
 
 export type GraphLayout =
   | RadialTreeLayout
   | HorizontalTreeLayout
-  | RectangularTreemapLayout
-  | VoronoiTreemapLayout
   | ScatterPlotLayout;
 
 const layoutState = createRoot(() => {
@@ -47,18 +37,6 @@ const layoutState = createRoot(() => {
         const currentTopology = topology();
         return currentTopology
           ? createHorizontalTreeLayout(currentTopology)
-          : null;
-      }
-      case 'rectangular-treemap': {
-        const currentTopology = topology();
-        return currentTopology
-          ? createRectangularTreemapLayout(currentTopology)
-          : null;
-      }
-      case 'voronoi-treemap': {
-        const currentTopology = topology();
-        return currentTopology
-          ? createVoronoiTreemapLayout(currentTopology)
           : null;
       }
       case 'scatter-plot':
