@@ -29,6 +29,7 @@ import {
 import { type GraphToolMode } from './types';
 
 interface GraphToolbarProps {
+  isFontListEnabled: boolean;
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
@@ -134,17 +135,19 @@ export function GraphToolbar(props: GraphToolbarProps) {
         showDot
         dotSide='right'
       >
-        <Tooltip placement='left'>
-          <TooltipTrigger
-            as={ToggleGroupItem<'button'>}
-            value='list'
-            class={toggleItemClass}
-            aria-label={t.graph.bottomToolbar.showList()}
-          >
-            <ListIcon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>{t.graph.bottomToolbar.showList()}</TooltipContent>
-        </Tooltip>
+        <Show when={props.isFontListEnabled}>
+          <Tooltip placement='left'>
+            <TooltipTrigger
+              as={ToggleGroupItem<'button'>}
+              value='list'
+              class={toggleItemClass}
+              aria-label={t.graph.bottomToolbar.showList()}
+            >
+              <ListIcon class='size-4' />
+            </TooltipTrigger>
+            <TooltipContent>{t.graph.bottomToolbar.showList()}</TooltipContent>
+          </Tooltip>
+        </Show>
 
         <Tooltip placement='left'>
           <TooltipTrigger

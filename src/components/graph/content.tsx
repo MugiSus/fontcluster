@@ -26,6 +26,9 @@ interface GraphContentProps {
   applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
   showHud: boolean;
   controlAction?: JSX.Element;
+  /** Host-specific actions; the shared graph does not import desktop APIs. */
+  utilityControls?: JSX.Element;
+  isFontListEnabled?: boolean;
 }
 
 export function GraphContent(props: GraphContentProps) {
@@ -81,7 +84,7 @@ export function GraphContent(props: GraphContentProps) {
         toolMode={toolMode()}
         showImages={showImages()}
         showFontNames={showFontNames()}
-        showList={showList()}
+        showList={props.isFontListEnabled !== false && showList()}
         showGlow={showGlow()}
         showHud={props.showHud}
         sessionKey={props.sessionKey}
@@ -94,10 +97,12 @@ export function GraphContent(props: GraphContentProps) {
       <Show when={props.showHud}>
         <GraphControls
           controlAction={props.controlAction}
+          utilityControls={props.utilityControls}
+          isFontListEnabled={props.isFontListEnabled !== false}
           toolMode={toolMode()}
           showImages={showImages()}
           showFontNames={showFontNames()}
-          showList={showList()}
+          showList={props.isFontListEnabled !== false && showList()}
           showGlow={showGlow()}
           graphMode={appState.ui.graphMode}
           canCycleGraphMode={availableGraphModes().length > 1}

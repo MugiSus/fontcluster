@@ -1,5 +1,4 @@
 import type { JSX } from 'solid-js';
-import { GraphUtilityControls } from './utility-controls';
 import { GraphToolbar } from './toolbar';
 import { GraphZoomControls } from './zoom-controls';
 import { type GraphMode } from '@/store';
@@ -8,6 +7,8 @@ import { type ViewportZoomControls } from './graph-viewer';
 
 interface GraphControlsProps {
   controlAction?: JSX.Element;
+  utilityControls?: JSX.Element;
+  isFontListEnabled: boolean;
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
@@ -32,9 +33,10 @@ export function GraphControls(props: GraphControlsProps) {
       <div class='pointer-events-none absolute right-[3px] top-[3px] z-20 flex items-start gap-1 *:pointer-events-auto'>
         <div class='flex items-center gap-1'>
           {props.controlAction}
-          <GraphUtilityControls />
+          {props.utilityControls}
         </div>
         <GraphToolbar
+          isFontListEnabled={props.isFontListEnabled}
           toolMode={props.toolMode}
           showImages={props.showImages}
           showFontNames={props.showFontNames}
