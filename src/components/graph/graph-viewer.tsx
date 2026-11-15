@@ -470,6 +470,18 @@ export function GraphViewer(props: GraphViewerProps) {
           applySelectedFont={props.applySelectedFont}
         />
       </Show>
+      <Show when={graph.allPoints().length > 0 && viewport.isPanning()}>
+        <svg
+          class='pointer-events-none absolute left-1/2 top-1/2 z-50 size-8 -translate-x-1/2 -translate-y-1/2 text-muted-foreground'
+          viewBox='0 0 32 32'
+          fill='none'
+          stroke='currentColor'
+          stroke-width='1'
+          aria-hidden='true'
+        >
+          <path d='M0 16H32M16 0V32' />
+        </svg>
+      </Show>
     </div>
   );
 }
