@@ -96,7 +96,7 @@ export function useFontList(props: {
     () => new Map(items().map((item, index) => [item.meta.safe_name, index])),
   );
   const [offset, setOffset] = createSignal(0);
-  // Measured image dimensions from the WebGL layer; the input buttons use
+  // Measured image dimensions from the WebGL layer; copy hit testing uses
   // these same fitted boxes instead of a separate row-wide hit area.
   const [previewSizes, setPreviewSize] = createStore<
     Record<string, { width: number; height: number } | undefined>
@@ -105,9 +105,12 @@ export function useFontList(props: {
   const isLooping = createMemo(
     () =>
       items().length >
-      Math.ceil(
-        rowPosition.invert(bounds().height - centerY()) -
-          rowPosition.invert(-centerY()),
+      Math.min(
+        VISIBLE_RADIUS_ITEMS * 2,
+        Math.ceil(
+          rowPosition.invert(bounds().height - centerY()) -
+            rowPosition.invert(-centerY()),
+        ),
       ),
   );
 
@@ -171,6 +174,19 @@ export function useFontList(props: {
     return result;
   });
 
+  const inputBounds = createMemo(() => {
+    const viewport = bounds();
+    const visible = rows().filter((row) => row.opacity > 0);
+    const top = Math.max(0, visible[0]?.top ?? 0);
+    const bottom = Math.min(viewport.height, visible.at(-1)?.bottom ?? top);
+    return {
+      x: viewport.x,
+      y: viewport.y + top,
+      width: Math.min(400, viewport.width),
+      height: Math.max(0, bottom - top),
+    };
+  });
+
   const scrollBy = (delta: number) => {
     const fonts = items();
     if (!fonts.length) return;
@@ -221,6 +237,7 @@ export function useFontList(props: {
 
   return {
     bounds,
+    inputBounds,
     previewSizes,
     setPreviewSize,
     previewAt,

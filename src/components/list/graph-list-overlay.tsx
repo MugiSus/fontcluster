@@ -30,10 +30,10 @@ export function GraphListOverlay(props: { list: FontListController }) {
     <div
       class='absolute z-20 touch-none outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring'
       style={{
-        left: `${props.list.bounds().x}px`,
-        top: `${props.list.bounds().y}px`,
-        width: `${Math.min(400, props.list.bounds().width)}px`,
-        height: `${props.list.bounds().height}px`,
+        left: `${props.list.inputBounds().x}px`,
+        top: `${props.list.inputBounds().y}px`,
+        width: `${props.list.inputBounds().width}px`,
+        height: `${props.list.inputBounds().height}px`,
         cursor:
           pointer() && props.list.previewAt(pointer()!.x, pointer()!.y)
             ? 'pointer'
@@ -61,7 +61,10 @@ export function GraphListOverlay(props: { list: FontListController }) {
         const rect = event.currentTarget.getBoundingClientRect();
         const row = props.list.previewAt(
           event.clientX - rect.left,
-          event.clientY - rect.top,
+          event.clientY -
+            rect.top +
+            props.list.inputBounds().y -
+            props.list.bounds().y,
         );
         pressedRowId = row?.id ?? null;
         pointerY = event.clientY;
@@ -73,7 +76,11 @@ export function GraphListOverlay(props: { list: FontListController }) {
         const rect = event.currentTarget.getBoundingClientRect();
         setPointer({
           x: event.clientX - rect.left,
-          y: event.clientY - rect.top,
+          y:
+            event.clientY -
+            rect.top +
+            props.list.inputBounds().y -
+            props.list.bounds().y,
         });
         if (pointerY === null) return;
         const delta = pointerY - event.clientY;
@@ -92,7 +99,10 @@ export function GraphListOverlay(props: { list: FontListController }) {
         const rect = event.currentTarget.getBoundingClientRect();
         const row = props.list.previewAt(
           event.clientX - rect.left,
-          event.clientY - rect.top,
+          event.clientY -
+            rect.top +
+            props.list.inputBounds().y -
+            props.list.bounds().y,
         );
         if (row && row.id === pressedId) activate(row);
       }}
