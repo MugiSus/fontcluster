@@ -8,7 +8,6 @@ import { type ViewportZoomControls } from './graph-viewer';
 interface GraphControlsProps {
   controlAction?: JSX.Element;
   utilityControls?: JSX.Element;
-  isFontListEnabled: boolean;
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
@@ -36,7 +35,6 @@ export function GraphControls(props: GraphControlsProps) {
           {props.utilityControls}
         </div>
         <GraphToolbar
-          isFontListEnabled={props.isFontListEnabled}
           toolMode={props.toolMode}
           showImages={props.showImages}
           showFontNames={props.showFontNames}
