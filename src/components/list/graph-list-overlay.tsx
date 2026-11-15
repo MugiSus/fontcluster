@@ -28,7 +28,7 @@ export function GraphListOverlay(props: { list: FontListController }) {
 
   return (
     <div
-      class='absolute z-20 touch-none outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring'
+      class='absolute z-20 touch-none outline-none'
       style={{
         left: `${props.list.inputBounds().x}px`,
         top: `${props.list.inputBounds().y}px`,
