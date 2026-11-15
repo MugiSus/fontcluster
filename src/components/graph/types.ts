@@ -66,8 +66,7 @@ interface GraphPointLabelBase {
 /**
  * One font-name label of the GL label layer. Radial labels read outward along
  * their leaf's dendrogram spoke; rightward labels extend from a horizontal
- * tree's leaves; horizontal labels hang below points; centered labels occupy
- * the point position unless an actual sample image requires clearance.
+ * tree's leaves; horizontal labels hang below points.
  */
 export type GraphPointLabel =
   | (GraphPointLabelBase & {
@@ -76,5 +75,5 @@ export type GraphPointLabel =
       angle: number;
     })
   | (GraphPointLabelBase & {
-      orientation: 'rightward' | 'horizontal' | 'centered';
+      orientation: 'rightward' | 'horizontal';
     });

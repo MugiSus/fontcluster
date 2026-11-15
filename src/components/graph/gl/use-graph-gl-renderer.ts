@@ -1,3 +1,5 @@
+import { createFontListLayer } from './font-list-layer';
+import { type FontListController } from '@/components/list/use-font-list';
 import {
   type Accessor,
   createEffect,
@@ -52,8 +54,6 @@ import { createImageLayer, type ImageSpec } from './image-layer';
 import { createPointLayer, makeActivePredicate } from './point-layer';
 import { createRingLayer, type RingSpec } from './ring-layer';
 import { createScatterGridLayer } from './scatter-grid-layer';
-import { createCrosshairLayer } from './crosshair-layer';
-import { createTreemapLayer } from './treemap-layer';
 
 ColorManagement.define({
   [DisplayP3ColorSpace]: DisplayP3ColorSpaceImpl,
@@ -67,6 +67,7 @@ const NO_CORE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
   getCanvas: () => HTMLCanvasElement | undefined;
+  list: FontListController;
   layout: Accessor<GraphLayout | null>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
@@ -81,8 +82,6 @@ export interface UseGraphGlRendererProps {
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
-  showPointCore: Accessor<boolean>;
-  showTreemapBoundaries: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
@@ -97,7 +96,7 @@ export interface UseGraphGlRendererProps {
  * Orchestrates the GPU graph renderer.
  *
  * Responsibilities are split across composable layers — see
- * {@link createDendrogramLayer}, {@link createTreemapLayer},
+ * {@link createDendrogramLayer},
  * {@link createPointLayer}, {@link createRingLayer} and
  * {@link createImageLayer}. Each layer is constructed with accessors and owns
  * its own reactive updates (Solid manages its objects' lifecycle and teardown);
@@ -179,7 +178,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
       const showLabels = hasVisiblePointLabels();
-      const showTreemapBoundaries = props.showTreemapBoundaries();
 
       // Glow off: draw the sharp content (core dots + rings + images + tree)
       // straight to the screen. The halo object is only used by the bloom path.
@@ -188,14 +186,13 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         dendrogramAliasHaloLayer.halo.visible = false;
         core.visible = true;
         scatterGridLayer.visible = true;
-        crosshairLayer.visible = true;
-        treemapLayer.visible = showTreemapBoundaries;
         dendrogramLayer.visible = true;
         pointLabelLayer.visible = showLabels;
         ringLayer.visible = true;
         imageLayer.visible = true;
         renderer.setRenderTarget(null);
         renderer.render(scene, camera);
+        fontListLayer.render(renderer);
         hasRenderedFrame = true;
         canvas.style.visibility = '';
         return;
@@ -211,8 +208,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       dendrogramAliasHaloLayer.halo.visible = true;
       core.visible = false;
       scatterGridLayer.visible = false;
-      crosshairLayer.visible = false;
-      treemapLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = false;
       ringLayer.visible = false;
@@ -228,8 +223,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       halo.visible = false;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = true;
-      crosshairLayer.visible = true;
-      treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       renderer.setRenderTarget(null);
       renderer.render(scene, camera);
@@ -243,8 +236,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       core.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
       scatterGridLayer.visible = false;
-      crosshairLayer.visible = false;
-      treemapLayer.visible = false;
       dendrogramLayer.visible = false;
       pointLabelLayer.visible = showLabels;
       ringLayer.visible = true;
@@ -257,10 +248,9 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
 
       // Leave the scene in a sane default for any stray render.
       scatterGridLayer.visible = true;
-      crosshairLayer.visible = true;
-      treemapLayer.visible = showTreemapBoundaries;
       dendrogramLayer.visible = true;
       dendrogramAliasHaloLayer.halo.visible = false;
+      fontListLayer.render(renderer);
       hasRenderedFrame = true;
       canvas.style.visibility = '';
     };
@@ -291,7 +281,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         selectedFamilyName: props.selectedFamily(),
         showSamples: props.showImages(),
         showLabels: props.showFontNames(),
-        showCores: props.showPointCore(),
       }),
     );
     const pointPresentationByKey = createMemo(() => {
@@ -432,28 +421,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       resolution: props.size,
       requestRender: scheduleRender,
     });
-    const treemapLayer = createTreemapLayer({
-      layout: () => {
-        const layout = props.layout();
-        return layout?.mode === 'rectangular-treemap' ||
-          layout?.mode === 'voronoi-treemap'
-          ? layout
-          : null;
-      },
-      isDark,
-      colorSpace: graphOutputColorSpace,
-      resolution: props.size,
-      requestRender: scheduleRender,
-    });
-    const crosshairLayer = createCrosshairLayer({
-      showVertical: () => props.layout()?.mode !== 'horizontal-tree',
-      // CSS owns the token; Three handles the color-space conversion.
-      getColor: () => window.getComputedStyle(canvas).color,
-      viewBox: props.viewBox,
-      zoomFactor: props.zoomFactor,
-      resolution: props.size,
-      requestRender: scheduleRender,
-    });
     const dendrogramLayer = createDendrogramLayer({
       edges: props.dendrogramEdges,
       arcs: props.dendrogramArcs,
@@ -505,9 +472,16 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       zoom: props.zoomFactor,
       requestRender: scheduleRender,
     });
+    const fontListLayer = createFontListLayer({
+      list: props.list,
+      size: props.size,
+      isDark,
+      colorSpace: graphOutputColorSpace,
+      sessionKey: props.sessionKey,
+      sampleImageUrl: props.sampleImageUrl,
+      requestRender: scheduleRender,
+    });
     scene.add(scatterGridLayer);
-    scene.add(crosshairLayer);
-    scene.add(treemapLayer);
     scene.add(dendrogramLayer);
     scene.add(pointLabelLayer);
     scene.add(pointLayer.core);
@@ -530,7 +504,6 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // those accessors untracked (it runs in rAF), so subscribe here.
     createEffect(() => {
       props.glow();
-      props.showTreemapBoundaries();
       hasVisiblePointLabels();
       scheduleRender();
     });

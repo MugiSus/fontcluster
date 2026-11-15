@@ -1,3 +1,4 @@
+import { type FontListController } from '@/components/list/use-font-list';
 import { type Accessor } from 'solid-js';
 import {
   type DendrogramArc,
@@ -14,6 +15,7 @@ import { type GraphLayout } from '@/components/graph/layouts/active-graph-layout
 import { useGraphGlRenderer } from './use-graph-gl-renderer';
 
 interface GraphGlLayerProps {
+  list: FontListController;
   layout: Accessor<GraphLayout | null>;
   size: Accessor<{ width: number; height: number }>;
   viewBox: Accessor<GraphViewBox>;
@@ -28,8 +30,6 @@ interface GraphGlLayerProps {
   showImages: Accessor<boolean>;
   showFontNames: Accessor<boolean>;
   glow: Accessor<boolean>;
-  showPointCore: Accessor<boolean>;
-  showTreemapBoundaries: Accessor<boolean>;
   dendrogramEdges: Accessor<DendrogramEdge[]>;
   dendrogramArcs: Accessor<DendrogramArc[]>;
   dendrogramNodeDots: Accessor<DendrogramNodeDot[]>;
@@ -50,6 +50,9 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
 
   useGraphGlRenderer({
     getCanvas: () => canvas,
+    get list() {
+      return props.list;
+    },
     layout: () => props.layout(),
     size: () => props.size(),
     viewBox: () => props.viewBox(),
@@ -64,8 +67,6 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
     showImages: () => props.showImages(),
     showFontNames: () => props.showFontNames(),
     glow: () => props.glow(),
-    showPointCore: () => props.showPointCore(),
-    showTreemapBoundaries: () => props.showTreemapBoundaries(),
     dendrogramEdges: () => props.dendrogramEdges(),
     dendrogramArcs: () => props.dendrogramArcs(),
     dendrogramNodeDots: () => props.dendrogramNodeDots(),

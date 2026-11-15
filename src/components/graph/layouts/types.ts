@@ -6,5 +6,4 @@ export interface GraphLayoutBase<M extends GraphMode> {
   readonly width: number;
   readonly height: number;
   readonly positionByKey: ReadonlyMap<string, GraphCoordinate>;
-  readonly findLeafKeyAt?: (x: number, y: number) => string | null;
 }

@@ -1,15 +1,13 @@
 import {
   ChartScatterIcon,
-  CircleDotDashedIcon,
   GitForkIcon,
   HandIcon,
-  LayoutGridIcon,
+  ListIcon,
   MaximizeIcon,
   MinusIcon,
   MousePointer2Icon,
   PlusIcon,
   SearchIcon,
-  SquareDashedIcon,
   TagIcon,
   TelescopeIcon,
   TypeIcon,
@@ -20,7 +18,6 @@ import { createMemo, Match, Show, Switch } from 'solid-js';
 import { appState, type GraphMode } from '@/store';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
-import { GRAPH_MODE_CAPABILITIES } from '@/lib/graph-modes';
 import { Button } from '@/components/ui/button';
 import {
   dotVariants,
@@ -39,7 +36,7 @@ interface GraphBottomToolbarProps {
   showImages: boolean;
   showFontNames: boolean;
   showGlow: boolean;
-  showTreemapBoundaries: boolean;
+  showList: boolean;
   graphMode: GraphMode;
   canCycleGraphMode: boolean;
   isFilterOpen: boolean;
@@ -47,7 +44,7 @@ interface GraphBottomToolbarProps {
   onToggleImages: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
-  onToggleTreemapBoundaries: () => void;
+  onToggleList: () => void;
   onCycleGraphMode: () => void;
   onToggleFilter: () => void;
   onZoomIn?: (() => void) | undefined;
@@ -79,10 +76,6 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
     switch (props.graphMode) {
       case 'horizontal-tree':
         return t.graph.bottomToolbar.horizontalTreeMode();
-      case 'rectangular-treemap':
-        return t.graph.bottomToolbar.rectangularTreemapMode();
-      case 'voronoi-treemap':
-        return t.graph.bottomToolbar.voronoiTreemapMode();
       case 'scatter-plot':
         return t.graph.bottomToolbar.scatterPlotMode();
       default:
@@ -97,9 +90,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       props.showImages && 'images',
       props.showFontNames && 'fontNames',
       props.showGlow && 'glow',
-      GRAPH_MODE_CAPABILITIES[props.graphMode].canShowTreemapBoundaries &&
-        props.showTreemapBoundaries &&
-        'treemapBoundaries',
+      props.showList && 'list',
     ].filter(Boolean) as string[];
 
   const handleDisplayChange = (values: string[]) => {
@@ -109,12 +100,7 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
       props.onToggleFontNames();
     }
     if (next.has('glow') !== props.showGlow) props.onToggleGlow();
-    if (
-      GRAPH_MODE_CAPABILITIES[props.graphMode].canShowTreemapBoundaries &&
-      next.has('treemapBoundaries') !== props.showTreemapBoundaries
-    ) {
-      props.onToggleTreemapBoundaries();
-    }
+    if (next.has('list') !== props.showList) props.onToggleList();
   };
 
   return (
@@ -261,26 +247,17 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
           </TooltipTrigger>
           <TooltipContent>{t.graph.bottomToolbar.glowMode()}</TooltipContent>
         </Tooltip>
-
-        <Show
-          when={
-            GRAPH_MODE_CAPABILITIES[props.graphMode].canShowTreemapBoundaries
-          }
-        >
-          <Tooltip placement='left'>
-            <TooltipTrigger
-              as={ToggleGroupItem<'button'>}
-              value='treemapBoundaries'
-              class={toggleItemClass}
-              aria-label={t.graph.bottomToolbar.treemapBoundaries()}
-            >
-              <SquareDashedIcon class='size-4' />
-            </TooltipTrigger>
-            <TooltipContent>
-              {t.graph.bottomToolbar.treemapBoundaries()}
-            </TooltipContent>
-          </Tooltip>
-        </Show>
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='list'
+            class={toggleItemClass}
+            aria-label={t.graph.bottomToolbar.showList()}
+          >
+            <ListIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>{t.graph.bottomToolbar.showList()}</TooltipContent>
+        </Tooltip>
       </ToggleGroup>
 
       <Show when={props.canCycleGraphMode}>
@@ -296,12 +273,6 @@ export function GraphBottomToolbar(props: GraphBottomToolbarProps) {
             onClick={() => props.onCycleGraphMode()}
           >
             <Switch fallback={<WaypointsIcon class='size-4' />}>
-              <Match when={props.graphMode === 'rectangular-treemap'}>
-                <LayoutGridIcon class='size-4' />
-              </Match>
-              <Match when={props.graphMode === 'voronoi-treemap'}>
-                <CircleDotDashedIcon class='size-4' />
-              </Match>
               <Match when={props.graphMode === 'scatter-plot'}>
                 <ChartScatterIcon class='size-4' />
               </Match>

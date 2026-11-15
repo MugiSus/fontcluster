@@ -32,7 +32,6 @@ interface GraphPointPresentationOptions {
   selectedFamilyName: string | null;
   showSamples: boolean;
   showLabels: boolean;
-  showCores: boolean;
 }
 
 /** Derives the single presentation source consumed by every font-point layer. */
@@ -57,7 +56,7 @@ export function deriveGraphPointPresentations(
       point,
       showSample,
       showLabel: options.showLabels && options.visibleDetailKeys.has(point.key),
-      showCore: options.showCores && !showSample,
+      showCore: !showSample,
       isActive: options.activeKeys.has(point.key),
       emphasis,
     };

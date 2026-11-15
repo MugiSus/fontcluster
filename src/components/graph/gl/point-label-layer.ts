@@ -8,7 +8,7 @@ import {
 } from 'three';
 import { DisplayP3ColorSpace } from 'three/addons/math/ColorSpaces.js';
 import { BatchedText, Text } from 'troika-three-text';
-import geistRegularWoff from '@fontsource/geist/files/geist-latin-400-normal.woff?inline';
+import { GEIST_FONT_URL } from './text-font';
 import { SAMPLE_IMAGE_BOX_HEIGHT_PX } from '@/components/graph/constants';
 import { type GraphPointPresentation } from '@/components/graph/graph-point-presentation';
 import { type GraphPointLabel } from '@/components/graph/types';
@@ -30,21 +30,6 @@ const SAMPLE_IMAGE_EXTRA_GAP_PX = 12;
 /** Matches the ring/image layers' dimmed opacity for filtered-out fonts. */
 const DIMMED_OPACITY = 0.4;
 
-// The woff ships inlined as a data URI (a runtime asset fetch is not
-// guaranteed to reach troika's in-worker XHR through Tauri's custom
-// protocol), converted once to an object URL so each member's worker sync
-// message carries a short string rather than the ~40KB data URI.
-const GEIST_FONT_URL = URL.createObjectURL(
-  new Blob(
-    [
-      Uint8Array.from(atob(geistRegularWoff.split(',')[1] ?? ''), (char) =>
-        char.charCodeAt(0),
-      ),
-    ],
-    { type: 'font/woff' },
-  ),
-);
-
 export interface PointLabelLayerProps {
   /** The point labels to draw (see {@link GraphPointLabel}). */
   labels: Accessor<GraphPointLabel[]>;
@@ -63,10 +48,7 @@ export interface PointLabelLayerProps {
  * along their leaf's spoke, so the tree reads as a labelled circular
  * dendrogram; labels on the left semicircle are flipped 180° and end-anchored
  * (the classic radial label rule) so no name renders upside down. Horizontal
- * tree labels extend rightward; treemap and scatter labels normally hang
- * below, while treemap labels may occupy the point center when samples are
- * hidden. A selection-forced sample moves that one centered label through the
- * same below-image clearance path as an ordinary horizontal label.
+ * tree labels extend rightward; scatter labels hang below their points.
  *
  * Rendering uses troika's SDF text — glyph layout and SDF atlas generation
  * run asynchronously in a worker, and the (experimental) `BatchedText` draws
@@ -149,9 +131,6 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
             (blockBounds ? (blockBounds[2] - blockBounds[0]) / 2 : 0)) *
           zoom;
         member.position.set(label.x + gap, -label.y, 0);
-        member.rotation.z = 0;
-      } else if (label.orientation === 'centered' && !hasImageBox) {
-        member.position.set(label.x, -label.y, 0);
         member.rotation.z = 0;
       } else {
         const gap =

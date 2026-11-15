@@ -12,7 +12,6 @@ export interface DendrogramTopologyNode {
   readonly mergeIndex: number | null;
   readonly children: readonly number[];
   readonly parentIndex: number | null;
-  readonly visibleLeafCount: number;
   readonly height: number;
   readonly representativeKey: string | null;
   readonly clusterId: number | undefined;
@@ -56,7 +55,6 @@ export function createDendrogramTopology(
           mergeIndex: null,
           children: [],
           parentIndex: null,
-          visibleLeafCount: 1,
           height: 0,
           representativeKey: key,
           clusterId: clustering?.k,
@@ -96,10 +94,6 @@ export function createDendrogramTopology(
       mergeIndex,
       children: visibleChildren,
       parentIndex: null,
-      visibleLeafCount: visibleChildren.reduce(
-        (count, childIndex) => count + nodes[childIndex]!.visibleLeafCount,
-        0,
-      ),
       height: merge.height,
       representativeKey: ids[merge.representative] ?? null,
       clusterId: isSameCluster ? clusterId : undefined,

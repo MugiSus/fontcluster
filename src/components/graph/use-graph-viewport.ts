@@ -43,6 +43,7 @@ export interface GraphViewportController {
   viewBox: Accessor<GraphViewBox>;
   zoomFactor: Accessor<number>;
   isDragging: Accessor<boolean>;
+  isPanning: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
   refreshViewportRect: () => void;
   dragPan: (event: MouseEvent) => void;
@@ -106,6 +107,7 @@ export function useGraphViewport(
 
   const [viewBox, setViewBox] = createSignal(initialViewBox);
   const [isDragging, setIsDragging] = createSignal(false);
+  const [isPanning, setIsPanning] = createSignal(false);
   const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
 
   let latestViewBox = initialViewBox;
@@ -161,6 +163,26 @@ export function useGraphViewport(
       currentViewBox.height / currentSize.height,
     );
   });
+
+  // Observe committed camera movement, independently of its input source.
+  // Show the indicator for each moving frame, with no delayed disappearance.
+  createEffect(
+    on(
+      () => getViewBoxCenter(viewBox()),
+      (center, previous) => {
+        if (!previous) return;
+        // Ignore sub-0.01px rounding drift from zooming around the center.
+        const hasMoved =
+          Math.hypot(center.x - previous.x, center.y - previous.y) >
+          zoomFactor() * 0.01;
+        setIsPanning(hasMoved);
+        if (!hasMoved) return;
+        const frame = window.requestAnimationFrame(() => setIsPanning(false));
+        onCleanup(() => window.cancelAnimationFrame(frame));
+      },
+      { defer: true },
+    ),
+  );
 
   // Cached SVG client rect. `getBoundingClientRect` forces a layout reflow, so
   // we measure it only at interaction starts (and lazily) instead of on every
@@ -313,6 +335,7 @@ export function useGraphViewport(
     viewBox,
     zoomFactor,
     isDragging,
+    isPanning,
     getGraphPointFromEvent,
     refreshViewportRect,
     dragPan,
