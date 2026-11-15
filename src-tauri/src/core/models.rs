@@ -1,4 +1,4 @@
-//! Model catalog, resolution, and persistent installation.
+//! Model resolution and persistent installation.
 //!
 //! A model ID is published under the same GitHub Release tag in
 //! `MugiSus/fontcluster-models`. Every release carries the same three assets:
@@ -14,12 +14,11 @@ use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 /// GitHub API root for the repository that owns the model releases.
 const MODEL_REPOSITORY_API: &str = "https://api.github.com/repos/MugiSus/fontcluster-models";
@@ -29,8 +28,6 @@ const GITHUB_API_VERSION: &str = "2026-03-10";
 const MODEL_API_VERSION: u32 = 1;
 /// Prevents an unexpectedly large manifest from being buffered in memory.
 const MAX_MANIFEST_BYTES: u64 = 64 * 1024;
-/// Bounds how long remote metadata may suppress another GitHub request.
-const REMOTE_CATALOG_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
 /// The complete and exclusive asset set accepted for one model release.
 const REQUIRED_ASSETS: [&str; 3] = ["model.json", "model.onnx", "attribute_directions.json"];
 /// Attribute names whose directions must all be present in a compatible bundle.
@@ -85,7 +82,7 @@ pub struct ModelManifest {
     pub model_api_version: u32,
     /// Stable release and installation-directory identifier.
     pub id: String,
-    /// Human-readable name shown in the model selector.
+    /// Human-readable name supplied by the model publisher.
     pub name: String,
     /// Optional parameter count supplied by the model publisher.
     #[serde(default)]
@@ -117,43 +114,6 @@ pub struct ModelBundle {
     pub manifest: ModelManifest,
 }
 
-/// Whether a catalog entry can be used without a download.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ModelAvailability {
-    /// A structurally plausible copy exists in Application Support.
-    Available,
-    /// The release is known remotely but has no local copy.
-    NotDownloaded,
-}
-
-/// Minimal catalog projection consumed by the algorithm-options dropdown.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelCatalogEntry {
-    /// Stable identifier used for release lookup and local installation.
-    pub id: String,
-    /// Publisher-provided display name.
-    pub name: String,
-    /// Optional parameter count from the release manifest.
-    pub parameter_count: Option<u64>,
-    /// Sum of the three release asset sizes, or zero for local-only entries.
-    pub download_size: u64,
-    /// Local availability at the time the catalog was assembled.
-    pub availability: ModelAvailability,
-}
-
-/// Catalog lookup remains useful offline: installed entries are returned
-/// even when GitHub cannot be reached, with the failure carried as a warning.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelCatalogResponse {
-    /// Installed and remotely published models, de-duplicated by model ID.
-    pub models: Vec<ModelCatalogEntry>,
-    /// Recoverable remote-catalog problem suitable for display in the UI.
-    pub warning: Option<String>,
-}
-
 /// Release-asset fields needed for sizing, downloading, and verification.
 #[derive(Debug, Clone, Deserialize)]
 struct GithubReleaseAsset {
@@ -167,13 +127,11 @@ struct GithubReleaseAsset {
     digest: Option<String>,
 }
 
-/// Minimal GitHub Release representation used by the catalog and installer.
+/// Minimal GitHub Release representation used by the installer.
 #[derive(Debug, Clone, Deserialize)]
 struct GithubRelease {
     /// Release tag, which must equal the model ID.
     tag_name: String,
-    /// Optional release title used only when manifest metadata is unavailable.
-    name: Option<String>,
     /// Draft releases are never offered or installed.
     #[serde(default)]
     draft: bool,
@@ -198,154 +156,6 @@ struct AttributeDirections {
 struct AttributeDirection {
     /// Finite, approximately unit-length vector with `AttributeDirections::dim` values.
     direction: Vec<f32>,
-}
-
-/// Last complete remote catalog fetch retained independently of local state.
-///
-/// Only warning-free responses refresh this record. An expired record remains
-/// available as an offline fallback but does not prevent the next retry.
-struct CachedRemoteCatalog {
-    /// Time of the last warning-free GitHub response.
-    fetched_at: Instant,
-    /// Remote entries only; local availability is recomputed by [`list_models`].
-    models: Vec<ModelCatalogEntry>,
-}
-
-/// Process-wide cache and request-serialization point for remote model metadata.
-static REMOTE_CATALOG_CACHE: OnceLock<Mutex<Option<CachedRemoteCatalog>>> = OnceLock::new();
-
-/// Fetches published releases and merges them with models installed in
-/// Application Support.
-///
-/// Local manifests take precedence when the same ID is also published. Local
-/// discovery deliberately avoids hashing large payloads so opening the dropdown
-/// remains inexpensive; [`resolve_model`] performs complete verification before
-/// inference. Remote failures are represented by `warning`, not by discarding
-/// usable installed models.
-pub fn list_models() -> ModelCatalogResponse {
-    let mut entries = BTreeMap::new();
-    for manifest in discover_local_models() {
-        entries.insert(
-            manifest.id.clone(),
-            ModelCatalogEntry {
-                id: manifest.id,
-                name: manifest.name,
-                parameter_count: manifest.parameter_count,
-                download_size: 0,
-                availability: ModelAvailability::Available,
-            },
-        );
-    }
-
-    let (remote_models, warning) = remote_model_catalog();
-    for model in remote_models {
-        entries.entry(model.id.clone()).or_insert(model);
-    }
-
-    ModelCatalogResponse {
-        models: entries.into_values().collect(),
-        warning,
-    }
-}
-
-/// Returns remote catalog metadata under the process-wide five-minute cache.
-///
-/// The mutex is intentionally held during a refresh so concurrent UI requests
-/// collapse into one GitHub request. Only a complete warning-free result moves
-/// the cache timestamp. If refresh fails, an older successful result is served
-/// with a warning and remains expired so an explicit retry reaches the network.
-fn remote_model_catalog() -> (Vec<ModelCatalogEntry>, Option<String>) {
-    let cache = REMOTE_CATALOG_CACHE.get_or_init(|| Mutex::new(None));
-    let mut cached = cache
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if let Some(cached) = cached
-        .as_ref()
-        .filter(|cached| cached.fetched_at.elapsed() < REMOTE_CATALOG_CACHE_TTL)
-    {
-        return (cached.models.clone(), None);
-    }
-
-    match fetch_remote_model_catalog() {
-        Ok((models, None)) => {
-            *cached = Some(CachedRemoteCatalog {
-                fetched_at: Instant::now(),
-                models: models.clone(),
-            });
-            (models, None)
-        }
-        Ok((models, Some(warning))) => match cached.as_ref() {
-            Some(cached) => (
-                cached.models.clone(),
-                Some(format!("{warning}; using cached model metadata")),
-            ),
-            None => (models, Some(warning)),
-        },
-        Err(error) => match cached.as_ref() {
-            Some(cached) => (
-                cached.models.clone(),
-                Some(format!("{error}; using cached model metadata")),
-            ),
-            None => (Vec::new(), Some(error.to_string())),
-        },
-    }
-}
-
-/// Builds catalog entries from all compatible public GitHub releases.
-///
-/// Releases with an invalid ID or asset shape are ignored. A network failure
-/// while reading one manifest retains that release using its release title and
-/// reports a warning; an invalid manifest excludes the release. Failure to list
-/// releases at all is returned as an error for the cache layer to handle.
-fn fetch_remote_model_catalog() -> Result<(Vec<ModelCatalogEntry>, Option<String>)> {
-    let client = github_client()?;
-    let releases = fetch_releases(&client)?;
-    let mut models = Vec::new();
-    let mut warnings = Vec::new();
-    for release in releases
-        .into_iter()
-        .filter(|release| !release.draft && !release.prerelease)
-    {
-        let model_id = release.tag_name.clone();
-        if validate_model_id(&model_id).is_err() || required_release_assets(&release).is_err() {
-            continue;
-        }
-        let manifest = match fetch_release_manifest(&client, &release, &model_id) {
-            Ok(manifest) => Some(manifest),
-            Err(error @ AppError::Network(_)) => {
-                warnings.push(format!("Could not read metadata for '{model_id}': {error}"));
-                None
-            }
-            Err(error) => {
-                warnings.push(format!("Ignoring model release '{model_id}': {error}"));
-                continue;
-            }
-        };
-        let download_size = release
-            .assets
-            .iter()
-            .filter(|asset| REQUIRED_ASSETS.contains(&asset.name.as_str()))
-            .map(|asset| asset.size)
-            .sum();
-        let (name, parameter_count) = match manifest {
-            Some(manifest) => (manifest.name, manifest.parameter_count),
-            None => (
-                release
-                    .name
-                    .filter(|name| !name.trim().is_empty())
-                    .unwrap_or_else(|| model_id.clone()),
-                None,
-            ),
-        };
-        models.push(ModelCatalogEntry {
-            id: model_id,
-            name,
-            parameter_count,
-            download_size,
-            availability: ModelAvailability::NotDownloaded,
-        });
-    }
-    Ok((models, (!warnings.is_empty()).then(|| warnings.join("; "))))
 }
 
 /// Returns a completely validated installed model without network access.
@@ -487,7 +297,7 @@ pub fn ensure_model(model_id: &str, events: &impl EventSink) -> Result<ModelBund
     }
 }
 
-/// Constructs the blocking GitHub client shared by one catalog or install operation.
+/// Constructs the blocking GitHub client used by one install operation.
 ///
 /// Request-specific read timeouts are assigned by the individual fetch and
 /// download functions; this client supplies the application user agent and a
@@ -497,23 +307,6 @@ fn github_client() -> Result<Client> {
         .user_agent(format!("FontCluster/{}", env!("CARGO_PKG_VERSION")))
         .connect_timeout(Duration::from_secs(15))
         .build()
-        .map_err(|error| AppError::Network(error.to_string()))
-}
-
-/// Fetches the first page of release metadata used to populate the catalog.
-///
-/// Transport, HTTP-status, and response-decoding failures are normalized to
-/// [`AppError::Network`] because no release can be trusted from a partial list.
-fn fetch_releases(client: &Client) -> Result<Vec<GithubRelease>> {
-    client
-        .get(format!("{MODEL_REPOSITORY_API}/releases?per_page=100"))
-        .timeout(Duration::from_secs(30))
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", GITHUB_API_VERSION)
-        .send()
-        .and_then(|response| response.error_for_status())
-        .map_err(|error| AppError::Network(error.to_string()))?
-        .json()
         .map_err(|error| AppError::Network(error.to_string()))
 }
 
@@ -908,48 +701,6 @@ fn validate_model_id(model_id: &str) -> Result<()> {
 /// Returns the persistent model root under FontCluster's Application Support directory.
 fn installed_models_root() -> Result<PathBuf> {
     Ok(AppState::get_base_dir()?.join("Models"))
-}
-
-/// Discovers locally installed bundles for catalog presentation.
-///
-/// Discovery is intentionally tolerant and shallow: unreadable directories,
-/// invalid manifests, and missing or empty payloads are skipped, while payload
-/// SHA-256 and attribute semantics are deferred to [`resolve_model`]. This
-/// prevents catalog opening from hashing a model that may be hundreds of MB.
-fn discover_local_models() -> Vec<ModelManifest> {
-    let Ok(models_root) = installed_models_root() else {
-        return Vec::new();
-    };
-    let Ok(entries) = fs::read_dir(models_root) else {
-        return Vec::new();
-    };
-    let mut manifests = Vec::new();
-    for entry in entries.flatten() {
-        let directory = entry.path();
-        let Some(id) = directory.file_name().and_then(|name| name.to_str()) else {
-            continue;
-        };
-        if validate_model_id(id).is_err() {
-            continue;
-        }
-        let Ok(file) = File::open(directory.join("model.json")) else {
-            continue;
-        };
-        let Ok(manifest) = serde_json::from_reader::<_, ModelManifest>(file) else {
-            continue;
-        };
-        if validate_manifest(&manifest, id).is_err()
-            || ["model.onnx", "attribute_directions.json"]
-                .iter()
-                .any(|name| {
-                    fs::metadata(directory.join(name)).map_or(true, |metadata| metadata.len() == 0)
-                })
-        {
-            continue;
-        }
-        manifests.push(manifest);
-    }
-    manifests
 }
 
 /// Reconciles the replacement backup left by an interrupted atomic install.

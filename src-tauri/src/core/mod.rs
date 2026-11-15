@@ -14,6 +14,7 @@ pub mod discoverer;
 pub mod events;
 pub mod example;
 pub mod google_fonts_downloader;
+pub mod inference;
 pub mod models;
 mod optimal_leaf_ordering;
 pub mod plugin_bridge;

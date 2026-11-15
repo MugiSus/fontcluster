@@ -7,6 +7,10 @@ const host = process.env.TAURI_DEV_HOST;
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
   plugins: [solid()],
+  worker: { format: 'es' as const },
+  // ORT is already bundled ESM. Discovering it only when the first Worker
+  // starts would otherwise trigger dependency optimization and reload the UI.
+  optimizeDeps: { exclude: ['onnxruntime-web'] },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
