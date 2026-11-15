@@ -1,5 +1,5 @@
 import { batch, createEffect, createMemo, createSignal, Show } from 'solid-js';
-import { GraphBottomControls } from './bottom-controls';
+import { GraphControls } from './controls';
 import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
 import { appState, type GraphMode } from '@/store';
@@ -23,8 +23,8 @@ interface GraphContentProps {
 export function GraphContent(props: GraphContentProps) {
   const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
   const [showImages, setShowImages] = createSignal(true);
-  const [showFontNames, setShowFontNames] = createSignal(true);
-  const [showGlow, setShowGlow] = createSignal(true);
+  const [showFontNames, setShowFontNames] = createSignal(false);
+  const [showGlow, setShowGlow] = createSignal(false);
   const [showList, setShowList] = createSignal(true);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
   const [viewportZoomControls, setViewportZoomControls] =
@@ -83,7 +83,7 @@ export function GraphContent(props: GraphContentProps) {
         onViewportZoomControlsChange={setViewportZoomControls}
       />
       <Show when={props.showHud}>
-        <GraphBottomControls
+        <GraphControls
           toolMode={toolMode()}
           showImages={showImages()}
           showFontNames={showFontNames()}

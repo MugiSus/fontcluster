@@ -1,9 +1,11 @@
-import { GraphBottomToolbar } from './bottom-toolbar';
+import { GraphUtilityControls } from './utility-controls';
+import { GraphToolbar } from './toolbar';
+import { GraphZoomControls } from './zoom-controls';
 import { type GraphMode } from '@/store';
 import { type GraphToolMode } from './types';
 import { type ViewportZoomControls } from './graph-viewer';
 
-interface GraphBottomControlsProps {
+interface GraphControlsProps {
   toolMode: GraphToolMode;
   showImages: boolean;
   showFontNames: boolean;
@@ -22,13 +24,21 @@ interface GraphBottomControlsProps {
   onToggleFilter: () => void;
 }
 
-export function GraphBottomControls(props: GraphBottomControlsProps) {
+export function GraphControls(props: GraphControlsProps) {
   return (
     <div
-      class='pointer-events-none absolute bottom-2 right-2 z-20 flex items-end gap-1.5 *:pointer-events-auto'
+      class='pointer-events-none absolute right-[3px] top-[3px] z-20 flex items-start gap-1 *:pointer-events-auto'
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <GraphBottomToolbar
+      <div class='flex items-center gap-1'>
+        <GraphZoomControls
+          onZoomIn={props.zoomControls?.zoomIn}
+          onZoomOut={props.zoomControls?.zoomOut}
+          onResetZoom={props.zoomControls?.resetView}
+        />
+        <GraphUtilityControls />
+      </div>
+      <GraphToolbar
         toolMode={props.toolMode}
         showImages={props.showImages}
         showFontNames={props.showFontNames}
@@ -44,9 +54,6 @@ export function GraphBottomControls(props: GraphBottomControlsProps) {
         onToggleList={props.onToggleList}
         onCycleGraphMode={props.onCycleGraphMode}
         onToggleFilter={props.onToggleFilter}
-        onZoomIn={props.zoomControls?.zoomIn}
-        onZoomOut={props.zoomControls?.zoomOut}
-        onResetZoom={props.zoomControls?.resetView}
       />
     </div>
   );

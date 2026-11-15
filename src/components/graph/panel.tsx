@@ -4,7 +4,6 @@ import { applyFontToPlugins } from '@/commands/plugins';
 import { appState } from '@/store';
 import { GraphContent } from './content';
 import { GraphPanelReopenControls } from './panel-reopen-controls';
-import { GraphUtilityControls } from './utility-controls';
 import { CollapsiblePanelKey, PanelState } from '@/types/panels';
 import { Show } from 'solid-js';
 
@@ -24,7 +23,6 @@ export function GraphPanel(props: GraphPanelProps) {
           onReopenPanel={props.onReopenPanel}
           isLeftInset={props.isLeftInset}
         />
-        <GraphUtilityControls />
       </Show>
       <GraphContent
         showHud={props.showHud}

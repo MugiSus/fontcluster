@@ -7,7 +7,7 @@ import { setVisibleGraphClusters } from '@/commands/graph';
 import { cn } from '@/lib/utils';
 import { type FontWeight } from '@/types/font';
 import { useFilteredFontMetadataKeys } from '@/hooks/use-filtered-font-metadata-keys';
-import { useDismiss } from '@/hooks/use-dismiss';
+import { createEscapeKeyDown } from '@kobalte/core/primitives/create-escape-key-down';
 import { WeightSelector } from '@/components/weight-selector';
 import { ClusterSelector } from '@/components/cluster-selector';
 
@@ -45,10 +45,9 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
 
   let inputElement: HTMLInputElement | undefined;
 
-  const dismissRef = useDismiss({
-    enabled: () => props.isOpen,
-    onDismiss: () => props.onClose(),
-    ignoreSelector: '[data-filter-toggle]',
+  createEscapeKeyDown({
+    isDisabled: () => !props.isOpen,
+    onEscapeKeyDown: () => props.onClose(),
   });
 
   const updateQuery = (value: string) => {
@@ -63,7 +62,6 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
 
   return (
     <div
-      ref={dismissRef}
       inert={!props.isOpen}
       onMouseDown={(event) => event.stopPropagation()}
       class={cn(
