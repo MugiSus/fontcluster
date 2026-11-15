@@ -47,6 +47,7 @@
     ],
     "resources": [
       "resources/google_fonts_popularity.json",
+      "resources/licenses/",
       "resources/example/"
     ],
     "macOS": {

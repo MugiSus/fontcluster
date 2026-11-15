@@ -150,7 +150,7 @@ pub fn run() {
             crate::commands::update_session_title,
             crate::commands::run_jobs,
             crate::commands::stop_jobs,
-            crate::commands::list_models,
+            crate::commands::complete_inference,
             crate::commands::render_font_preview,
             crate::commands::send_font_to_plugin,
             crate::commands::get_connected_plugins,

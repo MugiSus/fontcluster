@@ -1,27 +1,18 @@
 import { batch } from 'solid-js';
 import { reconcile } from 'solid-js/store';
 import { invoke } from '@tauri-apps/api/core';
+import { runJobsWithWasm } from '@/lib/inference/run-jobs';
 import { selectionHistory } from '@/selection-history';
 import { appState, setAppState } from '@/store';
 import { type FontItemRecord } from '@/types/font';
 import {
   type AlgorithmConfig,
   type DendrogramData,
-  type ProcessStatus,
+  type RunProcessingOptions,
   type SessionConfig,
 } from '@/types/session';
 
-export type ProcessingRunMode =
-  | 'duplicate_changed'
-  | 'in_place_changed'
-  | 'fresh';
-
-export interface RunProcessingOptions {
-  sessionId?: string;
-  sourceSessionId?: string;
-  overrideStatus?: ProcessStatus;
-  runMode?: ProcessingRunMode;
-}
+export type { ProcessingRunMode } from '@/types/session';
 
 interface SessionPayload {
   config: SessionConfig;
@@ -143,21 +134,10 @@ export const runProcessingJobs = async (
   algorithm: Partial<AlgorithmConfig>,
   options: RunProcessingOptions = {},
 ) => {
-  const {
-    sessionId,
-    sourceSessionId,
-    overrideStatus,
-    runMode = 'in_place_changed',
-  } = options;
+  const { sessionId, runMode = 'in_place_changed' } = options;
   selectionHistory.reset();
 
-  const result = await invoke<string>('run_jobs', {
-    algorithm,
-    sessionId,
-    sourceSessionId,
-    overrideStatus,
-    runMode,
-  });
+  const result = await runJobsWithWasm(algorithm, { ...options, runMode });
   console.log('Complete pipeline result:', result);
   if (
     runMode === 'in_place_changed' &&

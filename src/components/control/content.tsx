@@ -25,7 +25,6 @@ import { WeightSelector } from '@/components/weight-selector';
 import { type FontWeight } from '@/types/font';
 import {
   type AlgorithmConfig,
-  type AnalysisOptions,
   type RenderingOptions,
   type ClusteringOptions,
   type FontSet,
@@ -35,12 +34,12 @@ import { appState } from '@/store';
 import { runProcessingJobs, type ProcessingRunMode } from '@/commands/session';
 import { useI18n } from '@/i18n';
 import {
+  DEFAULT_ALGORITHM_CONFIG,
   DEFAULT_CLUSTERING_CONFIG,
   DEFAULT_RENDERING_CONFIG,
 } from '@/constants/session';
 // import { EmphasisControls } from './emphasis-controls';
 import { NumberProperty } from './number-property';
-import { ModelProperty } from './model-property';
 import { ControlPropertySection } from './property-section';
 import { SelectProperty } from './select-property';
 import { SwitchProperty } from './switch-property';
@@ -134,8 +133,8 @@ function parseClusteringConfig(
  *
  * This component owns only ephemeral form state and the submit cooldown. The
  * persisted algorithm, pipeline invalidation and model installation remain
- * backend responsibilities. Runs that need feature extraction wait until the
- * catalog can identify the draft model as installed or downloadable.
+ * backend responsibilities. The analysis model is fixed; starting a run lets
+ * the backend resolve and, when necessary, install that model.
  */
 export function ControlContent() {
   const { t } = useI18n();
@@ -213,10 +212,8 @@ export function ControlContent() {
       appState.session.algorithm.rendering.font_size,
     );
   const isAnalysisSectionChanged = () =>
-    isDraftStringChanged(
-      'analysis-model-id',
-      appState.session.algorithm.analysis.model_id,
-    );
+    appState.session.algorithm.analysis.model_id !==
+    DEFAULT_ALGORITHM_CONFIG.analysis.model_id;
   const isClusteringSectionChanged = () =>
     isDraftStringChanged(
       'clustering-method',
@@ -244,15 +241,10 @@ export function ControlContent() {
     isClusteringSectionChanged();
 
   const [renderingResetKey, setRenderingResetKey] = createSignal({});
-  const [analysisResetKey, setAnalysisResetKey] = createSignal({});
   const [clusteringResetKey, setClusteringResetKey] = createSignal({});
 
   const restoreRendering = () => {
     setRenderingResetKey({});
-    markDraftChanged();
-  };
-  const restoreAnalysis = () => {
-    setAnalysisResetKey({});
     markDraftChanged();
   };
   const restoreClustering = () => {
@@ -275,59 +267,20 @@ export function ControlContent() {
     }
   };
 
-  /**
-   * Snapshots the form once and submits only the configuration owned by the
-   * selected session mode. `not_downloaded` is accepted because starting the
-   * backend job is what authorizes its download; transient `loading` and
-   * `unknown` values block runs that need the model.
-   */
+  /** Submits the fixed analysis model through the backend's invalidation path. */
   const handleRun = async (requestedMode: ProcessingRunMode) => {
     if (isRunCooldown() || !formRef) return;
 
     const formdata = new FormData(formRef);
     const rendering = parseRenderingConfig(formdata);
-    const analysis: AnalysisOptions = {
-      model_id:
-        (formdata.get('analysis-model-id') as string) ||
-        appState.session.algorithm.analysis.model_id,
-    };
+    const analysis = DEFAULT_ALGORITHM_CONFIG.analysis;
     const clustering = parseClusteringConfig(
       formdata,
       appState.session.algorithm.clustering,
     );
-    const modelAvailability = formdata.get('analysis-model-availability');
     const currentSessionId = appState.session.session_id || undefined;
     const runMode: ProcessingRunMode =
       requestedMode !== 'fresh' && !currentSessionId ? 'fresh' : requestedMode;
-    const savedRendering = appState.session.algorithm.rendering;
-    const isRenderingChanged =
-      rendering.text !== savedRendering.text ||
-      rendering.font_set !== savedRendering.font_set ||
-      rendering.font_size !== savedRendering.font_size ||
-      rendering.weights.length !== savedRendering.weights.length ||
-      rendering.weights.some(
-        (weight, index) => weight !== savedRendering.weights[index],
-      );
-    const shouldLoadModel =
-      runMode === 'fresh' ||
-      appState.session.status.process_status === 'empty' ||
-      appState.session.status.process_status === 'rendered' ||
-      isRenderingChanged ||
-      analysis.model_id !== appState.session.algorithm.analysis.model_id ||
-      ((appState.session.status.process_status === 'analyzed' ||
-        appState.session.status.process_status === 'clustered') &&
-        clustering.enable_preprocess_pca &&
-        clustering.enable_attribute_emphasis &&
-        Object.values(clustering.emphasis).some((level) => level !== 0));
-    if (
-      shouldLoadModel &&
-      modelAvailability !== 'available' &&
-      modelAvailability !== 'not_downloaded'
-    ) {
-      toast.warning(t.controlPanel.modelCatalogRequired());
-      return;
-    }
-
     setIsRunCooldown(true);
     clearRunCooldown();
 
@@ -474,23 +427,12 @@ export function ControlContent() {
             </ControlPropertySection>
           </Show>
 
-          <Show when={analysisResetKey()} keyed>
-            <ControlPropertySection
-              title={t.controlPanel.sections.analyze()}
-              isChanged={isAnalysisSectionChanged()}
-              onRestore={restoreAnalysis}
-            >
-              <ModelProperty
-                modelId={appState.session.algorithm.analysis.model_id}
-                sessionId={appState.session.session_id}
-                isChanged={isDraftStringChanged(
-                  'analysis-model-id',
-                  appState.session.algorithm.analysis.model_id,
-                )}
-                onDraftChange={markDraftChanged}
-              />
-            </ControlPropertySection>
-          </Show>
+          <div class='flex h-8 items-center justify-between px-2 text-xs'>
+            <span class='font-medium text-muted-foreground'>
+              {t.controlPanel.model()}
+            </span>
+            <span>FontCLIP ViT-B/32</span>
+          </div>
 
           <Show when={clusteringResetKey()} keyed>
             <ControlPropertySection

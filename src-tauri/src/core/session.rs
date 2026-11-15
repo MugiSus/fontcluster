@@ -59,8 +59,10 @@ fn session_view_lock() -> &'static Mutex<()> {
 /// A spawned worker process for one running job, plus its cancellation flag.
 #[derive(Clone)]
 pub struct RunningJob {
+    pub run_id: String,
     pub child: Arc<Mutex<Child>>,
     pub is_cancelled: Arc<AtomicBool>,
+    pub pending_inference: Arc<Mutex<Option<super::inference::PendingInference>>>,
 }
 
 /// Shared, cloneable handle to all mutable runtime state.

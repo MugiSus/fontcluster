@@ -1,8 +1,9 @@
 //! Job orchestration: running the processing pipeline and reporting back.
 //!
 //! The pipeline runs in a **separate worker process** (the same executable
-//! re-invoked with `WORKER_RUN_JOBS_ARG`) so a crash in native model code
-//! can't take down the UI. This module has two sides:
+//! re-invoked with `WORKER_RUN_JOBS_ARG`) to isolate native font and clustering
+//! work from the UI. Inference alone is delegated to a WebAssembly Worker.
+//! This module has two sides:
 //! - the app side ([`run_jobs`]/[`stop_jobs`]) spawns the worker, reads the
 //!   JSON event lines it prints, and forwards them to the webview;
 //! - the worker side ([`run_jobs_worker`]/[`run_jobs_pipeline`]) actually runs
@@ -13,6 +14,9 @@ use crate::config::{
     AlgorithmConfig, AnalysisConfig, ClusteringConfig, FontSet, ProcessStatus, ProgressStage,
     RenderingConfig,
 };
+use crate::core::inference::{
+    InferenceMessage, InferenceReply, InferenceRequest, PendingInference,
+};
 use crate::core::{
     clusterer, ensure_model, Analyzer, AppState, Discoverer, EventSink, GoogleFontsDownloader,
     RunningJob, SampleRenderer, StdoutEventSink,
@@ -20,10 +24,13 @@ use crate::core::{
 use crate::error::{AppError, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::sync_channel;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tauri::ipc::Channel;
 use tauri::{command, AppHandle, Emitter, Manager, State};
 use uuid::Uuid;
 
@@ -71,7 +78,7 @@ pub enum RunMode {
 pub struct AlgorithmConfigPatch {
     /// Rendering configuration; required when a new session is created.
     pub rendering: Option<RenderingConfig>,
-    /// Analysis configuration; required when a new session is created.
+    /// Persisted analysis identity; processing always uses the fixed FontCLIP model.
     pub analysis: Option<AnalysisConfig>,
     /// Clustering configuration; required when a new session is created.
     pub clustering: Option<ClusteringConfig>,
@@ -84,7 +91,7 @@ pub struct AlgorithmConfigPatch {
 /// string (`"Success"`/`"Cancelled"`/…) once it exits.
 ///
 /// The child process owns all pipeline and model-download work. This app-side
-/// function owns only child lifecycle and event adaptation: it records the
+/// function owns child lifecycle, inference transport and event adaptation: it records the
 /// child under a temporary run ID, replaces that key with the real session ID
 /// after `session_started`, attaches that ID to progress and model-download
 /// events, and removes the child from [`AppState::current_job_children`] on
@@ -93,6 +100,7 @@ pub struct AlgorithmConfigPatch {
 #[command]
 pub async fn run_jobs(
     app: AppHandle,
+    inference: Channel<InferenceMessage>,
     algorithm: AlgorithmConfigPatch,
     session_id: Option<String>,
     source_session_id: Option<String>,
@@ -138,6 +146,7 @@ pub async fn run_jobs(
         command
             .arg(WORKER_RUN_JOBS_ARG)
             .arg(request_json)
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
 
@@ -152,81 +161,143 @@ pub async fn run_jobs(
             .stdout
             .take()
             .ok_or_else(|| AppError::Processing("Worker stdout was not piped".into()))?;
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| AppError::Processing("Worker stdin was not piped".into()))?;
         let child = Arc::new(Mutex::new(child));
         let is_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let pending_inference = Arc::new(Mutex::new(None));
         state.current_job_children.lock().unwrap().insert(
             run_id.clone(),
             RunningJob {
+                run_id: run_id.clone(),
                 child: child.clone(),
                 is_cancelled: is_cancelled.clone(),
+                pending_inference: pending_inference.clone(),
             },
         );
 
         let mut result = "Failed".to_string();
         let mut session_id: Option<String> = None;
-        for line in BufReader::new(stdout).lines() {
-            let line = line?;
-            let Ok(message) = serde_json::from_str::<WorkerEventMessage>(&line) else {
-                println!("{line}");
-                continue;
-            };
-
-            if message.event == "worker_result" {
-                if let Some(value) = message.payload.as_str() {
-                    result = value.to_string();
-                }
-                continue;
-            }
-
-            if message.event == "session_started" {
-                if let Some(started_session_id) = message.payload.as_str() {
-                    session_id = Some(started_session_id.to_string());
-                    let mut running_jobs = state.current_job_children.lock().unwrap();
-                    if let Some(job) = running_jobs.remove(&run_id) {
-                        running_jobs.insert(started_session_id.to_string(), job);
-                    }
-                }
-                app.emit(&message.event, message.payload)?;
-                continue;
-            }
-
-            if message.event.starts_with("model_download_") {
-                let mut payload = message.payload;
-                if let (Some(session_id), Some(object)) =
-                    (session_id.as_ref(), payload.as_object_mut())
-                {
-                    object.insert("sessionId".into(), Value::String(session_id.clone()));
-                }
-                app.emit(&message.event, payload)?;
-                continue;
-            }
-
-            if is_progress_event(&message.event) {
-                let payload = if let Some(session_id) = session_id.as_ref() {
-                    json!({
-                        "sessionId": session_id,
-                        "value": message.payload,
-                    })
-                } else {
-                    message.payload
+        let mut request_id = 0;
+        let forward_result = (|| -> Result<()> {
+            for line in BufReader::new(stdout).lines() {
+                let line = line?;
+                let Ok(message) = serde_json::from_str::<WorkerEventMessage>(&line) else {
+                    println!("{line}");
+                    continue;
                 };
-                app.emit(&message.event, payload)?;
-                continue;
-            }
 
-            if message.event == "all_jobs_complete" {
-                let key = session_id.as_ref().unwrap_or(&run_id).to_string();
-                state.current_job_children.lock().unwrap().remove(&key);
+                if message.event == "wasm_inference" {
+                    let request: InferenceRequest = serde_json::from_value(message.payload)?;
+                    let model_path = AppState::get_base_dir()?
+                        .join("Models")
+                        .join(crate::config::FONTCLIP_MODEL_ID)
+                        .join("model.onnx");
+                    if request.model_path != model_path || request.input.len() != 8 * 224 * 224 {
+                        return Err(AppError::Processing(
+                            "Invalid inference request from worker".into(),
+                        ));
+                    }
+                    // Grant access only to the validated fixed model, never its directory.
+                    app.asset_protocol_scope().allow_file(&model_path)?;
+                    request_id += 1;
+                    let (sender, receiver) = sync_channel(1);
+                    *pending_inference.lock().unwrap() =
+                        Some(PendingInference { request_id, sender });
+                    if is_cancelled.load(Ordering::Relaxed) {
+                        return Ok(());
+                    }
+                    inference.send(InferenceMessage {
+                        run_id: run_id.clone(),
+                        request_id,
+                        request,
+                    })?;
+                    // A reloaded/closed webview must not leave a child waiting forever.
+                    let reply = receiver
+                        .recv_timeout(Duration::from_secs(300))
+                        .unwrap_or_else(|error| {
+                            InferenceReply::Error(format!(
+                                "Wasm inference reply unavailable: {error}"
+                            ))
+                        });
+                    pending_inference.lock().unwrap().take();
+                    if is_cancelled.load(Ordering::Relaxed) {
+                        return Ok(());
+                    }
+                    serde_json::to_writer(&mut stdin, &reply)?;
+                    writeln!(stdin)?;
+                    stdin.flush()?;
+                    continue;
+                }
+
+                if message.event == "worker_result" {
+                    if let Some(value) = message.payload.as_str() {
+                        result = value.to_string();
+                    }
+                    continue;
+                }
+
+                if message.event == "session_started" {
+                    if let Some(started_session_id) = message.payload.as_str() {
+                        session_id = Some(started_session_id.to_string());
+                        let mut running_jobs = state.current_job_children.lock().unwrap();
+                        if let Some(job) = running_jobs.remove(&run_id) {
+                            running_jobs.insert(started_session_id.to_string(), job);
+                        }
+                    }
+                    app.emit(&message.event, message.payload)?;
+                    continue;
+                }
+
+                if message.event.starts_with("model_download_") {
+                    let mut payload = message.payload;
+                    if let (Some(session_id), Some(object)) =
+                        (session_id.as_ref(), payload.as_object_mut())
+                    {
+                        object.insert("sessionId".into(), Value::String(session_id.clone()));
+                    }
+                    app.emit(&message.event, payload)?;
+                    continue;
+                }
+
+                if is_progress_event(&message.event) {
+                    let payload = if let Some(session_id) = session_id.as_ref() {
+                        json!({
+                            "sessionId": session_id,
+                            "value": message.payload,
+                        })
+                    } else {
+                        message.payload
+                    };
+                    app.emit(&message.event, payload)?;
+                    continue;
+                }
+
+                if message.event == "all_jobs_complete" {
+                    let key = session_id.as_ref().unwrap_or(&run_id).to_string();
+                    state.current_job_children.lock().unwrap().remove(&key);
+                    app.emit(&message.event, message.payload)?;
+                    continue;
+                }
+
                 app.emit(&message.event, message.payload)?;
-                continue;
             }
+            Ok(())
+        })();
 
-            app.emit(&message.event, message.payload)?;
+        pending_inference.lock().unwrap().take();
+        drop(stdin);
+        if forward_result.is_err() || is_cancelled.load(Ordering::Relaxed) {
+            let _ = child.lock().unwrap().kill();
         }
 
-        let status = child.lock().unwrap().wait()?;
+        let status = child.lock().unwrap().wait();
         let key = session_id.as_ref().unwrap_or(&run_id).to_string();
         state.current_job_children.lock().unwrap().remove(&key);
+        forward_result?;
+        let status = status?;
         if status.success() {
             Ok(result)
         } else if is_cancelled.load(Ordering::Relaxed) {
@@ -286,7 +357,7 @@ pub fn is_worker_run_jobs_arg(arg: &str) -> bool {
 /// Worker-process entry point: deserialises the request, runs the pipeline on
 /// a single-threaded Tokio runtime, and prints the final result event.
 ///
-/// Keeping this runtime wholly inside the worker process isolates native-model
+/// Keeping this runtime inside the worker process isolates native processing
 /// failures from the UI process. Blocking model installation is delegated by
 /// [`run_jobs_pipeline`] so its blocking HTTP runtime is also created and
 /// dropped outside this async runtime.
@@ -330,9 +401,14 @@ pub fn run_jobs_worker(request_json: &str) -> Result<()> {
 pub async fn run_jobs_pipeline(
     events: impl EventSink,
     state: &AppState,
-    request: RunJobsRequest,
+    mut request: RunJobsRequest,
 ) -> Result<String> {
     state.is_cancelled.store(false, Ordering::Relaxed);
+    // Preserve a saved model identity on read; switching it here uses the
+    // existing stage-invalidation path before recalculating old sessions.
+    request.algorithm.analysis = Some(AnalysisConfig {
+        model_id: crate::config::FONTCLIP_MODEL_ID.into(),
+    });
 
     // Initialize or load session.
     let id = match request.run_mode {
@@ -562,8 +638,36 @@ pub fn stop_jobs(
 
     for job in jobs {
         job.is_cancelled.store(true, Ordering::Relaxed);
+        if let Some(request) = job.pending_inference.lock().unwrap().take() {
+            let _ = request
+                .sender
+                .try_send(InferenceReply::Error("Cancelled".into()));
+        }
         let _ = job.child.lock().unwrap().kill();
     }
     app.emit("jobs_cancelled", session_id)?;
+    Ok(())
+}
+
+/// Accepts only the pending reply owned by this job and batch.
+#[tauri::command]
+pub fn complete_inference(
+    state: State<'_, AppState>,
+    run_id: String,
+    request_id: u64,
+    reply: InferenceReply,
+) -> Result<()> {
+    let jobs = state.current_job_children.lock().unwrap();
+    if let Some(job) = jobs.values().find(|job| job.run_id == run_id) {
+        let mut pending = job.pending_inference.lock().unwrap();
+        if pending
+            .as_ref()
+            .is_some_and(|request| request.request_id == request_id)
+        {
+            // A late or duplicate reply cannot satisfy a different batch/job.
+            let request = pending.take().unwrap();
+            let _ = request.sender.try_send(reply);
+        }
+    }
     Ok(())
 }

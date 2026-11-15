@@ -153,3 +153,14 @@ export interface SessionConfig {
   discovered_fonts: Record<number, string[]>;
   algorithm: AlgorithmConfig;
 }
+export type ProcessingRunMode =
+  | 'duplicate_changed'
+  | 'in_place_changed'
+  | 'fresh';
+
+export interface RunProcessingOptions {
+  sessionId?: string;
+  sourceSessionId?: string;
+  overrideStatus?: ProcessStatus;
+  runMode?: ProcessingRunMode;
+}

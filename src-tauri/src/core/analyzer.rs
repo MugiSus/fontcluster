@@ -1,41 +1,35 @@
 //! Feature extraction stage: turns each rendered sample image into an
 //! embedding vector with an ONNX vision model.
 //!
-//! A single [`Analyzer`] owns one ONNX [`Session`] guarded by a
-//! mutex. Images are preprocessed in parallel with [`rayon`], run through the
-//! model in fixed-size batches, and the resulting embedding for each image is
-//! written next to it as `vector.bin`. ONNX Runtime's default CPU execution
-//! provider is used on every platform.
+//! Images are preprocessed in Rust with [`rayon`]. Each fixed-size tensor is
+//! sent through the parent process to ONNX Runtime Web in a webview Worker.
+//! This stage validates and persists the returned embeddings as `vector.bin`;
+//! model installation and job state remain owned by the Rust pipeline.
 
 use crate::commands::progress::progress_events;
 use crate::config::ProgressStage;
+use crate::core::inference::{
+    InferenceReply, InferenceRequest, EMBEDDING_DIMENSIONS, INFERENCE_BATCH_SIZE,
+};
 use crate::core::{AppState, EventSink, ModelBundle};
 use crate::error::{AppError, Result};
 use bytemuck;
 use image::imageops::{replace, FilterType};
 use ndarray::{s, Array4};
-use ort::{
-    inputs,
-    session::{builder::GraphOptimizationLevel, Session},
-    value::Tensor,
-};
 use rayon::prelude::*;
 use std::fs;
+use std::io::BufRead;
 use std::path::{Path, PathBuf};
-use std::sync::{atomic::Ordering, Mutex};
+use std::sync::atomic::Ordering;
 
 const MODEL_FILE_NAME: &str = "model.onnx";
 const DEFAULT_INPUT_SIZE: u32 = 224;
-const MODEL_BATCH_DIMENSION_NAME: &str = "batch_size";
-const MODEL_BATCH_SIZE: usize = 8;
-const MODEL_OUTPUT_DIMENSIONS: usize = 512;
-const PREFERRED_EMBEDDING_OUTPUT_NAME: &str = "embedding";
+const MODEL_BATCH_SIZE: usize = INFERENCE_BATCH_SIZE;
+const MODEL_OUTPUT_DIMENSIONS: usize = EMBEDDING_DIMENSIONS;
 
-/// Owns the loaded ONNX model and the preprocessing spec it expects.
+/// Owns the validated model path and the preprocessing spec it expects.
 pub struct Analyzer {
-    /// The ONNX session. Behind a mutex because [`Session::run`] needs `&mut`
-    /// while [`Analyzer`] is shared across the batch loop.
-    session: Mutex<Session>,
+    model_path: PathBuf,
     spec: ModelSpec,
 }
 
@@ -54,7 +48,7 @@ struct BatchResult {
 }
 
 impl Analyzer {
-    /// Loads the selected ONNX model from an already validated bundle.
+    /// Prepares inference from an already validated model bundle.
     ///
     /// Bundle resolution, download, and checksum verification belong to the
     /// job preparation stage. Accepting [`ModelBundle`] here keeps inference
@@ -64,7 +58,7 @@ impl Analyzer {
         let model_path = model.directory.join(MODEL_FILE_NAME);
 
         Ok(Self {
-            session: Mutex::new(load_session(&model_path)?),
+            model_path,
             spec: ModelSpec {
                 input_size: DEFAULT_INPUT_SIZE,
                 output_dimensions: MODEL_OUTPUT_DIMENSIONS,
@@ -76,9 +70,9 @@ impl Analyzer {
     ///
     /// Processes images in batches of [`MODEL_BATCH_SIZE`], reporting progress
     /// through `events`/`state` and writing each embedding to `vector.bin`.
-    /// Images that fail to decode or infer are dropped from the denominator
-    /// rather than failing the whole run. Returns early (leaving status
-    /// unchanged) if the job is cancelled mid-way.
+    /// Images that fail to decode are dropped from the denominator. Inference
+    /// failure stops the run before clustering can consume partial results.
+    /// Returns early if the job is cancelled mid-way.
     pub async fn analyze_all(&self, events: &impl EventSink, state: &AppState) -> Result<()> {
         let session_dir = state.get_session_dir()?;
         let samples_dir = session_dir.join("samples");
@@ -121,7 +115,6 @@ impl Analyzer {
 
         let mut pending_progress = 0;
         let mut processed_total = 0;
-        let mut first_inference_error = None;
         for chunk in png_files.chunks(MODEL_BATCH_SIZE) {
             if state.is_cancelled.load(Ordering::Relaxed) {
                 if pending_progress > 0 {
@@ -161,32 +154,19 @@ impl Analyzer {
             }
 
             let prepared_count = batch.prepared_images.len();
-            match self.process_prepared_images(batch.prepared_images) {
-                Ok(processed_count) => {
-                    processed_total += processed_count;
-                    pending_progress += processed_count;
-                    if pending_progress >= MODEL_BATCH_SIZE * 4 {
-                        progress_events::increase_numerator(
-                            events,
-                            state,
-                            ProgressStage::Analysis,
-                            pending_progress as i32,
-                        );
-                        pending_progress = 0;
-                    }
-                }
-                Err(e) => {
-                    println!("❌ Analysis failed for batch: {}", e);
-                    if first_inference_error.is_none() {
-                        first_inference_error = Some(e.to_string());
-                    }
-                    progress_events::decrease_denominator(
-                        events,
-                        state,
-                        ProgressStage::Analysis,
-                        prepared_count as i32,
-                    );
-                }
+            // Inference failures invalidate the run instead of leaving a partial
+            // embedding set after a model load/Worker failure.
+            self.process_prepared_images(batch.prepared_images, events)?;
+            processed_total += prepared_count;
+            pending_progress += prepared_count;
+            if pending_progress >= MODEL_BATCH_SIZE * 4 {
+                progress_events::increase_numerator(
+                    events,
+                    state,
+                    ProgressStage::Analysis,
+                    pending_progress as i32,
+                );
+                pending_progress = 0;
             }
         }
 
@@ -203,12 +183,9 @@ impl Analyzer {
             return Ok(());
         }
         if processed_total == 0 {
-            return Err(AppError::Processing(format!(
-                "Analysis produced no embeddings{}",
-                first_inference_error
-                    .map(|error| format!(": {error}"))
-                    .unwrap_or_default()
-            )));
+            return Err(AppError::Processing(
+                "Analysis produced no embeddings".into(),
+            ));
         }
 
         state.update_status(|s| s.process_status = crate::config::ProcessStatus::Analyzed)?;
@@ -217,59 +194,43 @@ impl Analyzer {
 
     /// Runs inference for one prepared batch and persists every embedding,
     /// returning how many images were written.
-    fn process_prepared_images(&self, prepared_images: Vec<PreparedImage>) -> Result<usize> {
+    fn process_prepared_images(
+        &self,
+        prepared_images: Vec<PreparedImage>,
+        events: &impl EventSink,
+    ) -> Result<usize> {
         let prepared_count = prepared_images.len();
-        let features = self.run_batch_inference(&prepared_images)?;
+        let features = self.run_batch_inference(&prepared_images, events)?;
         write_feature_vectors(prepared_images, features)?;
         Ok(prepared_count)
     }
 
     /// Packs the batch into a single tensor, runs the model, and returns the
     /// embedding vector for each input.
-    fn run_batch_inference(&self, prepared_images: &[PreparedImage]) -> Result<Vec<Vec<f32>>> {
-        let tensor = tensor_from_inputs(prepared_images)?;
-        let mut session = self
-            .session
-            .lock()
-            .expect("ONNX session mutex should not be poisoned");
-        let outputs = session
-            .run(inputs![tensor])
-            .map_err(|err| AppError::Processing(err.to_string()))?;
-
-        extract_embeddings(&outputs, prepared_images.len(), self.spec.output_dimensions)
+    fn run_batch_inference(
+        &self,
+        prepared_images: &[PreparedImage],
+        events: &impl EventSink,
+    ) -> Result<Vec<Vec<f32>>> {
+        let input = tensor_from_inputs(prepared_images)?;
+        events.emit_value(
+            "wasm_inference",
+            serde_json::to_value(InferenceRequest {
+                model_path: self.model_path.clone(),
+                input,
+            })?,
+        )?;
+        let mut line = String::new();
+        if std::io::stdin().lock().read_line(&mut line)? == 0 {
+            return Err(AppError::Processing("Inference connection closed".into()));
+        }
+        match serde_json::from_str::<InferenceReply>(&line)? {
+            InferenceReply::Success(data) => {
+                extract_embeddings(&data, prepared_images.len(), self.spec.output_dimensions)
+            }
+            InferenceReply::Error(error) => Err(AppError::Processing(error)),
+        }
     }
-}
-
-/// Builds and commits an ONNX session for the model at `model_path`.
-fn load_session(model_path: &Path) -> Result<Session> {
-    println!(
-        "🚀 Analyzer: loading ONNX model from {}",
-        model_path.display()
-    );
-
-    let mut builder = Session::builder().map_err(|err| AppError::Processing(err.to_string()))?;
-    builder = builder
-        .with_optimization_level(GraphOptimizationLevel::Level3)
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-    builder = builder
-        .with_intra_threads(std::thread::available_parallelism().map_or(1, |threads| threads.get()))
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-    builder = builder
-        .with_dimension_override(MODEL_BATCH_DIMENSION_NAME, MODEL_BATCH_SIZE as i64)
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-
-    let session = builder
-        .commit_from_file(model_path)
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-
-    for input in session.inputs() {
-        println!("📥 Analyzer input: {:?}", input);
-    }
-    for output in session.outputs() {
-        println!("📤 Analyzer output: {:?}", output);
-    }
-
-    Ok(session)
 }
 
 /// Collects the `sample.png` path of every font under the session's
@@ -330,7 +291,7 @@ fn prepare_batch(paths: &[PathBuf], spec: &ModelSpec) -> BatchResult {
 /// All inputs must share the leading image's shape. The batch dimension is
 /// always [`MODEL_BATCH_SIZE`] (matching the dimension override applied when
 /// the session was built); a short final batch leaves the unused rows zeroed.
-fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> {
+fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Vec<f32>> {
     let first_input = prepared_images
         .first()
         .ok_or_else(|| AppError::Processing("Cannot run inference with an empty batch".into()))?;
@@ -356,12 +317,10 @@ fn tensor_from_inputs(prepared_images: &[PreparedImage]) -> Result<Tensor<f32>> 
             .assign(&prepared.input.slice(s![0, .., .., ..]));
     }
 
-    let shape = input.shape().to_vec();
     let (input_data, input_offset) = input.into_raw_vec_and_offset();
     debug_assert_eq!(input_offset, Some(0));
 
-    Tensor::from_array(([shape[0], shape[1], shape[2], shape[3]], input_data))
-        .map_err(|err| AppError::Processing(err.to_string()))
+    Ok(input_data)
 }
 
 /// Writes each embedding beside the image it came from, after checking the
@@ -512,59 +471,52 @@ fn fill_nchw_input(processed: &image::GrayImage, input: &mut Array4<f32>) -> Res
     Ok(())
 }
 
-/// Pulls the embedding output out of the model's results.
-///
-/// Looks up the `embedding` output, validates that it is a 2-D
-/// `[batch, features]` tensor with at least `expected_count` rows, and returns
-/// the first `expected_count` rows as owned vectors (dropping the padding rows
-/// from any short final batch).
+/// Validates the complete fixed-size output before any vectors are persisted.
+/// Padding rows are discarded only after the Worker response is validated.
 fn extract_embeddings(
-    outputs: &ort::session::SessionOutputs<'_>,
+    data: &[f32],
     expected_count: usize,
-    expected_dimensions: usize,
+    dimensions: usize,
 ) -> Result<Vec<Vec<f32>>> {
-    let output = outputs
-        .get(PREFERRED_EMBEDDING_OUTPUT_NAME)
-        .ok_or_else(|| {
-            AppError::Processing(format!(
-                "Model output '{}' was not found",
-                PREFERRED_EMBEDDING_OUTPUT_NAME
-            ))
-        })?;
-
-    let array = output
-        .try_extract_array::<f32>()
-        .map_err(|err| AppError::Processing(err.to_string()))?;
-    let shape = array.shape().to_vec();
-    let data = array
-        .as_slice()
-        .expect("ONNX output tensor should be contiguous");
-
-    if shape.len() != 2 {
-        return Err(AppError::Processing(format!(
-            "Output '{}' must be 2D [batch, features], got {:?}",
-            PREFERRED_EMBEDDING_OUTPUT_NAME, shape
-        )));
+    if expected_count == 0
+        || expected_count > MODEL_BATCH_SIZE
+        || dimensions != MODEL_OUTPUT_DIMENSIONS
+        || data.len() != MODEL_BATCH_SIZE * dimensions
+        || data.iter().any(|value| !value.is_finite())
+    {
+        return Err(AppError::Processing(
+            "Invalid FontCLIP embedding output".into(),
+        ));
     }
-    if shape[0] < expected_count {
-        return Err(AppError::Processing(format!(
-            "Output '{}' batch size {} is smaller than expected {}",
-            PREFERRED_EMBEDDING_OUTPUT_NAME, shape[0], expected_count
-        )));
-    }
-    if shape[1] != expected_dimensions {
-        return Err(AppError::Processing(format!(
-            "Output '{}' has {} features, expected {}",
-            PREFERRED_EMBEDDING_OUTPUT_NAME, shape[1], expected_dimensions
-        )));
-    }
-
-    let feature_dim = shape[1];
-    Ok((0..expected_count)
-        .map(|batch_index| {
-            let start = batch_index * feature_dim;
-            let end = start + feature_dim;
-            data[start..end].to_vec()
-        })
+    Ok(data
+        .chunks_exact(dimensions)
+        .take(expected_count)
+        .map(<[f32]>::to_vec)
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn short_batch_discards_only_padding_rows() {
+        let data: Vec<_> = (0..MODEL_BATCH_SIZE * MODEL_OUTPUT_DIMENSIONS)
+            .map(|i| i as f32)
+            .collect();
+        let vectors = extract_embeddings(&data, 3, MODEL_OUTPUT_DIMENSIONS).unwrap();
+        assert_eq!(vectors.len(), 3);
+        assert_eq!(vectors[2], data[1024..1536]);
+    }
+
+    #[test]
+    fn rejects_malformed_or_nonfinite_worker_output() {
+        let mut data = vec![0.0; MODEL_BATCH_SIZE * MODEL_OUTPUT_DIMENSIONS];
+        assert!(extract_embeddings(&data[..data.len() - 1], 1, MODEL_OUTPUT_DIMENSIONS).is_err());
+        assert!(extract_embeddings(&data, MODEL_BATCH_SIZE + 1, MODEL_OUTPUT_DIMENSIONS).is_err());
+        data[0] = f32::NAN;
+        assert!(extract_embeddings(&data, 1, MODEL_OUTPUT_DIMENSIONS).is_err());
+        data[0] = f32::INFINITY;
+        assert!(extract_embeddings(&data, 1, MODEL_OUTPUT_DIMENSIONS).is_err());
+    }
 }
