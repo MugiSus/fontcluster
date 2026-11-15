@@ -95,6 +95,9 @@ export function useFontList(props: {
     () => new Map(items().map((item, index) => [item.meta.safe_name, index])),
   );
   const [offset, setOffset] = createSignal(0);
+  // Latest measured WebGL content width. Troika owns text layout; retain only
+  // its aggregate extent here to adapt the DOM input surface to that layout.
+  const [contentWidth, setContentWidth] = createSignal(0);
   const finishScroll = debounce(() => commitDraggingFont('list'), 180);
   const isLooping = createMemo(
     () =>
@@ -203,6 +206,8 @@ export function useFontList(props: {
 
   return {
     bounds,
+    inputWidth: () => Math.min(bounds().width, Math.max(420, contentWidth())),
+    setContentWidth,
     centerY,
     rows,
     items,

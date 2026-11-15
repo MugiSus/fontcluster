@@ -87,9 +87,16 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
   // One shared unit quad; per-mesh scale handles the fit sizing.
   const quad = new PlaneGeometry(1, 1);
   const textureLoader = new TextureLoader();
+  // Reference counts index the live material uniforms so eviction/release is
+  // O(1), including multiple meshes displaying the same cached texture.
+  const textureReferences = new Map<Texture, number>();
+  const evictedTextures = new Set<Texture>();
   const textureCache = new LRUCache<string, Texture>({
     max: 512,
-    dispose: (texture) => texture.dispose(),
+    dispose: (texture) => {
+      if (textureReferences.has(texture)) evictedTextures.add(texture);
+      else texture.dispose();
+    },
   });
   const entries = new Map<string, ImageEntry>();
   let zoom = 1;
@@ -159,6 +166,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     const cached = textureCache.get(url);
     if (cached) {
       material.uniforms['uMap']!.value = cached;
+      textureReferences.set(cached, (textureReferences.get(cached) ?? 0) + 1);
       entry.aspect = aspectOf(cached);
     } else {
       // eslint-disable-next-line solid/reactivity -- Three invokes this async load callback; layout reads the current GPU entry.
@@ -175,6 +183,10 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
         textureCache.set(url, texture);
         if (entries.get(spec.key) === entry) {
           material.uniforms['uMap']!.value = texture;
+          textureReferences.set(
+            texture,
+            (textureReferences.get(texture) ?? 0) + 1,
+          );
           entry.aspect = aspectOf(texture);
           applyFit(entry);
           requestRender();
@@ -184,17 +196,31 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     return entry;
   };
 
+  // A texture belongs to the cache or to its remaining visible meshes.
+  // Once both owners release it, dispose it exactly once.
+  const removeEntry = (key: string, entry: ImageEntry) => {
+    group.remove(entry.mesh);
+    const texture = entry.material.uniforms['uMap']!.value as Texture | null;
+    if (texture) {
+      const remaining = textureReferences.get(texture)! - 1;
+      if (remaining > 0) {
+        textureReferences.set(texture, remaining);
+      } else {
+        textureReferences.delete(texture);
+        if (evictedTextures.delete(texture)) texture.dispose();
+      }
+    }
+    entry.material.dispose();
+    entries.delete(key);
+  };
+
   /** Shows exactly `specs`, creating/removing pooled meshes as needed. */
   const update = (specs: ImageSpec[], sessionKey: string) => {
     // On an image-source switch, drop every pooled mesh and cached texture: the
     // same safeName / font key may refer to a different image now, so reusing
     // them would mix the previous source's images with the new ones.
     if (sessionKey !== currentSessionKey) {
-      for (const entry of entries.values()) {
-        group.remove(entry.mesh);
-        entry.material.dispose();
-      }
-      entries.clear();
+      for (const [key, entry] of entries) removeEntry(key, entry);
       sourceGeneration++;
       textureCache.clear();
       currentSessionKey = sessionKey;
@@ -205,9 +231,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     // Remove meshes whose font is no longer shown (textures stay cached).
     for (const [key, entry] of entries) {
       if (wanted.has(key)) continue;
-      group.remove(entry.mesh);
-      entry.material.dispose();
-      entries.delete(key);
+      removeEntry(key, entry);
     }
 
     for (const spec of specs) {
@@ -216,9 +240,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
       if (!url) continue;
       let entry = entries.get(spec.key);
       if (entry && entry.url !== url) {
-        group.remove(entry.mesh);
-        entry.material.dispose();
-        entries.delete(spec.key);
+        removeEntry(spec.key, entry);
         entry = undefined;
       }
       if (!entry) {
@@ -251,8 +273,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
   onCleanup(() => {
     currentSessionKey = null;
     sourceGeneration++;
-    for (const entry of entries.values()) entry.material.dispose();
-    entries.clear();
+    for (const [key, entry] of entries) removeEntry(key, entry);
     textureCache.clear();
     quad.dispose();
   });

@@ -42,7 +42,7 @@ export function GraphListOverlay(props: { list: FontListController }) {
       style={{
         left: `${props.list.bounds().x}px`,
         top: `${props.list.bounds().y}px`,
-        width: `${Math.min(420, props.list.bounds().width)}px`,
+        width: `${props.list.inputWidth()}px`,
       }}
       onMouseDown={(event) => event.stopPropagation()}
       onMouseMove={(event) => event.stopPropagation()}

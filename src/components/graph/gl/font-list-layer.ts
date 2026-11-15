@@ -161,6 +161,7 @@ export function createFontListLayer(props: {
   });
 
   onCleanup(() => {
+    props.list.setContentWidth(0);
     for (const entry of rows.values()) {
       entry.dot.material.dispose();
       entry.text.dispose();
@@ -172,7 +173,10 @@ export function createFontListLayer(props: {
   return {
     render(renderer: WebGLRenderer) {
       const { x, y, width, height } = props.list.bounds();
-      if (!props.list.rows().length || width <= 0 || height <= 0) return;
+      if (!props.list.rows().length || width <= 0 || height <= 0) {
+        props.list.setContentWidth(0);
+        return;
+      }
       const size = props.size();
       // Three's viewport/scissor APIs use CSS pixels and account for DPR.
       renderer.setViewport(x, size.height - y - height, width, height);
@@ -182,6 +186,17 @@ export function createFontListLayer(props: {
       const previousAutoClear = renderer.autoClear;
       renderer.autoClear = false;
       renderer.render(scene, camera);
+      // Use the same worker-computed layout and fitted image positions that
+      // were just drawn, including async text/image updates and long names.
+      let contentWidth = 0;
+      for (const { text } of rows.values()) {
+        if (text.fillOpacity <= 0) continue;
+        contentWidth = Math.max(
+          contentWidth,
+          text.position.x + (text.textRenderInfo?.blockBounds[2] ?? 0),
+        );
+      }
+      props.list.setContentWidth(contentWidth);
       renderer.autoClear = previousAutoClear;
       renderer.setScissorTest(false);
       renderer.setViewport(0, 0, size.width, size.height);
