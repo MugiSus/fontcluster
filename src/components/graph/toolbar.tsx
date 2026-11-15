@@ -13,8 +13,8 @@ import {
 } from 'lucide-solid';
 import { createMemo, Match, Show, Switch } from 'solid-js';
 import { appState, type GraphMode } from '@/store';
-import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/i18n';
 import { Button } from '@/components/ui/button';
 import {
   dotVariants,
@@ -96,34 +96,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='pointer-events-auto flex flex-col items-center gap-1 rounded-full border border-border/25 bg-background/50 text-muted-foreground shadow-inner-background backdrop-blur-md'>
-      <Tooltip placement='left'>
-        <TooltipTrigger
-          as={Button<'button'>}
-          variant='ghost'
-          size='icon'
-          class={cn(
-            'relative size-8 rounded-full text-muted-foreground shadow-none hover:bg-accent/80 hover:text-foreground',
-            props.isFilterOpen && 'bg-accent text-accent-foreground',
-            isFilterActive() && 'text-foreground',
-          )}
-          aria-pressed={props.isFilterOpen}
-          aria-label={t.graph.bottomToolbar.filter()}
-          onClick={() => props.onToggleFilter()}
-        >
-          <FilterIcon class='size-4' />
-          {/*
-            Mark the active filter with a small neutral dot rather than a
-            primary-filled button: a lone primary surface here would pull the
-            eye away from the canvas, so we keep the accent budget for content.
-          */}
-          <Show when={isFilterActive()}>
-            <span class={cn(dotVariants({ side: 'right' }), 'bg-foreground')} />
-          </Show>
-        </TooltipTrigger>
-        <TooltipContent>{t.graph.bottomToolbar.filter()}</TooltipContent>
-      </Tooltip>
-
+    <div class='pointer-events-auto flex flex-col items-center gap-1 rounded-full border border-border/50 bg-background/50 text-muted-foreground shadow-inner-background backdrop-blur-md'>
       <Show when={props.canCycleGraphMode}>
         <Tooltip placement='left'>
           <TooltipTrigger
@@ -260,6 +233,34 @@ export function GraphToolbar(props: GraphToolbarProps) {
           <TooltipContent>{t.graph.bottomToolbar.zoom()}</TooltipContent>
         </Tooltip>
       </ToggleGroup>
+      <div class='pointer-events-none w-4 border-t' />
+
+      <Tooltip placement='left'>
+        <TooltipTrigger
+          as={Button<'button'>}
+          variant='ghost'
+          size='icon'
+          class={cn(
+            'relative size-8 rounded-full text-muted-foreground shadow-none hover:bg-accent/80 hover:text-foreground',
+            props.isFilterOpen && 'bg-accent text-accent-foreground',
+            isFilterActive() && 'text-foreground',
+          )}
+          aria-pressed={props.isFilterOpen}
+          aria-label={t.graph.bottomToolbar.filter()}
+          onClick={() => props.onToggleFilter()}
+        >
+          <FilterIcon class='size-4' />
+          {/*
+            Mark the active filter with a small neutral dot rather than a
+            primary-filled button: a lone primary surface here would pull the
+            eye away from the canvas, so we keep the accent budget for content.
+          */}
+          <Show when={isFilterActive()}>
+            <span class={cn(dotVariants({ side: 'right' }), 'bg-foreground')} />
+          </Show>
+        </TooltipTrigger>
+        <TooltipContent>{t.graph.bottomToolbar.filter()}</TooltipContent>
+      </Tooltip>
     </div>
   );
 }

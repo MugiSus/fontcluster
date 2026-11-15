@@ -18,7 +18,6 @@ export const ja: Dictionary = {
   panels: {
     control: '制御',
     list: 'リスト',
-    chat: 'チャット',
     close: '{{title}}を閉じる',
     open: '{{title}}を開く',
   },
@@ -32,10 +31,11 @@ export const ja: Dictionary = {
       inPlaceChanged: '変更を適用して再計算',
       fresh: '新しく生成',
     },
-    restoreSession: '変更をリセット',
     fonts: 'フォント',
     model: 'モデル',
-    modelDownloadRequired: '「生成」を押すとダウンロードします',
+    downloadModel: 'モデルをダウンロード ({{size}} MB)',
+    modelDownloading: 'モデルをダウンロード中...',
+    modelDownloadFailed: 'モデルのダウンロードに失敗しました: {{error}}',
     modelParameters: '{{count}}M params',
     modelCatalogLoading: '読み込み中...',
     modelAvailabilityUnknown: '情報を取得できません',
@@ -134,6 +134,8 @@ export const ja: Dictionary = {
       filter: '絞り込み',
     },
     filterDock: {
+      open: 'フィルターを開く',
+      close: 'フィルターを閉じる',
       clear: '消去',
       searchPlaceholder: 'フォント、デザイナー名など',
     },
@@ -208,7 +210,6 @@ export const ja: Dictionary = {
     },
   },
   list: {
-    noMatchingFonts: 'フィルターに一致するフォントがありません',
     clearPreviewText: '消去',
     applyToPlugins: '{{name}} {{weight}} をプラグインで適用',
     copyFontName: '{{name}} をコピー',
@@ -217,10 +218,6 @@ export const ja: Dictionary = {
       copied: '"{{name}}" をコピーしました',
       copyFailed: 'コピーに失敗しました',
     },
-  },
-  chat: {
-    title: 'FontCluster Chat',
-    description: '今後実装予定..',
   },
   clipboard: {
     toasts: {

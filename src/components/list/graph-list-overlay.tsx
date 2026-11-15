@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js';
+import { createSignal } from 'solid-js';
 import { toast } from 'solid-sonner';
 import { useI18n } from '@/i18n';
 import {
@@ -134,12 +134,6 @@ export function GraphListOverlay(props: { list: FontListController }) {
           if (row && props.list.previewSizes[row.id]) activate(row);
         }
       }}
-    >
-      <Show when={props.list.items().length === 0}>
-        <p class='pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-muted-foreground'>
-          {t.list.noMatchingFonts()}
-        </p>
-      </Show>
-    </div>
+    />
   );
 }

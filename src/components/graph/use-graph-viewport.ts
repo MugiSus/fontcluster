@@ -1,3 +1,4 @@
+import { debounce } from '@solid-primitives/scheduled';
 import {
   type Accessor,
   batch,
@@ -164,8 +165,10 @@ export function useGraphViewport(
     );
   });
 
-  // Observe committed camera movement, independently of its input source.
-  // Show the indicator for each moving frame, with no delayed disappearance.
+  const finishPanning = debounce(() => setIsPanning(false), 100);
+
+  // Show the indicator immediately and keep it visible until movement has
+  // stopped for 100ms, including gaps between input events.
   createEffect(
     on(
       () => getViewBoxCenter(viewBox()),
@@ -175,12 +178,10 @@ export function useGraphViewport(
         const hasMoved =
           Math.hypot(center.x - previous.x, center.y - previous.y) >
           zoomFactor() * 0.01;
-        setIsPanning(hasMoved);
         if (!hasMoved) return;
-        const frame = window.requestAnimationFrame(() => setIsPanning(false));
-        onCleanup(() => window.cancelAnimationFrame(frame));
+        setIsPanning(true);
+        finishPanning();
       },
-      { defer: true },
     ),
   );
 

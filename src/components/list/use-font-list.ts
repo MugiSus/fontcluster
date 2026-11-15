@@ -28,8 +28,8 @@ const BASE_ROW_HEIGHT_PX = 30;
 export const LIST_SCROLL_STEP_PX = BASE_ROW_HEIGHT_PX * LIST_MAX_SCALE;
 // Width of the Gaussian magnification in item units (larger = broader).
 const MAGNIFICATION_SIGMA_ITEMS = 2;
-const VISIBLE_RADIUS_ITEMS = 15;
-const FADE_START_ITEMS = VISIBLE_RADIUS_ITEMS - 3;
+const VISIBLE_RADIUS_ITEMS = 20;
+const FADE_ITEMS = 5;
 const LENS_SAMPLE_STEP = 0.125;
 const lensOffsets = range(-24, 24 + LENS_SAMPLE_STEP, LENS_SAMPLE_STEP);
 // Integrate the row heights once. D3 owns the cumulative sum, interpolation
@@ -138,6 +138,16 @@ export function useFontList(props: {
     const height = bounds().height;
     if (!fonts.length || height <= 0) return [];
     const scroll = offset();
+    // Fade before the viewport clips a row. Keep at most 20 rows per side,
+    // with the outer five fading even when the window cannot fit all 20.
+    const topRadius = Math.min(
+      VISIBLE_RADIUS_ITEMS,
+      Math.max(0, -rowPosition.invert(-centerY()) - 0.5),
+    );
+    const bottomRadius = Math.min(
+      VISIBLE_RADIUS_ITEMS,
+      Math.max(0, rowPosition.invert(height - centerY()) - 0.5),
+    );
     const first = Math.max(
       Math.ceil(scroll - VISIBLE_RADIUS_ITEMS),
       Math.floor(scroll + rowPosition.invert(-centerY())) - 1,
@@ -154,6 +164,7 @@ export function useFontList(props: {
       const top = centerY() + rowPosition(distance - 0.5);
       const bottom = centerY() + rowPosition(distance + 0.5);
       const scale = (bottom - top) / BASE_ROW_HEIGHT_PX;
+      const fadeEnd = distance < 0 ? topRadius : bottomRadius;
       result.push({
         id: `${index}:${item.meta.safe_name}`,
         key: item.meta.safe_name,
@@ -166,8 +177,8 @@ export function useFontList(props: {
           1 -
           MathUtils.smoothstep(
             Math.abs(distance),
-            FADE_START_ITEMS,
-            VISIBLE_RADIUS_ITEMS,
+            Math.max(0, fadeEnd - FADE_ITEMS),
+            fadeEnd,
           ),
       });
     }

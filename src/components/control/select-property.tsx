@@ -17,7 +17,7 @@ export function SelectProperty(props: SelectPropertyProps) {
   return (
     <SelectTrigger class='relative h-8 border-0 bg-transparent px-0.5 shadow-none hover:bg-muted/50 focus:ring-0 focus:ring-offset-0'>
       <SelectLabel
-        class='absolute inset-y-0 left-2 flex items-center text-xs font-medium capitalize text-muted-foreground'
+        class='absolute inset-y-0 left-0 flex items-center text-xs font-medium capitalize text-muted-foreground'
         classList={{ 'text-primary': props.isChanged }}
       >
         {props.label}

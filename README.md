@@ -12,7 +12,7 @@ FontCluster's font-similarity engine is built on **FontCLIP**, and this app woul
 > Computer Graphics Forum 43 (Eurographics 2024).
 > [arXiv:2403.06453](https://arxiv.org/abs/2403.06453) · [DOI](https://doi.org/10.1111/cgf.15043) · [Code](https://github.com/yukistavailable/FontCLIP)
 
-FontCluster downloads selectable embedding models on demand from [fontcluster-models](https://github.com/MugiSus/fontcluster-models). Installed models are cached by model ID: delete the local model directory when replacing assets under a mutable development release, and publish generally distributed updates under a new ID such as `v2`. Model provenance, attribution, and licensing information are documented in that repository.
+FontCluster uses FontCLIP by default. Before the first analysis, use **Download Model** under **Analyze** to install it from [fontcluster-models](https://github.com/MugiSus/fontcluster-models); the link shows the download size and disappears after installation. If analysis reaches a missing model, the job stops with an error instead of downloading automatically. Installed models are cached by model ID. Model provenance, attribution, and licensing information are documented in the model repository.
 
 ## License
 

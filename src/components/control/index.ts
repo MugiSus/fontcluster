@@ -1,1 +1,1 @@
-export { ControlPanel } from './panel';
+export { ControlDrawer } from './drawer';

@@ -30,7 +30,6 @@ export const en = {
   panels: {
     control: 'control',
     list: 'list',
-    chat: 'chat',
     close: 'Close {{title}} panel',
     open: 'Open {{title}} panel',
   },
@@ -44,10 +43,11 @@ export const en = {
       inPlaceChanged: 'Apply changes and recalculate',
       fresh: 'Generate new',
     },
-    restoreSession: 'Reset changes',
     fonts: 'fonts',
     model: 'model',
-    modelDownloadRequired: 'Downloads when Generate is pressed',
+    downloadModel: 'Download Model ({{size}} MB)',
+    modelDownloading: 'Downloading Model...',
+    modelDownloadFailed: 'Model download failed: {{error}}',
     modelParameters: '{{count}}M params',
     modelCatalogLoading: 'Loading...',
     modelAvailabilityUnknown: 'Info unavailable',
@@ -146,6 +146,8 @@ export const en = {
       filter: 'Filter',
     },
     filterDock: {
+      open: 'Open filters',
+      close: 'Close filters',
       clear: 'Clear',
       searchPlaceholder: 'Font name, Designer, Foundry, etc.',
     },
@@ -219,7 +221,6 @@ export const en = {
     },
   },
   list: {
-    noMatchingFonts: 'No fonts match the active filters',
     clearPreviewText: 'Clear',
     applyToPlugins: 'Apply {{name}} {{weight}} to plugins',
     copyFontName: 'Copy {{name}}',
@@ -228,10 +229,6 @@ export const en = {
       copied: 'Copied "{{name}}"',
       copyFailed: 'Failed to copy',
     },
-  },
-  chat: {
-    title: 'FontCluster Chat',
-    description: 'Coming soon...',
   },
   clipboard: {
     toasts: {

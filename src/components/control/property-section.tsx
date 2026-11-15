@@ -1,51 +1,57 @@
 import { Show, type JSX } from 'solid-js';
 
-import { RotateCwIcon } from 'lucide-solid';
-
-import { useI18n } from '@/i18n';
-import { Button } from '@/components/ui/button';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Switch,
+  SwitchControl,
+  SwitchLabel,
+  SwitchThumb,
+} from '@/components/ui/switch';
 
 type ControlPropertySectionProps = {
   title: string;
+  isEnabled: boolean;
+  onEnabledChange: (enabled: boolean) => void;
+  executionStep: number | undefined;
+  isLast?: boolean;
   children?: JSX.Element;
-  onRestore: () => void;
-  isChanged: boolean;
 };
 
 export function ControlPropertySection(props: ControlPropertySectionProps) {
-  const { t } = useI18n();
   return (
-    <div class='group/section flex flex-col'>
-      <div class='flex h-8 items-center gap-0.5'>
+    <div class='relative flex flex-col py-2 pl-6'>
+      <Show when={!props.isLast}>
         <div
-          class='text-xs font-semibold capitalize'
-          classList={{ 'text-primary': props.isChanged }}
-        >
-          {props.title}
-        </div>
-        <Show when={props.isChanged}>
-          <Tooltip>
-            <TooltipTrigger
-              as={Button<'button'>}
-              type='button'
-              variant='ghost'
-              size='icon'
-              aria-label={t.controlPanel.restoreSession()}
-              class='mb-0.5 size-5 text-xs'
-              classList={{ '!text-primary': props.isChanged }}
-              onClick={props.onRestore}
-            >
-              <RotateCwIcon class='!size-3.5' stroke-width={2.5} />
-            </TooltipTrigger>
-            <TooltipContent>{t.controlPanel.restoreSession()}</TooltipContent>
-          </Tooltip>
-        </Show>
+          aria-hidden='true'
+          class='absolute bottom-[-14px] left-[5px] top-[34px] w-0.5'
+          classList={{
+            'bg-foreground': props.executionStep !== undefined,
+            'bg-muted': props.executionStep === undefined,
+          }}
+        />
+      </Show>
+      <div
+        class='absolute -left-1 top-3.5 flex size-5 items-center justify-center rounded-full border-2 text-[11px] font-semibold tabular-nums leading-none'
+        classList={{
+          'border-foreground text-foreground':
+            props.executionStep !== undefined,
+          'border-muted text-muted-foreground':
+            props.executionStep === undefined,
+        }}
+      >
+        {props.executionStep}
       </div>
+      <Switch
+        checked={props.isEnabled}
+        onChange={props.onEnabledChange}
+        class='flex h-8 items-center justify-between gap-2'
+      >
+        <SwitchLabel class='text-xs font-semibold capitalize'>
+          {props.title}
+        </SwitchLabel>
+        <SwitchControl>
+          <SwitchThumb />
+        </SwitchControl>
+      </Switch>
       <div class='flex flex-col gap-0.5'>{props.children}</div>
     </div>
   );

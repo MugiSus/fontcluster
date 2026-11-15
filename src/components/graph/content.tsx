@@ -1,4 +1,11 @@
-import { batch, createEffect, createMemo, createSignal, Show } from 'solid-js';
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createSignal,
+  Show,
+  type JSX,
+} from 'solid-js';
 import { GraphControls } from './controls';
 import { GraphFilterDock } from './filter-dock';
 import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
@@ -18,6 +25,7 @@ interface GraphContentProps {
   copySelectedFont: CopySelectedFont;
   applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
   showHud: boolean;
+  controlAction?: JSX.Element;
 }
 
 export function GraphContent(props: GraphContentProps) {
@@ -68,7 +76,7 @@ export function GraphContent(props: GraphContentProps) {
   });
 
   return (
-    <div class='relative isolate size-full bg-background'>
+    <div class='relative isolate size-full overflow-clip bg-background'>
       <GraphViewer
         toolMode={toolMode()}
         showImages={showImages()}
@@ -82,8 +90,10 @@ export function GraphContent(props: GraphContentProps) {
         applySelectedFont={props.applySelectedFont}
         onViewportZoomControlsChange={setViewportZoomControls}
       />
+      <div data-tauri-drag-region class='absolute inset-x-0 top-0 z-10 h-10' />
       <Show when={props.showHud}>
         <GraphControls
+          controlAction={props.controlAction}
           toolMode={toolMode()}
           showImages={showImages()}
           showFontNames={showFontNames()}
@@ -91,8 +101,9 @@ export function GraphContent(props: GraphContentProps) {
           showGlow={showGlow()}
           graphMode={appState.ui.graphMode}
           canCycleGraphMode={availableGraphModes().length > 1}
-          isFilterOpen={isFilterOpen()}
           zoomControls={viewportZoomControls()}
+          isFilterOpen={isFilterOpen()}
+          onToggleFilter={() => setIsFilterOpen((open) => !open)}
           onToolModeChange={setToolMode}
           onToggleImages={() => setShowImages((shown) => !shown)}
           onToggleFontNames={() => setShowFontNames((shown) => !shown)}
@@ -104,13 +115,12 @@ export function GraphContent(props: GraphContentProps) {
               modes[(modes.indexOf(appState.ui.graphMode) + 1) % modes.length];
             if (nextMode) setGraphMode(nextMode);
           }}
-          onToggleFilter={() => setIsFilterOpen((open) => !open)}
         />
         <GraphFilterDock
           isOpen={isFilterOpen()}
           weights={sessionWeights()}
           onWeightsChange={setActiveGraphWeights}
-          onClose={() => setIsFilterOpen(false)}
+          onOpenChange={setIsFilterOpen}
         />
       </Show>
     </div>

@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 /// Default model for new sessions and sessions created before model selection.
-pub const DEFAULT_MODEL_ID: &str = "mobilenet-v4-medium-v1";
+pub const DEFAULT_MODEL_ID: &str = "fontclip-vit-b32-v1";
 
 /// Text rendered into a sample image when the user has not chosen their own.
 pub const DEFAULT_RENDERING_TEXT: &str = "A";

@@ -23,7 +23,7 @@ import { useI18n } from '@/i18n';
 type GenerateButtonProps = {
   isDisabled?: boolean;
   hasSession: boolean;
-  hasChanges: boolean;
+  hasEnabledStages: boolean;
   primaryMode: Extract<ProcessingRunMode, 'in_place_changed' | 'fresh'>;
   onSelect: (mode: ProcessingRunMode) => void;
 };
@@ -44,7 +44,7 @@ export function GenerateButton(props: GenerateButtonProps) {
         <TooltipTrigger
           as={Button<'button'>}
           type='button'
-          disabled={props.isDisabled || !props.hasChanges}
+          disabled={props.isDisabled || !props.hasEnabledStages}
           variant='outline'
           size='sm'
           class='relative flex min-w-0 flex-1 items-center gap-2 rounded-l-full rounded-r-none border-r-0 text-sm font-black tabular-nums shadow-sm'
@@ -75,14 +75,14 @@ export function GenerateButton(props: GenerateButtonProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent class='w-72 p-1'>
           <DropdownMenuItem
-            disabled={!props.hasSession || !props.hasChanges}
+            disabled={!props.hasSession || !props.hasEnabledStages}
             onSelect={() => select('in_place_changed')}
           >
             <RefreshCwIcon class='size-4' />
             {t.controlPanel.generateModes.inPlaceChanged()}
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={!props.hasSession || !props.hasChanges}
+            disabled={!props.hasSession || !props.hasEnabledStages}
             onSelect={() => select('duplicate_changed')}
           >
             <CopyPlusIcon class='size-4' />

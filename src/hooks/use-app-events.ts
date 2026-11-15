@@ -11,16 +11,12 @@ import { selectionHistory } from '@/selection-history';
 /**
  * Registers application-wide backend event subscriptions at the app root.
  *
- * Model download events update one indefinite toast per session/model pair:
- * start and progress reuse its ID, completion replaces it with a finite
- * success toast, and cancellation removes it. A download failure only removes
- * the progress toast because the action that awaited the job owns the final
- * localized error. The tracking map supports cancellation cleanup; it is not
- * a second source of truth for model availability.
+ * Explicit model downloads use one progress toast per model. Installation runs
+ * independently of processing jobs, so stopping a job leaves its download alone.
+ * The invoking action owns the final localized error on failure.
  */
 export function useAppEvents() {
   const { t } = useI18n();
-  const activeModelDownloads = new Map<string, string>();
 
   const handleAppUpdateCheck = async (options?: { isManual?: boolean }) => {
     try {
@@ -91,12 +87,10 @@ export function useAppEvents() {
     });
 
     listenWithCleanup<{
-      sessionId: string;
       modelId: string;
       totalBytes: number;
     }>('model_download_started', (event) => {
-      const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
-      activeModelDownloads.set(toastId, event.payload.sessionId);
+      const toastId = `model-download-${event.payload.modelId}`;
       toast.loading(
         t.jobs.toasts.modelDownloadStarted({ model: event.payload.modelId }),
         { id: toastId, duration: Infinity },
@@ -104,7 +98,6 @@ export function useAppEvents() {
     });
 
     listenWithCleanup<{
-      sessionId: string;
       modelId: string;
       downloadedBytes: number;
       totalBytes: number;
@@ -120,7 +113,7 @@ export function useAppEvents() {
       toast.loading(
         t.jobs.toasts.modelDownloadStarted({ model: event.payload.modelId }),
         {
-          id: `model-download-${event.payload.sessionId}-${event.payload.modelId}`,
+          id: `model-download-${event.payload.modelId}`,
           description: t.jobs.toasts.modelDownloadProgress({
             percent: String(percent),
           }),
@@ -130,12 +123,10 @@ export function useAppEvents() {
     });
 
     listenWithCleanup<{
-      sessionId: string;
       modelId: string;
       totalBytes: number;
     }>('model_download_completed', (event) => {
-      const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
-      activeModelDownloads.delete(toastId);
+      const toastId = `model-download-${event.payload.modelId}`;
       toast.dismiss(toastId);
       toast.success(
         t.jobs.toasts.modelDownloadCompleted({
@@ -145,21 +136,9 @@ export function useAppEvents() {
       );
     });
 
-    listenWithCleanup<{ sessionId: string; modelId: string }>(
-      'model_download_failed',
-      (event) => {
-        const toastId = `model-download-${event.payload.sessionId}-${event.payload.modelId}`;
-        activeModelDownloads.delete(toastId);
-        toast.dismiss(toastId);
-      },
-    );
-
-    listenWithCleanup<string | null>('jobs_cancelled', (event) => {
-      for (const [toastId, sessionId] of activeModelDownloads) {
-        if (event.payload !== null && event.payload !== sessionId) continue;
-        toast.dismiss(toastId);
-        activeModelDownloads.delete(toastId);
-      }
+    listenWithCleanup<{ modelId: string }>('model_download_failed', (event) => {
+      const toastId = `model-download-${event.payload.modelId}`;
+      toast.dismiss(toastId);
     });
 
     listenWithCleanup<string>('all_jobs_complete', (event) => {

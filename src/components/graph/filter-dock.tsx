@@ -1,5 +1,11 @@
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
-import { SearchIcon, XIcon } from 'lucide-solid';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  SearchIcon,
+  XIcon,
+} from 'lucide-solid';
+import * as Collapsible from '@kobalte/core/collapsible';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
 import { setSelectedFontKey } from '@/commands/font-selection';
@@ -18,7 +24,7 @@ interface GraphFilterDockProps {
   isOpen: boolean;
   weights: FontWeight[];
   onWeightsChange: (weights: FontWeight[]) => void;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function GraphFilterDock(props: GraphFilterDockProps) {
@@ -44,10 +50,14 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
   );
 
   let inputElement: HTMLInputElement | undefined;
+  let triggerElement: HTMLButtonElement | undefined;
 
   createEscapeKeyDown({
     isDisabled: () => !props.isOpen,
-    onEscapeKeyDown: () => props.onClose(),
+    onEscapeKeyDown: () => {
+      props.onOpenChange(false);
+      triggerElement?.focus({ preventScroll: true });
+    },
   });
 
   const updateQuery = (value: string) => {
@@ -57,80 +67,100 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
 
   // Move focus into the field whenever the dock opens.
   createEffect(() => {
-    if (props.isOpen) queueMicrotask(() => inputElement?.focus());
+    if (props.isOpen)
+      queueMicrotask(() => inputElement?.focus({ preventScroll: true }));
   });
 
   return (
-    <div
-      inert={!props.isOpen}
-      onMouseDown={(event) => event.stopPropagation()}
+    <Collapsible.Root
+      open={props.isOpen}
+      onOpenChange={props.onOpenChange}
+      forceMount
+      onMouseDown={(event: MouseEvent) => event.stopPropagation()}
       class={cn(
-        'absolute left-0 right-0 z-20 mx-auto w-max rounded-full border border-border/25 bg-background/50 shadow backdrop-blur-md transition-[bottom,opacity] duration-300 ease-out',
-        props.isOpen ? 'bottom-4 opacity-100' : 'bottom-0 opacity-0',
+        'absolute bottom-0 left-0 right-0 z-20 mx-auto w-max max-w-[calc(100%-6rem)] rounded-t-xl border border-b-0 border-border/50 bg-background/90 shadow backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none',
+        !props.isOpen && 'translate-y-full',
       )}
     >
-      <div class='flex items-center gap-1 rounded-full p-1 shadow-inner-background'>
-        <div class='relative flex items-center'>
-          <Show
-            when={isFiltered()}
-            fallback={
-              <SearchIcon class='pointer-events-none absolute left-2 size-4 text-muted-foreground' />
-            }
-          >
-            <button
-              type='button'
-              aria-label={t.graph.filterDock.clear()}
-              onClick={() => {
-                updateQuery('');
-                inputElement?.focus();
-              }}
-              class='absolute left-0.5 flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+      <Collapsible.Trigger
+        ref={triggerElement}
+        aria-label={
+          props.isOpen ? t.graph.filterDock.close() : t.graph.filterDock.open()
+        }
+        class='absolute -top-6 left-1/2 flex h-6 w-12 -translate-x-1/2 cursor-pointer items-center justify-center rounded-t-md border border-b-0 border-border/50 bg-background text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+      >
+        <Show when={props.isOpen} fallback={<ChevronUpIcon class='size-4' />}>
+          <ChevronDownIcon class='size-4' />
+        </Show>
+      </Collapsible.Trigger>
+      <Collapsible.Content inert={!props.isOpen}>
+        <div class='flex flex-wrap items-center justify-center gap-1 p-2'>
+          <div class='relative flex items-center'>
+            <Show
+              when={isFiltered()}
+              fallback={
+                <SearchIcon class='pointer-events-none absolute left-2 size-4 text-muted-foreground' />
+              }
             >
-              <XIcon class='size-4' />
-            </button>
+              <button
+                type='button'
+                aria-label={t.graph.filterDock.clear()}
+                onClick={() => {
+                  updateQuery('');
+                  inputElement?.focus({ preventScroll: true });
+                }}
+                class='absolute left-0.5 flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+              >
+                <XIcon class='size-4' />
+              </button>
+            </Show>
+            <input
+              ref={inputElement}
+              type='text'
+              placeholder={t.graph.filterDock.searchPlaceholder()}
+              aria-label={t.graph.filterDock.searchPlaceholder()}
+              class='h-8 w-64 max-w-full bg-transparent pl-9 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
+              value={query()}
+              onInput={(event) => updateQuery(event.currentTarget.value)}
+              spellcheck={false}
+            />
+          </div>
+
+          <Show
+            when={props.weights.length > 1 && props.weights.join(',')}
+            keyed
+          >
+            <div class='mx-0.5 h-5 w-px bg-border/60' />
+            <WeightSelector
+              isBare
+              isCompact
+              weights={props.weights}
+              defaultValue={[]}
+              onChange={(weights) =>
+                props.onWeightsChange(
+                  weights.length > 0 ? weights : props.weights,
+                )
+              }
+            />
           </Show>
-          <input
-            ref={inputElement}
-            type='text'
-            placeholder={t.graph.filterDock.searchPlaceholder()}
-            class='h-8 w-64 bg-transparent pl-9 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
-            value={query()}
-            onInput={(event) => updateQuery(event.currentTarget.value)}
-            spellcheck={false}
-          />
-        </div>
 
-        <Show when={props.weights.length > 1 && props.weights.join(',')} keyed>
-          <div class='mx-0.5 h-5 w-px bg-border/60' />
-          <WeightSelector
-            isBare
-            isCompact
-            weights={props.weights}
-            defaultValue={[]}
-            onChange={(weights) =>
-              props.onWeightsChange(
-                weights.length > 0 ? weights : props.weights,
-              )
+          <Show
+            when={
+              topClusters().length > 0 &&
+              topClusters()
+                .map((clustering) => clustering.k)
+                .join(',')
             }
-          />
-        </Show>
-
-        <Show
-          when={
-            topClusters().length > 0 &&
-            topClusters()
-              .map((clustering) => clustering.k)
-              .join(',')
-          }
-          keyed
-        >
-          <div class='mx-0.5 h-5 w-px bg-border/60' />
-          <ClusterSelector
-            clusters={topClusters()}
-            onChange={setVisibleGraphClusters}
-          />
-        </Show>
-      </div>
-    </div>
+            keyed
+          >
+            <div class='mx-0.5 h-5 w-px bg-border/60' />
+            <ClusterSelector
+              clusters={topClusters()}
+              onChange={setVisibleGraphClusters}
+            />
+          </Show>
+        </div>
+      </Collapsible.Content>
+    </Collapsible.Root>
   );
 }

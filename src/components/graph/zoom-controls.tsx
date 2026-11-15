@@ -17,8 +17,8 @@ export function GraphZoomControls(props: GraphZoomControlsProps) {
   const { t } = useI18n();
 
   return (
-    <div class='flex items-center rounded-full border border-border/25 bg-background/50 text-muted-foreground shadow-inner-background backdrop-blur-md'>
-      <Tooltip placement='bottom'>
+    <div class='flex flex-col items-center rounded-full border border-border/50 bg-background/50 text-muted-foreground shadow-inner-background backdrop-blur-md'>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
@@ -33,7 +33,7 @@ export function GraphZoomControls(props: GraphZoomControlsProps) {
         <TooltipContent>{t.graph.bottomToolbar.zoomIn()}</TooltipContent>
       </Tooltip>
 
-      <Tooltip placement='bottom'>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'
@@ -48,7 +48,7 @@ export function GraphZoomControls(props: GraphZoomControlsProps) {
         <TooltipContent>{t.graph.bottomToolbar.resetView()}</TooltipContent>
       </Tooltip>
 
-      <Tooltip placement='bottom'>
+      <Tooltip placement='left'>
         <TooltipTrigger
           as={Button<'button'>}
           variant='ghost'

@@ -72,7 +72,7 @@ export type EmphasisAttribute = (typeof EMPHASIS_ATTRIBUTES)[number];
 
 export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
   rendering: DEFAULT_RENDERING_CONFIG,
-  analysis: { model_id: 'mobilenet-v4-medium-v1' },
+  analysis: { model_id: 'fontclip-vit-b32-v1' },
   clustering: DEFAULT_CLUSTERING_CONFIG,
 };
 

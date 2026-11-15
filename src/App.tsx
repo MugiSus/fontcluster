@@ -1,23 +1,12 @@
-import { createSignal, onCleanup, onMount, Show } from 'solid-js';
-import { createStore } from 'solid-js/store';
+import { createSignal, onCleanup, onMount } from 'solid-js';
 import { listen } from '@tauri-apps/api/event';
-import { platform } from '@tauri-apps/plugin-os';
 import { ClipboardListener } from './components/clipboard-listener';
 import { useAppEvents } from './hooks/use-app-events';
 import { Toaster } from './components/ui/sonner';
-import { ChatPanel } from './components/chat';
-import { ControlPanel } from './components/control';
+import { ControlDrawer } from './components/control';
 import { GraphPanel } from './components/graph';
-import { CollapsiblePanelKey, PanelState } from './types/panels';
-import { useIsFullscreen } from './hooks/use-is-fullscreen';
 
 function App() {
-  const isFullscreen = useIsFullscreen();
-  const isMac = platform() === 'macos';
-  const [panelState, setPanelState] = createStore<PanelState>({
-    control: false,
-    chat: false,
-  });
   const [isInterfaceVisible, setIsInterfaceVisible] = createSignal(true);
   useAppEvents();
 
@@ -28,40 +17,14 @@ function App() {
     onCleanup(() => void unlistenPromise.then((unlisten) => unlisten()));
   });
 
-  const closePanel = (panel: CollapsiblePanelKey) => {
-    setPanelState(panel, false);
-  };
-
-  const openPanel = (panel: CollapsiblePanelKey) => {
-    setPanelState(panel, true);
-  };
-
   return (
     <>
       <Toaster position='bottom-center' />
       <ClipboardListener />
-      <div class='flex h-full min-h-0'>
-        <Show when={isInterfaceVisible() && panelState.control}>
-          <ControlPanel
-            isLeftInset={isMac && !isFullscreen()}
-            onClose={() => closePanel('control')}
-          />
-        </Show>
-
-        <Show when={isInterfaceVisible() && panelState.chat}>
-          <ChatPanel
-            isLeftInset={isMac && !isFullscreen() && !panelState.control}
-            onClose={() => closePanel('chat')}
-          />
-        </Show>
-
+      <div class='relative flex h-full min-h-0'>
         <GraphPanel
           showHud={isInterfaceVisible()}
-          panelState={panelState}
-          onReopenPanel={openPanel}
-          isLeftInset={
-            isMac && !isFullscreen() && !panelState.control && !panelState.chat
-          }
+          controlAction={<ControlDrawer />}
         />
       </div>
     </>

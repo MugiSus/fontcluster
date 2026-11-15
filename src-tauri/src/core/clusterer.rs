@@ -1056,7 +1056,7 @@ mod tests {
     /// level `+2` axis is exactly `2×` a level `+1` axis, elementwise. Uses the
     /// installed model asset from Application Support.
     #[test]
-    #[ignore = "requires mobilenet-v4-medium-v1 installed in Application Support"]
+    #[ignore = "requires fontclip-vit-b32-v1 installed in Application Support"]
     fn emphasis_appends_standardised_scaled_attribute_axis() {
         let model = crate::core::resolve_model(crate::config::DEFAULT_MODEL_ID).unwrap();
         // Eight arbitrary rows in embedding space.
