@@ -8,6 +8,7 @@ import {
   onCleanup,
   untrack,
 } from 'solid-js';
+import { createStore } from 'solid-js/store';
 import { debounce } from '@solid-primitives/scheduled';
 import { MathUtils } from 'three';
 import { scaleLinear } from 'd3-scale';
@@ -95,9 +96,11 @@ export function useFontList(props: {
     () => new Map(items().map((item, index) => [item.meta.safe_name, index])),
   );
   const [offset, setOffset] = createSignal(0);
-  // Latest measured WebGL content width. Troika owns text layout; retain only
-  // its aggregate extent here to adapt the DOM input surface to that layout.
-  const [contentWidth, setContentWidth] = createSignal(0);
+  // Measured image dimensions from the WebGL layer; the input buttons use
+  // these same fitted boxes instead of a separate row-wide hit area.
+  const [previewSizes, setPreviewSize] = createStore<
+    Record<string, { width: number; height: number } | undefined>
+  >({});
   const finishScroll = debounce(() => commitDraggingFont('list'), 180);
   const isLooping = createMemo(
     () =>
@@ -195,6 +198,18 @@ export function useFontList(props: {
 
   const rowAt = (y: number) =>
     rows().find((row) => row.opacity > 0 && y >= row.top && y < row.bottom);
+  const previewAt = (x: number, y: number) =>
+    rows().find((row) => {
+      const size = previewSizes[row.id];
+      return (
+        size &&
+        row.opacity > 0 &&
+        x >= LIST_SAMPLE_LEFT &&
+        x < LIST_SAMPLE_LEFT + size.width &&
+        y >= row.y - size.height / 2 &&
+        y < row.y + size.height / 2
+      );
+    });
   const selectRow = (row: FontListRow) => {
     finishScroll.clear();
     setSelectedFontKey(row.key);
@@ -206,8 +221,9 @@ export function useFontList(props: {
 
   return {
     bounds,
-    inputWidth: () => Math.min(bounds().width, Math.max(420, contentWidth())),
-    setContentWidth,
+    previewSizes,
+    setPreviewSize,
+    previewAt,
     centerY,
     rows,
     items,

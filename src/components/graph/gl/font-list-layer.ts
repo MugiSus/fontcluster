@@ -1,4 +1,10 @@
-import { type Accessor, createEffect, createMemo, onCleanup } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  onCleanup,
+  untrack,
+} from 'solid-js';
 import {
   CircleGeometry,
   Color,
@@ -63,9 +69,6 @@ export function createFontListLayer(props: {
     depthTest: false,
     depthWrite: false,
   });
-  // Last fitted GPU width, retained only for visible rows; async image layout
-  // updates the name transform directly without duplicating application state.
-  const imageWidths = new Map<string, number>();
   const rows = new Map<
     string,
     {
@@ -81,8 +84,8 @@ export function createFontListLayer(props: {
       sampleImageUrl: (key) => props.sampleImageUrl(key),
       zoom: () => 1,
       requestRender: () => props.requestRender(),
-      onLayout: (key, width) => {
-        imageWidths.set(key, width);
+      onLayout: (key, width, height, ready) => {
+        props.list.setPreviewSize(key, ready ? { width, height } : undefined);
         const entry = rows.get(key);
         if (entry) entry.text.position.x = LIST_SAMPLE_LEFT + width + 12;
       },
@@ -97,7 +100,7 @@ export function createFontListLayer(props: {
       entry.dot.material.dispose();
       entry.text.dispose();
       rows.delete(key);
-      imageWidths.delete(key);
+      props.list.setPreviewSize(key, undefined);
     }
     for (const row of visible) {
       let entry = rows.get(row.id);
@@ -143,7 +146,8 @@ export function createFontListLayer(props: {
       entry.text.fillOpacity = row.opacity;
       entry.text.position.x =
         LIST_SAMPLE_LEFT +
-        (imageWidths.get(row.id) ?? LIST_SAMPLE_WIDTH * row.scale) +
+        (untrack(() => props.list.previewSizes[row.id]?.width) ??
+          LIST_SAMPLE_WIDTH * row.scale) +
         12;
       entry.text.color = props.isDark() ? 0xd4d4d8 : 0x3f3f46;
       entry.text.text = row.item.meta.font_name;
@@ -161,8 +165,8 @@ export function createFontListLayer(props: {
   });
 
   onCleanup(() => {
-    props.list.setContentWidth(0);
-    for (const entry of rows.values()) {
+    for (const [key, entry] of rows) {
+      props.list.setPreviewSize(key, undefined);
       entry.dot.material.dispose();
       entry.text.dispose();
     }
@@ -173,10 +177,7 @@ export function createFontListLayer(props: {
   return {
     render(renderer: WebGLRenderer) {
       const { x, y, width, height } = props.list.bounds();
-      if (!props.list.rows().length || width <= 0 || height <= 0) {
-        props.list.setContentWidth(0);
-        return;
-      }
+      if (!props.list.rows().length || width <= 0 || height <= 0) return;
       const size = props.size();
       // Three's viewport/scissor APIs use CSS pixels and account for DPR.
       renderer.setViewport(x, size.height - y - height, width, height);
@@ -186,17 +187,6 @@ export function createFontListLayer(props: {
       const previousAutoClear = renderer.autoClear;
       renderer.autoClear = false;
       renderer.render(scene, camera);
-      // Use the same worker-computed layout and fitted image positions that
-      // were just drawn, including async text/image updates and long names.
-      let contentWidth = 0;
-      for (const { text } of rows.values()) {
-        if (text.fillOpacity <= 0) continue;
-        contentWidth = Math.max(
-          contentWidth,
-          text.position.x + (text.textRenderInfo?.blockBounds[2] ?? 0),
-        );
-      }
-      props.list.setContentWidth(contentWidth);
       renderer.autoClear = previousAutoClear;
       renderer.setScissorTest(false);
       renderer.setViewport(0, 0, size.width, size.height);

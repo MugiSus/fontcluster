@@ -59,7 +59,9 @@ export interface ImageLayerProps {
   zoom: Accessor<number>;
   /** Schedules a repaint of the (on-demand) render loop. */
   requestRender: () => void;
-  onLayout?: ((key: string, width: number) => void) | undefined;
+  onLayout?:
+    | ((key: string, width: number, height: number, ready: boolean) => void)
+    | undefined;
 }
 
 interface ImageEntry {
@@ -127,7 +129,12 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
     entry.mesh.scale.set(width * zoom, height * zoom, 1);
     entry.mesh.position.x =
       entry.x + (entry.isLeftAligned ? (width * zoom) / 2 : 0);
-    props.onLayout?.(entry.key, width * zoom);
+    props.onLayout?.(
+      entry.key,
+      width * zoom,
+      height * zoom,
+      entry.material.uniforms['uMap']!.value !== null,
+    );
   };
 
   const createEntry = (
