@@ -1,3 +1,5 @@
+import { FILTERED_OPACITY } from '@/components/graph/constants';
+
 // GLSL for the graph point cloud, split into two single-purpose programs:
 //   - core: the sharp data dot, normal-blended straight to the screen.
 //   - halo: the soft glow, premultiplied and accumulated into the half-float
@@ -31,7 +33,7 @@ void main() {
   vColor = aColor;
   // Dimmed (filtered-out / inactive) points are 0.75x the size and much fainter.
   float scale = dimmed ? 0.75 : 1.0;
-  vAlpha = (dimmed ? 0.2 : 1.0) * aOpacity;
+  vAlpha = (dimmed ? ${FILTERED_OPACITY} : 1.0) * aOpacity;
   vCoreVisible = step(0.5, aCoreVisible);
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -79,8 +81,8 @@ void main() {
   bool dimmed = aState > 0.5;
   vColor = aColor;
   float scale = dimmed ? 0.75 : 1.0;
-  vAlpha = (dimmed ? 0.2 : 1.0) * aOpacity;
-  vGlow = dimmed ? 0.2 : 1.0;
+  vAlpha = (dimmed ? ${FILTERED_OPACITY} : 1.0) * aOpacity;
+  vGlow = dimmed ? ${FILTERED_OPACITY} : 1.0;
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = uSize * scale * uPixelRatio * uGlowScale;

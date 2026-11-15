@@ -16,6 +16,7 @@ export interface DendrogramEdge {
   x2: number;
   y2: number;
   mergeIndex: number;
+  childNodeIndex: number;
   colorAngle: number | undefined;
 }
 
@@ -23,6 +24,7 @@ interface DendrogramBezier {
   child: GraphCoordinate;
   parent: GraphCoordinate;
   mergeIndex: number;
+  childNodeIndex: number;
   colorAngle: number | undefined;
 }
 
@@ -32,10 +34,12 @@ export interface DendrogramArc {
   angleTo: number;
   radius: number;
   mergeIndex: number;
+  childNodeIndex: number;
   colorAngle: number | undefined;
 }
 
 interface PositionedDendrogramNode {
+  nodeIndex: number;
   center: GraphCoordinate | null;
   angle: number;
   radius: number;
@@ -135,6 +139,7 @@ const dendrogramTree = createRoot(() => {
 
     const nodes: PositionedDendrogramNode[] = topology.nodes.map(
       (node, nodeIndex) => ({
+        nodeIndex,
         center: layout.nodeCenters[nodeIndex] ?? null,
         angle:
           layout.mode === 'radial-tree'
@@ -193,6 +198,7 @@ const dendrogramTree = createRoot(() => {
       from: GraphCoordinate,
       to: GraphCoordinate,
       mergeIndex: number,
+      childNodeIndex: number,
       colorAngle: number | undefined,
     ) => {
       if (isCoincident(from, to)) return;
@@ -202,6 +208,7 @@ const dendrogramTree = createRoot(() => {
         x2: to.x,
         y2: to.y,
         mergeIndex,
+        childNodeIndex,
         colorAngle,
       });
     };
@@ -222,7 +229,13 @@ const dendrogramTree = createRoot(() => {
       if (layout.mode === 'radial-tree') {
         for (const child of children) {
           const elbow = polarPoint(child.angle, parent.radius);
-          pushSegment(child.center!, elbow, node.mergeIndex, child.colorAngle);
+          pushSegment(
+            child.center!,
+            elbow,
+            node.mergeIndex,
+            child.nodeIndex,
+            child.colorAngle,
+          );
           if (
             parent.radius > COINCIDENT_EPSILON &&
             Math.abs(child.angle - parent.angle) > COINCIDENT_EPSILON
@@ -232,6 +245,7 @@ const dendrogramTree = createRoot(() => {
               angleTo: Math.max(child.angle, parent.angle),
               radius: parent.radius,
               mergeIndex: node.mergeIndex,
+              childNodeIndex: child.nodeIndex,
               colorAngle: child.colorAngle,
             });
           }
@@ -242,6 +256,7 @@ const dendrogramTree = createRoot(() => {
             child: child.center!,
             parent: parent.center,
             mergeIndex: node.mergeIndex,
+            childNodeIndex: child.nodeIndex,
             colorAngle: child.colorAngle,
           });
         }
@@ -318,6 +333,7 @@ export const dendrogramEdges = (
               x2: point.x,
               y2: point.y,
               mergeIndex: curve.mergeIndex,
+              childNodeIndex: curve.childNodeIndex,
               colorAngle: curve.colorAngle,
             },
           ];

@@ -87,7 +87,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
         aria-label={
           props.isOpen ? t.graph.filterDock.close() : t.graph.filterDock.open()
         }
-        class='absolute -top-6 left-1/2 flex h-6 w-12 -translate-x-1/2 cursor-pointer items-center justify-center rounded-t-md border border-b-0 border-border/50 bg-background text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        class='absolute -top-5 left-1/2 flex h-5 w-12 -translate-x-1/2 cursor-pointer items-center justify-center rounded-t-md border border-b-0 border-border/50 bg-background text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
       >
         <Show when={props.isOpen} fallback={<ChevronUpIcon class='size-4' />}>
           <ChevronDownIcon class='size-4' />

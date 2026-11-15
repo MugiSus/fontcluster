@@ -1,3 +1,5 @@
+import { FILTERED_OPACITY } from '@/components/graph/constants';
+import { activeDendrogramNodeIndexes } from '@/components/graph/dendrogram-topology';
 import { createFontListLayer } from './font-list-layer';
 import { type FontListController } from '@/components/list/use-font-list';
 import {
@@ -61,8 +63,6 @@ ColorManagement.define({
 });
 ColorManagement.enabled = true;
 
-/** Opacity of dimmed (filtered-out / inactive weight) sample images. */
-const DIMMED_OPACITY = 0.4;
 const NO_CORE_KEYS = new Set<string>();
 
 export interface UseGraphGlRendererProps {
@@ -323,7 +323,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             colorSpace: graphOutputColorSpace,
           }),
           kind: presentation.emphasis,
-          opacity: presentation.isActive ? 1 : DIMMED_OPACITY,
+          opacity: presentation.isActive ? 1 : FILTERED_OPACITY,
         });
       }
       if (selectedDendrogramAnchor) {
@@ -337,7 +337,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
           kind: 'selected',
           opacity: dendrogramActivePredicate()(selectedDendrogramAnchor)
             ? 1
-            : DIMMED_OPACITY,
+            : FILTERED_OPACITY,
         });
       }
       return specs;
@@ -359,7 +359,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             angle: point.colorAngle,
             colorSpace: graphOutputColorSpace,
           }),
-          opacity: presentation.isActive ? 1 : DIMMED_OPACITY,
+          opacity: presentation.isActive ? 1 : FILTERED_OPACITY,
         });
       }
 
@@ -378,7 +378,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
             angle: anchor.colorAngle,
             colorSpace: graphOutputColorSpace,
           }),
-          opacity: dendrogramActivePredicate()(anchor) ? 1 : DIMMED_OPACITY,
+          opacity: dendrogramActivePredicate()(anchor) ? 1 : FILTERED_OPACITY,
         });
       }
       return specs;
@@ -393,12 +393,20 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
         ),
     );
 
-    // The selected font's merge ancestry, stroked in its cluster color.
+    const activeBranchNodes = createMemo<ReadonlySet<number>>(() => {
+      const layout = props.layout();
+      return layout && layout.mode !== 'scatter-plot'
+        ? activeDendrogramNodeIndexes(layout.topology, props.filteredKeys())
+        : new Set<number>();
+    });
+
+    // Only emphasize a selected font's ancestry while that leaf matches the filter.
     const dendrogramHighlight = createMemo<DendrogramHighlight | null>(() => {
       const points = props.dendrogramAncestry();
       if (points.length < 2) return null;
       const selected = props.selectedKey();
-      const point = selected ? props.getPointByKey(selected) : undefined;
+      if (!selected || !props.filteredKeys().has(selected)) return null;
+      const point = props.getPointByKey(selected);
       return {
         points,
         color: getClusterColor({
@@ -428,6 +436,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       imageNodeIndexes: anchoredNodeIndexes,
       highlight: dendrogramHighlight,
       activeKeys: props.filteredKeys,
+      activeNodeIndexes: activeBranchNodes,
       isDark,
       colorSpace: graphOutputColorSpace,
       resolution: props.size,

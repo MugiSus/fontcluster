@@ -12,11 +12,13 @@ attribute vec2 instanceBoxHalfSize;
 attribute vec2 instanceAngles;
 attribute float instanceRadius;
 attribute vec3 instanceColor;
+attribute float instanceOpacity;
 
 varying vec2 vGraph;
 varying vec2 vAngles;
 varying float vRadius;
 varying vec3 vColor;
+varying float vOpacity;
 
 void main() {
   vec2 halfSize = instanceBoxHalfSize + vec2((uLineWidth * 0.5 + uPad) * uZoom);
@@ -24,6 +26,7 @@ void main() {
   vAngles = instanceAngles;
   vRadius = instanceRadius;
   vColor = instanceColor;
+  vOpacity = instanceOpacity;
 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(vGraph.x, -vGraph.y, 0.0, 1.0);
 }
@@ -39,6 +42,7 @@ varying vec2 vGraph;
 varying vec2 vAngles;
 varying float vRadius;
 varying vec3 vColor;
+varying float vOpacity;
 
 const float TWO_PI = 6.283185307179586;
 
@@ -64,7 +68,7 @@ void main() {
     0.0,
     1.0
   );
-  float alpha = coverage * uOpacity;
+  float alpha = coverage * uOpacity * vOpacity;
   if (alpha <= 0.0) discard;
 
   gl_FragColor = vec4(vColor, alpha);

@@ -31,11 +31,18 @@ uniform vec2 resolution;
 
 attribute vec3 instanceStart;
 attribute vec3 instanceEnd;
+#ifdef USE_INSTANCE_OPACITY
+  attribute float instanceOpacity;
+#endif
 
 #ifdef USE_COLOR
   attribute vec3 instanceColorStart;
   attribute vec3 instanceColorEnd;
   varying vec3 vColor;
+#endif
+
+#ifdef USE_INSTANCE_OPACITY
+  varying float vOpacity;
 #endif
 
 varying vec2 vUv;
@@ -46,6 +53,9 @@ void main() {
     vColor = ( position.y < 0.5 ) ? instanceColorStart : instanceColorEnd;
   #endif
 
+  #ifdef USE_INSTANCE_OPACITY
+    vOpacity = instanceOpacity;
+  #endif
   vUv = uv;
 
   float aspect = resolution.x / resolution.y;
@@ -101,6 +111,10 @@ uniform float roundCaps;
   varying vec3 vColor;
 #endif
 
+#ifdef USE_INSTANCE_OPACITY
+  varying float vOpacity;
+#endif
+
 varying vec2 vUv;
 
 void main() {
@@ -122,6 +136,9 @@ void main() {
   );
 
   float alpha = opacity * coverage;
+  #ifdef USE_INSTANCE_OPACITY
+    alpha *= vOpacity;
+  #endif
   if ( alpha <= 0.0 ) discard;
 
   vec3 color = diffuse;

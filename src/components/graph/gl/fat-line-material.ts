@@ -10,9 +10,11 @@ export function createFatLineMaterial(options: {
   linewidth: number;
   opacity: number;
   hasVertexColors: boolean;
+  hasInstanceOpacity?: boolean;
   hasRoundCaps?: boolean;
 }): ShaderMaterial {
   return new ShaderMaterial({
+    defines: options.hasInstanceOpacity ? { USE_INSTANCE_OPACITY: 1 } : {},
     uniforms: {
       diffuse: { value: new Color(options.color) },
       opacity: { value: options.opacity },

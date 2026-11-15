@@ -26,7 +26,7 @@ import {
   type DendrogramEdge,
   type DendrogramNodeDot,
 } from '@/components/graph/dendrogram-edges';
-import { GRAPH_SIZE } from '@/components/graph/constants';
+import { FILTERED_OPACITY, GRAPH_SIZE } from '@/components/graph/constants';
 import { type GraphCoordinate } from '@/components/graph/types';
 import { arcFragmentShader, arcVertexShader } from './shaders/arc';
 import {
@@ -41,7 +41,7 @@ import { coreFragmentShader, coreVertexShader } from './shaders/point';
 const EDGE_WIDTH_PX = 1;
 /** Extra CSS px around each analytic arc's bounding quad for the AA feather. */
 const ARC_AA_PAD_PX = 2;
-/** Every edge is fully opaque and takes its destination node's font color. */
+/** Base opacity before applying the descendant-leaf filter state. */
 const EDGE_OPACITY = 1;
 /** The selected ancestry is the mode's focal line and stays foremost. */
 const HIGHLIGHT_WIDTH_PX = 1.5;
@@ -75,6 +75,8 @@ export interface DendrogramLayerProps {
   highlight: Accessor<DendrogramHighlight | null>;
   /** Representative font keys that are currently active/selectable. */
   activeKeys: Accessor<Set<string>>;
+  /** Nodes with at least one descendant leaf that passes the current filter. */
+  activeNodeIndexes: Accessor<ReadonlySet<number>>;
   /** Whether the active theme is dark (picks cluster/background colors). */
   isDark: Accessor<boolean>;
   /** Encoded RGB space of the renderer's drawing buffer. */
@@ -96,7 +98,8 @@ export interface DendrogramLayerProps {
  *
  * Each branch, including its radial arc, takes the destination node's
  * representative-font color. Only endpoints without clustering color data
- * fall back to the neutral grid color; merge rank does not dim branches.
+ * fall back to the neutral grid color. Branches with no filter-matching leaf
+ * descendants use the same dimmed opacity as the leaf points.
  * The node dots themselves behave like graph-point aliases: they use the
  * representative point color and the point-core shader's active/dimmed alpha.
  *
@@ -110,6 +113,7 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
     linewidth: EDGE_WIDTH_PX,
     opacity: EDGE_OPACITY,
     hasVertexColors: true,
+    hasInstanceOpacity: true,
   });
   const highlightMaterial = createFatLineMaterial({
     color: 0xffffff,
@@ -196,6 +200,10 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
       const geometry = new LineSegmentsGeometry();
       geometry.setPositions(positions);
       geometry.setColors(colors);
+      geometry.setAttribute(
+        'instanceOpacity',
+        new InstancedBufferAttribute(new Float32Array(edges.length).fill(1), 1),
+      );
       lines = new LineSegments2(geometry, material as unknown as LineMaterial);
       lines.frustumCulled = false;
       lines.renderOrder = -0.5;
@@ -287,11 +295,47 @@ export function createDendrogramLayer(props: DendrogramLayerProps): Object3D {
         'instanceColor',
         new InstancedBufferAttribute(colors, 3),
       );
+      geometry.setAttribute(
+        'instanceOpacity',
+        new InstancedBufferAttribute(new Float32Array(arcs.length).fill(1), 1),
+      );
       geometry.instanceCount = arcs.length;
       arcMesh = new Mesh(geometry, arcMaterial);
       arcMesh.frustumCulled = false;
       arcMesh.renderOrder = -0.5;
       group.add(arcMesh);
+    }
+    props.requestRender();
+  });
+
+  // Filter updates touch only opacity buffers, preserving branch geometry.
+  // Theme changes rebuild those buffers above, so reapply the filter then too.
+  createEffect(() => {
+    const edges = props.edges();
+    const arcs = props.arcs();
+    props.isDark();
+    const activeNodes = props.activeNodeIndexes();
+    const edgeOpacity = lines?.geometry.getAttribute('instanceOpacity');
+    if (edgeOpacity) {
+      for (const [index, edge] of edges.entries()) {
+        edgeOpacity.setX(
+          index,
+          activeNodes.has(edge.childNodeIndex)
+            ? EDGE_OPACITY
+            : FILTERED_OPACITY,
+        );
+      }
+      edgeOpacity.needsUpdate = true;
+    }
+    const arcOpacity = arcMesh?.geometry.getAttribute('instanceOpacity');
+    if (arcOpacity) {
+      for (const [index, arc] of arcs.entries()) {
+        arcOpacity.setX(
+          index,
+          activeNodes.has(arc.childNodeIndex) ? EDGE_OPACITY : FILTERED_OPACITY,
+        );
+      }
+      arcOpacity.needsUpdate = true;
     }
     props.requestRender();
   });

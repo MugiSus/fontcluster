@@ -1,3 +1,4 @@
+import { hierarchy } from 'd3-hierarchy';
 import { type FontItemRecord } from '@/types/font';
 import { type DendrogramData } from '@/types/session';
 
@@ -146,4 +147,23 @@ export function createDendrogramTopology(
       0,
     ),
   };
+}
+
+/** Nodes on at least one path from a filter-matching leaf to its root. */
+export function activeDendrogramNodeIndexes(
+  topology: DendrogramTopology,
+  activeKeys: ReadonlySet<string>,
+): ReadonlySet<number> {
+  const root = hierarchy(topology.rootData, (datum) => datum.children).sum(
+    ({ nodeIndex }) => {
+      const key = topology.nodes[nodeIndex]?.key;
+      return key != null && activeKeys.has(key) ? 1 : 0;
+    },
+  );
+  return new Set(
+    root
+      .descendants()
+      .filter((node) => node.data.nodeIndex >= 0 && (node.value ?? 0) > 0)
+      .map((node) => node.data.nodeIndex),
+  );
 }

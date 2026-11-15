@@ -9,7 +9,10 @@ import {
 import { DisplayP3ColorSpace } from 'three/addons/math/ColorSpaces.js';
 import { BatchedText, Text } from 'troika-three-text';
 import { GEIST_FONT_URL } from './text-font';
-import { SAMPLE_IMAGE_BOX_HEIGHT_PX } from '@/components/graph/constants';
+import {
+  FILTERED_OPACITY,
+  SAMPLE_IMAGE_BOX_HEIGHT_PX,
+} from '@/components/graph/constants';
 import { type GraphPointPresentation } from '@/components/graph/graph-point-presentation';
 import { type GraphPointLabel } from '@/components/graph/types';
 import {
@@ -27,8 +30,6 @@ const FONT_SIZE_PX = 10;
 const MARGIN_PX = 6;
 /** Fixed extra screen-px gap while sample images are shown. */
 const SAMPLE_IMAGE_EXTRA_GAP_PX = 12;
-/** Matches the ring/image layers' dimmed opacity for filtered-out fonts. */
-const DIMMED_OPACITY = 0.4;
 
 export interface PointLabelLayerProps {
   /** The point labels to draw (see {@link GraphPointLabel}). */
@@ -205,7 +206,7 @@ export function createPointLabelLayer(props: PointLabelLayerProps): Object3D {
         ? 0
         : presentation.isActive
           ? 1
-          : DIMMED_OPACITY;
+          : FILTERED_OPACITY;
     }
     props.requestRender();
   });
