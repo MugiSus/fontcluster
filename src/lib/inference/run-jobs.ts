@@ -75,6 +75,8 @@ export async function runJobsWithWasm(
       inference,
     });
   } finally {
+    // A queued channel payload can arrive after run_jobs has settled.
+    inference.onmessage = () => {};
     active = undefined;
     remote?.[releaseProxy]();
     worker?.terminate();

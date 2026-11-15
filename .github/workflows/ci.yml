@@ -32,3 +32,6 @@ jobs:
 
       - name: check (typecheck + lint + format)
         run: pnpm run check
+
+      - name: test inference lifecycle
+        run: pnpm run test:inference
