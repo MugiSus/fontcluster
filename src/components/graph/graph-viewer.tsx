@@ -77,7 +77,7 @@ export function GraphViewer(props: GraphViewerProps) {
   const { ref: setSvgRef, size: svgSize } = useElementSize<SVGSVGElement>();
   const fontList = useFontList({
     size: svgSize,
-    isVisible: () => props.showList && props.showHud,
+    isVisible: () => props.showList,
   });
   const viewport = useGraphViewport({
     getSvgElement: svgElement,
@@ -464,10 +464,10 @@ export function GraphViewer(props: GraphViewerProps) {
         </svg>
       </Show>
 
-      <Show when={props.showHud && props.showList}>
+      <Show when={props.showList}>
         <GraphListOverlay list={fontList} />
       </Show>
-      <Show when={props.showHud && props.showSamples}>
+      <Show when={props.showSamples}>
         <Show when={!appState.ui.isSessionLoading}>
           <SelectedFontPreview
             selectedKey={selection.selectedKey}
