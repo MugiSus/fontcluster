@@ -134,7 +134,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
             keyed
           >
             <div class='mx-0.5 h-5 w-px bg-border/60' />
-            <div class='max-w-full overflow-x-auto overscroll-x-contain py-1'>
+            <div class='max-w-full overflow-x-auto overscroll-x-contain'>
               <WeightSelector
                 isBare
                 isCompact
@@ -159,7 +159,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
             keyed
           >
             <div class='mx-0.5 h-5 w-px bg-border/60' />
-            <div class='max-w-full overflow-x-auto overscroll-x-contain py-1'>
+            <div class='max-w-full overflow-x-auto overscroll-x-contain'>
               <ClusterSelector
                 clusters={topClusters()}
                 onChange={setVisibleGraphClusters}
