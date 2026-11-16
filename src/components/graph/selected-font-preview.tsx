@@ -47,7 +47,7 @@ export function SelectedFontPreview(props: {
     );
     const right = width - 48;
     const top = isCompact()
-      ? height - 48 - contentHeight
+      ? height - 8 - contentHeight
       : (height - contentHeight) / 2;
     const bounds = new Box2(
       new Vector2(right - contentWidth, top),
@@ -85,7 +85,7 @@ export function SelectedFontPreview(props: {
             <LoaderIcon
               class='absolute right-12 size-6 animate-spin text-muted-foreground'
               classList={{
-                'bottom-12': isCompact(),
+                'bottom-2': isCompact(),
                 'top-1/2 -mt-3': !isCompact(),
               }}
               stroke-width={1}
@@ -117,7 +117,7 @@ export function SelectedFontPreview(props: {
             <div
               class='absolute right-12 flex w-48 max-w-[calc(50%-48px)] justify-end'
               classList={{
-                'bottom-12': isCompact(),
+                'bottom-2': isCompact(),
                 'top-1/2 -translate-y-1/2': !isCompact(),
               }}
             >
