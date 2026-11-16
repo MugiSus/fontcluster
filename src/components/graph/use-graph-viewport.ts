@@ -1,5 +1,6 @@
 import { debounce } from '@solid-primitives/scheduled';
 import { Gesture } from '@use-gesture/vanilla';
+import { getScrollInertia } from '@/lib/scroll-inertia';
 import {
   animate,
   cancelFrame,
@@ -378,16 +379,16 @@ export function useGraphViewport(
             panByScreenDelta({ deltaX: -delta[0], deltaY: -delta[1] });
             const speed = Math.hypot(...velocity) * 1000;
             if (last && speed >= 50) {
-              const power = 0.16;
+              const { keyframes, duration } = getScrollInertia({
+                velocity: speed,
+                restDelta: 1,
+              });
               let previous = 0;
               // Animate screen-space distance along the release velocity.
-              // Motion owns decay; all camera updates still go through this adapter.
-              inertia = animate(0, power * speed, {
-                type: 'inertia',
-                velocity: speed,
-                power,
-                timeConstant: 160,
-                restDelta: 0.5,
+              // Motion owns playback; camera updates stay in this adapter.
+              inertia = animate(0, keyframes, {
+                duration,
+                ease: 'linear',
                 onUpdate: (distance) => {
                   const step = ((distance - previous) * 1000) / speed;
                   previous = distance;

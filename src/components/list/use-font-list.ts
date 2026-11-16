@@ -22,6 +22,7 @@ import {
   setSelectedFontKey,
 } from '@/commands/font-selection';
 import { type FontItem } from '@/types/font';
+import { getScrollInertia } from '@/lib/scroll-inertia';
 
 export const LIST_MIN_SCALE = 0.6;
 export const LIST_MAX_SCALE = 2.4;
@@ -213,7 +214,7 @@ export function useFontList(props: {
     return {
       x: viewport.x,
       y: viewport.y + top,
-      width: viewport.width,
+      width: Math.min(300, viewport.width),
       height: Math.max(0, bottom - top),
     };
   });
@@ -248,7 +249,7 @@ export function useFontList(props: {
     finishScroll();
   };
 
-  // Velocity arrives in CSS pixels/second. Motion owns decay and frame
+  // Velocity arrives in CSS pixels/second. Motion owns playback and frame
   // scheduling; offset remains the only authoritative list position.
   const startInertia = (velocity: number) => {
     stopInertia();
@@ -258,19 +259,16 @@ export function useFontList(props: {
     const start = offset() * LIST_SCROLL_STEP_PX;
     const end = (items().length - 1) * LIST_SCROLL_STEP_PX;
     const shouldLoop = isLooping();
-    const timeConstant = 200;
-    // Match travel to decay time to preserve the release velocity.
-    const power = timeConstant / 1000;
-    let previous = 0;
-    // A distinct destination prevents Motion's equal-keyframe shortcut.
-    inertia = animate(0, power * velocity, {
-      type: 'inertia',
+    const { keyframes, duration } = getScrollInertia({
       velocity,
-      power,
-      timeConstant,
-      restDelta: 0.5,
-      modifyTarget: (target) =>
-        shouldLoop ? target : MathUtils.clamp(target, -start, end - start),
+      restDelta: 1,
+      min: shouldLoop ? -Infinity : -start,
+      max: shouldLoop ? Infinity : end - start,
+    });
+    let previous = 0;
+    inertia = animate(0, keyframes, {
+      duration,
+      ease: 'linear',
       onUpdate: (distance) => {
         moveScroll(distance - previous);
         previous = distance;
