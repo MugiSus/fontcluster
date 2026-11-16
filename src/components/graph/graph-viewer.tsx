@@ -436,12 +436,12 @@ export function GraphViewer(props: GraphViewerProps) {
           }}
           style={{
             cursor: viewport.isDragging()
-              ? "url('/cursors/hand-grab.svg') 12 12, grabbing"
+              ? `url('${import.meta.env.BASE_URL}cursors/hand-grab.svg') 12 12, grabbing`
               : props.toolMode === 'drag'
-                ? "url('/cursors/hand.svg') 12 12, grab"
+                ? `url('${import.meta.env.BASE_URL}cursors/hand.svg') 12 12, grab`
                 : props.toolMode === 'zoom'
-                  ? "url('/cursors/zoom-in.svg') 11 11, zoom-in"
-                  : "url('/cursors/mouse-pointer-2.svg') 4 4, default",
+                  ? `url('${import.meta.env.BASE_URL}cursors/zoom-in.svg') 11 11, zoom-in`
+                  : `url('${import.meta.env.BASE_URL}cursors/mouse-pointer-2.svg') 4 4, default`,
           }}
           viewBox={`${viewport.viewBox().x} ${viewport.viewBox().y} ${viewport.viewBox().width} ${viewport.viewBox().height}`}
           xmlns='http://www.w3.org/2000/svg'
