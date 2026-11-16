@@ -10,6 +10,7 @@ import {
 } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import { debounce } from '@solid-primitives/scheduled';
+import { animate, type AnimationPlaybackControls } from 'motion';
 import { MathUtils } from 'three';
 import { scaleLinear } from 'd3-scale';
 import { cumsum, range } from 'd3-array';
@@ -110,6 +111,13 @@ export function useFontList(props: {
     Record<string, { width: number; height: number } | undefined>
   >({});
   const finishScroll = debounce(() => commitDraggingFont('list'), 180);
+  let inertia: AnimationPlaybackControls | undefined;
+  const stopInertia = () => {
+    if (!inertia) return;
+    inertia.stop();
+    inertia = undefined;
+    finishScroll();
+  };
   const isLooping = createMemo(
     () =>
       items().length >
@@ -124,6 +132,7 @@ export function useFontList(props: {
 
   createEffect(
     on([items, () => props.isVisible()], () => {
+      stopInertia();
       finishScroll.clear();
       clearDraggingFont('list');
       const key = appState.ui.selectedFontKey;
@@ -133,6 +142,7 @@ export function useFontList(props: {
   createEffect(
     on([activeFontKey, isGraphDragging], ([key]) => {
       if (appState.ui.draggingFontSource === 'list') return;
+      stopInertia();
       finishScroll.clear();
       setOffset(key ? (indexByKey().get(key) ?? 0) : 0);
     }),
@@ -208,7 +218,7 @@ export function useFontList(props: {
     };
   });
 
-  const scrollBy = (delta: number) => {
+  const moveScroll = (delta: number) => {
     const fonts = items();
     if (!fonts.length) return;
     batch(() => {
@@ -230,7 +240,44 @@ export function useFontList(props: {
       );
       setDraggingFont('list', fonts[index]!.meta.safe_name);
     });
+  };
+
+  const scrollBy = (delta: number) => {
+    stopInertia();
+    moveScroll(delta);
     finishScroll();
+  };
+
+  // Velocity arrives in CSS pixels/second. Motion owns decay and frame
+  // scheduling; offset remains the only authoritative list position.
+  const startInertia = (velocity: number) => {
+    stopInertia();
+    if (!props.isVisible() || !items().length || Math.abs(velocity) < 20)
+      return;
+    finishScroll.clear();
+    const start = offset() * LIST_SCROLL_STEP_PX;
+    const end = (items().length - 1) * LIST_SCROLL_STEP_PX;
+    const shouldLoop = isLooping();
+    const power = 0.325;
+    let previous = 0;
+    // A distinct destination prevents Motion's equal-keyframe shortcut.
+    inertia = animate(0, power * velocity, {
+      type: 'inertia',
+      velocity,
+      power,
+      timeConstant: 325,
+      restDelta: 0.5,
+      modifyTarget: (target) =>
+        shouldLoop ? target : MathUtils.clamp(target, -start, end - start),
+      onUpdate: (distance) => {
+        moveScroll(distance - previous);
+        previous = distance;
+      },
+      onComplete: () => {
+        inertia = undefined;
+        finishScroll();
+      },
+    });
   };
 
   const rowAt = (y: number) =>
@@ -248,11 +295,13 @@ export function useFontList(props: {
       );
     });
   const selectRow = (row: FontListRow) => {
+    stopInertia();
     finishScroll.clear();
     setSelectedFontKey(row.key);
     setOffset(indexByKey().get(row.key) ?? 0);
   };
   onCleanup(() => {
+    stopInertia();
     finishScroll.clear();
     untrack(() => clearDraggingFont('list'));
   });
@@ -267,6 +316,8 @@ export function useFontList(props: {
     rows,
     items,
     scrollBy,
+    startInertia,
+    stopInertia,
     rowAt,
     selectRow,
   };

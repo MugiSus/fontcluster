@@ -1,11 +1,12 @@
 import { createMemo, For, Show, type Accessor } from 'solid-js';
 import { LoaderIcon } from 'lucide-solid';
-import { Vector2 } from 'three';
+import { Box2, Vector2 } from 'three';
 import { useElementSize } from '@/hooks/use-element-size';
 import { getClusterCssColor } from '@/lib/cluster-colors';
 import type { RenderFontPreview } from '@/types/font';
 import { useSelectedFontPreview } from './use-selected-font-preview';
 import { RING_LINE_WIDTH_PX, SELECTED_RING_RADIUS_PX } from './constants';
+import { getPreviewConnector } from './preview-connector';
 import type { GraphPointData, GraphViewBox } from './types';
 
 export function SelectedFontPreview(props: {
@@ -19,12 +20,14 @@ export function SelectedFontPreview(props: {
     useSelectedFontPreview(props);
   const { ref: setPreviewRef, size: previewSize } =
     useElementSize<HTMLDivElement>();
+  const { ref: setNameRef, size: nameSize } = useElementSize<HTMLDivElement>();
+  const isCompact = () => props.size().width < 768;
   const connector = createMemo(() => {
     const key = props.selectedKey();
     const point = key ? props.getPointByKey(key) : undefined;
     const { width, height } = props.size();
     const viewBox = props.viewBox();
-    const contentWidth = previewSize().width;
+    const { width: contentWidth, height: contentHeight } = previewSize();
     if (
       !point ||
       contentWidth <= 0 ||
@@ -42,14 +45,30 @@ export function SelectedFontPreview(props: {
       (width - viewBox.width * scale) / 2 + (point.x - viewBox.x) * scale,
       (height - viewBox.height * scale) / 2 + (point.y - viewBox.y) * scale,
     );
-    const start = new Vector2(width - 48 - contentWidth - 16, height / 2);
-    if (center.x > start.x) return null;
-    const radius = SELECTED_RING_RADIUS_PX + RING_LINE_WIDTH_PX / 2;
-    const distance = center.distanceTo(start);
-    if (distance <= radius) return null;
+    const right = width - 48;
+    const top = isCompact()
+      ? height - 48 - contentHeight
+      : (height - contentHeight) / 2;
+    const bounds = new Box2(
+      new Vector2(right - contentWidth, top),
+      new Vector2(right, top + contentHeight),
+    );
+    const exclusionBounds = bounds.clone();
+    if (!preview.error && preview()) {
+      // The name sits above the images with an 8px gap and can be wider.
+      exclusionBounds.expandByPoint(
+        new Vector2(right - nameSize().width, top - 8 - nameSize().height),
+      );
+    }
+    const line = getPreviewConnector(
+      bounds,
+      center,
+      SELECTED_RING_RADIUS_PX + RING_LINE_WIDTH_PX / 2,
+      exclusionBounds,
+    );
+    if (!line) return null;
     return {
-      start,
-      end: center.lerp(start, radius / distance),
+      ...line,
       color: getClusterCssColor(point.colorAngle),
     };
   });
@@ -64,7 +83,11 @@ export function SelectedFontPreview(props: {
           when={!isLoading()}
           fallback={
             <LoaderIcon
-              class='absolute right-12 top-1/2 -mt-3 size-6 animate-spin text-muted-foreground'
+              class='absolute right-12 size-6 animate-spin text-muted-foreground'
+              classList={{
+                'bottom-12': isCompact(),
+                'top-1/2 -mt-3': !isCompact(),
+              }}
               stroke-width={1}
               aria-hidden='true'
             />
@@ -91,7 +114,13 @@ export function SelectedFontPreview(props: {
                 )}
               </Show>
             </svg>
-            <div class='absolute right-12 top-1/2 flex w-48 max-w-[calc(50%-48px)] -translate-y-1/2 justify-end'>
+            <div
+              class='absolute right-12 flex w-48 max-w-[calc(50%-48px)] justify-end'
+              classList={{
+                'bottom-12': isCompact(),
+                'top-1/2 -translate-y-1/2': !isCompact(),
+              }}
+            >
               <Show
                 when={!preview.error && preview()}
                 fallback={
@@ -107,7 +136,10 @@ export function SelectedFontPreview(props: {
                   ref={setPreviewRef}
                   class='relative flex w-max max-w-full flex-col items-end duration-200 animate-in fade-in-0'
                 >
-                  <div class='absolute bottom-full right-0 mb-2 w-max whitespace-nowrap text-right text-xs text-muted-foreground'>
+                  <div
+                    ref={setNameRef}
+                    class='absolute bottom-full right-0 mb-2 w-max whitespace-nowrap text-right text-xs text-muted-foreground'
+                  >
                     {displayName()}
                   </div>
                   <For each={preview()}>
