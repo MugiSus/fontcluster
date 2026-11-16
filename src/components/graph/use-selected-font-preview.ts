@@ -10,7 +10,7 @@ const PREVIEW_LINES = ['永東国書', '調風愛機', 'あなふの', 'アタ�
 /** UI-only request state; selection and rendered-image caching stay with their owners. */
 export function useSelectedFontPreview(props: {
   selectedKey: Accessor<string | null>;
-  renderFontPreview: RenderFontPreview;
+  renderFontPreview?: RenderFontPreview | undefined;
 }) {
   const { locale } = useI18n();
   // A drag becoming a committed selection must not request the same font again.
@@ -30,13 +30,15 @@ export function useSelectedFontPreview(props: {
     return isSettled() && font ? { font, render } : undefined;
   });
   const [preview] = createResource(request, ({ font, render }) =>
-    Promise.all(
-      PREVIEW_LINES.map(async (text) => ({
-        text,
-        // Two source pixels per CSS pixel keep the 48px sample sharp on HiDPI displays.
-        url: await render(font, text, 96),
-      })),
-    ),
+    render
+      ? Promise.all(
+          PREVIEW_LINES.map(async (text) => ({
+            text,
+            // Two source pixels per CSS pixel keep the 48px sample sharp on HiDPI displays.
+            url: await render(font, text, 96),
+          })),
+        )
+      : undefined,
   );
 
   const isDebouncing = () => selectedFont() !== undefined && !request();

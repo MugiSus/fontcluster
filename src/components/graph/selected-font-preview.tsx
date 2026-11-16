@@ -10,7 +10,7 @@ import type { GraphPointData, GraphViewBox } from './types';
 
 export function SelectedFontPreview(props: {
   selectedKey: Accessor<string | null>;
-  renderFontPreview: RenderFontPreview;
+  renderFontPreview?: RenderFontPreview | undefined;
   viewBox: Accessor<GraphViewBox>;
   size: Accessor<{ width: number; height: number }>;
   getPointByKey: (key: string) => GraphPointData | undefined;
@@ -93,7 +93,7 @@ export function SelectedFontPreview(props: {
             </svg>
             <div class='absolute right-12 top-1/2 flex w-48 max-w-[calc(50%-48px)] -translate-y-1/2 justify-end'>
               <Show
-                when={!preview.error}
+                when={!preview.error && preview()}
                 fallback={
                   <div
                     ref={setPreviewRef}

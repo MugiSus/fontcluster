@@ -472,16 +472,14 @@ export function GraphViewer(props: GraphViewerProps) {
         <GraphListOverlay list={fontList} />
       </Show>
       <Show when={props.showHud && props.showSamples}>
-        <Show when={!appState.ui.isSessionLoading && props.renderFontPreview}>
-          {(renderPreview) => (
-            <SelectedFontPreview
-              selectedKey={selection.selectedKey}
-              renderFontPreview={renderPreview()}
-              viewBox={viewport.viewBox}
-              size={svgSize}
-              getPointByKey={getSelectedActionAnchorPoint}
-            />
-          )}
+        <Show when={!appState.ui.isSessionLoading}>
+          <SelectedFontPreview
+            selectedKey={selection.selectedKey}
+            renderFontPreview={props.renderFontPreview}
+            viewBox={viewport.viewBox}
+            size={svgSize}
+            getPointByKey={getSelectedActionAnchorPoint}
+          />
         </Show>
       </Show>
       <Show when={props.showHud}>
