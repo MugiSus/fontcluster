@@ -90,7 +90,8 @@ export function GraphViewer(props: GraphViewerProps) {
     },
     resetZoom: () => (activeGraphLayout()?.mode === 'scatter-plot' ? 2.5 : 1),
     onViewportChange: (center) => selection.selectNearestPoint(center),
-    onTouchTap: (event) => selection.selectFromMouseEvent(event),
+    isMousePanEnabled: () => props.toolMode === 'drag',
+    onTap: (event) => selection.selectFromMouseEvent(event),
   });
   const graph = useGraphPoints({
     svgSize,
@@ -246,10 +247,6 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (event.buttons === 1) {
-      if (props.toolMode === 'drag') {
-        viewport.dragPan(event);
-        return;
-      }
       if (props.toolMode === 'zoom') {
         if (
           zoomStartScreenPoint &&
@@ -301,7 +298,6 @@ export function GraphViewer(props: GraphViewerProps) {
     if (event.button === 0) {
       if (props.toolMode === 'drag') {
         selection.clearDraggingSelection();
-        viewport.startPanDrag(event);
         return;
       }
       if (props.toolMode === 'zoom') {

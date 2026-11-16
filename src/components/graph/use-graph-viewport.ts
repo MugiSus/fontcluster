@@ -39,7 +39,8 @@ interface UseGraphViewportProps {
   /** Magnification relative to fitting the graph bounds with padding. */
   resetZoom: Accessor<number>;
   onViewportChange: (center: GraphCoordinate) => void;
-  onTouchTap: (event: PointerEvent) => void;
+  isMousePanEnabled: Accessor<boolean>;
+  onTap: (event: PointerEvent) => void;
 }
 
 export interface GraphViewportController {
@@ -353,7 +354,10 @@ export function useGraphViewport(
           cancel,
           delta,
         }) => {
-          if (!(event instanceof PointerEvent) || event.pointerType !== 'touch')
+          if (
+            !(event instanceof PointerEvent) ||
+            (event.pointerType !== 'touch' && !props.isMousePanEnabled())
+          )
             return;
           if (first) refreshViewportRect();
           if (pinching || touches > 1) {
@@ -370,7 +374,7 @@ export function useGraphViewport(
             return;
           if (tap) {
             refreshViewportRect();
-            props.onTouchTap(event);
+            props.onTap(event);
           } else {
             panByScreenDelta({ deltaX: -delta[0], deltaY: -delta[1] });
           }

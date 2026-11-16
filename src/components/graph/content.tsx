@@ -32,7 +32,7 @@ interface GraphContentProps {
 }
 
 export function GraphContent(props: GraphContentProps) {
-  const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
+  const [toolMode, setToolMode] = createSignal<GraphToolMode>('drag');
   const [showImages, setShowImages] = createSignal(true);
   const [showSamples, setShowSamples] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(false);
