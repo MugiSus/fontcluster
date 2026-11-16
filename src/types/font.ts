@@ -79,11 +79,11 @@ export interface FontItem {
   computed?: ComputedData | null;
 }
 
-/** Platform adapter returning a displayable URL for a rendered font preview. */
+/** Platform adapter returning the selected sample text and displayable URLs. */
 export type RenderFontPreview = (
   font: FontMetadata,
-  text: string,
+  candidates: readonly (readonly string[])[],
   fontSize: number,
-) => Promise<string>;
+) => Promise<{ text: string; url: string }[]>;
 
 export type FontItemRecord = Record<string, FontItem>;

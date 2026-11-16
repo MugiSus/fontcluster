@@ -5,7 +5,12 @@ import { useI18n } from '@/i18n';
 import { getFontDisplayName } from '@/lib/font-display-name';
 import type { RenderFontPreview } from '@/types/font';
 
-const PREVIEW_LINES = ['永東国書', '調風愛機', 'あなふの', 'アタユシ'];
+const PREVIEW_CANDIDATES = [
+  ['永東国書', '調風愛機', 'あなふの', 'アタユシ'],
+  ['いろはに', 'ホヘトチ', 'あなふの', 'アタユシ'],
+  ['いろはに', 'ほへとち', 'りぬるを', 'あなゆし'],
+  ['イロハニ', 'ホヘトチ', 'リヌルヲ', 'アナユシ'],
+] as const;
 
 /** UI-only request state; selection and rendered-image caching stay with their owners. */
 export function useSelectedFontPreview(props: {
@@ -30,15 +35,8 @@ export function useSelectedFontPreview(props: {
     return isSettled() && font ? { font, render } : undefined;
   });
   const [preview] = createResource(request, ({ font, render }) =>
-    render
-      ? Promise.all(
-          PREVIEW_LINES.map(async (text) => ({
-            text,
-            // Two source pixels per CSS pixel keep the 48px sample sharp on HiDPI displays.
-            url: await render(font, text, 96),
-          })),
-        )
-      : undefined,
+    // Two source pixels per CSS pixel keep the 48px sample sharp on HiDPI displays.
+    render?.(font, PREVIEW_CANDIDATES, 96),
   );
 
   const isDebouncing = () => selectedFont() !== undefined && !request();

@@ -50,14 +50,31 @@ impl FontRenderer {
     }
 
     /// Renders the configured text to an arbitrary `path`.
+    pub fn render_to_path(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
+        let font_data = fs::read(font_path).map_err(|e| {
+            AppError::Io(format!(
+                "Failed to read font file {}: {e}",
+                font_path.display()
+            ))
+        })?;
+        self.render_data_to_path(&font_data, font_index, path)
+    }
+
+    /// Renders from already loaded bytes, allowing previews to reuse the same
+    /// font for coverage checks and every line without reopening the source.
     ///
     /// Wraps the rendering in [`panic::catch_unwind`] and converts any panic
     /// into an [`AppError`], because malformed fonts can make the underlying
     /// shaping/scaling code panic and a single bad font must not abort a whole
     /// parallel render pass.
-    pub fn render_to_path(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
+    pub fn render_data_to_path(
+        &self,
+        font_data: &[u8],
+        font_index: u32,
+        path: &Path,
+    ) -> Result<()> {
         match panic::catch_unwind(AssertUnwindSafe(|| {
-            self.render_to_path_inner(font_path, font_index, path)
+            self.render_to_path_inner(font_data, font_index, path)
         })) {
             Ok(result) => result,
             Err(payload) => {
@@ -74,27 +91,15 @@ impl FontRenderer {
     }
 
     /// The actual rendering, run under the panic guard of
-    /// [`render_to_path`](Self::render_to_path).
+    /// [`render_data_to_path`](Self::render_data_to_path).
     ///
     /// Validates that the face covers every character, shapes the text, renders
     /// each glyph, composites them into a tightly-cropped LA8 buffer, and
     /// writes it as a PNG. Returns an error if the face is missing a glyph or
     /// produces no visible pixels.
-    fn render_to_path_inner(&self, font_path: &Path, font_index: u32, path: &Path) -> Result<()> {
-        let font_data = std::fs::read(font_path).map_err(|e| {
-            AppError::Io(format!(
-                "Failed to read font file {}: {}",
-                font_path.display(),
-                e
-            ))
-        })?;
-        let font = FontRef::from_index(&font_data, font_index as usize).ok_or_else(|| {
-            AppError::Font(format!(
-                "Failed to parse font face {} in {}",
-                font_index,
-                font_path.display()
-            ))
-        })?;
+    fn render_to_path_inner(&self, font_data: &[u8], font_index: u32, path: &Path) -> Result<()> {
+        let font = FontRef::from_index(font_data, font_index as usize)
+            .ok_or_else(|| AppError::Font(format!("Failed to parse font face {font_index}")))?;
 
         for ch in self.config.text.chars() {
             let gid = font.charmap().map(ch);

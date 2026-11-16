@@ -1,7 +1,7 @@
 //! Commands backing the font browser and on-demand preview rendering.
 //!
 //! Besides listing a session's fonts and the installed system families, this
-//! renders a preview PNG for an arbitrary font on demand. Previews are cached
+//! renders sample preview PNGs for a selected font on demand. Previews are cached
 //! on disk (LRU) keyed by a hash of every input that affects the output, and
 //! system fonts are resolved through a lazily-built index so repeated previews
 //! don't re-scan the font database.
@@ -11,25 +11,28 @@ use crate::core::google_fonts_downloader::download_google_font_subset_temp;
 use crate::core::{session::load_font_data, AppState};
 use crate::error::{AppError, Result};
 use crate::rendering::FontRenderer;
+use rayon::prelude::*;
 use ritecache::{DiskCacheError, LruDiskCache};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
+use swash::FontRef;
 use tauri::{command, State};
 use tauri::{AppHandle, Manager};
 
-/// Maximum on-disk size of the preview cache (500 MiB).
+/// Maximum combined size of preview PNGs and Google font subsets (500 MiB).
 const PREVIEW_CACHE_SIZE_LIMIT: u64 = 500 * 1024 * 1024;
 
 /// Tauri-managed state for preview rendering.
 ///
 /// Both members are lazily initialised on first use and shared across preview
-/// requests: the LRU disk cache of rendered PNGs and the system-font index.
+/// requests: the LRU disk cache of PNGs/font subsets and the system-font index.
 #[derive(Default)]
 pub struct FontPreviewCacheState {
     cache: Mutex<Option<LruDiskCache>>,
@@ -40,8 +43,14 @@ pub struct FontPreviewCacheState {
 #[derive(Debug, Deserialize)]
 pub struct RenderFontPreviewPayload {
     font: FontMetadata,
-    text: String,
+    candidates: Vec<Vec<String>>,
     font_size: f32,
+}
+
+#[derive(Serialize)]
+pub struct FontPreviewLine {
+    text: String,
+    path: String,
 }
 
 /// One indexed system font face: where to find it plus the fields used to
@@ -169,7 +178,8 @@ pub fn read_font_items(session_id: &str) -> Result<HashMap<String, FontData>> {
     Ok(map)
 }
 
-/// Renders (or returns a cached) preview PNG and yields its file path.
+/// Renders the first fully supported candidate, preserving its line order.
+/// The caller owns the sample text and candidate priority.
 ///
 /// The actual work runs on a blocking thread; see
 /// [`render_font_preview_blocking`].
@@ -179,7 +189,7 @@ pub async fn render_font_preview(
     _state: State<'_, AppState>,
     preview_cache_state: State<'_, Arc<FontPreviewCacheState>>,
     payload: RenderFontPreviewPayload,
-) -> Result<String> {
+) -> Result<Vec<FontPreviewLine>> {
     let cache_dir = app
         .path()
         .app_cache_dir()
@@ -194,114 +204,261 @@ pub async fn render_font_preview(
     .map_err(|e| AppError::Processing(e.to_string()))?
 }
 
-/// Renders a preview, short-circuiting on a cache hit.
-///
-/// A cache key is hashed from every input that can change the output (font
-/// identity, size, text, and the source file's size/mtime for system fonts).
-/// On a miss the font is rendered to a temp file and inserted into the LRU
-/// cache; either way the resulting cached file path is returned.
+/// Loads a face once for both coverage checks and rendering. Google subsets
+/// contain the union of candidate characters and share the existing bounded
+/// disk cache with PNGs; no selection/coverage state is stored separately.
+fn load_preview_font(
+    preview_cache_state: &FontPreviewCacheState,
+    font: &FontMetadata,
+    candidates: &[Vec<String>],
+) -> Result<(Vec<u8>, u32)> {
+    if font.source == FontSource::System {
+        let (path, index) = resolve_system_font(preview_cache_state, font)?;
+        return Ok((fs::read(path)?, index));
+    }
+
+    let mut characters: Vec<char> = candidates
+        .iter()
+        .flatten()
+        .flat_map(|s| s.chars())
+        .collect();
+    characters.sort_unstable();
+    characters.dedup();
+    let text: String = characters.into_iter().collect();
+    let mut hasher = DefaultHasher::new();
+    font.family_name.hash(&mut hasher);
+    font.weight.hash(&mut hasher);
+    text.hash(&mut hasher);
+    let key = format!("subset-{:016x}.font", hasher.finish());
+    let cached = preview_cache_state
+        .cache
+        .lock()
+        .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?
+        .as_mut()
+        .ok_or_else(|| AppError::Processing("Font preview cache is not initialized".into()))?
+        .get_file(&key);
+    match cached {
+        Ok(mut file) => {
+            let mut bytes = Vec::new();
+            file.read_to_end(&mut bytes)?;
+            Ok((bytes, 0))
+        }
+        Err(DiskCacheError::FileNotInCache) => {
+            let file = download_google_font_subset_temp(&font.family_name, font.weight, &text)?;
+            let bytes = fs::read(file.path())?;
+            preview_cache_state
+                .cache
+                .lock()
+                .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?
+                .as_mut()
+                .ok_or_else(|| {
+                    AppError::Processing("Font preview cache is not initialized".into())
+                })?
+                .insert_file(&key, file.path())
+                .map_err(|error| AppError::Io(error.to_string()))?;
+            Ok((bytes, 0))
+        }
+        Err(error) => Err(AppError::Io(error.to_string())),
+    }
+}
+
+/// Selects from cmap before any rasterisation, then renders/caches each line.
+/// Image keys include the actual source bytes and face index so cached images
+/// cannot outlive a change in the font used for the coverage check.
 fn render_font_preview_blocking(
     cache_dir: PathBuf,
     preview_cache_state: &FontPreviewCacheState,
     payload: RenderFontPreviewPayload,
-) -> Result<String> {
-    let text = if payload.text.is_empty() {
-        " ".to_string()
-    } else {
-        payload.text
-    };
-    let font_size = payload.font_size;
-    let resolved_system_font = if payload.font.source == FontSource::System {
-        Some(resolve_system_font(preview_cache_state, &payload.font)?)
-    } else {
-        None
-    };
-    let font_file_metadata = resolved_system_font
-        .as_ref()
-        .and_then(|(path, _)| fs::metadata(path).ok());
-    let font_file_len = font_file_metadata
-        .as_ref()
-        .map(|metadata| metadata.len())
-        .unwrap_or_default();
-    let font_file_modified = font_file_metadata
-        .and_then(|metadata| metadata.modified().ok())
-        .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|duration| (duration.as_secs(), duration.subsec_nanos()));
-
-    let mut hasher = DefaultHasher::new();
-    payload.font.source.hash(&mut hasher);
-    payload.font.safe_name.hash(&mut hasher);
-    payload.font.font_name.hash(&mut hasher);
-    payload.font.family_name.hash(&mut hasher);
-    payload.font.postscript_name.hash(&mut hasher);
-    payload.font.weight.hash(&mut hasher);
-    payload.font.font_index.hash(&mut hasher);
-    font_size.to_bits().hash(&mut hasher);
-    font_file_len.hash(&mut hasher);
-    font_file_modified.hash(&mut hasher);
-    text.hash(&mut hasher);
-    let cache_key = hasher.finish();
-
-    let output_key = format!("{}_{cache_key:016x}.png", payload.font.safe_name);
-
-    let (cache_root, output_path) = {
-        let mut preview_cache = preview_cache_state
+) -> Result<Vec<FontPreviewLine>> {
+    if payload.candidates.is_empty()
+        || payload
+            .candidates
+            .iter()
+            .any(|lines| lines.is_empty() || lines.iter().any(String::is_empty))
+    {
+        return Err(AppError::Font(
+            "Preview candidates and lines must not be empty".into(),
+        ));
+    }
+    {
+        let mut cache = preview_cache_state
             .cache
             .lock()
             .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?;
-        if preview_cache.is_none() {
-            *preview_cache = Some(
-                LruDiskCache::new(cache_dir, PREVIEW_CACHE_SIZE_LIMIT)
+        if cache.is_none() {
+            *cache = Some(
+                LruDiskCache::new(&cache_dir, PREVIEW_CACHE_SIZE_LIMIT)
                     .map_err(|error| AppError::Io(error.to_string()))?,
             );
         }
-        let preview_cache = preview_cache.as_mut().unwrap();
-        let cache_root = preview_cache.path().to_path_buf();
-        let output_path = cache_root.join(&output_key);
-        match preview_cache.get_file(&output_key) {
-            Ok(_) => return Ok(output_path.to_string_lossy().into_owned()),
-            Err(DiskCacheError::FileNotInCache) => {}
-            Err(error) => return Err(AppError::Io(error.to_string())),
-        }
-        (cache_root, output_path)
-    };
-
-    let temporary_output =
-        tempfile::NamedTempFile::new().map_err(|error| AppError::Io(error.to_string()))?;
-    let renderer = FontRenderer::new(Arc::new(RenderConfig {
-        text: text.clone(),
-        font_size,
-        output_dir: cache_root,
-    }));
-    match payload.font.source {
-        FontSource::System => {
-            let (font_path, font_index) = resolved_system_font.ok_or_else(|| {
-                AppError::Processing(format!(
-                    "Failed to resolve system font {}",
-                    payload.font.font_name
-                ))
-            })?;
-            renderer.render_to_path(&font_path, font_index, temporary_output.path())?;
-        }
-        FontSource::GoogleFonts => {
-            let font = download_google_font_subset_temp(
-                &payload.font.family_name,
-                payload.font.weight,
-                &text,
-            )?;
-            renderer.render_to_path(font.path(), 0, temporary_output.path())?;
-        }
     }
+    let (font_data, font_index) =
+        load_preview_font(preview_cache_state, &payload.font, &payload.candidates)?;
+    let font = FontRef::from_index(&font_data, font_index as usize)
+        .ok_or_else(|| AppError::Font(format!("Failed to parse font face {font_index}")))?;
+    let charmap = font.charmap();
+    let lines = payload
+        .candidates
+        .iter()
+        .find(|lines| {
+            lines
+                .iter()
+                .flat_map(|line| line.chars())
+                .all(|ch| charmap.map(ch) != 0)
+        })
+        .ok_or_else(|| {
+            AppError::Font("No preview candidate is fully supported by this font".into())
+        })?;
 
-    let mut preview_cache = preview_cache_state
-        .cache
-        .lock()
-        .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?;
-    preview_cache
-        .as_mut()
-        .ok_or_else(|| AppError::Processing("Font preview cache is not initialized".into()))?
-        .insert_file(&output_key, temporary_output.path().as_os_str())
-        .map_err(|error| AppError::Io(error.to_string()))?;
+    let mut hasher = DefaultHasher::new();
+    font_data.hash(&mut hasher);
+    font_index.hash(&mut hasher);
+    payload.font_size.to_bits().hash(&mut hasher);
+    let source_hash = hasher.finish();
 
-    Ok(output_path.to_string_lossy().into_owned())
+    lines
+        .par_iter()
+        .map(|text| {
+            let mut hasher = DefaultHasher::new();
+            source_hash.hash(&mut hasher);
+            text.hash(&mut hasher);
+            let key = format!("preview-{:016x}.png", hasher.finish());
+            let (cache_root, cached) = {
+                let mut cache = preview_cache_state
+                    .cache
+                    .lock()
+                    .map_err(|_| AppError::Processing("Font preview cache lock poisoned".into()))?;
+                let cache = cache.as_mut().ok_or_else(|| {
+                    AppError::Processing("Font preview cache is not initialized".into())
+                })?;
+                (cache.path().to_path_buf(), cache.get_file(&key))
+            };
+            match cached {
+                Ok(_) => {}
+                Err(DiskCacheError::FileNotInCache) => {
+                    let output = tempfile::NamedTempFile::new()?;
+                    let renderer = FontRenderer::new(Arc::new(RenderConfig {
+                        text: text.clone(),
+                        font_size: payload.font_size,
+                        output_dir: cache_root.clone(),
+                    }));
+                    renderer.render_data_to_path(&font_data, font_index, output.path())?;
+                    preview_cache_state
+                        .cache
+                        .lock()
+                        .map_err(|_| {
+                            AppError::Processing("Font preview cache lock poisoned".into())
+                        })?
+                        .as_mut()
+                        .ok_or_else(|| {
+                            AppError::Processing("Font preview cache is not initialized".into())
+                        })?
+                        .insert_file(&key, output.path())
+                        .map_err(|error| AppError::Io(error.to_string()))?;
+                }
+                Err(error) => return Err(AppError::Io(error.to_string())),
+            }
+            Ok(FontPreviewLine {
+                text: text.clone(),
+                path: cache_root.join(key).to_string_lossy().into_owned(),
+            })
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preview_selects_complete_candidates_in_order_and_reuses_sources() {
+        let dir = tempfile::tempdir().unwrap();
+        let font_path = dir.path().join("fixture.ttf");
+        let bytes = include_bytes!("../../tests/fixtures/preview.ttf");
+        fs::write(&font_path, bytes).unwrap();
+        let state = FontPreviewCacheState {
+            system_fonts: Mutex::new(Some(SystemFontResolver {
+                faces: Vec::new(),
+                by_postscript_name: HashMap::from([(
+                    "PreviewFixture".into(),
+                    (font_path.clone(), 0),
+                )]),
+            })),
+            ..Default::default()
+        };
+        let font: FontMetadata = serde_json::from_value(serde_json::json!({
+            "source": "system", "safe_name": "fixture", "font_name": "Preview Fixture",
+            "family_name": "Preview Fixture", "family_names": {}, "preferred_family_names": {},
+            "style_name": "Regular", "style_names": {}, "preferred_style_names": {},
+            "publishers": {}, "designers": {}, "postscript_name": "PreviewFixture",
+            "weight": 400, "weights": [], "font_index": 0
+        }))
+        .unwrap();
+        let cache_dir = dir.path().join("cache");
+        let render = |font: &FontMetadata, candidates: &[&[&str]]| {
+            render_font_preview_blocking(
+                cache_dir.clone(),
+                &state,
+                RenderFontPreviewPayload {
+                    font: font.clone(),
+                    candidates: candidates
+                        .iter()
+                        .map(|lines| lines.iter().map(|text| (*text).to_string()).collect())
+                        .collect(),
+                    font_size: 96.0,
+                },
+            )
+        };
+        let kana: &[&str] = &["いろはに", "ホヘトチ", "あなふの", "アタユシ"];
+        // A later missing character/line must reject the entire first candidate.
+        let fallback = render(&font, &[&["永", "東"], kana]).unwrap();
+        assert_eq!(
+            fallback
+                .iter()
+                .map(|line| line.text.as_str())
+                .collect::<Vec<_>>(),
+            kana
+        );
+        for line in &fallback {
+            let image = image::open(&line.path).unwrap().to_rgba8();
+            assert!(image.pixels().any(|pixel| pixel[3] != 0));
+        }
+        assert_eq!(render(&font, &[&["永"], kana]).unwrap()[0].text, "永");
+        assert_eq!(render(&font, &[kana, &["永"]]).unwrap().len(), 4);
+        assert!(render(&font, &[&["東"], &["国"]]).is_err());
+        assert!(render(&font, &[]).is_err());
+        assert!(render(&font, &[&[]]).is_err());
+        assert!(render(&font, &[&[""]]).is_err());
+        let cached = render(&font, &[kana]).unwrap();
+        assert_eq!(cached[0].path, fallback[0].path);
+
+        // Seed a Google subset for a deliberately nonexistent family. Rendering
+        // can succeed only by reusing the cached source, without a download.
+        let google = FontMetadata {
+            source: FontSource::GoogleFonts,
+            ..font.clone()
+        };
+        let mut chars: Vec<char> = "永東いろはにホヘトチあなふのアタユシ".chars().collect();
+        chars.sort_unstable();
+        chars.dedup();
+        let mut hasher = DefaultHasher::new();
+        google.family_name.hash(&mut hasher);
+        google.weight.hash(&mut hasher);
+        chars.into_iter().collect::<String>().hash(&mut hasher);
+        state
+            .cache
+            .lock()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .insert_file(format!("subset-{:016x}.font", hasher.finish()), &font_path)
+            .unwrap();
+        let reused = render(&google, &[&["永", "東"], kana]).unwrap();
+        assert_eq!(reused[0].path, fallback[0].path);
+        // Priority and repeated characters don't change the source subset key.
+        assert_eq!(
+            render(&google, &[kana, &["東永永"]]).unwrap()[0].text,
+            kana[0]
+        );
+    }
 }
