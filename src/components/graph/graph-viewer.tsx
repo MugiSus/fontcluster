@@ -67,7 +67,7 @@ export function GraphViewer(props: GraphViewerProps) {
   const [zoomBounds, setZoomBounds] = createSignal<GraphVisibleBounds | null>(
     null,
   );
-  let svgElement: SVGSVGElement | undefined;
+  const [svgElement, setSvgElement] = createSignal<SVGSVGElement>();
   let zoomStartPoint: GraphCoordinate | null = null;
   let zoomStartScreenPoint: { x: number; y: number } | null = null;
   let isZoomStarted = false;
@@ -78,7 +78,7 @@ export function GraphViewer(props: GraphViewerProps) {
     isVisible: () => props.showList && props.showHud,
   });
   const viewport = useGraphViewport({
-    getSvgElement: () => svgElement,
+    getSvgElement: svgElement,
     svgSize,
     graphWidth: () => activeGraphLayout()?.width ?? GRAPH_SIZE,
     graphHeight: () => activeGraphLayout()?.height ?? GRAPH_SIZE,
@@ -88,6 +88,7 @@ export function GraphViewer(props: GraphViewerProps) {
     },
     resetZoom: () => (activeGraphLayout()?.mode === 'scatter-plot' ? 2.5 : 1),
     onViewportChange: (center) => selection.selectNearestPoint(center),
+    onTouchTap: (event) => selection.selectFromMouseEvent(event),
   });
   const graph = useGraphPoints({
     svgSize,
@@ -422,10 +423,13 @@ export function GraphViewer(props: GraphViewerProps) {
         />
         <svg
           ref={(el) => {
-            svgElement = el;
+            setSvgElement(el);
             setSvgRef(el);
           }}
-          class='relative z-10 size-full select-none'
+          class='relative z-10 size-full touch-none select-none'
+          onPointerDown={(event) => {
+            if (event.pointerType === 'touch') event.preventDefault();
+          }}
           style={{
             cursor: viewport.isDragging()
               ? "url('/cursors/hand-grab.svg') 12 12, grabbing"

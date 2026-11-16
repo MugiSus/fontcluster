@@ -1,4 +1,5 @@
 import { debounce } from '@solid-primitives/scheduled';
+import { Gesture } from '@use-gesture/vanilla';
 import {
   type Accessor,
   batch,
@@ -38,6 +39,7 @@ interface UseGraphViewportProps {
   /** Magnification relative to fitting the graph bounds with padding. */
   resetZoom: Accessor<number>;
   onViewportChange: (center: GraphCoordinate) => void;
+  onTouchTap: (event: PointerEvent) => void;
 }
 
 export interface GraphViewportController {
@@ -331,6 +333,83 @@ export function useGraphViewport(
   const handleReset = () => {
     queueViewBoxUpdate(resetViewBox());
   };
+
+  // Gesture recognition owns pointer capture and multi-touch bookkeeping;
+  // this controller remains the only owner of the graph camera.
+  createEffect(() => {
+    const element = props.getSvgElement();
+    if (!element) return;
+    const gestures = new Gesture(
+      element,
+      {
+        onDrag: ({
+          event,
+          first,
+          last,
+          tap,
+          canceled,
+          pinching,
+          touches,
+          cancel,
+          delta,
+        }) => {
+          if (!(event instanceof PointerEvent) || event.pointerType !== 'touch')
+            return;
+          if (first) refreshViewportRect();
+          if (pinching || touches > 1) {
+            cancel();
+            setIsDragging(false);
+            return;
+          }
+          setIsDragging(!last && !canceled && !tap);
+          if (
+            canceled ||
+            event.type === 'pointercancel' ||
+            event.type === 'lostpointercapture'
+          )
+            return;
+          if (tap) {
+            refreshViewportRect();
+            props.onTouchTap(event);
+          } else {
+            panByScreenDelta({ deltaX: -delta[0], deltaY: -delta[1] });
+          }
+        },
+        onPinch: ({ first, last, origin, offset, delta, memo }) => {
+          if (first) refreshViewportRect();
+          setIsDragging(!last);
+          const previousOrigin = (memo ?? origin) as [number, number];
+          const focus = getGraphCoordinateFromClientPoint({
+            clientX: previousOrigin[0],
+            clientY: previousOrigin[1],
+            rect: viewportRect,
+            viewBox: getCurrentViewBox(),
+          });
+          if (focus) {
+            zoomInto({
+              focusX: focus.x,
+              focusY: focus.y,
+              zoomFactor: (offset[0] - delta[0]) / offset[0],
+            });
+            panByScreenDelta({
+              deltaX: previousOrigin[0] - origin[0],
+              deltaY: previousOrigin[1] - origin[1],
+            });
+          }
+          return origin;
+        },
+      },
+      {
+        eventOptions: { passive: false },
+        drag: { filterTaps: true, pointer: { keys: false } },
+        pinch: { pinchOnWheel: false, preventDefault: true },
+      },
+    );
+    onCleanup(() => {
+      gestures.destroy();
+      setIsDragging(false);
+    });
+  });
 
   return {
     viewBox,

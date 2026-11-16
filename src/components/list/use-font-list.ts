@@ -75,7 +75,7 @@ export function useFontList(props: {
   const bounds = createMemo(() => ({
     x: 0,
     y: 40,
-    width: Math.max(0, props.size().width - 56),
+    width: Math.min(400, Math.max(0, props.size().width * 0.45)),
     height: Math.max(0, props.size().height - 48),
   }));
   const centerY = () => Math.max(0, props.size().height / 2 - bounds().y);
@@ -193,7 +193,7 @@ export function useFontList(props: {
     return {
       x: viewport.x,
       y: viewport.y + top,
-      width: Math.min(400, viewport.width),
+      width: viewport.width,
       height: Math.max(0, bottom - top),
     };
   });

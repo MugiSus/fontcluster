@@ -56,7 +56,10 @@ export function createFontListLayer(props: {
       x: LIST_SAMPLE_LEFT,
       anchorX: 'left' as const,
       y: -row.y,
-      width: LIST_SAMPLE_WIDTH * row.scale,
+      width: Math.min(
+        LIST_SAMPLE_WIDTH * row.scale,
+        Math.max(0, props.list.bounds().width - LIST_SAMPLE_LEFT - 8),
+      ),
       height: LIST_SAMPLE_HEIGHT * row.scale,
       color,
       opacity: row.opacity,

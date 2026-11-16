@@ -93,9 +93,12 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
           <ChevronDownIcon class='size-4' />
         </Show>
       </Collapsible.Trigger>
-      <Collapsible.Content inert={!props.isOpen}>
+      <Collapsible.Content
+        inert={!props.isOpen}
+        class='max-h-[60dvh] overflow-y-auto overscroll-contain'
+      >
         <div class='flex flex-wrap items-center justify-center gap-1 p-2'>
-          <div class='relative flex items-center'>
+          <div class='relative flex min-w-0 max-w-full items-center'>
             <Show
               when={isFiltered()}
               fallback={
@@ -119,7 +122,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
               type='text'
               placeholder={t.graph.filterDock.searchPlaceholder()}
               aria-label={t.graph.filterDock.searchPlaceholder()}
-              class='h-8 w-64 max-w-full bg-transparent pl-9 pr-3 text-sm font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground'
+              class='h-8 w-64 max-w-full bg-transparent pl-9 pr-3 text-base font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground sm:text-sm'
               value={query()}
               onInput={(event) => updateQuery(event.currentTarget.value)}
               spellcheck={false}
@@ -131,17 +134,19 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
             keyed
           >
             <div class='mx-0.5 h-5 w-px bg-border/60' />
-            <WeightSelector
-              isBare
-              isCompact
-              weights={props.weights}
-              defaultValue={[]}
-              onChange={(weights) =>
-                props.onWeightsChange(
-                  weights.length > 0 ? weights : props.weights,
-                )
-              }
-            />
+            <div class='max-w-full overflow-x-auto overscroll-x-contain py-1'>
+              <WeightSelector
+                isBare
+                isCompact
+                weights={props.weights}
+                defaultValue={[]}
+                onChange={(weights) =>
+                  props.onWeightsChange(
+                    weights.length > 0 ? weights : props.weights,
+                  )
+                }
+              />
+            </div>
           </Show>
 
           <Show
@@ -154,10 +159,12 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
             keyed
           >
             <div class='mx-0.5 h-5 w-px bg-border/60' />
-            <ClusterSelector
-              clusters={topClusters()}
-              onChange={setVisibleGraphClusters}
-            />
+            <div class='max-w-full overflow-x-auto overscroll-x-contain py-1'>
+              <ClusterSelector
+                clusters={topClusters()}
+                onChange={setVisibleGraphClusters}
+              />
+            </div>
           </Show>
         </div>
       </Collapsible.Content>
