@@ -2,7 +2,7 @@ import { FILTERED_OPACITY } from '@/components/graph/constants';
 import { activeDendrogramNodeIndexes } from '@/components/graph/dendrogram-topology';
 import { createFontListLayer } from './font-list-layer';
 import { type FontListController } from '@/components/list/use-font-list';
-import { createMicrotask } from '@solid-primitives/utils';
+import { cancelFrame, frame } from 'motion';
 import {
   type Accessor,
   createEffect,
@@ -164,16 +164,12 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     camera.position.z = 10;
 
     // --- on-demand render loop -------------------------------------------
-    // Async assets and ordinary layer changes are coalesced per animation frame.
-    // Camera commits already happen in the viewport's rAF, so they flush pending
-    // work after Solid's effects instead of waiting for a second frame. Keep that
-    // immediate path restricted to camera updates: texture completions can arrive
-    // in many separate tasks and must not each trigger a full canvas draw.
-    let rafId: number | undefined;
+    // Share Motion's frame with list inertia and camera commits. The render
+    // phase runs after their updates and Solid effects, with one draw per frame
+    // even when camera, list and async assets all change together.
     let hasRenderedFrame = false;
 
     const renderFrame = () => {
-      rafId = undefined;
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
       const showLabels = hasVisiblePointLabels();
@@ -254,13 +250,8 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       canvas.style.visibility = '';
     };
     const scheduleRender = () => {
-      if (rafId !== undefined) return;
-      rafId = window.requestAnimationFrame(renderFrame);
+      frame.render(renderFrame);
     };
-    const flushCameraRender = createMicrotask(() => {
-      if (rafId !== undefined) window.cancelAnimationFrame(rafId);
-      renderFrame();
-    });
 
     // --- shared derived state --------------------------------------------
     const isDark = () => colorMode() === 'dark';
@@ -572,11 +563,11 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       camera.top = -centerY + visibleHeight / 2;
       camera.bottom = -centerY - visibleHeight / 2;
       camera.updateProjectionMatrix();
-      flushCameraRender();
+      scheduleRender();
     });
 
     onCleanup(() => {
-      if (rafId !== undefined) window.cancelAnimationFrame(rafId);
+      cancelFrame(renderFrame);
       canvas.removeEventListener(
         'webglcontextrestored',
         restoreDrawingBufferColorSpace,

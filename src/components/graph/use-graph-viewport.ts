@@ -1,6 +1,11 @@
 import { debounce } from '@solid-primitives/scheduled';
 import { Gesture } from '@use-gesture/vanilla';
-import { animate, type AnimationPlaybackControls } from 'motion';
+import {
+  animate,
+  cancelFrame,
+  frame,
+  type AnimationPlaybackControls,
+} from 'motion';
 import {
   type Accessor,
   batch,
@@ -119,22 +124,20 @@ export function useGraphViewport(
   };
 
   let latestViewBox = initialViewBox;
-  let viewBoxAnimationFrame: number | undefined;
-
   const getCurrentViewBox = () => latestViewBox;
+
+  const commitViewBox = () => {
+    batch(() => {
+      setViewBox(latestViewBox);
+      props.onViewportChange(getViewBoxCenter(latestViewBox));
+    });
+  };
 
   const queueViewBoxUpdate = (nextViewBox: GraphViewBox) => {
     latestViewBox = nextViewBox;
-    if (viewBoxAnimationFrame) return;
-
-    // eslint-disable-next-line solid/reactivity -- rAF commits staged camera state and emits an interaction event.
-    viewBoxAnimationFrame = window.requestAnimationFrame(() => {
-      batch(() => {
-        setViewBox(latestViewBox);
-        props.onViewportChange(getViewBoxCenter(latestViewBox));
-      });
-      viewBoxAnimationFrame = undefined;
-    });
+    // Motion updates inertia before preRender and draws WebGL in render.
+    // Its queue coalesces input without adding another animation frame.
+    frame.preRender(commitViewBox);
   };
 
   createEffect(
@@ -142,6 +145,7 @@ export function useGraphViewport(
       resetViewBox,
       (nextViewBox) => {
         stopInertia();
+        cancelFrame(commitViewBox);
         // Keep layout geometry and its camera framing in the same paint.
         latestViewBox = nextViewBox;
         setViewBox(nextViewBox);
@@ -152,9 +156,7 @@ export function useGraphViewport(
 
   onCleanup(() => {
     stopInertia();
-    if (viewBoxAnimationFrame) {
-      window.cancelAnimationFrame(viewBoxAnimationFrame);
-    }
+    cancelFrame(commitViewBox);
   });
 
   const zoomFactor = createMemo(() => {

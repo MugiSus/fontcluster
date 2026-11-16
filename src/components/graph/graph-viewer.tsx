@@ -480,7 +480,13 @@ export function GraphViewer(props: GraphViewerProps) {
           applySelectedFont={props.applySelectedFont}
         />
       </Show>
-      <Show when={graph.allPoints().length > 0 && viewport.isPanning()}>
+      <Show
+        when={
+          graph.allPoints().length > 0 &&
+          viewport.isPanning() &&
+          appState.ui.draggingFontSource !== 'list'
+        }
+      >
         <svg
           class='pointer-events-none absolute left-1/2 top-1/2 z-50 size-8 -translate-x-1/2 -translate-y-1/2 text-muted-foreground'
           viewBox='0 0 32 32'

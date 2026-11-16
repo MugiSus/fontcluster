@@ -258,14 +258,16 @@ export function useFontList(props: {
     const start = offset() * LIST_SCROLL_STEP_PX;
     const end = (items().length - 1) * LIST_SCROLL_STEP_PX;
     const shouldLoop = isLooping();
-    const power = 0.325;
+    const timeConstant = 200;
+    // Match travel to decay time to preserve the release velocity.
+    const power = timeConstant / 1000;
     let previous = 0;
     // A distinct destination prevents Motion's equal-keyframe shortcut.
     inertia = animate(0, power * velocity, {
       type: 'inertia',
       velocity,
       power,
-      timeConstant: 325,
+      timeConstant,
       restDelta: 0.5,
       modifyTarget: (target) =>
         shouldLoop ? target : MathUtils.clamp(target, -start, end - start),

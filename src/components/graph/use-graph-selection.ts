@@ -134,6 +134,9 @@ export function useGraphSelection(props: UseGraphSelectionProps) {
     clearDraggingSelection: () => clearDraggingFont('graph'),
     selectFromMouseEvent,
     selectNearestPoint: (center: GraphCoordinate) => {
+      // List scrolling (including inertia) owns the active selection until
+      // it commits. Camera motion may continue without resetting that scroll.
+      if (appState.ui.draggingFontSource === 'list') return;
       const nearest = props.findNearestSelectablePoint(center.x, center.y);
       if (nearest) setSelectedFontKey(nearest.key);
     },
