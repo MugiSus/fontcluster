@@ -242,10 +242,6 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   const handleMouseMove = (event: MouseEvent) => {
-    if (event.buttons === 4) {
-      viewport.dragPan(event);
-      return;
-    }
     if (event.buttons === 1) {
       if (props.toolMode === 'zoom') {
         if (
@@ -283,8 +279,8 @@ export function GraphViewer(props: GraphViewerProps) {
     // stays reflow-free.
     viewport.refreshViewportRect();
     if (event.button === 1) {
+      event.preventDefault();
       selection.clearDraggingSelection();
-      viewport.startPanDrag(event);
       return;
     }
     if (event.button === 2 && props.toolMode === 'zoom') {
@@ -316,7 +312,6 @@ export function GraphViewer(props: GraphViewerProps) {
 
   const handleMouseUp = (event: MouseEvent) => {
     if (event.button === 1) {
-      viewport.endPanDrag();
       return;
     }
     if (props.toolMode === 'zoom' && event.button === 2) {
@@ -337,7 +332,6 @@ export function GraphViewer(props: GraphViewerProps) {
       return;
     }
     if (props.toolMode === 'drag') {
-      viewport.endPanDrag();
       return;
     }
     if (props.toolMode === 'zoom') {
@@ -348,17 +342,14 @@ export function GraphViewer(props: GraphViewerProps) {
         viewport.handleZoomIn(zoomStartPoint);
       }
       clearZoom();
-      viewport.endPanDrag();
       return;
     }
     if (props.toolMode === 'select') {
       if (event.button === 0) {
         selection.selectFromMouseEvent(event);
       }
-      viewport.endPanDrag();
       return;
     }
-    viewport.endPanDrag();
   };
 
   return (
@@ -370,7 +361,6 @@ export function GraphViewer(props: GraphViewerProps) {
       onMouseLeave={() => {
         clearZoom();
         selection.clearDraggingSelection();
-        viewport.endPanDrag();
       }}
       onWheel={viewport.handleWheel}
       onContextMenu={(event) => event.preventDefault()}
@@ -432,6 +422,7 @@ export function GraphViewer(props: GraphViewerProps) {
           }}
           class='relative z-10 size-full touch-none select-none'
           onPointerDown={(event) => {
+            viewport.stopInertia();
             if (event.pointerType === 'touch') event.preventDefault();
           }}
           style={{

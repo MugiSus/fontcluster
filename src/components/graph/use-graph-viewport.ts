@@ -1,5 +1,6 @@
 import { debounce } from '@solid-primitives/scheduled';
 import { Gesture } from '@use-gesture/vanilla';
+import { animate, type AnimationPlaybackControls } from 'motion';
 import {
   type Accessor,
   batch,
@@ -50,10 +51,8 @@ export interface GraphViewportController {
   isPanning: Accessor<boolean>;
   getGraphPointFromEvent: (event: MouseEvent) => GraphCoordinate | null;
   refreshViewportRect: () => void;
-  dragPan: (event: MouseEvent) => void;
   zoomToBounds: (bounds: GraphVisibleBounds) => void;
-  startPanDrag: (event: MouseEvent) => void;
-  endPanDrag: () => void;
+  stopInertia: () => void;
   handleWheel: (event: WheelEvent) => void;
   handleZoomIn: (focus?: GraphCoordinate) => void;
   handleZoomOut: (focus?: GraphCoordinate) => void;
@@ -112,7 +111,12 @@ export function useGraphViewport(
   const [viewBox, setViewBox] = createSignal(initialViewBox);
   const [isDragging, setIsDragging] = createSignal(false);
   const [isPanning, setIsPanning] = createSignal(false);
-  const [lastMousePos, setLastMousePos] = createSignal({ x: 0, y: 0 });
+
+  let inertia: AnimationPlaybackControls | undefined;
+  const stopInertia = () => {
+    inertia?.stop();
+    inertia = undefined;
+  };
 
   let latestViewBox = initialViewBox;
   let viewBoxAnimationFrame: number | undefined;
@@ -137,6 +141,7 @@ export function useGraphViewport(
     on(
       resetViewBox,
       (nextViewBox) => {
+        stopInertia();
         // Keep layout geometry and its camera framing in the same paint.
         latestViewBox = nextViewBox;
         setViewBox(nextViewBox);
@@ -146,6 +151,7 @@ export function useGraphViewport(
   );
 
   onCleanup(() => {
+    stopInertia();
     if (viewBoxAnimationFrame) {
       window.cancelAnimationFrame(viewBoxAnimationFrame);
     }
@@ -240,6 +246,7 @@ export function useGraphViewport(
     focusY: number;
     zoomFactor: number;
   }) => {
+    stopInertia();
     queueViewBoxUpdate(
       getZoomedViewBox({
         viewBox: getCurrentViewBox(),
@@ -250,20 +257,8 @@ export function useGraphViewport(
     );
   };
 
-  const dragPan = (event: MouseEvent) => {
-    if (!isDragging()) return;
-
-    const deltaX = event.clientX - lastMousePos().x;
-    const deltaY = event.clientY - lastMousePos().y;
-
-    panByScreenDelta({
-      deltaX: -deltaX,
-      deltaY: -deltaY,
-    });
-    setLastMousePos({ x: event.clientX, y: event.clientY });
-  };
-
   const zoomToBounds = (bounds: GraphVisibleBounds) => {
+    stopInertia();
     const currentViewBox = getCurrentViewBox();
     const rect = props.getSvgElement()?.getBoundingClientRect();
     const nextViewBox = getViewBoxFittingBounds({
@@ -278,19 +273,9 @@ export function useGraphViewport(
     queueViewBoxUpdate(nextViewBox);
   };
 
-  const startPanDrag = (event: MouseEvent) => {
-    event.preventDefault();
-    refreshViewportRect();
-    setIsDragging(true);
-    setLastMousePos({ x: event.clientX, y: event.clientY });
-  };
-
-  const endPanDrag = () => {
-    setIsDragging(false);
-  };
-
   const handleWheel = (event: WheelEvent) => {
     event.preventDefault();
+    stopInertia();
     refreshViewportRect();
 
     const { deltaX, deltaY } = getNormalizedWheelDelta(
@@ -332,6 +317,7 @@ export function useGraphViewport(
   };
 
   const handleReset = () => {
+    stopInertia();
     queueViewBoxUpdate(resetViewBox());
   };
 
@@ -339,6 +325,7 @@ export function useGraphViewport(
   // this controller remains the only owner of the graph camera.
   createEffect(() => {
     const element = props.getSvgElement();
+    const isMousePanEnabled = props.isMousePanEnabled();
     if (!element) return;
     const gestures = new Gesture(
       element,
@@ -353,13 +340,23 @@ export function useGraphViewport(
           touches,
           cancel,
           delta,
+          velocity,
+          direction,
+          memo,
         }) => {
+          if (!(event instanceof PointerEvent)) return;
+          const isMiddleButton: boolean =
+            memo ?? (event.buttons === 4 || event.button === 1);
           if (
-            !(event instanceof PointerEvent) ||
-            (event.pointerType !== 'touch' && !props.isMousePanEnabled())
+            event.pointerType !== 'touch' &&
+            !isMousePanEnabled &&
+            !isMiddleButton
           )
             return;
-          if (first) refreshViewportRect();
+          if (first) {
+            stopInertia();
+            refreshViewportRect();
+          }
           if (pinching || touches > 1) {
             cancel();
             setIsDragging(false);
@@ -374,13 +371,42 @@ export function useGraphViewport(
             return;
           if (tap) {
             refreshViewportRect();
-            props.onTap(event);
+            if (!isMiddleButton) props.onTap(event);
           } else {
             panByScreenDelta({ deltaX: -delta[0], deltaY: -delta[1] });
+            const speed = Math.hypot(...velocity) * 1000;
+            if (last && speed >= 50) {
+              const power = 0.16;
+              let previous = 0;
+              // Animate screen-space distance along the release velocity.
+              // Motion owns decay; all camera updates still go through this adapter.
+              inertia = animate(0, power * speed, {
+                type: 'inertia',
+                velocity: speed,
+                power,
+                timeConstant: 160,
+                restDelta: 0.5,
+                onUpdate: (distance) => {
+                  const step = ((distance - previous) * 1000) / speed;
+                  previous = distance;
+                  panByScreenDelta({
+                    deltaX: -step * velocity[0] * direction[0],
+                    deltaY: -step * velocity[1] * direction[1],
+                  });
+                },
+                onComplete: () => {
+                  inertia = undefined;
+                },
+              });
+            }
           }
+          return isMiddleButton;
         },
         onPinch: ({ first, last, origin, offset, delta, memo }) => {
-          if (first) refreshViewportRect();
+          if (first) {
+            stopInertia();
+            refreshViewportRect();
+          }
           setIsDragging(!last);
           const previousOrigin = (memo ?? origin) as [number, number];
           const focus = getGraphCoordinateFromClientPoint({
@@ -405,12 +431,13 @@ export function useGraphViewport(
       },
       {
         eventOptions: { passive: false },
-        drag: { filterTaps: true, pointer: { keys: false } },
+        drag: { filterTaps: true, pointer: { keys: false, buttons: [1, 4] } },
         pinch: { pinchOnWheel: false, preventDefault: true },
       },
     );
     onCleanup(() => {
       gestures.destroy();
+      stopInertia();
       setIsDragging(false);
     });
   });
@@ -422,10 +449,8 @@ export function useGraphViewport(
     isPanning,
     getGraphPointFromEvent,
     refreshViewportRect,
-    dragPan,
     zoomToBounds,
-    startPanDrag,
-    endPanDrag,
+    stopInertia,
     handleWheel,
     handleZoomIn,
     handleZoomOut,
