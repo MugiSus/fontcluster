@@ -115,12 +115,17 @@ export default {
           from: { opacity: 0 },
           to: { opacity: 1 }
         },
+        "preview-connector": {
+          from: { strokeDashoffset: "1" },
+          to: { strokeDashoffset: "0" }
+        },
       },
       animation: {
         "content-show": "content-show 0.2s ease-out",
         "content-hide": "content-hide 0.2s ease-out",
         "caret-blink": "caret-blink 1.25s ease-out infinite",
         "fade-in": "fade-in 0.2s ease-out",
+        "preview-connector": "preview-connector 0.2s ease-out both",
       },
     }
   },

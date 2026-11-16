@@ -5,7 +5,9 @@ import { useI18n } from '@/i18n';
 import { ControlContent } from './content';
 
 /** Kobalte owns open state, focus trapping/restoration and dismissal. */
-export function ControlDrawer() {
+export function ControlDrawer(props: {
+  onBackdropWheel: (event: WheelEvent) => void;
+}) {
   const { t } = useI18n();
   return (
     <Dialog.Root>
@@ -21,7 +23,10 @@ export function ControlDrawer() {
         </Dialog.Trigger>
       </div>
       <Dialog.Portal>
-        <Dialog.Overlay class='fixed inset-0 z-50 bg-black/20 duration-200 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 motion-reduce:animate-none' />
+        <Dialog.Overlay
+          class='fixed inset-0 z-50 bg-black/20 duration-200 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:fade-in-0 motion-reduce:animate-none'
+          onWheel={props.onBackdropWheel}
+        />
         <Dialog.Content class='fixed inset-y-0 left-0 z-50 flex w-80 max-w-full flex-col border-r bg-background text-foreground shadow-xl outline-none duration-200 data-[expanded]:animate-in data-[closed]:animate-out data-[closed]:slide-out-to-left data-[expanded]:slide-in-from-left motion-reduce:animate-none'>
           <div class='flex h-10 shrink-0 items-center border-b pl-4 pr-1.5'>
             <Dialog.Title

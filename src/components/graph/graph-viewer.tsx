@@ -4,7 +4,7 @@ import { Show, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { CircleSlash2Icon, LoaderIcon } from 'lucide-solid';
 import { useI18n } from '@/i18n';
 import { appState } from '@/store';
-import { type FontItem } from '@/types/font';
+import { type FontItem, type RenderFontPreview } from '@/types/font';
 import { useElementSize } from '@/hooks/use-element-size';
 import {
   dendrogramArcs,
@@ -27,6 +27,7 @@ import {
 import { fontPoints, getGraphPointByKey } from './font-point-index';
 import { GraphGlLayer } from './gl/graph-gl-layer';
 import { SelectedFontActions } from './selected-font-actions';
+import { SelectedFontPreview } from './selected-font-preview';
 import {
   type CopySelectedFont,
   type GraphCoordinate,
@@ -40,7 +41,8 @@ import { useGraphViewport } from './use-graph-viewport';
 
 const POINTER_DRAG_THRESHOLD_PX = 4;
 
-export interface ViewportZoomControls {
+export interface ViewportControls {
+  handleWheel: (event: WheelEvent) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   resetView: () => void;
@@ -49,6 +51,7 @@ export interface ViewportZoomControls {
 interface GraphViewerProps {
   toolMode: GraphToolMode;
   showImages: boolean;
+  showSamples: boolean;
   showFontNames: boolean;
   showGlow: boolean;
   showList: boolean;
@@ -57,9 +60,8 @@ interface GraphViewerProps {
   sampleImageUrl: (safeName: string) => string | undefined;
   copySelectedFont: CopySelectedFont;
   applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
-  onViewportZoomControlsChange?: (
-    controls: ViewportZoomControls | null,
-  ) => void;
+  renderFontPreview?: RenderFontPreview | undefined;
+  onViewportControlsChange?: (controls: ViewportControls | null) => void;
 }
 
 export function GraphViewer(props: GraphViewerProps) {
@@ -200,7 +202,12 @@ export function GraphViewer(props: GraphViewerProps) {
     const point = getGraphPointByKey(key);
     const anchor = selectedDendrogramAnchor();
     if (!point || !anchor) return point;
-    return anchor ? { ...point, x: anchor.x, y: anchor.y } : point;
+    return {
+      ...point,
+      x: anchor.x,
+      y: anchor.y,
+      colorAngle: anchor.colorAngle,
+    };
   };
 
   // When a font is selected, the zoom buttons pivot around it instead of the
@@ -214,7 +221,8 @@ export function GraphViewer(props: GraphViewerProps) {
   };
 
   onMount(() => {
-    props.onViewportZoomControlsChange?.({
+    props.onViewportControlsChange?.({
+      handleWheel: viewport.handleWheel,
       zoomIn: () => viewport.handleZoomIn(getZoomFocus()),
       zoomOut: () => viewport.handleZoomOut(getZoomFocus()),
       resetView: viewport.handleReset,
@@ -222,7 +230,7 @@ export function GraphViewer(props: GraphViewerProps) {
   });
 
   onCleanup(() => {
-    props.onViewportZoomControlsChange?.(null);
+    props.onViewportControlsChange?.(null);
   });
 
   const clearZoom = () => {
@@ -462,6 +470,19 @@ export function GraphViewer(props: GraphViewerProps) {
 
       <Show when={props.showHud && props.showList}>
         <GraphListOverlay list={fontList} />
+      </Show>
+      <Show when={props.showHud && props.showSamples}>
+        <Show when={!appState.ui.isSessionLoading && props.renderFontPreview}>
+          {(renderPreview) => (
+            <SelectedFontPreview
+              selectedKey={selection.selectedKey}
+              renderFontPreview={renderPreview()}
+              viewBox={viewport.viewBox}
+              size={svgSize}
+              getPointByKey={getSelectedActionAnchorPoint}
+            />
+          )}
+        </Show>
       </Show>
       <Show when={props.showHud}>
         <SelectedFontActions

@@ -38,7 +38,7 @@ export const en = {
     generateModes: {
       open: 'Choose generation mode',
       applyChanges: 'Apply',
-      generate: 'Generate',
+      generate: 'Generate New',
       duplicateChanged: 'Duplicate and recalculate with changes',
       inPlaceChanged: 'Apply changes and recalculate',
       fresh: 'Generate new',
@@ -137,6 +137,7 @@ export const en = {
       drag: 'Move',
       zoom: 'Zoom',
       showSamples: 'Show samples',
+      showSampleImages: 'Show sample images',
       showFontNames: 'Show font names',
       showList: 'Show list',
       glowMode: 'Glow mode',

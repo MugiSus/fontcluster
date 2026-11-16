@@ -3,6 +3,7 @@ import {
   FilterIcon,
   GitForkIcon,
   HandIcon,
+  ImageIcon,
   ListIcon,
   MousePointer2Icon,
   TagIcon,
@@ -31,6 +32,7 @@ import { type GraphToolMode } from './types';
 interface GraphToolbarProps {
   toolMode: GraphToolMode;
   showImages: boolean;
+  showSamples: boolean;
   showFontNames: boolean;
   showGlow: boolean;
   showList: boolean;
@@ -39,6 +41,7 @@ interface GraphToolbarProps {
   isFilterOpen: boolean;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
+  onToggleSamples: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
   onToggleList: () => void;
@@ -80,6 +83,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   const displaySelection = () =>
     [
       props.showImages && 'images',
+      props.showSamples && 'samples',
       props.showFontNames && 'fontNames',
       props.showGlow && 'glow',
       props.showList && 'list',
@@ -88,6 +92,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   const handleDisplayChange = (values: string[]) => {
     const next = new Set(values);
     if (next.has('images') !== props.showImages) props.onToggleImages();
+    if (next.has('samples') !== props.showSamples) props.onToggleSamples();
     if (next.has('fontNames') !== props.showFontNames) {
       props.onToggleFontNames();
     }
@@ -137,25 +142,15 @@ export function GraphToolbar(props: GraphToolbarProps) {
         <Tooltip placement='left'>
           <TooltipTrigger
             as={ToggleGroupItem<'button'>}
-            value='list'
-            class={toggleItemClass}
-            aria-label={t.graph.bottomToolbar.showList()}
-          >
-            <ListIcon class='size-4' />
-          </TooltipTrigger>
-          <TooltipContent>{t.graph.bottomToolbar.showList()}</TooltipContent>
-        </Tooltip>
-
-        <Tooltip placement='left'>
-          <TooltipTrigger
-            as={ToggleGroupItem<'button'>}
             value='images'
             class={toggleItemClass}
-            aria-label={t.graph.bottomToolbar.showSamples()}
+            aria-label={t.graph.bottomToolbar.showSampleImages()}
           >
-            <TypeIcon class='size-4' />
+            <ImageIcon class='size-4' />
           </TooltipTrigger>
-          <TooltipContent>{t.graph.bottomToolbar.showSamples()}</TooltipContent>
+          <TooltipContent>
+            {t.graph.bottomToolbar.showSampleImages()}
+          </TooltipContent>
         </Tooltip>
 
         <Tooltip placement='left'>
@@ -182,6 +177,30 @@ export function GraphToolbar(props: GraphToolbarProps) {
             <TelescopeIcon class='size-4' />
           </TooltipTrigger>
           <TooltipContent>{t.graph.bottomToolbar.glowMode()}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='list'
+            class={toggleItemClass}
+            aria-label={t.graph.bottomToolbar.showList()}
+          >
+            <ListIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>{t.graph.bottomToolbar.showList()}</TooltipContent>
+        </Tooltip>
+
+        <Tooltip placement='left'>
+          <TooltipTrigger
+            as={ToggleGroupItem<'button'>}
+            value='samples'
+            class={toggleItemClass}
+            aria-label={t.graph.bottomToolbar.showSamples()}
+          >
+            <TypeIcon class='size-4' />
+          </TooltipTrigger>
+          <TooltipContent>{t.graph.bottomToolbar.showSamples()}</TooltipContent>
         </Tooltip>
       </ToggleGroup>
 

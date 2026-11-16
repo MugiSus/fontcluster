@@ -3,22 +3,24 @@ import { GraphToolbar } from './toolbar';
 import { GraphZoomControls } from './zoom-controls';
 import { type GraphMode } from '@/store';
 import { type GraphToolMode } from './types';
-import { type ViewportZoomControls } from './graph-viewer';
+import { type ViewportControls } from './graph-viewer';
 
 interface GraphControlsProps {
   controlAction?: JSX.Element;
   utilityControls?: JSX.Element;
   toolMode: GraphToolMode;
   showImages: boolean;
+  showSamples: boolean;
   showFontNames: boolean;
   showGlow: boolean;
   showList: boolean;
   graphMode: GraphMode;
   canCycleGraphMode: boolean;
   isFilterOpen: boolean;
-  zoomControls: ViewportZoomControls | null;
+  zoomControls: ViewportControls | null;
   onToolModeChange: (mode: GraphToolMode) => void;
   onToggleImages: () => void;
+  onToggleSamples: () => void;
   onToggleFontNames: () => void;
   onToggleGlow: () => void;
   onToggleList: () => void;
@@ -37,6 +39,7 @@ export function GraphControls(props: GraphControlsProps) {
         <GraphToolbar
           toolMode={props.toolMode}
           showImages={props.showImages}
+          showSamples={props.showSamples}
           showFontNames={props.showFontNames}
           showGlow={props.showGlow}
           showList={props.showList}
@@ -45,6 +48,7 @@ export function GraphControls(props: GraphControlsProps) {
           isFilterOpen={props.isFilterOpen}
           onToolModeChange={props.onToolModeChange}
           onToggleImages={props.onToggleImages}
+          onToggleSamples={props.onToggleSamples}
           onToggleFontNames={props.onToggleFontNames}
           onToggleGlow={props.onToggleGlow}
           onToggleList={props.onToggleList}

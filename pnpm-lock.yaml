@@ -32,6 +32,9 @@ importers:
       '@solid-primitives/storage':
         specifier: ^4.3.4
         version: 4.3.4(solid-js@1.9.7)
+      '@solid-primitives/utils':
+        specifier: ^6.4.0
+        version: 6.4.0(solid-js@1.9.7)
       '@tanstack/solid-virtual':
         specifier: ^3.13.18
         version: 3.13.18(solid-js@1.9.7)

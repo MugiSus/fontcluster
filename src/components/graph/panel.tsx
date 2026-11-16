@@ -3,12 +3,13 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { applyFontToPlugins } from '@/commands/plugins';
 import { appState } from '@/store';
+import { renderFontPreview } from '@/lib/font-preview';
 import { GraphContent } from './content';
 import { GraphUtilityControls } from './utility-controls';
 
 interface GraphPanelProps {
   showHud: boolean;
-  controlAction: JSX.Element;
+  controlAction: (onBackdropWheel: (event: WheelEvent) => void) => JSX.Element;
 }
 
 export function GraphPanel(props: GraphPanelProps) {
@@ -32,6 +33,7 @@ export function GraphPanel(props: GraphPanelProps) {
           });
         }}
         applySelectedFont={applyFontToPlugins}
+        renderFontPreview={renderFontPreview}
       />
     </section>
   );

@@ -24,7 +24,7 @@ import { type FontItem } from '@/types/font';
 
 export const LIST_MIN_SCALE = 0.6;
 export const LIST_MAX_SCALE = 2.4;
-const BASE_ROW_HEIGHT_PX = 30;
+const BASE_ROW_HEIGHT_PX = 33;
 export const LIST_SCROLL_STEP_PX = BASE_ROW_HEIGHT_PX * LIST_MAX_SCALE;
 // Width of the Gaussian magnification in item units (larger = broader).
 const MAGNIFICATION_SIGMA_ITEMS = 2;
@@ -96,6 +96,14 @@ export function useFontList(props: {
     () => new Map(items().map((item, index) => [item.meta.safe_name, index])),
   );
   const [offset, setOffset] = createSignal(0);
+  // Committing a scroll keeps the same active font, so it must not recenter
+  // the fractional scroll position. Solid's memo suppresses that transition.
+  const activeFontKey = createMemo(
+    () => appState.ui.draggingFontKey ?? appState.ui.selectedFontKey,
+  );
+  const isGraphDragging = createMemo(
+    () => appState.ui.draggingFontSource === 'graph',
+  );
   // Measured image dimensions from the WebGL layer; copy hit testing uses
   // these same fitted boxes instead of a separate row-wide hit area.
   const [previewSizes, setPreviewSize] = createStore<
@@ -115,22 +123,20 @@ export function useFontList(props: {
   );
 
   createEffect(
-    on(
-      [items, () => appState.ui.selectedFontKey, () => props.isVisible()],
-      () => {
-        finishScroll.clear();
-        clearDraggingFont('list');
-        const key = appState.ui.selectedFontKey;
-        setOffset(key ? (indexByKey().get(key) ?? 0) : 0);
-      },
-    ),
+    on([items, () => props.isVisible()], () => {
+      finishScroll.clear();
+      clearDraggingFont('list');
+      const key = appState.ui.selectedFontKey;
+      setOffset(key ? (indexByKey().get(key) ?? 0) : 0);
+    }),
   );
-  createEffect(() => {
-    if (appState.ui.draggingFontSource !== 'graph') return;
-    finishScroll.clear();
-    const index = indexByKey().get(appState.ui.draggingFontKey ?? '');
-    if (index !== undefined) setOffset(index);
-  });
+  createEffect(
+    on([activeFontKey, isGraphDragging], ([key]) => {
+      if (appState.ui.draggingFontSource === 'list') return;
+      finishScroll.clear();
+      setOffset(key ? (indexByKey().get(key) ?? 0) : 0);
+    }),
+  );
 
   const rows = createMemo<FontListRow[]>(() => {
     if (!props.isVisible()) return [];
@@ -163,7 +169,11 @@ export function useFontList(props: {
       const distance = index - scroll;
       const top = centerY() + rowPosition(distance - 0.5);
       const bottom = centerY() + rowPosition(distance + 0.5);
-      const scale = (bottom - top) / BASE_ROW_HEIGHT_PX;
+      // Keep the extra magnification at 1.2 within a quarter row of the center,
+      // then ease back to 1 at half a row's distance.
+      const scale =
+        ((bottom - top) / BASE_ROW_HEIGHT_PX) *
+        (1 + 0.2 * (1 - MathUtils.smoothstep(Math.abs(distance), 0.25, 0.5)));
       const fadeEnd = distance < 0 ? topRadius : bottomRadius;
       result.push({
         id: `${index}:${item.meta.safe_name}`,
@@ -240,6 +250,7 @@ export function useFontList(props: {
   const selectRow = (row: FontListRow) => {
     finishScroll.clear();
     setSelectedFontKey(row.key);
+    setOffset(indexByKey().get(row.key) ?? 0);
   };
   onCleanup(() => {
     finishScroll.clear();

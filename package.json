@@ -29,6 +29,7 @@
     "@solid-primitives/i18n": "^2.2.1",
     "@solid-primitives/scheduled": "^1.5.3",
     "@solid-primitives/storage": "^4.3.4",
+    "@solid-primitives/utils": "^6.4.0",
     "@tanstack/solid-virtual": "^3.13.18",
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-opener": "^2.5.4",

@@ -18,6 +18,8 @@ import {
 } from 'three';
 import { Text } from 'troika-three-text';
 import { getClusterColorAngle } from '@/lib/cluster-colors';
+import { getFontDisplayName } from '@/lib/font-display-name';
+import { useI18n } from '@/i18n';
 import {
   LIST_MIN_SCALE,
   LIST_MAX_SCALE,
@@ -45,6 +47,7 @@ export function createFontListLayer(props: {
   sampleImageUrl: (safeName: string) => string | undefined;
   requestRender: () => void;
 }) {
+  const { locale } = useI18n();
   const scene = new Scene();
   const camera = new OrthographicCamera(0, 1, 0, -1, 0.1, 100);
   camera.position.z = 10;
@@ -153,7 +156,7 @@ export function createFontListLayer(props: {
           LIST_SAMPLE_WIDTH * row.scale) +
         12;
       entry.text.color = props.isDark() ? 0xd4d4d8 : 0x3f3f46;
-      entry.text.text = row.item.meta.font_name;
+      entry.text.text = getFontDisplayName(row.item.meta, locale());
       entry.text.sync(props.requestRender);
     }
     props.requestRender();

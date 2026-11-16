@@ -9,12 +9,12 @@ import {
   ShaderMaterial,
 } from 'three';
 import { type GraphPointEmphasis } from '@/components/graph/graph-point-presentation';
+import {
+  RING_LINE_WIDTH_PX,
+  SELECTED_RING_RADIUS_PX,
+} from '@/components/graph/constants';
 import { ringFragmentShader, ringVertexShader } from './shaders/ring';
 
-/** Stroke width (CSS px) of every ring, constant regardless of radius. A thin
- *  1px line anti-aliases into the bright glow behind it and loses its true
- *  color, so give it a solid core. */
-const LINE_WIDTH_PX = 1;
 /** Extra screen px the quad extends past the ring radius, so the stroke's outer
  *  half-width and its anti-aliased feather are never clipped by the quad edge. */
 const AA_PAD_PX = 2;
@@ -25,7 +25,7 @@ export type RingKind = Exclude<GraphPointEmphasis, 'none'>;
 /** Radius (CSS px) per affordance; the stroke width stays constant regardless.
  *  Matches the original SVG circle radii. */
 const RING_RADIUS_PX: Record<RingKind, number> = {
-  'selected': 40,
+  'selected': SELECTED_RING_RADIUS_PX,
   'alias-source': 30,
   'family': 24,
 };
@@ -82,7 +82,7 @@ export function createRingLayer(props: RingLayerProps): Object3D {
           uOpacity: { value: 1 },
           uHalfPx: { value: 1 },
           uRadiusPx: { value: 1 },
-          uHalfWidthPx: { value: LINE_WIDTH_PX / 2 },
+          uHalfWidthPx: { value: RING_LINE_WIDTH_PX / 2 },
         },
         vertexShader: ringVertexShader,
         fragmentShader: ringFragmentShader,
@@ -107,7 +107,7 @@ export function createRingLayer(props: RingLayerProps): Object3D {
       // shader reads the same radius/half-extent in screen px to place the stroke.
       createEffect(() => {
         const radiusPx = RING_RADIUS_PX[spec().kind];
-        const halfPx = radiusPx + LINE_WIDTH_PX / 2 + AA_PAD_PX;
+        const halfPx = radiusPx + RING_LINE_WIDTH_PX / 2 + AA_PAD_PX;
         material.uniforms['uRadiusPx']!.value = radiusPx;
         material.uniforms['uHalfPx']!.value = halfPx;
         const size = halfPx * props.zoom();

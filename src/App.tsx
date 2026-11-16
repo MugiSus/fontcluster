@@ -24,7 +24,9 @@ function App() {
       <div class='relative flex h-full min-h-0'>
         <GraphPanel
           showHud={isInterfaceVisible()}
-          controlAction={<ControlDrawer />}
+          controlAction={(onBackdropWheel) => (
+            <ControlDrawer onBackdropWheel={onBackdropWheel} />
+          )}
         />
       </div>
     </>

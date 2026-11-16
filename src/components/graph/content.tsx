@@ -8,14 +8,14 @@ import {
 } from 'solid-js';
 import { GraphControls } from './controls';
 import { GraphFilterDock } from './filter-dock';
-import { GraphViewer, type ViewportZoomControls } from './graph-viewer';
+import { GraphViewer, type ViewportControls } from './graph-viewer';
 import { appState, type GraphMode } from '@/store';
 import {
   setActiveGraphWeights,
   setGraphMode,
   setVisibleGraphClusters,
 } from '@/commands/graph';
-import { type FontItem } from '@/types/font';
+import { type FontItem, type RenderFontPreview } from '@/types/font';
 import { type CopySelectedFont, type GraphToolMode } from './types';
 import { availableGraphModes as collectAvailableGraphModes } from '@/lib/graph-modes';
 
@@ -24,8 +24,9 @@ interface GraphContentProps {
   sampleImageUrl: (safeName: string) => string | undefined;
   copySelectedFont: CopySelectedFont;
   applySelectedFont?: ((item: FontItem) => Promise<void>) | undefined;
+  renderFontPreview?: RenderFontPreview | undefined;
   showHud: boolean;
-  controlAction?: JSX.Element;
+  controlAction?: (onBackdropWheel: (event: WheelEvent) => void) => JSX.Element;
   /** Host-specific actions; the shared graph does not import desktop APIs. */
   utilityControls?: JSX.Element;
 }
@@ -33,12 +34,13 @@ interface GraphContentProps {
 export function GraphContent(props: GraphContentProps) {
   const [toolMode, setToolMode] = createSignal<GraphToolMode>('select');
   const [showImages, setShowImages] = createSignal(true);
+  const [showSamples, setShowSamples] = createSignal(true);
   const [showFontNames, setShowFontNames] = createSignal(false);
   const [showGlow, setShowGlow] = createSignal(false);
   const [showList, setShowList] = createSignal(true);
   const [isFilterOpen, setIsFilterOpen] = createSignal(false);
-  const [viewportZoomControls, setViewportZoomControls] =
-    createSignal<ViewportZoomControls | null>(null);
+  const [viewportControls, setViewportControls] =
+    createSignal<ViewportControls | null>(null);
   const sessionWeights = () => appState.session.algorithm.rendering.weights;
 
   // The scatter layout needs per-font coordinates; sessions clustered before
@@ -82,6 +84,7 @@ export function GraphContent(props: GraphContentProps) {
       <GraphViewer
         toolMode={toolMode()}
         showImages={showImages()}
+        showSamples={showSamples()}
         showFontNames={showFontNames()}
         showList={showList()}
         showGlow={showGlow()}
@@ -90,25 +93,30 @@ export function GraphContent(props: GraphContentProps) {
         sampleImageUrl={props.sampleImageUrl}
         copySelectedFont={props.copySelectedFont}
         applySelectedFont={props.applySelectedFont}
-        onViewportZoomControlsChange={setViewportZoomControls}
+        renderFontPreview={props.renderFontPreview}
+        onViewportControlsChange={setViewportControls}
       />
       <div data-tauri-drag-region class='absolute inset-x-0 top-0 z-10 h-10' />
       <Show when={props.showHud}>
         <GraphControls
-          controlAction={props.controlAction}
+          controlAction={props.controlAction?.((event) =>
+            viewportControls()?.handleWheel(event),
+          )}
           utilityControls={props.utilityControls}
           toolMode={toolMode()}
           showImages={showImages()}
+          showSamples={showSamples()}
           showFontNames={showFontNames()}
           showList={showList()}
           showGlow={showGlow()}
           graphMode={appState.ui.graphMode}
           canCycleGraphMode={availableGraphModes().length > 1}
-          zoomControls={viewportZoomControls()}
+          zoomControls={viewportControls()}
           isFilterOpen={isFilterOpen()}
           onToggleFilter={() => setIsFilterOpen((open) => !open)}
           onToolModeChange={setToolMode}
           onToggleImages={() => setShowImages((shown) => !shown)}
+          onToggleSamples={() => setShowSamples((shown) => !shown)}
           onToggleFontNames={() => setShowFontNames((shown) => !shown)}
           onToggleGlow={() => setShowGlow((shown) => !shown)}
           onToggleList={() => setShowList((shown) => !shown)}

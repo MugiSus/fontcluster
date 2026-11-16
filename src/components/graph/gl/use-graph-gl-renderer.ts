@@ -2,6 +2,7 @@ import { FILTERED_OPACITY } from '@/components/graph/constants';
 import { activeDendrogramNodeIndexes } from '@/components/graph/dendrogram-topology';
 import { createFontListLayer } from './font-list-layer';
 import { type FontListController } from '@/components/list/use-font-list';
+import { createMicrotask } from '@solid-primitives/utils';
 import {
   type Accessor,
   createEffect,
@@ -163,18 +164,16 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     camera.position.z = 10;
 
     // --- on-demand render loop -------------------------------------------
-    // Nothing animates continuously; render a single frame whenever a reactive
-    // dependency or an async texture asks for one. `renderFrame` runs from
-    // requestAnimationFrame — outside Solid's tracking scope — so it reads the
-    // signals/hooks directly (a plain value read, no subscription); the effects
-    // below only schedule a frame when those inputs change. `rafId` is the lone
-    // piece of genuine mutable state: the dedupe token for the pending frame.
+    // Async assets and ordinary layer changes are coalesced per animation frame.
+    // Camera commits already happen in the viewport's rAF, so they flush pending
+    // work after Solid's effects instead of waiting for a second frame. Keep that
+    // immediate path restricted to camera updates: texture completions can arrive
+    // in many separate tasks and must not each trigger a full canvas draw.
     let rafId: number | undefined;
     let hasRenderedFrame = false;
 
     const renderFrame = () => {
       rafId = undefined;
-
       const { core, halo } = pointLayer;
       const isDarkMode = isDark();
       const showLabels = hasVisiblePointLabels();
@@ -258,6 +257,10 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       if (rafId !== undefined) return;
       rafId = window.requestAnimationFrame(renderFrame);
     };
+    const flushCameraRender = createMicrotask(() => {
+      if (rafId !== undefined) window.cancelAnimationFrame(rafId);
+      renderFrame();
+    });
 
     // --- shared derived state --------------------------------------------
     const isDark = () => colorMode() === 'dark';
@@ -510,7 +513,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
     // --- effect: glow / font-name toggles ---------------------------------
     // `renderFrame` switches between the bloom and straight paths on `glow`
     // and gates the label layer on derived point presentation, but it reads
-    // those accessors untracked (it runs in rAF), so subscribe here.
+    // those accessors untracked, so subscribe here.
     createEffect(() => {
       props.glow();
       hasVisiblePointLabels();
@@ -569,7 +572,7 @@ export function useGraphGlRenderer(props: UseGraphGlRendererProps) {
       camera.top = -centerY + visibleHeight / 2;
       camera.bottom = -centerY - visibleHeight / 2;
       camera.updateProjectionMatrix();
-      scheduleRender();
+      flushCameraRender();
     });
 
     onCleanup(() => {

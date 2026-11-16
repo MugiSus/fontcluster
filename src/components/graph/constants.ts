@@ -5,6 +5,10 @@ export const GRAPH_SIZE = 1000;
 export const SAMPLE_IMAGE_BOX_WIDTH_PX = 128;
 export const SAMPLE_IMAGE_BOX_HEIGHT_PX = 26;
 
+/** Shared screen-space geometry for selection rings and their preview connector. */
+export const SELECTED_RING_RADIUS_PX = 40;
+export const RING_LINE_WIDTH_PX = 1;
+
 export const MIN_VIEWBOX_SIZE = 10;
 export const MAX_VIEWBOX_SIZE = 3000;
 
