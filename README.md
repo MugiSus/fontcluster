@@ -4,7 +4,8 @@ Explore fonts by visual similarity. FontCluster uses FontCLIP to group fonts and
 lets you browse them through interactive trees, scatter plots, and text
 previews.
 
-### [Download the latest release](https://github.com/MugiSus/fontcluster-releases/releases/latest)
+### [Download the latest release](https://fontcluster.mugisus.me/)
+### [Live demo](https://fontcluster.mugisus.me/demo/)
 
 ![Radial tree of Japanese fonts with a font list and a preview of M PLUS 1 Regular](docs/images/radial-tree.png)
 
