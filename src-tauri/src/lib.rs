@@ -15,6 +15,8 @@ pub mod commands;
 pub mod config;
 pub mod core;
 pub mod error;
+#[cfg(target_os = "macos")]
+mod macos_webview;
 pub mod rendering;
 
 use crate::commands::font::FontPreviewCacheState;
@@ -22,6 +24,8 @@ use crate::core::AppState;
 use std::sync::Arc;
 #[cfg(target_os = "macos")]
 use tauri::menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu};
+#[cfg(target_os = "macos")]
+use tauri::Manager;
 use tauri::{AppHandle, Emitter};
 
 /// Builds the native macOS application menu.
@@ -135,7 +139,12 @@ pub fn run() {
             // Only macOS uses a native menu (system menu bar). Windows/Linux
             // would get an in-window menu bar strip, so they skip it.
             #[cfg(target_os = "macos")]
-            app.set_menu(create_menu(app.handle())?)?;
+            {
+                app.set_menu(create_menu(app.handle())?)?;
+                for window in app.webview_windows().values() {
+                    macos_webview::disable_60fps_preference(window)?;
+                }
+            }
             #[cfg(not(target_os = "macos"))]
             let _ = app;
             Ok(())

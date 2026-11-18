@@ -87,6 +87,9 @@ petal-decomposition = { version = "0.9", features = ["openblas-system"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 petal-decomposition = "0.9"
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSObject", "NSString"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "WKPreferences", "WKWebView", "WKWebViewConfiguration"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 petal-decomposition = { version = "0.9", features = ["intel-mkl-static"] }
