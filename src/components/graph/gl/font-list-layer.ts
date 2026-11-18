@@ -163,8 +163,8 @@ export function createFontListLayer(props: {
   });
 
   createEffect(() => {
-    const { width, height } = props.list.bounds();
-    camera.right = width;
+    const { x, height } = props.list.bounds();
+    camera.right = Math.max(0, props.size().width - x);
     camera.bottom = -height;
     camera.updateProjectionMatrix();
     props.requestRender();
@@ -185,9 +185,11 @@ export function createFontListLayer(props: {
       const { x, y, width, height } = props.list.bounds();
       if (!props.list.rows().length || width <= 0 || height <= 0) return;
       const size = props.size();
+      // Labels may extend beyond the list's layout and input bounds.
+      const renderWidth = Math.max(0, size.width - x);
       // Three's viewport/scissor APIs use CSS pixels and account for DPR.
-      renderer.setViewport(x, size.height - y - height, width, height);
-      renderer.setScissor(x, size.height - y - height, width, height);
+      renderer.setViewport(x, size.height - y - height, renderWidth, height);
+      renderer.setScissor(x, size.height - y - height, renderWidth, height);
       renderer.setScissorTest(true);
       // eslint-disable-next-line @typescript-eslint/naming-convention -- Three property snapshot
       const previousAutoClear = renderer.autoClear;
