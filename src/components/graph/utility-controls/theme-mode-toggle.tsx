@@ -24,8 +24,8 @@ export function ThemeModeToggle(props: { class?: string }) {
         size='sm'
         class={props.class}
       >
-        <Sun class='size-6 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0' />
-        <Moon class='absolute size-6 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100' />
+        <Sun class='size-6 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90' />
+        <Moon class='absolute size-6 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0' />
         <span class='sr-only'>{t.graph.utilityControls.theme.toggle()}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent class='rounded-lg bg-slate-50 dark:bg-zinc-900'>

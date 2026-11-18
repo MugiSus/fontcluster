@@ -126,7 +126,7 @@ export function SelectedFontPreview(props: {
                 fallback={
                   <div
                     ref={setPreviewRef}
-                    class='w-max shrink-0 whitespace-nowrap text-right text-xs text-muted-foreground duration-200 animate-in fade-in-0'
+                    class='w-max shrink-0 text-right text-xs whitespace-nowrap text-muted-foreground duration-200 animate-in fade-in-0'
                   >
                     {displayName()}
                   </div>
@@ -138,7 +138,7 @@ export function SelectedFontPreview(props: {
                 >
                   <div
                     ref={setNameRef}
-                    class='absolute bottom-full right-0 mb-2 w-max whitespace-nowrap text-right text-xs text-muted-foreground'
+                    class='absolute right-0 bottom-full mb-2 w-max text-right text-xs whitespace-nowrap text-muted-foreground'
                   >
                     {displayName()}
                   </div>

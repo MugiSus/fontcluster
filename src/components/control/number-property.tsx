@@ -23,7 +23,7 @@ export function NumberProperty(props: NumberPropertyProps) {
     <NumberField {...rootProps} name={local.name}>
       <NumberFieldGroup>
         <NumberFieldLabel
-          class='absolute inset-y-0 left-0 flex items-center font-medium capitalize data-[disabled]:opacity-50'
+          class='absolute inset-y-0 left-0 flex items-center font-medium capitalize data-disabled:opacity-50'
           classList={{ 'text-primary': local.isChanged }}
         >
           {local.label}

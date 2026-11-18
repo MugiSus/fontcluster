@@ -49,7 +49,7 @@ export function PluginConnectionsMenu() {
           >
             <Plug2Icon class='size-3.5' />
             <Show when={appState.plugins.isConnected}>
-              <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-green-500' />
+              <span class='pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-green-500' />
             </Show>
           </DropdownMenuTrigger>
           <DropdownMenuContent class='w-80 p-1'>
@@ -59,7 +59,7 @@ export function PluginConnectionsMenu() {
             <Show
               when={appState.plugins.isConnected}
               fallback={
-                <div class='flex flex-col gap-1 px-2 py-1 text-xs font-light leading-relaxed text-muted-foreground'>
+                <div class='flex flex-col gap-1 px-2 py-1 text-xs leading-relaxed font-light text-muted-foreground'>
                   <p>{t.graph.utilityControls.plugins.empty()}</p>
                   <p>{t.graph.utilityControls.plugins.description()}</p>
                   <p>
@@ -124,7 +124,7 @@ export function PluginConnectionsMenu() {
                 {t.graph.utilityControls.plugins.getPlugin()}
               </span>
             </DropdownMenuItem>
-            <p class='px-2 pb-1 pt-0.5 text-xs font-normal text-muted-foreground/60'>
+            <p class='px-2 pt-0.5 pb-1 text-xs font-normal text-muted-foreground/60'>
               {t.graph.utilityControls.plugins.illustratorSoon()}
             </p>
           </DropdownMenuContent>

@@ -17,15 +17,12 @@ const isConfigColorMode = (value: unknown): value is ConfigColorMode =>
   value === 'light' || value === 'dark' || value === 'system';
 
 const [themeMode, setThemeMode] = makePersisted(
-  // makePersisted owns this signal and returns the same [get, set] tuple,
-  // which we destructure above; the rule can't see through the wrapper.
-  // eslint-disable-next-line solid/reactivity
   createSignal<ConfigColorMode>('system'),
   {
     name: THEME_STORAGE_KEY,
     // Persist the bare mode string (not JSON) to stay compatible with the
     // format Kobalte's own localStorage manager previously wrote.
-    serialize: (value) => value,
+    serialize: (value: ConfigColorMode) => value,
     deserialize: (stored) => (isConfigColorMode(stored) ? stored : 'system'),
   },
 );

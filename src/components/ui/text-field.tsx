@@ -67,7 +67,7 @@ const TextFieldInput = <T extends ValidComponent = 'input'>(
     <TextFieldPrimitive.Input
       type={local.type}
       class={cn(
-        'flex h-8 w-full rounded-md bg-transparent px-1.5 text-right text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus:bg-muted/75 focus:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
+        'flex h-8 w-full rounded-md bg-transparent px-1.5 text-right text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus:bg-muted/75 focus:outline-hidden focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-invalid:border-error-foreground data-invalid:text-error-foreground',
         local.class,
       )}
       {...others}
@@ -96,11 +96,11 @@ const TextFieldTextArea = <T extends ValidComponent = 'textarea'>(
 };
 
 const labelVariants = cva(
-  'text-xs font-normal leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+  'text-xs leading-none font-normal peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
   {
     variants: {
       variant: {
-        label: 'text-muted-foreground data-[invalid]:text-destructive',
+        label: 'text-muted-foreground data-invalid:text-destructive',
         description: 'font-normal text-muted-foreground',
         error: 'text-xs text-destructive',
       },

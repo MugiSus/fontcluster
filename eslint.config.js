@@ -11,7 +11,10 @@ import noRelativeImportPaths from 'eslint-plugin-no-relative-import-paths';
 export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
-  ...tailwindcss.configs['flat/recommended'],
+  tailwindcss.configs.recommended,
+  {
+    settings: { tailwindcss: { cssConfigPath: './src/index.css' } },
+  },
   {
     files: ['**/*.{ts,tsx}'],
     ...solid,

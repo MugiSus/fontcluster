@@ -19,7 +19,8 @@
   "rangeStart": 0,
   "experimentalTernaries": false,
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindFunctions": ["clsx", "cn", "tw"],
+  "tailwindFunctions": ["clsx", "cn", "tw", "cva"],
+  "tailwindStylesheet": "./src/index.css",
   "overrides": [
     {
       "files": "*.{ts,tsx,js,jsx}",

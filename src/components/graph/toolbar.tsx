@@ -101,7 +101,7 @@ export function GraphToolbar(props: GraphToolbarProps) {
   };
 
   return (
-    <div class='pointer-events-auto flex max-h-[calc(100dvh-7rem)] flex-col items-center gap-1 overflow-y-auto overscroll-contain rounded-full border border-border/50 bg-background/50 text-muted-foreground shadow-inner-background backdrop-blur-md [&>*]:shrink-0'>
+    <div class='pointer-events-auto flex max-h-[calc(100dvh-7rem)] flex-col items-center gap-1 overflow-y-auto overscroll-contain rounded-full border border-border/50 bg-background/50 text-muted-foreground shadow-inner-background backdrop-blur-md *:shrink-0'>
       <Show when={props.canCycleGraphMode}>
         <Tooltip placement='left'>
           <TooltipTrigger

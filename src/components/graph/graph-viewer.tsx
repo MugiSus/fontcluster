@@ -488,7 +488,7 @@ export function GraphViewer(props: GraphViewerProps) {
         }
       >
         <svg
-          class='pointer-events-none absolute left-1/2 top-1/2 z-50 size-8 -translate-x-1/2 -translate-y-1/2 text-muted-foreground'
+          class='pointer-events-none absolute top-1/2 left-1/2 z-50 size-8 -translate-x-1/2 -translate-y-1/2 text-muted-foreground'
           viewBox='0 0 32 32'
           fill='none'
           stroke='currentColor'

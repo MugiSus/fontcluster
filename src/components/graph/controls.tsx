@@ -31,7 +31,7 @@ interface GraphControlsProps {
 export function GraphControls(props: GraphControlsProps) {
   return (
     <>
-      <div class='pointer-events-none absolute right-[3px] top-[3px] z-20 flex items-start gap-1 *:pointer-events-auto'>
+      <div class='pointer-events-none absolute top-[3px] right-[3px] z-20 flex items-start gap-1 *:pointer-events-auto'>
         <div class='flex items-center gap-1'>
           {props.controlAction}
           {props.utilityControls}
@@ -57,7 +57,7 @@ export function GraphControls(props: GraphControlsProps) {
         />
       </div>
       <div
-        class='absolute bottom-[3px] right-[3px] z-20'
+        class='absolute right-[3px] bottom-[3px] z-20'
         onMouseDown={(event) => event.stopPropagation()}
       >
         <GraphZoomControls

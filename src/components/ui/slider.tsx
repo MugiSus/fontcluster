@@ -16,7 +16,7 @@ const Slider = <T extends ValidComponent = 'div'>(
   return (
     <SliderPrimitive.Root
       class={cn(
-        'relative flex w-full touch-none select-none items-center',
+        'relative flex w-full touch-none items-center select-none',
         local.class,
       )}
       {...others}
@@ -104,7 +104,7 @@ const SliderThumb = <T extends ValidComponent = 'span'>(
   return (
     <SliderPrimitive.Thumb
       class={cn(
-        'block size-4 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[orientation=horizontal]:top-1/2 data-[orientation=vertical]:left-1/2 data-[orientation=horizontal]:-mt-2 data-[orientation=vertical]:-ml-2',
+        'block size-4 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50 data-[orientation=horizontal]:top-1/2 data-[orientation=horizontal]:-mt-2 data-[orientation=vertical]:left-1/2 data-[orientation=vertical]:-ml-2',
         local.class,
       )}
       {...others}

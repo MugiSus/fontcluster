@@ -51,15 +51,12 @@ export function I18nProvider(props: I18nProviderProps) {
   // localStorage (matching the theme manager) without duplicating the source of
   // truth. An unknown stored value falls back to `system`.
   const [language, setLanguage] = makePersisted(
-    // makePersisted owns this signal and returns the same [get, set] tuple,
-    // which we destructure above; the rule can't see through the wrapper.
-    // eslint-disable-next-line solid/reactivity
     createSignal<LanguageSelection>('system'),
     {
       name: LANGUAGE_STORAGE_KEY,
       // Persist the bare selection string (not JSON) so values stay
       // human-readable and compatible with the prior localStorage format.
-      serialize: (value) => value,
+      serialize: (value: LanguageSelection) => value,
       deserialize: (stored) =>
         isLanguageSelection(stored) ? stored : 'system',
     },

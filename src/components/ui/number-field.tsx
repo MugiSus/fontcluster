@@ -25,7 +25,7 @@ const NumberFieldLabel = <T extends ValidComponent = 'label'>(
   return (
     <NumberFieldPrimitive.Label
       class={cn(
-        'text-xs font-normal leading-none text-muted-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70 data-[invalid]:text-destructive',
+        'text-xs leading-none font-normal text-muted-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70 data-invalid:text-destructive',
         local.class,
       )}
       {...others}
@@ -45,7 +45,7 @@ const NumberFieldInput = <T extends ValidComponent = 'input'>(
   return (
     <NumberFieldPrimitive.Input
       class={cn(
-        'flex h-8 w-full rounded-md bg-transparent px-1.5 pr-7 text-right text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus:bg-muted/75 focus:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-[invalid]:border-error-foreground data-[invalid]:text-error-foreground',
+        'flex h-8 w-full rounded-md bg-transparent px-1.5 pr-7 text-right text-sm ring-offset-background transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground hover:bg-muted/50 focus:bg-muted/75 focus:outline-hidden focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 data-invalid:border-error-foreground data-invalid:text-error-foreground',
         local.class,
       )}
       {...others}
@@ -69,7 +69,7 @@ const NumberFieldIncrementTrigger = <T extends ValidComponent = 'button'>(
   return (
     <NumberFieldPrimitive.IncrementTrigger
       class={cn(
-        'absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
+        'absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
         local.class,
       )}
       {...others}
@@ -113,7 +113,7 @@ const NumberFieldDecrementTrigger = <T extends ValidComponent = 'button'>(
   return (
     <NumberFieldPrimitive.DecrementTrigger
       class={cn(
-        'absolute bottom-0.5 right-0.5 flex size-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
+        'absolute right-0.5 bottom-0.5 flex size-4 items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40',
         local.class,
       )}
       {...others}

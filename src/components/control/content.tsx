@@ -337,7 +337,7 @@ export function ControlContent() {
             >
               <TextFieldLabel
                 for='rendering-text'
-                class='absolute inset-y-0 left-0 flex items-center gap-1.5 font-medium data-[disabled]:opacity-50'
+                class='absolute inset-y-0 left-0 flex items-center gap-1.5 font-medium data-disabled:opacity-50'
               >
                 <TypeIcon class='mb-0.5 size-3.5' />
                 {t.controlPanel.text()}

@@ -114,7 +114,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
     <Show when={isReady() && projected()}>
       {(state) => (
         <div
-          class='pointer-events-none absolute left-0 top-0 z-20'
+          class='pointer-events-none absolute top-0 left-0 z-20'
           style={{
             transform: `translate(${state().x}px, ${state().y + POINT_OFFSET_PX}px)`,
           }}
@@ -123,7 +123,7 @@ export function SelectedFontActions(props: SelectedFontActionsProps) {
               the enter keyframes don't override the offset transform. */}
           <div class='-translate-x-1/2'>
             <div
-              class='pointer-events-auto flex origin-top items-center justify-center gap-0 rounded-full border border-border/50 bg-background/50 shadow-inner-background backdrop-blur-md animate-in fade-in-0 zoom-in-95 slide-in-from-top-1'
+              class='pointer-events-auto flex origin-top items-center justify-center gap-0 rounded-full border border-border/50 bg-background/50 shadow-inner-background backdrop-blur-md animate-in fade-in-0 slide-in-from-top-1 zoom-in-95'
               onMouseDown={(event) => event.stopPropagation()}
               onMouseMove={(event) => event.stopPropagation()}
               onMouseUp={(event) => event.stopPropagation()}

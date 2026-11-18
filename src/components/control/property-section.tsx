@@ -22,7 +22,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
       <Show when={!props.isLast}>
         <div
           aria-hidden='true'
-          class='absolute bottom-[-14px] left-[5px] top-[34px] w-0.5'
+          class='absolute top-[34px] bottom-[-14px] left-[5px] w-0.5'
           classList={{
             'bg-foreground': props.executionStep !== undefined,
             'bg-muted': props.executionStep === undefined,
@@ -30,7 +30,7 @@ export function ControlPropertySection(props: ControlPropertySectionProps) {
         />
       </Show>
       <div
-        class='absolute -left-1 top-3.5 flex size-5 items-center justify-center rounded-full border-2 text-[11px] font-semibold tabular-nums leading-none'
+        class='absolute top-3.5 -left-1 flex size-5 items-center justify-center rounded-full border-2 text-[11px] leading-none font-semibold tabular-nums'
         classList={{
           'border-foreground text-foreground':
             props.executionStep !== undefined,

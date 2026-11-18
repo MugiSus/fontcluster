@@ -11,15 +11,15 @@ import { toggleVariants } from '@/components/ui/toggle';
 
 // Selection-state dot shared by ToggleGroupItem (fills while pressed) and any
 // consumer that wants a matching indicator. `side` centers the dot along the
-// chosen edge; callers supply the fill (e.g. group-data-[pressed]:bg-foreground
+// chosen edge; callers supply the fill (e.g. group-data-pressed:bg-foreground
 // or a plain bg-foreground for an always-on marker).
 const dotVariants = cva('absolute size-[3px] rounded-full', {
   variants: {
     side: {
-      top: 'left-1/2 top-1 -translate-x-1/2',
-      right: 'right-[3px] top-1/2 -translate-y-1/2',
+      top: 'top-1 left-1/2 -translate-x-1/2',
+      right: 'top-1/2 right-[3px] -translate-y-1/2',
       bottom: 'bottom-1 left-1/2 -translate-x-1/2',
-      left: 'left-[3px] top-1/2 -translate-y-1/2',
+      left: 'top-1/2 left-[3px] -translate-y-1/2',
     },
   },
   defaultVariants: {
@@ -114,7 +114,7 @@ const ToggleGroupItem = <T extends ValidComponent = 'button'>(
           size: context.size || local.size,
           variant: context.variant || local.variant,
         }),
-        'hover:bg-muted hover:text-muted-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground',
+        'hover:bg-muted hover:text-muted-foreground data-pressed:bg-accent data-pressed:text-accent-foreground',
         context.showDot && 'group relative',
         local.class,
       )}
@@ -125,7 +125,7 @@ const ToggleGroupItem = <T extends ValidComponent = 'button'>(
         <div
           class={cn(
             dotVariants({ side: context.dotSide }),
-            'bg-current opacity-0 transition-opacity group-data-[pressed]:opacity-100',
+            'bg-current opacity-0 transition-opacity group-data-pressed:opacity-100',
           )}
         />
       </Show>

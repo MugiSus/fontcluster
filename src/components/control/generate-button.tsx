@@ -47,7 +47,7 @@ export function GenerateButton(props: GenerateButtonProps) {
           disabled={props.isDisabled || !props.hasEnabledStages}
           variant='outline'
           size='sm'
-          class='relative flex min-w-0 flex-1 items-center gap-2 rounded-l-full rounded-r-none border-r-0 text-sm font-black tabular-nums shadow-sm'
+          class='relative flex min-w-0 flex-1 items-center gap-2 rounded-l-full rounded-r-none border-r-0 text-sm font-black tabular-nums shadow-xs'
           onClick={() => select(props.primaryMode)}
         >
           {props.primaryMode === 'fresh'
@@ -69,7 +69,7 @@ export function GenerateButton(props: GenerateButtonProps) {
           variant='outline'
           size='sm'
           aria-label={t.controlPanel.generateModes.open()}
-          class='size-9 shrink-0 rounded-l-none rounded-r-full border-l px-0 shadow-sm'
+          class='size-9 shrink-0 rounded-l-none rounded-r-full border-l px-0 shadow-xs'
         >
           <ChevronUpIcon />
         </DropdownMenuTrigger>

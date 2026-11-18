@@ -97,10 +97,10 @@ export function EmphasisControls(props: EmphasisControlsProps) {
           type='button'
           variant='ghost'
           size='sm'
-          class='group h-8 justify-start pl-2 pr-0.5 capitalize text-muted-foreground shadow-none hover:text-foreground'
+          class='group h-8 justify-start pr-0.5 pl-2 text-muted-foreground capitalize shadow-none hover:text-foreground'
           classList={{ 'text-primary': props.isChanged }}
         >
-          <SlidersVerticalIcon class='!size-3.5' />
+          <SlidersVerticalIcon class='size-3.5!' />
           <span>{t.controlPanel.equalizer.title()}</span>
           <span
             class='ml-auto text-sm text-foreground'
@@ -111,7 +111,7 @@ export function EmphasisControls(props: EmphasisControlsProps) {
           <ChevronRightIcon />
         </DialogTrigger>
 
-        <DialogContent class='w-fit max-w-[calc(100vw-16rem)] gap-0 overflow-hidden p-0 shadow'>
+        <DialogContent class='w-fit max-w-[calc(100vw-16rem)] gap-0 overflow-hidden p-0 shadow-sm'>
           <DialogHeader class='flex-row items-center gap-4 space-y-0 px-4 py-6 text-left'>
             <SlidersVerticalIcon class='size-5' />
             <div class='flex flex-col gap-2'>
@@ -158,7 +158,7 @@ export function EmphasisControls(props: EmphasisControlsProps) {
             <span aria-hidden='true' />
             <div
               aria-hidden='true'
-              class='flex flex-col items-end justify-between self-stretch px-2 text-xs tabular-nums leading-[0px] text-muted-foreground'
+              class='flex flex-col items-end justify-between self-stretch px-2 text-xs leading-0 text-muted-foreground tabular-nums'
             >
               <span>+{EMPHASIS_LEVEL_MAX}</span>
               <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>
@@ -172,9 +172,9 @@ export function EmphasisControls(props: EmphasisControlsProps) {
                 return (
                   <>
                     <span
-                      class='min-w-0 self-end text-balance break-words text-center text-xs leading-tight text-foreground'
+                      class='min-w-0 self-end text-center text-xs leading-tight text-balance wrap-break-word text-foreground'
                       classList={{
-                        'self-end !whitespace-nowrap justify-self-center [writing-mode:vertical-rl] -translate-x-px':
+                        'self-end whitespace-nowrap! justify-self-center [writing-mode:vertical-rl] -translate-x-px':
                           locale() === 'ja',
                       }}
                     >
@@ -233,7 +233,7 @@ export function EmphasisControls(props: EmphasisControlsProps) {
             <span aria-hidden='true' />
             <div
               aria-hidden='true'
-              class='flex flex-col justify-between self-stretch px-2 text-xs tabular-nums leading-[0px] text-muted-foreground'
+              class='flex flex-col justify-between self-stretch px-2 text-xs leading-0 text-muted-foreground tabular-nums'
             >
               <span>+{EMPHASIS_LEVEL_MAX}</span>
               <span>±{EMPHASIS_LEVEL_NEUTRAL}</span>

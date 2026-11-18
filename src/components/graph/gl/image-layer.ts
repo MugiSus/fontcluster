@@ -110,8 +110,7 @@ export function createImageLayer(props: ImageLayerProps): Object3D {
 
   const aspectOf = (texture: Texture): number | undefined => {
     const image = texture.image as
-      | { width?: number; height?: number }
-      | undefined;
+      { width?: number; height?: number } | undefined;
     if (image?.width && image.height) return image.width / image.height;
     return undefined;
   };

@@ -78,7 +78,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
       forceMount
       onMouseDown={(event: MouseEvent) => event.stopPropagation()}
       class={cn(
-        'absolute bottom-0 left-0 right-0 z-20 mx-auto w-max max-w-[calc(100%-6rem)] rounded-t-xl border border-b-0 border-border/50 bg-background/90 shadow backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none',
+        'absolute right-0 bottom-0 left-0 z-20 mx-auto w-max max-w-[calc(100%-6rem)] rounded-t-xl border border-b-0 border-border/50 bg-background/90 shadow-sm backdrop-blur-md transition-transform duration-200 ease-out motion-reduce:transition-none',
         !props.isOpen && 'translate-y-full',
       )}
     >
@@ -87,7 +87,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
         aria-label={
           props.isOpen ? t.graph.filterDock.close() : t.graph.filterDock.open()
         }
-        class='absolute -top-5 left-1/2 flex h-5 w-12 -translate-x-1/2 cursor-pointer items-center justify-center rounded-t-md border border-b-0 border-border/50 bg-background text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        class='absolute -top-5 left-1/2 flex h-5 w-12 -translate-x-1/2 cursor-pointer items-center justify-center rounded-t-md border border-b-0 border-border/50 bg-background text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden'
       >
         <Show when={props.isOpen} fallback={<ChevronUpIcon class='size-4' />}>
           <ChevronDownIcon class='size-4' />
@@ -98,7 +98,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
         class='max-h-[60dvh] overflow-y-auto overscroll-contain'
       >
         <div class='flex flex-wrap items-center justify-center gap-1 p-2'>
-          <div class='relative flex min-w-0 max-w-full items-center'>
+          <div class='relative flex max-w-full min-w-0 items-center'>
             <Show
               when={isFiltered()}
               fallback={
@@ -122,7 +122,7 @@ export function GraphFilterDock(props: GraphFilterDockProps) {
               type='text'
               placeholder={t.graph.filterDock.searchPlaceholder()}
               aria-label={t.graph.filterDock.searchPlaceholder()}
-              class='h-8 w-64 max-w-full bg-transparent pl-9 pr-3 text-base font-medium outline-none placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground sm:text-sm'
+              class='h-8 w-64 max-w-full bg-transparent pr-3 pl-9 text-base font-medium outline-hidden placeholder:text-xs placeholder:font-normal placeholder:text-muted-foreground sm:text-sm'
               value={query()}
               onInput={(event) => updateQuery(event.currentTarget.value)}
               spellcheck={false}

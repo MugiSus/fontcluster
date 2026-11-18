@@ -80,7 +80,7 @@ export function GraphGlLayer(props: GraphGlLayerProps) {
   return (
     <canvas
       ref={(element) => (canvas = element)}
-      class='pointer-events-none absolute left-0 top-0 text-muted-foreground'
+      class='pointer-events-none absolute top-0 left-0 text-muted-foreground'
     />
   );
 }

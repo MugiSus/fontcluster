@@ -69,7 +69,7 @@ export function GraphListOverlay(props: { list: FontListController }) {
   return (
     <div
       ref={surface}
-      class='absolute z-20 touch-none outline-none'
+      class='absolute z-20 touch-none outline-hidden'
       style={{
         left: `${props.list.inputBounds().x}px`,
         top: `${props.list.inputBounds().y}px`,

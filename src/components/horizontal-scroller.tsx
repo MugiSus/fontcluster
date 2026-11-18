@@ -62,7 +62,7 @@ export function HorizontalScroller(props: HorizontalScrollerProps) {
           variant='outline'
           size='icon'
           aria-label={t.common.scrollLeft()}
-          class='absolute left-4 top-1/2 z-10 size-8 -translate-y-1/2 rounded-full bg-background shadow-sm'
+          class='absolute top-1/2 left-4 z-10 size-8 -translate-y-1/2 rounded-full bg-background shadow-xs'
           onClick={() => scrollByPage(-1)}
         >
           <ChevronLeftIcon />
@@ -83,7 +83,7 @@ export function HorizontalScroller(props: HorizontalScrollerProps) {
           variant='outline'
           size='icon'
           aria-label={t.common.scrollRight()}
-          class='absolute right-4 top-1/2 z-10 size-8 -translate-y-1/2 rounded-full bg-background shadow-sm'
+          class='absolute top-1/2 right-4 z-10 size-8 -translate-y-1/2 rounded-full bg-background shadow-xs'
           onClick={() => scrollByPage(1)}
         >
           <ChevronRightIcon />

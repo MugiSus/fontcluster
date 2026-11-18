@@ -12,9 +12,7 @@ import {
 } from '@/types/session';
 
 export type ProcessingRunMode =
-  | 'duplicate_changed'
-  | 'in_place_changed'
-  | 'fresh';
+  'duplicate_changed' | 'in_place_changed' | 'fresh';
 
 export interface RunProcessingOptions {
   sessionId?: string;

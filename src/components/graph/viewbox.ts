@@ -73,16 +73,11 @@ export function getViewBoxFittingBounds({
   const viewBoxAspectRatio =
     Number.isFinite(aspectRatio) && aspectRatio > 0 ? aspectRatio : 1;
 
-  let width = boundsWidth;
-  let height = boundsHeight;
-  if (width / height > viewBoxAspectRatio) {
-    height = width / viewBoxAspectRatio;
-  } else {
-    width = height * viewBoxAspectRatio;
-  }
-
-  width = Math.min(Math.max(width, MIN_VIEWBOX_SIZE), MAX_VIEWBOX_SIZE);
-  height = width / viewBoxAspectRatio;
+  const width = Math.min(
+    Math.max(boundsWidth, boundsHeight * viewBoxAspectRatio, MIN_VIEWBOX_SIZE),
+    MAX_VIEWBOX_SIZE,
+  );
+  const height = width / viewBoxAspectRatio;
 
   return {
     x: centerX - width / 2,

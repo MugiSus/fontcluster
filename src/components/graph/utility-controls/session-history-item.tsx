@@ -81,7 +81,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
         <div class='flex min-w-0 flex-1 flex-col gap-1'>
           <div class='flex min-w-0 items-center gap-2'>
             <Show when={!isComplete()}>
-              <span class='font-bold capitalize text-muted-foreground'>
+              <span class='font-bold text-muted-foreground capitalize'>
                 {isRunning()
                   ? session().status.process_status === 'empty'
                     ? t.graph.utilityControls.sessionHistory.statusRendering()
@@ -107,7 +107,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
             fallback={
               <p
                 class={cn(
-                  'truncate text-sm font-medium leading-5',
+                  'truncate text-sm leading-5 font-medium',
                   !isRunning() && 'cursor-text',
                 )}
                 title={
@@ -125,7 +125,7 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
               <TextFieldInput
                 ref={titleInput}
                 type='text'
-                class='h-5 rounded-none px-0 text-left font-medium leading-5 placeholder:font-normal hover:bg-transparent focus:bg-transparent'
+                class='h-5 rounded-none px-0 text-left leading-5 font-medium placeholder:font-normal hover:bg-transparent focus:bg-transparent'
                 value={session().title}
                 placeholder={sampleText()}
                 aria-label={t.graph.utilityControls.sessionHistory.renameTitle()}
@@ -244,10 +244,10 @@ export function SessionHistoryItem(props: SessionHistoryItemProps) {
         </div>
       </Show>
       <Show when={isRunning()}>
-        <span class='pointer-events-none absolute right-2 top-2 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
+        <span class='pointer-events-none absolute top-2 right-2 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
       </Show>
       <Show when={!isRunning() && props.isUnread}>
-        <span class='pointer-events-none absolute right-2 top-2 size-1.5 rounded-full bg-blue-500' />
+        <span class='pointer-events-none absolute top-2 right-2 size-1.5 rounded-full bg-blue-500' />
       </Show>
     </article>
   );

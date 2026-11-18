@@ -15,9 +15,7 @@ import {
 } from './horizontal-tree-layout';
 
 export type GraphLayout =
-  | RadialTreeLayout
-  | HorizontalTreeLayout
-  | ScatterPlotLayout;
+  RadialTreeLayout | HorizontalTreeLayout | ScatterPlotLayout;
 
 const layoutState = createRoot(() => {
   const topology = createMemo(() => {
@@ -49,9 +47,7 @@ const layoutState = createRoot(() => {
 export const activeGraphLayout = layoutState;
 
 export const dendrogramTreeLayout = ():
-  | RadialTreeLayout
-  | HorizontalTreeLayout
-  | null => {
+  RadialTreeLayout | HorizontalTreeLayout | null => {
   const layout = layoutState();
   return layout?.mode === 'radial-tree' || layout?.mode === 'horizontal-tree'
     ? layout

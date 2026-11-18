@@ -9,8 +9,7 @@ import { type GraphLayoutBase } from './types';
 const HORIZONTAL_TREE_WIDTH = 1500;
 const HORIZONTAL_TREE_HEIGHT = 900;
 
-export interface HorizontalTreeLayout
-  extends GraphLayoutBase<'horizontal-tree'> {
+export interface HorizontalTreeLayout extends GraphLayoutBase<'horizontal-tree'> {
   readonly topology: DendrogramTopology;
   readonly nodeCenters: readonly (GraphCoordinate | null)[];
 }

@@ -4,10 +4,7 @@ import { type GraphPointData } from './types';
  * their separate dendrogram-node presentation because they use another key
  * space and topology. */
 export type GraphPointEmphasis =
-  | 'none'
-  | 'family'
-  | 'alias-source'
-  | 'selected';
+  'none' | 'family' | 'alias-source' | 'selected';
 
 /**
  * The complete primitive presentation of one ordinary font point. Rendering

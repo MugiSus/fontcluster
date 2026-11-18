@@ -362,14 +362,14 @@ export function SessionHistory(props: SessionHistoryProps) {
           when={hasRunningSession()}
           fallback={
             <Show when={sessionHistory.some(isUnseenCompletedSession)}>
-              <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-blue-500' />
+              <span class='pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-blue-500' />
             </Show>
           }
         >
-          <span class='pointer-events-none absolute right-1.5 top-1.5 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
+          <span class='pointer-events-none absolute top-1.5 right-1.5 size-1.5 rounded-full bg-amber-500 after:absolute after:inset-0 after:animate-ping after:rounded-full after:bg-amber-500 after:content-[""]' />
         </Show>
       </DropdownMenuTrigger>
-      <DropdownMenuContent class='w-[26rem] max-w-[calc(100vw-1rem)] p-1'>
+      <DropdownMenuContent class='w-104 max-w-[calc(100vw-1rem)] p-1'>
         <DropdownMenuLabel class='text-xs font-medium'>
           {t.graph.utilityControls.sessionHistory.title()}
         </DropdownMenuLabel>
@@ -384,7 +384,7 @@ export function SessionHistory(props: SessionHistoryProps) {
             </p>
           }
         >
-          <div class='max-h-[30rem] overflow-y-auto'>
+          <div class='max-h-120 overflow-y-auto'>
             <For each={sortedSessions()}>
               {(session) => (
                 <Show

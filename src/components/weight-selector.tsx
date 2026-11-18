@@ -85,7 +85,7 @@ export function WeightSelector(props: WeightSelectorProps) {
                 class={cn(
                   'size-8 pt-0.5 text-xs text-muted-foreground hover:text-foreground',
                   props.isBare ? 'rounded-full' : 'grow rounded px-0',
-                  props.isChanged && '!text-primary',
+                  props.isChanged && 'text-primary!',
                 )}
                 style={{ 'font-weight': weight }}
                 disabled={!isSelectable()}

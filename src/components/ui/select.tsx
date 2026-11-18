@@ -27,7 +27,7 @@ const SelectTrigger = <T extends ValidComponent = 'button'>(
   return (
     <SelectPrimitive.Trigger
       class={cn(
-        'flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         local.class,
       )}
       {...others}
@@ -89,7 +89,7 @@ const SelectItem = <T extends ValidComponent = 'li'>(
   return (
     <SelectPrimitive.Item
       class={cn(
-        'relative mt-0 flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        'relative mt-0 flex w-full cursor-default items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50',
         local.class,
       )}
       {...others}
@@ -115,11 +115,11 @@ const SelectItem = <T extends ValidComponent = 'li'>(
 };
 
 const labelVariants = cva(
-  'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+  'text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
   {
     variants: {
       variant: {
-        label: 'data-[invalid]:text-destructive',
+        label: 'data-invalid:text-destructive',
         description: 'font-normal text-muted-foreground',
         error: 'text-xs text-destructive',
       },
